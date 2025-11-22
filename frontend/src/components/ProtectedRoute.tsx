@@ -14,7 +14,16 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, state } = useAuth();
 
+  console.log("[ProtectedRoute] Rendering", { isAuthenticated, loading: state.loading });
+
+  const tempToken = localStorage.getItem("tempToken");
+  if (tempToken && !isAuthenticated) {
+    console.log("[ProtectedRoute] TempToken present, redirecting to OTP");
+    return <Navigate to="/verify-otp" replace />;
+  }
+
   if (state.loading) {
+    console.log("[ProtectedRoute] Loading state, showing spinner");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin">
@@ -27,7 +36,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  if (isAuthenticated) {
+    console.log("[ProtectedRoute] Authenticated, rendering children");
+    return <>{children}</>;
+  }
+
+  console.log("[ProtectedRoute] Not authenticated, redirecting to login");
+  return <Navigate to="/login" replace />;
 };
 
 export default ProtectedRoute;

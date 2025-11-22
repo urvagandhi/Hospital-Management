@@ -24,17 +24,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshToken: null,
     tempToken: null,
     isAuthenticated: false,
-    loading: false,
+    loading: true,
     error: null,
   });
 
   // Load stored data on mount
   useEffect(() => {
     const checkAuth = async () => {
+      console.log("[useAuth] ===== checkAuth started =====");
+      console.log("[useAuth] tempToken:", localStorage.getItem("tempToken"));
+      console.log("[useAuth] hospital:", localStorage.getItem("hospital"));
+
       try {
+        // If we have a tempToken, user is in OTP verification phase
+        // Don't try to refresh - they haven't completed auth yet
+        const tempToken = localStorage.getItem("tempToken");
+        if (tempToken) {
+          console.log("[useAuth] TempToken found, user in OTP phase - setting isAuthenticated=false");
+          setState((prev) => ({
+            ...prev,
+            isAuthenticated: false,
+            loading: false,
+          }));
+          return;
+        }
+
+        console.log("[useAuth] No tempToken, calling refreshToken()...");
         // Always try to refresh token to check if session is valid
         // The token is in the cookie, so this will work even if localStorage is cleared
         const response = await authService.refreshToken();
+        console.log("[useAuth] refreshToken() succeeded, response:", response.data);
 
         // Get hospital data from localStorage if available, otherwise from response
         const hospitalData = localStorage.getItem("hospital");
@@ -45,6 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem("hospital", JSON.stringify(response.data.hospital));
         }
 
+        console.log("[useAuth] Setting isAuthenticated=true");
         setState((prev) => ({
           ...prev,
           accessToken: response.data.accessToken,
@@ -53,11 +73,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           loading: false,
         }));
       } catch (error) {
+        console.log("[useAuth] refreshToken() failed:", error);
         // If refresh fails, we are not authenticated
         // Clear any stale data
         localStorage.removeItem("hospital");
         localStorage.removeItem("tempToken");
 
+        console.log("[useAuth] Setting isAuthenticated=false, clearing localStorage");
         setState((prev) => ({
           ...prev,
           isAuthenticated: false,

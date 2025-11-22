@@ -43,6 +43,14 @@ export const Login: React.FC = () => {
     }
   }, [state.error]);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (state.isAuthenticated) {
+      console.log("[Login] User already authenticated, redirecting to dashboard");
+      navigate("/dashboard", { replace: true });
+    }
+  }, [state.isAuthenticated, navigate]);
+
   // Add window-level error logging
   React.useEffect(() => {
     const handleError = (event: ErrorEvent) => {

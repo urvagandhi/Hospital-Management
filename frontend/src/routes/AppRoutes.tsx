@@ -1,66 +1,34 @@
-/**
- * Application Routes
- * Defines all application routes and redirects
- */
-
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "../hooks/useAuth";
-import { ProtectedRoute } from "../components/ProtectedRoute";
-import { ErrorBoundary } from "../components/ErrorBoundary";
+import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "../pages/Login";
 import OtpVerification from "../pages/OtpVerification";
 import Dashboard from "../pages/Dashboard";
-import PatientDetails from "../pages/PatientDetails";
-import FolderView from "../pages/FolderView";
+import ProtectedRoute from "../components/ProtectedRoute";
+import { MainLayout } from "../layouts/MainLayout";
 
 export const AppRoutes: React.FC = () => {
   return (
-    <ErrorBoundary>
-      <Router>
-        <AuthProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/verify-otp" element={<OtpVerification />} />
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/verify-otp" element={<OtpVerification />} />
 
-            {/* Patient Management Routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/"
-              element={<Navigate to="/dashboard" replace />}
-            />
-            <Route
-              path="/patients/:patientId"
-              element={
-                <ProtectedRoute>
-                  <PatientDetails />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patients/:patientId/folders/:folderName"
-              element={
-                <ProtectedRoute>
-                  <FolderView />
-                </ProtectedRoute>
-              }
-            />
+      {/* Protected Routes */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <MainLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Add other protected routes here */}
+      </Route>
 
-            {/* Catch All - Redirect to Home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AuthProvider>
-      </Router>
-    </ErrorBoundary>
+      {/* Catch all - redirect to dashboard (which will redirect to login if needed) */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 };
-
 export default AppRoutes;
