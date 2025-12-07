@@ -42,6 +42,10 @@ const config = {
   R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
   R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || "hospital-files",
+
+  // Local File Storage (fallback when R2 not configured)
+  USE_LOCAL_STORAGE: process.env.USE_LOCAL_STORAGE === "true" || (!process.env.R2_ACCESS_KEY_ID && process.env.NODE_ENV === "development"),
+  LOCAL_STORAGE_PATH: process.env.LOCAL_STORAGE_PATH || "./uploads",
 };
 
 // Validate required environment variables in production

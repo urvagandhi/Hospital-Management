@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.hospital.management.app-mergeDebugResources-81:/values-fi/values-fi.xml",
+            "outputFile": "com.hospital.management.app-mergeDebugResources-82:/values-fi/values-fi.xml",
             "map": [
                 {
                     "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\caches\\transforms-3\\798278f2ee7f064a1fd3c1dc5b76f14d\\transformed\\jetified-material3-1.1.2\\res\\values-fi\\values-fi.xml",

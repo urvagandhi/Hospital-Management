@@ -36,6 +36,18 @@ interface ApiService {
         @Path("patientId") patientId: String
     ): Response<Map<String, Any>>
 
+    @PUT("/api/patients/{patientId}")
+    suspend fun updatePatient(
+        @Path("patientId") patientId: String,
+        @Body patientData: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    @POST("/api/patients/{patientId}/folders")
+    suspend fun createFolder(
+        @Path("patientId") patientId: String,
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
     @GET("/api/patients/{patientId}/files/{folderName}")
     suspend fun getFolderFiles(
         @Path("patientId") patientId: String,

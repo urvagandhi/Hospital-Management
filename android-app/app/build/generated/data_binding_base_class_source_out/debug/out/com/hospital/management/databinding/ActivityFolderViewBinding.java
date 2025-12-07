@@ -27,6 +27,12 @@ public final class ActivityFolderViewBinding implements ViewBinding {
   public final ImageButton btnBack;
 
   @NonNull
+  public final ImageButton btnPatientDetails;
+
+  @NonNull
+  public final FloatingActionButton fabCreateFolder;
+
+  @NonNull
   public final FloatingActionButton fabDownloadAll;
 
   @NonNull
@@ -45,11 +51,14 @@ public final class ActivityFolderViewBinding implements ViewBinding {
   public final TextView tvPatientName;
 
   private ActivityFolderViewBinding(@NonNull CoordinatorLayout rootView,
-      @NonNull ImageButton btnBack, @NonNull FloatingActionButton fabDownloadAll,
+      @NonNull ImageButton btnBack, @NonNull ImageButton btnPatientDetails,
+      @NonNull FloatingActionButton fabCreateFolder, @NonNull FloatingActionButton fabDownloadAll,
       @NonNull FloatingActionButton fabScan, @NonNull ProgressBar progressBar,
       @NonNull RecyclerView rvFolders, @NonNull TextView tvEmpty, @NonNull TextView tvPatientName) {
     this.rootView = rootView;
     this.btnBack = btnBack;
+    this.btnPatientDetails = btnPatientDetails;
+    this.fabCreateFolder = fabCreateFolder;
     this.fabDownloadAll = fabDownloadAll;
     this.fabScan = fabScan;
     this.progressBar = progressBar;
@@ -91,6 +100,18 @@ public final class ActivityFolderViewBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.btnPatientDetails;
+      ImageButton btnPatientDetails = ViewBindings.findChildViewById(rootView, id);
+      if (btnPatientDetails == null) {
+        break missingId;
+      }
+
+      id = R.id.fabCreateFolder;
+      FloatingActionButton fabCreateFolder = ViewBindings.findChildViewById(rootView, id);
+      if (fabCreateFolder == null) {
+        break missingId;
+      }
+
       id = R.id.fabDownloadAll;
       FloatingActionButton fabDownloadAll = ViewBindings.findChildViewById(rootView, id);
       if (fabDownloadAll == null) {
@@ -127,8 +148,8 @@ public final class ActivityFolderViewBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityFolderViewBinding((CoordinatorLayout) rootView, btnBack, fabDownloadAll,
-          fabScan, progressBar, rvFolders, tvEmpty, tvPatientName);
+      return new ActivityFolderViewBinding((CoordinatorLayout) rootView, btnBack, btnPatientDetails,
+          fabCreateFolder, fabDownloadAll, fabScan, progressBar, rvFolders, tvEmpty, tvPatientName);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

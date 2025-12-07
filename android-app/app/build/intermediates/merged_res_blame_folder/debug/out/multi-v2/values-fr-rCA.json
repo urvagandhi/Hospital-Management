@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.hospital.management.app-mergeDebugResources-81:/values-fr-rCA/values-fr-rCA.xml",
+            "outputFile": "com.hospital.management.app-mergeDebugResources-82:/values-fr-rCA/values-fr-rCA.xml",
             "map": [
                 {
                     "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\caches\\transforms-3\\7706e47bec672c3c9895d93b6a299bb9\\transformed\\jetified-play-services-basement-18.1.0\\res\\values-fr-rCA\\values.xml",

@@ -4,7 +4,6 @@ package com.hospital.management.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -13,6 +12,7 @@ import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.card.MaterialCardView;
 import com.hospital.management.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -23,13 +23,10 @@ public final class ActivityDashboardBinding implements ViewBinding {
   private final ScrollView rootView;
 
   @NonNull
-  public final Button btnLogout;
+  public final MaterialCardView btnLogout;
 
   @NonNull
   public final CardView cardNewAdmission;
-
-  @NonNull
-  public final CardView cardScanDocument;
 
   @NonNull
   public final CardView cardShowPatients;
@@ -40,14 +37,13 @@ public final class ActivityDashboardBinding implements ViewBinding {
   @NonNull
   public final TextView tvHospitalName;
 
-  private ActivityDashboardBinding(@NonNull ScrollView rootView, @NonNull Button btnLogout,
-      @NonNull CardView cardNewAdmission, @NonNull CardView cardScanDocument,
+  private ActivityDashboardBinding(@NonNull ScrollView rootView,
+      @NonNull MaterialCardView btnLogout, @NonNull CardView cardNewAdmission,
       @NonNull CardView cardShowPatients, @NonNull ImageView ivHospitalLogo,
       @NonNull TextView tvHospitalName) {
     this.rootView = rootView;
     this.btnLogout = btnLogout;
     this.cardNewAdmission = cardNewAdmission;
-    this.cardScanDocument = cardScanDocument;
     this.cardShowPatients = cardShowPatients;
     this.ivHospitalLogo = ivHospitalLogo;
     this.tvHospitalName = tvHospitalName;
@@ -81,7 +77,7 @@ public final class ActivityDashboardBinding implements ViewBinding {
     int id;
     missingId: {
       id = R.id.btnLogout;
-      Button btnLogout = ViewBindings.findChildViewById(rootView, id);
+      MaterialCardView btnLogout = ViewBindings.findChildViewById(rootView, id);
       if (btnLogout == null) {
         break missingId;
       }
@@ -89,12 +85,6 @@ public final class ActivityDashboardBinding implements ViewBinding {
       id = R.id.cardNewAdmission;
       CardView cardNewAdmission = ViewBindings.findChildViewById(rootView, id);
       if (cardNewAdmission == null) {
-        break missingId;
-      }
-
-      id = R.id.cardScanDocument;
-      CardView cardScanDocument = ViewBindings.findChildViewById(rootView, id);
-      if (cardScanDocument == null) {
         break missingId;
       }
 
@@ -117,7 +107,7 @@ public final class ActivityDashboardBinding implements ViewBinding {
       }
 
       return new ActivityDashboardBinding((ScrollView) rootView, btnLogout, cardNewAdmission,
-          cardScanDocument, cardShowPatients, ivHospitalLogo, tvHospitalName);
+          cardShowPatients, ivHospitalLogo, tvHospitalName);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

@@ -126,6 +126,76 @@ export const getPatientById = async (req, res) => {
 };
 
 /**
+ * PUT /api/patients/:patientId
+ * Update patient details
+ */
+export const updatePatient = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const hospitalId = req.hospital?.id;
+    const { patientName, email, phone, dateOfBirth, medicalRecordNumber, notes } = req.body;
+
+    console.log("[Patient Controller] Updating patient:", patientId);
+
+    const patient = await patientService.updatePatient(hospitalId, patientId, {
+      patientName,
+      email,
+      phone,
+      dateOfBirth,
+      medicalRecordNumber,
+      notes,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: patient,
+      message: "Patient updated successfully",
+    });
+  } catch (error) {
+    console.error("[Patient Controller] Update error:", error);
+    return res.status(error.message === "Patient not found" ? 404 : 500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * POST /api/patients/:patientId/folders
+ * Create a new folder for patient
+ */
+export const createFolder = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { folderName } = req.body;
+    const hospitalId = req.hospital?.id;
+
+    if (!folderName || !folderName.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Folder name is required",
+      });
+    }
+
+    console.log("[Patient Controller] Creating folder:", folderName, "for patient:", patientId);
+
+    const patient = await patientService.createFolder(hospitalId, patientId, folderName.trim());
+
+    return res.status(201).json({
+      success: true,
+      data: patient,
+      message: "Folder created successfully",
+    });
+  } catch (error) {
+    console.error("[Patient Controller] Create folder error:", error);
+    return res.status(error.message === "Patient not found" ? 404 : 500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
  * GET /api/patients/:patientId/files/:folderName
  * Get files in specific folder
  */
@@ -170,11 +240,38 @@ export const uploadFile = async (req, res) => {
 
     console.log("[Patient Controller] Uploading file to folder:", folderName);
 
-    // Generate R2 key: hospitalId/patientId/folderName/filename
+    // Generate file key/path: hospitalId/patientId/folderName/filename
     const key = `${hospitalId}/${patientId}/${folderName}/${Date.now()}_${file.originalname}`;
 
-    // Upload to R2
-    const uploadResult = await r2Service.uploadFile(file.buffer, key, file.mimetype);
+    let uploadResult;
+    const config = (await import("../config/env.js")).default;
+
+    // Check if we should use local storage
+    if (config.USE_LOCAL_STORAGE) {
+      console.log("[Patient Controller] Using local file storage");
+      const fs = await import("fs/promises");
+      const path = await import("path");
+
+      // Create directories if they don't exist
+      const dirPath = path.join(config.LOCAL_STORAGE_PATH, hospitalId, patientId, folderName);
+      await fs.mkdir(dirPath, { recursive: true });
+
+      // Save file locally
+      const fileName = `${Date.now()}_${file.originalname}`;
+      const filePath = path.join(dirPath, fileName);
+      await fs.writeFile(filePath, file.buffer);
+
+      uploadResult = {
+        key: key,
+        size: file.size,
+      };
+
+      console.log("[Patient Controller] File saved locally:", filePath);
+    } else {
+      // Upload to R2
+      console.log("[Patient Controller] Using R2 cloud storage");
+      uploadResult = await r2Service.uploadFile(file.buffer, key, file.mimetype);
+    }
 
     // Update patient record
     const patient = await patientService.addFileToFolder(hospitalId, patientId, folderName, {

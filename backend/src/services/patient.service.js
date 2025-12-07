@@ -104,7 +104,41 @@ export const getPatientById = async (hospitalId, patientId) => {
 };
 
 /**
- * Create folder for patient
+ * Update patient details
+ * @param {string} hospitalId
+ * @param {string} patientId
+ * @param {Object} updateData - Fields to update
+ * @returns {Promise<Object>}
+ */
+export const updatePatient = async (hospitalId, patientId, updateData) => {
+  try {
+    console.log("[Patient Service] Updating patient:", patientId);
+
+    const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
+
+    const patient = await Patient.findOneAndUpdate(
+      {
+        _id: patientId,
+        hospitalId: hospitalObjectId,
+      },
+      { $set: updateData },
+      { new: true, runValidators: true },
+    );
+
+    if (!patient) {
+      throw new Error("Patient not found");
+    }
+
+    console.log("[Patient Service] Patient updated successfully");
+    return patient;
+  } catch (error) {
+    console.error("[Patient Service] Update error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create a new folder for a patient
  * @param {string} hospitalId
  * @param {string} patientId
  * @param {string} folderName
@@ -302,6 +336,7 @@ export default {
   createPatient,
   getPatients,
   getPatientById,
+  updatePatient,
   createFolder,
   addFileToFolder,
   getFolderFiles,

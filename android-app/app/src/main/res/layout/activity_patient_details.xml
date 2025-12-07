@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F9FAFB">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:background="@color/primary"
+        android:gravity="center_vertical">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_revert"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="@android:color/white" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Patient Details"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:layout_marginStart="8dp" />
+
+        <Button
+            android:id="@+id/btnEdit"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Edit"
+            android:textColor="@color/primary"
+            android:backgroundTint="@android:color/white"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            style="?attr/materialButtonOutlinedStyle" />
+    </LinearLayout>
+
+    <!-- Content -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ScrollView
+            android:id="@+id/scrollView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp">
+
+                        <!-- Patient Name -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Patient Name"
+                            android:textSize="12sp"
+                            android:textColor="#6B7280"
+                            android:textStyle="bold" />
+
+                        <EditText
+                            android:id="@+id/etPatientName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Enter patient name"
+                            android:textSize="16sp"
+                            android:textColor="#111827"
+                            android:enabled="false"
+                            android:background="@android:color/transparent"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="16dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#E5E7EB"
+                            android:layout_marginBottom="16dp" />
+
+                        <!-- Email -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Email"
+                            android:textSize="12sp"
+                            android:textColor="#6B7280"
+                            android:textStyle="bold" />
+
+                        <EditText
+                            android:id="@+id/etEmail"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Enter email address"
+                            android:inputType="textEmailAddress"
+                            android:textSize="16sp"
+                            android:textColor="#111827"
+                            android:enabled="false"
+                            android:background="@android:color/transparent"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="16dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#E5E7EB"
+                            android:layout_marginBottom="16dp" />
+
+                        <!-- Phone -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Phone"
+                            android:textSize="12sp"
+                            android:textColor="#6B7280"
+                            android:textStyle="bold" />
+
+                        <EditText
+                            android:id="@+id/etPhone"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Enter phone number"
+                            android:inputType="phone"
+                            android:textSize="16sp"
+                            android:textColor="#111827"
+                            android:enabled="false"
+                            android:background="@android:color/transparent"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="16dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#E5E7EB"
+                            android:layout_marginBottom="16dp" />
+
+                        <!-- Date of Birth -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Date of Birth"
+                            android:textSize="12sp"
+                            android:textColor="#6B7280"
+                            android:textStyle="bold" />
+
+                        <EditText
+                            android:id="@+id/etDateOfBirth"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="YYYY-MM-DD"
+                            android:textSize="16sp"
+                            android:textColor="#111827"
+                            android:enabled="false"
+                            android:background="@android:color/transparent"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="16dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#E5E7EB"
+                            android:layout_marginBottom="16dp" />
+
+                        <!-- Medical Record Number -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Medical Record Number"
+                            android:textSize="12sp"
+                            android:textColor="#6B7280"
+                            android:textStyle="bold" />
+
+                        <EditText
+                            android:id="@+id/etMrn"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Enter MRN"
+                            android:textSize="16sp"
+                            android:textColor="#111827"
+                            android:enabled="false"
+                            android:background="@android:color/transparent"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="16dp" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#E5E7EB"
+                            android:layout_marginBottom="16dp" />
+
+                        <!-- Notes -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Notes"
+                            android:textSize="12sp"
+                            android:textColor="#6B7280"
+                            android:textStyle="bold" />
+
+                        <EditText
+                            android:id="@+id/etNotes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Enter notes (optional)"
+                            android:inputType="textMultiLine"
+                            android:minLines="3"
+                            android:gravity="top"
+                            android:textSize="16sp"
+                            android:textColor="#111827"
+                            android:enabled="false"
+                            android:background="@android:color/transparent"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+        </ScrollView>
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminateTint="@color/primary" />
+    </FrameLayout>
+</LinearLayout>

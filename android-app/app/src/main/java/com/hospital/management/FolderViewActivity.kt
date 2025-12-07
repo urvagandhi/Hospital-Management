@@ -51,6 +51,13 @@ class FolderViewActivity : AppCompatActivity() {
 
         rvFolders.layoutManager = GridLayoutManager(this, 2)
 
+        // Button to view patient details
+        findViewById<View>(R.id.btnPatientDetails).setOnClickListener {
+            val intent = Intent(this, com.hospital.management.ui.patients.PatientDetailsActivity::class.java)
+            intent.putExtra("PATIENT_ID", patientId)
+            startActivity(intent)
+        }
+
         // FAB for scan document
         findViewById<View>(R.id.fabScan).setOnClickListener {
             showFolderSelectionDialog()
@@ -59,6 +66,11 @@ class FolderViewActivity : AppCompatActivity() {
         // FAB for download all
         findViewById<View>(R.id.fabDownloadAll).setOnClickListener {
             showDownloadOptionsDialog()
+        }
+        
+        // FAB for create folder
+        findViewById<View>(R.id.fabCreateFolder)?.setOnClickListener {
+            showCreateFolderDialog()
         }
     }
 
@@ -114,23 +126,85 @@ class FolderViewActivity : AppCompatActivity() {
         }
     }
 
-    private fun showFolderSelectionDialog() {
-        val folders = arrayOf(
-            "id", "claim-paper", "hospital-bills", "discharge-summary",
-            "hospital-documents", "reports", "medical-prescription-bills", "consent"
-        )
+    private fun showCreateFolderDialog() {
+        val input = android.widget.EditText(this)
+        input.hint = "Enter folder name"
+        input.setPadding(50, 20, 50, 20)
         
         AlertDialog.Builder(this)
-            .setTitle("Select Folder")
-            .setItems(folders) { _, which ->
-                // Navigate to scanner
-                val intent = Intent(this, ScannerActivity::class.java)
-                intent.putExtra("PATIENT_ID", patientId)
-                intent.putExtra("FOLDER_NAME", folders[which])
-                startActivity(intent)
+            .setTitle("Create New Folder")
+            .setView(input)
+            .setPositiveButton("Create") { _, _ ->
+                val folderName = input.text.toString().trim()
+                if (folderName.isNotEmpty()) {
+                    createFolder(folderName)
+                } else {
+                    Toast.makeText(this, "Folder name cannot be empty", Toast.LENGTH_SHORT).show()
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+    
+    private fun createFolder(folderName: String) {
+        lifecycleScope.launch {
+            try {
+                Toast.makeText(this@FolderViewActivity, "Creating folder...", Toast.LENGTH_SHORT).show()
+                val response = repository.createFolder(patientId, folderName)
+                if (response.isSuccessful && response.body()?.get("success") == true) {
+                    Toast.makeText(this@FolderViewActivity, "Folder created successfully", Toast.LENGTH_SHORT).show()
+                    loadFolders() // Refresh the folder list
+                } else {
+                    val message = response.body()?.get("message") as? String ?: "Failed to create folder"
+                    Toast.makeText(this@FolderViewActivity, message, Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@FolderViewActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun showFolderSelectionDialog() {
+        lifecycleScope.launch {
+            try {
+                // Get current folders from patient
+                val response = repository.getPatientById(patientId)
+                if (response.isSuccessful && response.body()?.get("success") == true) {
+                    val data = response.body()?.get("data") as? Map<*, *>
+                    val foldersData = data?.get("folders") as? List<*>
+                    val folderNames = mutableListOf<String>()
+                    
+                    foldersData?.forEach { folderItem ->
+                        val folderMap = folderItem as? Map<*, *>
+                        val name = folderMap?.get("name") as? String
+                        if (name != null) {
+                            folderNames.add(name)
+                        }
+                    }
+                    
+                    if (folderNames.isEmpty()) {
+                        Toast.makeText(this@FolderViewActivity, "No folders available", Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                    
+                    AlertDialog.Builder(this@FolderViewActivity)
+                        .setTitle("Select Folder")
+                        .setItems(folderNames.toTypedArray()) { _, which ->
+                            // Navigate to scanner
+                            val intent = Intent(this@FolderViewActivity, ScannerActivity::class.java)
+                            intent.putExtra("PATIENT_ID", patientId)
+                            intent.putExtra("FOLDER_NAME", folderNames[which])
+                            startActivity(intent)
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                } else {
+                    Toast.makeText(this@FolderViewActivity, "Failed to load folders", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@FolderViewActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun showDownloadOptionsDialog() {

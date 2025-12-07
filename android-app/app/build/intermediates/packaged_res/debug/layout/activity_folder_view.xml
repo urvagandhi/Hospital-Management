@@ -51,6 +51,15 @@
                     android:textColor="#E0E0E0"
                     android:layout_marginTop="2dp" />
             </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnPatientDetails"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@android:drawable/ic_menu_info_details"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:tint="@android:color/white"
+                android:contentDescription="View patient details" />
         </LinearLayout>
 
         <!-- Content -->
@@ -87,12 +96,23 @@
 
     <!-- Floating Action Buttons -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabCreateFolder"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:layout_marginBottom="160dp"
+        android:src="@android:drawable/ic_input_add"
+        app:tint="@android:color/white"
+        app:backgroundTint="#F59E0B" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabScan"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:layout_marginBottom="80dp"
+        android:layout_marginBottom="88dp"
         android:src="@android:drawable/ic_menu_camera"
         app:tint="@android:color/white"
         app:backgroundTint="@color/primary" />

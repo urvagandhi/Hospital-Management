@@ -5,6 +5,8 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.hospital.management.data.models.Patient
 import com.hospital.management.databinding.ItemPatientBinding
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class PatientAdapter(
     private val patients: List<Patient>,
@@ -18,10 +20,21 @@ class PatientAdapter(
             binding.tvPatientName.text = patient.patientName
             binding.tvMrn.text = "MRN: ${patient.medicalRecordNumber}"
             binding.tvPhone.text = patient.phone
-            binding.tvDob.text = "DOB: ${patient.dateOfBirth}"
+            binding.tvDob.text = "DOB: ${formatDate(patient.dateOfBirth)}"
 
             binding.root.setOnClickListener {
                 onPatientClick(patient)
+            }
+        }
+
+        private fun formatDate(dateString: String): String {
+            return try {
+                val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+                val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                val date = inputFormat.parse(dateString)
+                date?.let { outputFormat.format(it) } ?: dateString.substringBefore("T")
+            } catch (e: Exception) {
+                dateString.substringBefore("T")
             }
         }
     }

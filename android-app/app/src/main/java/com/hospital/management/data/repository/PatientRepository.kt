@@ -23,6 +23,14 @@ class PatientRepository(
         return apiService.getPatientById(patientId)
     }
     
+    suspend fun updatePatient(patientId: String, patientData: Map<String, String>): Response<Map<String, Any>> {
+        return apiService.updatePatient(patientId, patientData)
+    }
+    
+    suspend fun createFolder(patientId: String, folderName: String): Response<Map<String, Any>> {
+        return apiService.createFolder(patientId, mapOf("folderName" to folderName))
+    }
+    
     suspend fun getFolderFiles(patientId: String, folderName: String): Response<Map<String, Any>> {
         return apiService.getFolderFiles(patientId, folderName)
     }

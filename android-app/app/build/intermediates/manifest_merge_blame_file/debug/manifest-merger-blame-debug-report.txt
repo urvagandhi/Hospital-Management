@@ -44,7 +44,7 @@
 25-->[androidx.core:core:1.12.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
 26
 27    <application
-27-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-41:19
+27-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-42:19
 28        android:name="com.hospital.management.HospitalApplication"
 28-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:10:9-44
 29        android:allowBackup="true"
@@ -65,55 +65,57 @@
 37-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:16:9-54
 38        android:supportsRtl="true"
 38-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:17:9-35
-39        android:testOnly="true"
-40        android:theme="@style/Theme.HospitalManagement"
-40-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:19:9-56
-41        android:usesCleartextTraffic="true" >
-41-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:18:9-44
-42        <activity
-42-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:22:9-29:20
-43            android:name="com.hospital.management.ui.auth.LoginActivity"
-43-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:23:13-50
-44            android:exported="true" >
-44-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:13-36
-45            <intent-filter>
-45-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:13-28:29
-46                <action android:name="android.intent.action.MAIN" />
-46-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:26:17-69
-46-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:26:25-66
-47
-48                <category android:name="android.intent.category.LAUNCHER" />
-48-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:27:17-77
-48-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:27:27-74
-49            </intent-filter>
-50        </activity>
-51        <activity android:name="com.hospital.management.ui.auth.OtpActivity" />
-51-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:9-57
-51-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:19-54
-52        <activity android:name="com.hospital.management.ui.dashboard.DashboardActivity" />
-52-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:32:9-68
-52-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:32:19-65
-53        <activity android:name="com.hospital.management.ui.admission.AdmissionActivity" />
-53-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:33:9-68
-53-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:33:19-65
-54        <activity android:name="com.hospital.management.ui.scanner.ScannerActivity" />
-54-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:34:9-64
-54-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:34:19-61
-55        <activity android:name="com.hospital.management.ui.upload.UploadActivity" />
-55-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:9-62
-55-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:19-59
-56        <activity android:name="com.hospital.management.PatientListActivity" />
-56-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:9-57
-56-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:19-54
+39        android:theme="@style/Theme.HospitalManagement"
+39-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:19:9-56
+40        android:usesCleartextTraffic="true" >
+40-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:18:9-44
+41        <activity
+41-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:22:9-29:20
+42            android:name="com.hospital.management.ui.auth.LoginActivity"
+42-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:23:13-50
+43            android:exported="true" >
+43-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:13-36
+44            <intent-filter>
+44-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:13-28:29
+45                <action android:name="android.intent.action.MAIN" />
+45-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:26:17-69
+45-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:26:25-66
+46
+47                <category android:name="android.intent.category.LAUNCHER" />
+47-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:27:17-77
+47-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:27:27-74
+48            </intent-filter>
+49        </activity>
+50        <activity android:name="com.hospital.management.ui.auth.OtpActivity" />
+50-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:9-57
+50-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:19-54
+51        <activity android:name="com.hospital.management.ui.dashboard.DashboardActivity" />
+51-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:32:9-68
+51-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:32:19-65
+52        <activity android:name="com.hospital.management.ui.admission.AdmissionActivity" />
+52-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:33:9-68
+52-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:33:19-65
+53        <activity android:name="com.hospital.management.ui.scanner.ScannerActivity" />
+53-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:34:9-64
+53-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:34:19-61
+54        <activity android:name="com.hospital.management.ui.upload.UploadActivity" />
+54-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:9-62
+54-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:19-59
+55        <activity android:name="com.hospital.management.ui.patients.PatientListActivity" />
+55-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:9-69
+55-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:19-66
+56        <activity android:name="com.hospital.management.ui.patients.PatientDetailsActivity" />
+56-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:9-72
+56-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:19-69
 57        <activity android:name="com.hospital.management.FolderViewActivity" />
-57-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:9-56
-57-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:19-53
+57-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:9-56
+57-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:19-53
 58        <activity android:name="com.hospital.management.FolderDetailsActivity" />
-58-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:9-59
-58-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:19-56
+58-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:9-59
+58-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:19-56
 59        <activity android:name="com.hospital.management.ScannerActivity" />
-59-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:9-53
-59-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:19-50
+59-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:9-53
+59-->D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:19-50
 60        <activity
 60-->[androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:23:9-25:39
 61            android:name="androidx.compose.ui.tooling.PreviewActivity"

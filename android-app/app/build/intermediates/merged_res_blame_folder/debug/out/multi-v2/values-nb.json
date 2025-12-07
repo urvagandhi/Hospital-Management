@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.hospital.management.app-mergeDebugResources-81:/values-nb/values-nb.xml",
+            "outputFile": "com.hospital.management.app-mergeDebugResources-82:/values-nb/values-nb.xml",
             "map": [
                 {
                     "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\caches\\transforms-3\\ab3c8dbcc57d3f9eb3b19bcbf26edef1\\transformed\\material-1.10.0\\res\\values-nb\\values-nb.xml",

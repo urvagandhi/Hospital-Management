@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.hospital.management.app-mergeDebugResources-81:/values-kk/values-kk.xml",
+            "outputFile": "com.hospital.management.app-mergeDebugResources-82:/values-kk/values-kk.xml",
             "map": [
                 {
                     "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\caches\\transforms-3\\9dd71152ac556dc80c9fe826812c309f\\transformed\\jetified-ui-release\\res\\values-kk\\values-kk.xml",

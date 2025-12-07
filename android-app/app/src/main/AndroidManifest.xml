@@ -33,7 +33,8 @@
         <activity android:name=".ui.admission.AdmissionActivity" />
         <activity android:name=".ui.scanner.ScannerActivity" />
         <activity android:name=".ui.upload.UploadActivity" />
-        <activity android:name=".PatientListActivity" />
+        <activity android:name=".ui.patients.PatientListActivity" />
+        <activity android:name=".ui.patients.PatientDetailsActivity" />
         <activity android:name=".FolderViewActivity" />
         <activity android:name=".FolderDetailsActivity" />
         <activity android:name=".ScannerActivity" />

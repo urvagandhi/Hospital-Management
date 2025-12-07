@@ -34,6 +34,18 @@ router.get("/", patientController.getPatients);
 router.get("/:patientId", patientController.getPatientById);
 
 /**
+ * PUT /api/patients/:patientId
+ * Update patient details
+ */
+router.put("/:patientId", patientController.updatePatient);
+
+/**
+ * POST /api/patients/:patientId/folders
+ * Create a new folder for patient
+ */
+router.post("/:patientId/folders", patientController.createFolder);
+
+/**
  * GET /api/patients/:patientId/files/:folderName
  * Get files in specific folder
  */

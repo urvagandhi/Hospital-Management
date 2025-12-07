@@ -19,6 +19,7 @@ class TokenManager(private val context: Context) {
         private val TEMP_TOKEN = stringPreferencesKey("temp_token")
         private val HOSPITAL_ID = stringPreferencesKey("hospital_id")
         private val HOSPITAL_NAME = stringPreferencesKey("hospital_name")
+        private val HOSPITAL_LOGO_URL = stringPreferencesKey("hospital_logo_url")
         private val DEVICE_ID = stringPreferencesKey("device_id")
     }
     
@@ -27,6 +28,7 @@ class TokenManager(private val context: Context) {
     val tempToken: Flow<String?> = context.dataStore.data.map { it[TEMP_TOKEN] }
     val hospitalId: Flow<String?> = context.dataStore.data.map { it[HOSPITAL_ID] }
     val hospitalName: Flow<String?> = context.dataStore.data.map { it[HOSPITAL_NAME] }
+    val hospitalLogoUrl: Flow<String?> = context.dataStore.data.map { it[HOSPITAL_LOGO_URL] }
     
     suspend fun saveTokens(accessToken: String, refreshToken: String) {
         context.dataStore.edit { prefs ->
@@ -41,10 +43,11 @@ class TokenManager(private val context: Context) {
         }
     }
     
-    suspend fun saveHospitalInfo(id: String, name: String) {
+    suspend fun saveHospitalInfo(id: String, name: String, logoUrl: String = "") {
         context.dataStore.edit { prefs ->
             prefs[HOSPITAL_ID] = id
             prefs[HOSPITAL_NAME] = name
+            prefs[HOSPITAL_LOGO_URL] = logoUrl
         }
     }
     

@@ -31,8 +31,8 @@ class AuthRepository(
         tokenManager.saveTokens(accessToken, refreshToken)
     }
     
-    suspend fun saveHospitalInfo(id: String, name: String) {
-        tokenManager.saveHospitalInfo(id, name)
+    suspend fun saveHospitalInfo(id: String, name: String, logoUrl: String = "") {
+        tokenManager.saveHospitalInfo(id, name, logoUrl)
     }
     
     suspend fun logout() {

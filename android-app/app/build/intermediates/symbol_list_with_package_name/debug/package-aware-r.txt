@@ -23,6 +23,7 @@ anim btn_radio_to_off_mtrl_ring_outer_path_animation
 anim btn_radio_to_on_mtrl_dot_group_animation
 anim btn_radio_to_on_mtrl_ring_outer_animation
 anim btn_radio_to_on_mtrl_ring_outer_path_animation
+anim button_scale_up
 anim design_bottom_sheet_slide_in
 anim design_bottom_sheet_slide_out
 anim design_snackbar_in
@@ -3063,6 +3064,7 @@ drawable ic_mtrl_chip_checked_black
 drawable ic_mtrl_chip_checked_circle
 drawable ic_mtrl_chip_close_circle
 drawable ic_search_black_24
+drawable logout_button_ripple
 drawable m3_appbar_background
 drawable m3_avd_hide_password
 drawable m3_avd_show_password
@@ -3243,8 +3245,10 @@ id bounceStart
 id btnBack
 id btnBackToLogin
 id btnCapture
+id btnEdit
 id btnLogin
 id btnLogout
+id btnPatientDetails
 id btnResend
 id btnSubmit
 id btnUpload
@@ -3254,7 +3258,6 @@ id cache_measures
 id callMeasure
 id cancel_button
 id cardNewAdmission
-id cardScanDocument
 id cardShowPatients
 id carryVelocity
 id center
@@ -3338,11 +3341,13 @@ id end
 id endToStart
 id enterAlways
 id enterAlwaysCollapsed
+id etDateOfBirth
 id etDob
 id etEmail
 id etFolderName
 id etHospitalId
 id etMrn
+id etNotes
 id etOtp
 id etPassword
 id etPatientId
@@ -3351,6 +3356,7 @@ id etPhone
 id exitUntilCollapsed
 id expand_activities_button
 id expanded_menu
+id fabCreateFolder
 id fabDownload
 id fabDownloadAll
 id fabScan
@@ -3376,6 +3382,7 @@ id frost
 id fullscreen_header
 id ghost_view
 id ghost_view_holder
+id glide_custom_view_target_tag
 id gone
 id graph
 id graph_wrap
@@ -3823,6 +3830,7 @@ layout activity_folder_details
 layout activity_folder_view
 layout activity_login
 layout activity_otp
+layout activity_patient_details
 layout activity_patient_list
 layout activity_scanner
 layout activity_upload

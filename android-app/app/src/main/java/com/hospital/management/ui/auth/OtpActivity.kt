@@ -101,6 +101,25 @@ class OtpActivity : AppCompatActivity() {
                     binding.btnVerify.isEnabled = true
 
                     if (response.isSuccessful && response.body()?.get("success") == true) {
+                        // Extract hospital info from response
+                        val data = response.body()?.get("data") as? Map<*, *>
+                        val hospital = data?.get("hospital") as? Map<*, *>
+                        
+                        if (hospital != null) {
+                            val hospitalId = hospital["_id"] as? String ?: ""
+                            val hospitalName = hospital["hospitalName"] as? String ?: ""
+                            val logoUrl = hospital["logoUrl"] as? String ?: ""
+                            
+                            // Save hospital info
+                            val sharedPrefs = getSharedPreferences("HospitalPrefs", MODE_PRIVATE)
+                            sharedPrefs.edit().apply {
+                                putString("hospital_id", hospitalId)
+                                putString("hospital_name", hospitalName)
+                                putString("hospital_logo_url", logoUrl)
+                                apply()
+                            }
+                        }
+                        
                         // Cookies (accessToken, refreshToken) are automatically stored by CookieJar
                         Toast.makeText(this@OtpActivity, "OTP verified successfully", Toast.LENGTH_SHORT).show()
                         val intent = Intent(this@OtpActivity, DashboardActivity::class.java)

@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-43:12
-INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-43:12
-INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-43:12
-INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-43:12
+ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-44:12
+INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-44:12
+INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-44:12
+INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-44:12
 MERGED from [androidx.databinding:viewbinding:8.2.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\814606bc4845b7e48b42056e540bc238\transformed\jetified-viewbinding-8.2.0\AndroidManifest.xml:2:1-7:12
 MERGED from [io.coil-kt:coil-compose:2.5.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\97e4ddb784780a14318bf6378cc2e355\transformed\jetified-coil-compose-2.5.0\AndroidManifest.xml:2:1-7:12
 MERGED from [io.coil-kt:coil-compose-base:2.5.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\0c43152e92bfffe9ccafce3181081988\transformed\jetified-coil-compose-base-2.5.0\AndroidManifest.xml:2:1-7:12
@@ -47,6 +47,7 @@ MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\Krishil.Gand
 MERGED from [com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:2:1-24:12
 MERGED from [com.google.mlkit:common:18.10.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:2:1-26:12
 MERGED from [androidx.appcompat:appcompat:1.6.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\1ae08651db4bbb07f10e1945a5f6d854\transformed\appcompat-1.6.1\AndroidManifest.xml:17:1-22:12
+MERGED from [com.github.bumptech.glide:glide:4.16.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\9f24303ee493691be4daee4cf915d30f\transformed\jetified-glide-4.16.0\AndroidManifest.xml:2:1-9:12
 MERGED from [androidx.recyclerview:recyclerview:1.3.2] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\f4e24aa70b4f60796ab6678e7fa32a24\transformed\recyclerview-1.3.2\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.viewpager2:viewpager2:1.1.0-beta02] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\65829ad1f23f2f7840732a57e3f0a3b2\transformed\jetified-viewpager2-1.1.0-beta02\AndroidManifest.xml:2:1-7:12
 MERGED from [com.google.android.gms:play-services-base:18.1.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\5ede27bb7590a43712e511c5d193d097\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:16:1-24:12
@@ -101,17 +102,18 @@ MERGED from [com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\
 MERGED from [com.google.android.datatransport:transport-api:2.2.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\19fd927eb853ff6d7c4c07a6118a86f0\transformed\jetified-transport-api-2.2.1\AndroidManifest.xml:15:1-22:12
 MERGED from [com.google.firebase:firebase-components:16.1.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\d293ab4fca934da16b4802db84066c5c\transformed\jetified-firebase-components-16.1.0\AndroidManifest.xml:15:1-23:12
 MERGED from [com.google.firebase:firebase-encoders-json:17.1.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e9c1af88b43ddc6e47235b747eb64891\transformed\jetified-firebase-encoders-json-17.1.0\AndroidManifest.xml:15:1-23:12
-MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\09db367697a16c07bf388d2a6ce5b256\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:17:1-27:12
+MERGED from [androidx.exifinterface:exifinterface:1.3.6] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\8509f4f3645b8a9bd8aa7873c1e7e4e9\transformed\exifinterface-1.3.6\AndroidManifest.xml:17:1-24:12
+MERGED from [com.github.bumptech.glide:gifdecoder:4.16.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\aace28c736d116ed1c26cd70b1a490a2\transformed\jetified-gifdecoder-4.16.0\AndroidManifest.xml:2:1-9:12
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:17:1-55:12
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e4f391a659eb4140307c9ce0fbbf57d4\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:17:1-33:12
 MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e06da6747a82ee12637922474d5db06e\transformed\jetified-tracing-1.0.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\09db367697a16c07bf388d2a6ce5b256\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:17:1-27:12
 MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\8429a2eb1031e6e8c75fd8b8851972ac\transformed\core-runtime-2.2.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.sqlite:sqlite-framework:2.3.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\6bd487d32702f4aba38270b67c00d247\transformed\sqlite-framework-2.3.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.documentfile:documentfile:1.0.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\701d43cf3ca636de547ed6f316cb6f8f\transformed\documentfile-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\4943469c65ca2b8899f8e33ac7fc1eea\transformed\localbroadcastmanager-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.print:print:1.0.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\cce0f838ec493b0e1aeb760be5593fb5\transformed\print-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.sqlite:sqlite:2.3.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\076ce5849cf830c1008da517c66ebfae\transformed\sqlite-2.3.0\AndroidManifest.xml:17:1-22:12
-MERGED from [androidx.exifinterface:exifinterface:1.3.6] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\8509f4f3645b8a9bd8aa7873c1e7e4e9\transformed\exifinterface-1.3.6\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.annotation:annotation-experimental:1.3.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\cd464cb03101742ed982f01e0933674c\transformed\jetified-annotation-experimental-1.3.1\AndroidManifest.xml:17:1-22:12
 MERGED from [io.github.aakira:napier-android-debug:1.4.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\ee578da20fe1b7136bf683e181c9b4f9\transformed\jetified-napier-debug\AndroidManifest.xml:2:1-11:12
 	package
@@ -139,8 +141,8 @@ ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManife
 	android:name
 		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:7:19-61
 application
-ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-41:19
-INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-41:19
+ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-42:19
+INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-42:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:22:5-26:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:22:5-26:19
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\ab3c8dbcc57d3f9eb3b19bcbf26edef1\transformed\material-1.10.0\AndroidManifest.xml:22:5-20
@@ -175,12 +177,12 @@ MERGED from [com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Us
 MERGED from [com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:28:5-36:19
 MERGED from [com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:25:5-39:19
 MERGED from [com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:25:5-39:19
-MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\09db367697a16c07bf388d2a6ce5b256\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
-MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\09db367697a16c07bf388d2a6ce5b256\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:23:5-53:19
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:23:5-53:19
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e4f391a659eb4140307c9ce0fbbf57d4\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e4f391a659eb4140307c9ce0fbbf57d4\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\09db367697a16c07bf388d2a6ce5b256\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\09db367697a16c07bf388d2a6ce5b256\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:24:5-25:19
 	android:extractNativeLibs
 		INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml
 	android:appComponentFactory
@@ -243,22 +245,26 @@ activity#com.hospital.management.ui.upload.UploadActivity
 ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:9-62
 	android:name
 		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:19-59
-activity#com.hospital.management.PatientListActivity
-ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:9-57
+activity#com.hospital.management.ui.patients.PatientListActivity
+ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:9-69
 	android:name
-		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:19-54
+		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:19-66
+activity#com.hospital.management.ui.patients.PatientDetailsActivity
+ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:9-72
+	android:name
+		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:19-69
 activity#com.hospital.management.FolderViewActivity
-ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:9-56
+ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:9-56
 	android:name
-		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:19-53
+		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:19-53
 activity#com.hospital.management.FolderDetailsActivity
-ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:9-59
+ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:9-59
 	android:name
-		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:19-56
+		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:19-56
 activity#com.hospital.management.ScannerActivity
-ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:9-53
+ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:9-53
 	android:name
-		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:19-50
+		ADDED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:19-50
 uses-sdk
 INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from D:\Project\Hospital-Management\android-app\app\src\main\AndroidManifest.xml
@@ -349,6 +355,8 @@ MERGED from [com.google.mlkit:common:18.10.0] C:\Users\Krishil.Gandhi\.gradle\ca
 MERGED from [com.google.mlkit:common:18.10.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:6:5-44
 MERGED from [androidx.appcompat:appcompat:1.6.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\1ae08651db4bbb07f10e1945a5f6d854\transformed\appcompat-1.6.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.appcompat:appcompat:1.6.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\1ae08651db4bbb07f10e1945a5f6d854\transformed\appcompat-1.6.1\AndroidManifest.xml:20:5-44
+MERGED from [com.github.bumptech.glide:glide:4.16.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\9f24303ee493691be4daee4cf915d30f\transformed\jetified-glide-4.16.0\AndroidManifest.xml:5:5-7:41
+MERGED from [com.github.bumptech.glide:glide:4.16.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\9f24303ee493691be4daee4cf915d30f\transformed\jetified-glide-4.16.0\AndroidManifest.xml:5:5-7:41
 MERGED from [androidx.recyclerview:recyclerview:1.3.2] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\f4e24aa70b4f60796ab6678e7fa32a24\transformed\recyclerview-1.3.2\AndroidManifest.xml:20:5-44
 MERGED from [androidx.recyclerview:recyclerview:1.3.2] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\f4e24aa70b4f60796ab6678e7fa32a24\transformed\recyclerview-1.3.2\AndroidManifest.xml:20:5-44
 MERGED from [androidx.viewpager2:viewpager2:1.1.0-beta02] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\65829ad1f23f2f7840732a57e3f0a3b2\transformed\jetified-viewpager2-1.1.0-beta02\AndroidManifest.xml:5:5-44
@@ -457,14 +465,18 @@ MERGED from [com.google.firebase:firebase-components:16.1.0] C:\Users\Krishil.Ga
 MERGED from [com.google.firebase:firebase-components:16.1.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\d293ab4fca934da16b4802db84066c5c\transformed\jetified-firebase-components-16.1.0\AndroidManifest.xml:19:5-21:41
 MERGED from [com.google.firebase:firebase-encoders-json:17.1.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e9c1af88b43ddc6e47235b747eb64891\transformed\jetified-firebase-encoders-json-17.1.0\AndroidManifest.xml:19:5-21:41
 MERGED from [com.google.firebase:firebase-encoders-json:17.1.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e9c1af88b43ddc6e47235b747eb64891\transformed\jetified-firebase-encoders-json-17.1.0\AndroidManifest.xml:19:5-21:41
-MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\09db367697a16c07bf388d2a6ce5b256\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\09db367697a16c07bf388d2a6ce5b256\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.exifinterface:exifinterface:1.3.6] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\8509f4f3645b8a9bd8aa7873c1e7e4e9\transformed\exifinterface-1.3.6\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.exifinterface:exifinterface:1.3.6] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\8509f4f3645b8a9bd8aa7873c1e7e4e9\transformed\exifinterface-1.3.6\AndroidManifest.xml:20:5-22:41
+MERGED from [com.github.bumptech.glide:gifdecoder:4.16.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\aace28c736d116ed1c26cd70b1a490a2\transformed\jetified-gifdecoder-4.16.0\AndroidManifest.xml:5:5-7:41
+MERGED from [com.github.bumptech.glide:gifdecoder:4.16.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\aace28c736d116ed1c26cd70b1a490a2\transformed\jetified-gifdecoder-4.16.0\AndroidManifest.xml:5:5-7:41
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:21:5-44
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:21:5-44
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e4f391a659eb4140307c9ce0fbbf57d4\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:21:5-23:41
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e4f391a659eb4140307c9ce0fbbf57d4\transformed\jetified-startup-runtime-1.1.1\AndroidManifest.xml:21:5-23:41
 MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e06da6747a82ee12637922474d5db06e\transformed\jetified-tracing-1.0.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\e06da6747a82ee12637922474d5db06e\transformed\jetified-tracing-1.0.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\09db367697a16c07bf388d2a6ce5b256\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\09db367697a16c07bf388d2a6ce5b256\transformed\versionedparcelable-1.1.1\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\8429a2eb1031e6e8c75fd8b8851972ac\transformed\core-runtime-2.2.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\8429a2eb1031e6e8c75fd8b8851972ac\transformed\core-runtime-2.2.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.sqlite:sqlite-framework:2.3.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\6bd487d32702f4aba38270b67c00d247\transformed\sqlite-framework-2.3.0\AndroidManifest.xml:20:5-44
@@ -477,8 +489,6 @@ MERGED from [androidx.print:print:1.0.0] C:\Users\Krishil.Gandhi\.gradle\caches\
 MERGED from [androidx.print:print:1.0.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\cce0f838ec493b0e1aeb760be5593fb5\transformed\print-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.sqlite:sqlite:2.3.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\076ce5849cf830c1008da517c66ebfae\transformed\sqlite-2.3.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.sqlite:sqlite:2.3.0] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\076ce5849cf830c1008da517c66ebfae\transformed\sqlite-2.3.0\AndroidManifest.xml:20:5-44
-MERGED from [androidx.exifinterface:exifinterface:1.3.6] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\8509f4f3645b8a9bd8aa7873c1e7e4e9\transformed\exifinterface-1.3.6\AndroidManifest.xml:20:5-22:41
-MERGED from [androidx.exifinterface:exifinterface:1.3.6] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\8509f4f3645b8a9bd8aa7873c1e7e4e9\transformed\exifinterface-1.3.6\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.annotation:annotation-experimental:1.3.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\cd464cb03101742ed982f01e0933674c\transformed\jetified-annotation-experimental-1.3.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.annotation:annotation-experimental:1.3.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\cd464cb03101742ed982f01e0933674c\transformed\jetified-annotation-experimental-1.3.1\AndroidManifest.xml:20:5-44
 MERGED from [io.github.aakira:napier-android-debug:1.4.1] C:\Users\Krishil.Gandhi\.gradle\caches\transforms-3\ee578da20fe1b7136bf683e181c9b4f9\transformed\jetified-napier-debug\AndroidManifest.xml:7:5-9:41

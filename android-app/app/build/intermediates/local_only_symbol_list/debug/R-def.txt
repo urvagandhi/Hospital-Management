@@ -1,5 +1,6 @@
 R_DEF: Internal format may change without notice
 local
+anim button_scale_up
 color accent
 color accent_dark
 color background
@@ -24,28 +25,33 @@ color warning
 color white
 drawable ic_launcher_background
 drawable ic_launcher_foreground
+drawable logout_button_ripple
 id btnBack
 id btnBackToLogin
 id btnCapture
+id btnEdit
 id btnLogin
 id btnLogout
+id btnPatientDetails
 id btnResend
 id btnSubmit
 id btnUpload
 id btnVerify
 id cardNewAdmission
-id cardScanDocument
 id cardShowPatients
+id etDateOfBirth
 id etDob
 id etEmail
 id etFolderName
 id etHospitalId
 id etMrn
+id etNotes
 id etOtp
 id etPassword
 id etPatientId
 id etPatientName
 id etPhone
+id fabCreateFolder
 id fabDownload
 id fabDownloadAll
 id fabScan
@@ -55,6 +61,7 @@ id progressBar
 id rvFiles
 id rvFolders
 id rvPatients
+id scrollView
 id swipeRefresh
 id tvCountdown
 id tvDob
@@ -76,6 +83,7 @@ layout activity_folder_details
 layout activity_folder_view
 layout activity_login
 layout activity_otp
+layout activity_patient_details
 layout activity_patient_list
 layout activity_scanner
 layout activity_upload
