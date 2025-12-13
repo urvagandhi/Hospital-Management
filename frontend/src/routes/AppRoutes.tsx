@@ -1,18 +1,20 @@
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import Login from "../pages/Login";
-import OtpVerification from "../pages/OtpVerification";
+import { Navigate, Route, Routes } from "react-router-dom";
+import AdminRoute from "../components/AdminRoute";
+import ProtectedRoute from "../components/ProtectedRoute";
+import { MainLayout } from "../layouts/MainLayout";
 import Dashboard from "../pages/Dashboard";
 import HospitalRegistration from "../pages/HospitalRegistration";
 import HospitalsList from "../pages/HospitalsList";
-import ProtectedRoute from "../components/ProtectedRoute";
-import AdminRoute from "../components/AdminRoute";
-import { MainLayout } from "../layouts/MainLayout";
+import LandingPage from "../pages/LandingPage";
+import Login from "../pages/Login";
+import OtpVerification from "../pages/OtpVerification";
 
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public Routes */}
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/verify-otp" element={<OtpVerification />} />
 
@@ -43,7 +45,7 @@ export const AppRoutes: React.FC = () => {
         }
       >
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
         {/* Add other protected routes here */}
       </Route>
 
