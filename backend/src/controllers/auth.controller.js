@@ -3,15 +3,14 @@
  * Handles login, OTP verification, refresh token, and logout
  */
 
-import { body, validationResult } from "express-validator";
+import AuditLog from "../models/AuditLog.js";
 import Hospital from "../models/Hospital.js";
 import Session from "../models/Session.js";
-import AuditLog from "../models/AuditLog.js";
+import { createOtp, verifyOtp as verifyOtpService } from "../services/otp.service.js";
+import { maskPhoneNumber, sendOtpSms } from "../services/sms.service.js";
+import { createSession, invalidateSession, refreshAccessToken } from "../services/token.service.js";
 import { comparePassword, hashPassword } from "../utils/hash.js";
 import { generateTempToken } from "../utils/jwt.js";
-import { createOtp, verifyOtp as verifyOtpService } from "../services/otp.service.js";
-import { sendOtpSms, maskPhoneNumber } from "../services/sms.service.js";
-import { createSession, refreshAccessToken, invalidateSession } from "../services/token.service.js";
 
 /**
  * Register Hospital - Create new hospital account
@@ -327,15 +326,15 @@ export const verifyOtp = async (req, res) => {
 
     res.cookie("accessToken", session.accessToken, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      secure: isProduction, // Must be true for SameSite=None
+      sameSite: isProduction ? "none" : "lax", // Must be None for cross-site
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     res.cookie("refreshToken", session.refreshToken, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      secure: isProduction, // Must be true for SameSite=None
+      sameSite: isProduction ? "none" : "lax", // Must be None for cross-site
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -385,7 +384,7 @@ export const refreshToken = async (req, res) => {
     res.cookie("accessToken", tokens.accessToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      sameSite: isProduction ? "none" : "lax",
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 

@@ -3,18 +3,18 @@
  * Initializes Express server with all middleware and routes
  */
 
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
 import cookieParser from "cookie-parser";
-import authRoutes from "./routes/auth.routes.js";
-import patientRoutes from "./routes/patient.routes.js";
-import hospitalsRoutes from "./routes/hospitals.routes.js";
+import cors from "cors";
+import express from "express";
+import helmet from "helmet";
 import connectDB from "./config/db.js";
 import config from "./config/env.js";
+import scheduleAutoDelete from "./jobs/autoDelete.job.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { generalLimiter } from "./middleware/rateLimiter.js";
-import scheduleAutoDelete from "./jobs/autoDelete.job.js";
+import authRoutes from "./routes/auth.routes.js";
+import hospitalsRoutes from "./routes/hospitals.routes.js";
+import patientRoutes from "./routes/patient.routes.js";
 
 const app = express();
 
@@ -49,8 +49,26 @@ app.use(cookieParser());
 // ============ CORS CONFIGURATION ============
 app.use(
   cors({
-    origin: config.FRONTEND_URL,
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        config.FRONTEND_URL,
+        "https://hospital-record-management.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+      ];
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+        callback(null, true);
+      } else {
+        console.log("Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     optionsSuccessStatus: 200,
   }),
 );
