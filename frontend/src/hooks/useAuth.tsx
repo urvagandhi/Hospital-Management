@@ -3,9 +3,9 @@
  * Manages authentication state globally
  */
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { Hospital, AuthState } from "../types/auth";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import authService from "../services/authService";
+import { AuthState } from "../types/auth";
 
 interface AuthContextType {
   state: AuthState;
@@ -32,39 +32,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const checkAuth = async () => {
       console.log("[useAuth] ===== checkAuth started =====");
-      console.log("[useAuth] tempToken:", localStorage.getItem("tempToken"));
-      console.log("[useAuth] hospital:", localStorage.getItem("hospital"));
 
       try {
-        // If we have a tempToken, user is in OTP verification phase
-        // Don't try to refresh - they haven't completed auth yet
         const tempToken = localStorage.getItem("tempToken");
+        const hospitalData = localStorage.getItem("hospital");
+
+        // 1. If in OTP phase, don't refresh
         if (tempToken) {
-          console.log("[useAuth] TempToken found, user in OTP phase - setting isAuthenticated=false");
-          setState((prev) => ({
-            ...prev,
-            isAuthenticated: false,
-            loading: false,
-          }));
+          console.log("[useAuth] TempToken found, user in OTP phase");
+          setState((prev) => ({ ...prev, isAuthenticated: false, loading: false }));
           return;
         }
 
-        console.log("[useAuth] No tempToken, calling refreshToken()...");
-        // Always try to refresh token to check if session is valid
-        // The token is in the cookie, so this will work even if localStorage is cleared
-        const response = await authService.refreshToken();
-        console.log("[useAuth] refreshToken() succeeded, response:", response.data);
+        // 2. If no hospital data, we likely aren't logged in.
+        // However, since we use cookies, we *could* be logged in but have cleared localStorage.
+        // But to prevent loops on the login page, we can assume if no hospital data, we wait for user to log in.
+        // OR: We try refresh ONCE.
 
-        // Get hospital data from localStorage if available, otherwise from response
-        const hospitalData = localStorage.getItem("hospital");
-        const hospital = hospitalData ? JSON.parse(hospitalData) : response.data.hospital;
-
-        // If we got hospital from response but not in localStorage, save it
-        if (!hospitalData && response.data.hospital) {
-          localStorage.setItem("hospital", JSON.stringify(response.data.hospital));
+        if (!hospitalData) {
+          console.log("[useAuth] No hospital data found, assuming not authenticated");
+          setState((prev) => ({ ...prev, isAuthenticated: false, loading: false }));
+          return;
         }
 
-        console.log("[useAuth] Setting isAuthenticated=true");
+        console.log("[useAuth] Hospital data found, verifying session with refreshToken()...");
+        const response = await authService.refreshToken();
+
+        console.log("[useAuth] Session valid");
+
+        // Store tokens if returned (Hybrid Auth)
+        if (response.data.accessToken) {
+          authService.storeTokens(response.data.accessToken, response.data.refreshToken);
+        }
+
         setState((prev) => ({
           ...prev,
           accessToken: response.data.accessToken,
@@ -72,14 +72,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isAuthenticated: true,
           loading: false,
         }));
+
       } catch (error) {
-        console.log("[useAuth] refreshToken() failed:", error);
-        // If refresh fails, we are not authenticated
-        // Clear any stale data
+        console.log("[useAuth] Session check failed / No active session");
+        // Clear stale data
         localStorage.removeItem("hospital");
         localStorage.removeItem("tempToken");
 
-        console.log("[useAuth] Setting isAuthenticated=false, clearing localStorage");
         setState((prev) => ({
           ...prev,
           isAuthenticated: false,
@@ -119,8 +118,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await authService.verifyOtp(otp);
-      // Tokens are in cookies now, so we don't store them in localStorage
-      // authService.storeTokens(response.data.accessToken, response.data.refreshToken);
+
+      // Store tokens for Hybrid Auth (Cookies + LocalStorage)
+      authService.storeTokens(response.data.accessToken, response.data.refreshToken);
       localStorage.setItem("hospital", JSON.stringify(response.data.hospital));
 
       // CRITICAL: Remove tempToken so it doesn't interfere with cookie-based auth
@@ -128,8 +128,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setState((prev) => ({
         ...prev,
-        // accessToken: response.data.accessToken, // Not returned in body anymore
-        // refreshToken: response.data.refreshToken, // Not returned in body anymore
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken,
         hospital: response.data.hospital,
         isAuthenticated: true,
         tempToken: null,

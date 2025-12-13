@@ -3,9 +3,9 @@
  * API calls for login, OTP verification, etc.
  */
 
-import api from "./api";
 import { LoginResponse, OtpVerifyResponse, RefreshTokenResponse } from "../types/auth";
 import { persistentLogger } from "../utils/persistentLogger";
+import api from "./api";
 
 export const authService = {
   /**
@@ -125,24 +125,19 @@ export const authService = {
 
   /**
    * Get stored tokens
-   * Tokens are now in cookies, so we can't retrieve them here.
-   * This method might be obsolete or should return nulls.
    */
   getTokens: () => ({
-    accessToken: null, // In cookie
-    refreshToken: null, // In cookie
+    accessToken: localStorage.getItem("accessToken"),
+    refreshToken: localStorage.getItem("refreshToken"),
     tempToken: localStorage.getItem("tempToken"),
   }),
 
   /**
    * Store tokens
-   * Tokens are stored in cookies by the server.
-   * We only store hospital data if needed.
    */
   storeTokens: (accessToken: string, refreshToken: string) => {
-    // No-op for tokens as they are in cookies
-    // localStorage.setItem("accessToken", accessToken);
-    // localStorage.setItem("refreshToken", refreshToken);
+    if (accessToken) localStorage.setItem("accessToken", accessToken);
+    if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
   },
 
   /**
@@ -156,9 +151,8 @@ export const authService = {
    * Clear all tokens
    */
   clearTokens: () => {
-    // Cookies should be cleared by server on logout
-    // localStorage.removeItem("accessToken");
-    // localStorage.removeItem("refreshToken");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("tempToken");
     localStorage.removeItem("hospital");
   },
