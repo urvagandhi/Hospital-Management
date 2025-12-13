@@ -120,23 +120,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await authService.verifyOtp(otp);
 
+      console.log("[useAuth] verifyOtp response:", response);
+
+      // Handle potential double nesting from backend (response.data.data)
+      const responseData = (response.data as any).data || response.data;
+
+      if (!responseData.accessToken) {
+        console.warn("[useAuth] Warning: No accessToken in response!", response);
+      } else {
+        console.log("[useAuth] AccessToken received, length:", responseData.accessToken.length);
+      }
+
       // Store tokens for Hybrid Auth (Cookies + LocalStorage)
-      authService.storeTokens(response.data.accessToken, response.data.refreshToken);
-      localStorage.setItem("hospital", JSON.stringify(response.data.hospital));
+      authService.storeTokens(responseData.accessToken, responseData.refreshToken);
+      localStorage.setItem("hospital", JSON.stringify(responseData.hospital));
 
       // CRITICAL: Remove tempToken so it doesn't interfere with cookie-based auth
       localStorage.removeItem("tempToken");
 
       setState((prev) => ({
         ...prev,
-        accessToken: response.data.accessToken,
-        refreshToken: response.data.refreshToken,
-        hospital: response.data.hospital,
+        accessToken: responseData.accessToken,
+        refreshToken: responseData.refreshToken,
+        hospital: responseData.hospital,
         isAuthenticated: true,
         tempToken: null,
         loading: false,
       }));
     } catch (error: any) {
+      console.error("[useAuth] verifyOtp error:", error);
       const errorMessage = error.message || error.response?.message || "OTP verification failed";
       console.error("[useAuth] OTP verification failed:", errorMessage);
       setState((prev) => ({

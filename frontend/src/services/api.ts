@@ -39,10 +39,22 @@ class ApiService {
         // verifyTempToken middleware likely checks header.
         // So we should keep this logic ONLY for tempToken if it exists.
 
-        const token = localStorage.getItem("accessToken") || localStorage.getItem("tempToken");
+        // Check for access token first (Logged in state)
+        // Then temp token (OTP state)
+        const accessToken = localStorage.getItem("accessToken");
+        const tempToken = localStorage.getItem("tempToken");
+
+        let token = accessToken;
+        if (!token && tempToken) {
+          token = tempToken;
+          console.log("[Axios] Using Temp Token for request");
+        }
+
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
-          persistentLogger.log("Axios", "Added Authorization header");
+          // console.log("[Axios] Added Authorization header:", token.substring(0, 10) + "...");
+        } else {
+          console.warn("[Axios] No token found in localStorage (accessToken or tempToken)");
         }
 
         return config;
