@@ -3,15 +3,16 @@
  * Hospital email and password login with OTP flow initiation
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TextInput } from "../components/TextInput";
 import { Button } from "../components/Button";
-import { LogoHeader } from "../components/LogoHeader";
 import { ErrorMessage } from "../components/ErrorMessage";
+import { LogoHeader } from "../components/LogoHeader";
+import { TextInput } from "../components/TextInput";
+import { API_URL } from "../config/constants";
 import { useAuth } from "../hooks/useAuth";
-import { getEmailError, getPasswordError } from "../utils/validator";
 import { persistentLogger } from "../utils/persistentLogger";
+import { getEmailError, getPasswordError } from "../utils/validator";
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ export const Login: React.FC = () => {
 
     // Test backend connectivity on component mount
     console.log("[Login Page] Testing backend connectivity...");
-    fetch("http://localhost:5000/health")
+    fetch(`${API_URL}/health`)
       .then((res) => {
         console.log("[Login Page] Backend health check status:", res.status);
         return res.json();

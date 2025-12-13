@@ -5,11 +5,12 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "../components/Button";
+import { ErrorMessage } from "../components/ErrorMessage";
+import { LogoHeader } from "../components/LogoHeader";
 import { Navbar } from "../components/Navbar";
 import { TextInput } from "../components/TextInput";
-import { Button } from "../components/Button";
-import { LogoHeader } from "../components/LogoHeader";
-import { ErrorMessage } from "../components/ErrorMessage";
+import { API_URL } from "../config/constants";
 import { getEmailError, getPasswordError } from "../utils/validator";
 
 export const HospitalRegistration: React.FC = () => {
@@ -141,7 +142,7 @@ export const HospitalRegistration: React.FC = () => {
         formDataToSend.append("logo", logoFile);
       }
 
-      const response = await fetch("http://localhost:5000/api/auth/register-hospital", {
+      const response = await fetch(`${API_URL}/api/auth/register-hospital`, {
         method: "POST",
         body: formDataToSend,
       });

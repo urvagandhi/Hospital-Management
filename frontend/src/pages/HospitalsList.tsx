@@ -3,10 +3,11 @@
  * Display all registered hospitals
  */
 
-import React, { useState, useEffect } from "react";
+import { API_URL } from "../config/constants";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Navbar } from "../components/Navbar";
 import { ErrorMessage } from "../components/ErrorMessage";
+import { Navbar } from "../components/Navbar";
 import { SkeletonLoader } from "../components/SkeletonLoader";
 
 interface Hospital {
@@ -49,7 +50,7 @@ export const HospitalsList: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("http://localhost:5000/api/hospitals", {
+      const response = await fetch(`${API_URL}/api/hospitals`, {
         credentials: "include",
       });
 
@@ -127,7 +128,7 @@ export const HospitalsList: React.FC = () => {
         formData.append("logo", logoFile);
       }
 
-      const response = await fetch(`http://localhost:5000/api/hospitals/${editingHospital._id}`, {
+      const response = await fetch(`${API_URL}/api/hospitals/${editingHospital._id}`, {
         method: "PUT",
         credentials: "include",
         body: formData,
