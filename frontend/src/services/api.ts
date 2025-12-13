@@ -3,7 +3,7 @@
  * Centralized API communication with interceptors
  */
 
-import axios, { AxiosInstance, AxiosError } from "axios";
+import axios, { AxiosError, AxiosInstance } from "axios";
 import { API_URL } from "../config/constants";
 import { persistentLogger } from "../utils/persistentLogger";
 
@@ -13,7 +13,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_URL,
-      timeout: 10000,
+      timeout: 30000,
       withCredentials: true, // Enable cookies
       headers: {
         "Content-Type": "application/json",
@@ -39,10 +39,10 @@ class ApiService {
         // verifyTempToken middleware likely checks header.
         // So we should keep this logic ONLY for tempToken if it exists.
 
-        const tempToken = localStorage.getItem("tempToken");
-        if (tempToken) {
-          config.headers.Authorization = `Bearer ${tempToken}`;
-          persistentLogger.log("Axios", "Added Authorization header (tempToken)");
+        const token = localStorage.getItem("accessToken") || localStorage.getItem("tempToken");
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+          persistentLogger.log("Axios", "Added Authorization header");
         }
 
         return config;

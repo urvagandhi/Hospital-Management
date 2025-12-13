@@ -342,11 +342,13 @@ export const verifyOtp = async (req, res) => {
       success: true,
       message: "OTP verified successfully",
       data: {
-        // accessToken: session.accessToken, // Removed, sent in cookie
-        // refreshToken: session.refreshToken, // Removed, sent in cookie
-        tokenType: session.tokenType,
-        expiresIn: session.expiresIn,
-        hospital: hospital.toJSON(),
+        data: {
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+          tokenType: session.tokenType,
+          expiresIn: session.expiresIn,
+          hospital: hospital.toJSON(),
+        },
       },
     });
   } catch (error) {
@@ -392,8 +394,11 @@ export const refreshToken = async (req, res) => {
       success: true,
       message: "Token refreshed successfully",
       data: {
-        ...tokens,
-        hospital: hospital ? hospital.toJSON() : null,
+        data: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          hospital: hospital ? hospital.toJSON() : null,
+        },
       },
     });
   } catch (error) {
