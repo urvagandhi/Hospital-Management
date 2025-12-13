@@ -18,6 +18,9 @@ import patientRoutes from "./routes/patient.routes.js";
 
 const app = express();
 
+// ============ TRUST PROXY (Required for Render/Heroku) ============
+app.set("trust proxy", 1);
+
 // ============ REQUEST LOGGING MIDDLEWARE ============
 app.use((req, res, next) => {
   console.log(`\n[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -79,7 +82,7 @@ app.use("/api/patients", patientRoutes);
 app.use("/api/hospitals", hospitalsRoutes);
 
 // ============ HEALTH CHECK ============
-app.get("/health", (req, res) => {
+app.get("/api/health", (req, res) => {
   console.log("[Health Check] Request received");
   res.status(200).json({
     success: true,
