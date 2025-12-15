@@ -1,62 +1,54 @@
 [
     {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_otp.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_otp.xml"
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_otp.xml",
+        "source": "com.hospital.management.app-main-86:/layout/activity_otp.xml"
     },
     {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_folder_view.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_folder_view.xml"
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_folder_details.xml",
+        "source": "com.hospital.management.app-main-86:/layout/activity_folder_details.xml"
     },
     {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\item_patient.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\item_patient.xml"
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/item_file.xml",
+        "source": "com.hospital.management.app-main-86:/layout/item_file.xml"
     },
     {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_upload.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_upload.xml"
-    },
-    {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\item_folder.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\item_folder.xml"
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/item_patient.xml",
+        "source": "com.hospital.management.app-main-86:/layout/item_patient.xml"
     },
     {
         "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_dashboard.xml",
         "source": "com.hospital.management.app-main-86:/layout/activity_dashboard.xml"
     },
     {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\item_file.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\item_file.xml"
-    },
-    {
         "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_folder_view.xml",
         "source": "com.hospital.management.app-main-86:/layout/activity_folder_view.xml"
     },
     {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_admission.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_admission.xml"
-    },
-    {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_dashboard.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_dashboard.xml"
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_login.xml",
+        "source": "com.hospital.management.app-main-86:/layout/activity_login.xml"
     },
     {
         "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_patient_details.xml",
         "source": "com.hospital.management.app-main-86:/layout/activity_patient_details.xml"
     },
     {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_scanner.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_scanner.xml"
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/item_folder.xml",
+        "source": "com.hospital.management.app-main-86:/layout/item_folder.xml"
     },
     {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_folder_details.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_folder_details.xml"
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_upload.xml",
+        "source": "com.hospital.management.app-main-86:/layout/activity_upload.xml"
     },
     {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_login.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_login.xml"
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_admission.xml",
+        "source": "com.hospital.management.app-main-86:/layout/activity_admission.xml"
     },
     {
-        "merged": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_patient_list.xml",
-        "source": "C:\\Users\\Krishil.Gandhi\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_patient_list.xml"
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_patient_list.xml",
+        "source": "com.hospital.management.app-main-86:/layout/activity_patient_list.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_scanner.xml",
+        "source": "com.hospital.management.app-main-86:/layout/activity_scanner.xml"
     }
 ]
