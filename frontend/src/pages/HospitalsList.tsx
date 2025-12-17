@@ -3,12 +3,12 @@
  * Display all registered hospitals
  */
 
-import { API_URL } from "../config/constants";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { Navbar } from "../components/Navbar";
 import { SkeletonLoader } from "../components/SkeletonLoader";
+import api from "../services/api";
 
 interface Hospital {
   _id: string;
@@ -50,18 +50,11 @@ export const HospitalsList: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/api/hospitals`, {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch hospitals");
-      }
-
-      const data = await response.json();
-      setHospitals(data.data || []);
+      const response = await api.get<{ data: Hospital[] }>("/hospitals");
+      setHospitals(response.data.data || []);
     } catch (err: any) {
-      setError(err.message || "Failed to load hospitals");
+      const errorMessage = err.response?.data?.message || err.message || "Failed to load hospitals";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -128,22 +121,16 @@ export const HospitalsList: React.FC = () => {
         formData.append("logo", logoFile);
       }
 
-      const response = await fetch(`${API_URL}/api/hospitals/${editingHospital._id}`, {
-        method: "PUT",
-        credentials: "include",
-        body: formData,
+      const response = await api.put<{ data: { logoUrl: string } }>(`/hospitals/${editingHospital._id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to update hospital");
-      }
 
       setEditSuccess("Hospital updated successfully!");
 
       // Update local state with new logo URL if provided
-      const updatedHospital = { ...editForm, logoUrl: data.data.logoUrl };
+      const updatedHospital = { ...editForm, logoUrl: response.data.data.logoUrl };
       setHospitals(hospitals.map((h) => (h._id === editingHospital._id ? { ...h, ...updatedHospital } : h)));
 
       // Close modal after 1.5 seconds
@@ -154,7 +141,8 @@ export const HospitalsList: React.FC = () => {
         setLogoPreview(null);
       }, 1500);
     } catch (err: any) {
-      setEditError(err.message || "Failed to update hospital");
+      const errorMessage = err.response?.data?.message || err.message || "Failed to update hospital";
+      setEditError(errorMessage);
     } finally {
       setEditLoading(false);
     }
@@ -188,7 +176,7 @@ export const HospitalsList: React.FC = () => {
               type="text"
               placeholder="Search hospitals by name, email, or phone..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-3 pl-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
@@ -334,7 +322,7 @@ export const HospitalsList: React.FC = () => {
                     <input
                       type="text"
                       value={editForm.hospitalName}
-                      onChange={(e) => setEditForm({ ...editForm, hospitalName: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, hospitalName: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
@@ -345,7 +333,7 @@ export const HospitalsList: React.FC = () => {
                     <input
                       type="email"
                       value={editForm.email}
-                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, email: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
@@ -356,7 +344,7 @@ export const HospitalsList: React.FC = () => {
                     <input
                       type="tel"
                       value={editForm.phone}
-                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, phone: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                       maxLength={10}
@@ -400,7 +388,7 @@ export const HospitalsList: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                     <textarea
                       value={editForm.address}
-                      onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm({ ...editForm, address: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows={3}
                       required
@@ -412,7 +400,7 @@ export const HospitalsList: React.FC = () => {
                       type="checkbox"
                       id="isActive"
                       checked={editForm.isActive}
-                      onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, isActive: e.target.checked })}
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
                     <label htmlFor="isActive" className="ml-2 text-sm font-medium text-gray-700">

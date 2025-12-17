@@ -3,8 +3,8 @@
  * Verifies JWT tokens and attaches hospital data to request
  */
 
-import { verifyToken, extractTokenFromHeader } from "../utils/jwt.js";
 import Hospital from "../models/Hospital.js";
+import { extractTokenFromHeader, verifyToken } from "../utils/jwt.js";
 
 /**
  * Verify JWT token middleware
@@ -45,7 +45,8 @@ export const verifyAccessToken = (req, res, next) => {
 };
 
 /**
- * Verify temporary token (for OTP verification)
+ * Verify temporary token (for TOTP verification)
+ * 🔑 [SECURITY] Validates purpose scope for single-use tokens
  */
 export const verifyTempToken = (req, res, next) => {
   try {
@@ -60,14 +61,25 @@ export const verifyTempToken = (req, res, next) => {
 
     const decoded = verifyToken(token);
 
+    // Verify token type
     if (decoded.type !== "temp") {
       return res.status(401).json({
         success: false,
-        message: "Invalid token type. Use temporary token for OTP verification.",
+        message: "Invalid token type. Use temporary token for TOTP verification.",
+      });
+    }
+
+    // 🔑 [SECURITY] Verify purpose scope
+    // Temp tokens must have purpose=TOTP_LOGIN for login/totp and login/recovery routes
+    if (decoded.purpose && decoded.purpose !== "TOTP_LOGIN") {
+      return res.status(401).json({
+        success: false,
+        message: "Token purpose mismatch. Invalid token for this operation.",
       });
     }
 
     req.hospital = { id: decoded.id };
+    req.tokenPurpose = decoded.purpose || "TOTP_LOGIN"; // For backward compatibility
     next();
   } catch (error) {
     return res.status(401).json({

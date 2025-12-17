@@ -3,7 +3,7 @@
  * Centralized API communication with interceptors
  */
 
-import axios, { AxiosInstance, AxiosError } from "axios";
+import axios, { AxiosError, AxiosInstance } from "axios";
 import { API_URL } from "../config/constants";
 import { persistentLogger } from "../utils/persistentLogger";
 
@@ -13,7 +13,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_URL,
-      timeout: 10000,
+      timeout: 30000,
       withCredentials: true, // Enable cookies
       headers: {
         "Content-Type": "application/json",
@@ -39,10 +39,24 @@ class ApiService {
         // verifyTempToken middleware likely checks header.
         // So we should keep this logic ONLY for tempToken if it exists.
 
+        // Check for access token first (Logged in state)
+        // Then temp token (OTP state)
+        const accessToken = localStorage.getItem("accessToken");
         const tempToken = localStorage.getItem("tempToken");
-        if (tempToken) {
-          config.headers.Authorization = `Bearer ${tempToken}`;
-          persistentLogger.log("Axios", "Added Authorization header (tempToken)");
+
+        let token = accessToken;
+        if (!token && tempToken) {
+          token = tempToken;
+          console.log("[Axios] Using Temp Token for request");
+        }
+
+        if (token && !config.headers.Authorization) {
+          config.headers.Authorization = `Bearer ${token}`;
+          // console.log("[Axios] Added Authorization header:", token.substring(0, 10) + "...");
+        } else if (config.headers.Authorization) {
+          console.log("[Axios] Using existing Authorization header");
+        } else {
+          console.warn("[Axios] No token found in localStorage (accessToken or tempToken)");
         }
 
         return config;

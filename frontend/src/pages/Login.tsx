@@ -16,7 +16,7 @@ import { getEmailError, getPasswordError } from "../utils/validator";
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login, state } = useAuth();
+  const { login, logout, state } = useAuth();
 
   persistentLogger.log("Login", "Component rendered");
   console.log("[Login Page] Component rendered");
@@ -47,10 +47,50 @@ export const Login: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (state.isAuthenticated) {
-      console.log("[Login] User already authenticated, redirecting to dashboard");
-      navigate("/dashboard", { replace: true });
+      // Security Check: If user is authenticated but came back to login page WITHOUT enabling TOTP
+      // Log them out so they don't get stuck in a redirect loop / bypass setup
+      if (state.hospital && !state.hospital.totpEnabled) {
+        console.log("[Login] Authenticated but TOTP not enabled - logging out to prevent loop");
+        logout();
+      } else {
+        // Was auto-redirecting to dashboard, but user requested manual control
+        console.log("[Login] User already authenticated, showing welcome screen");
+      }
     }
-  }, [state.isAuthenticated, navigate]);
+  }, [state.isAuthenticated, state.hospital, navigate, logout]);
+
+  // If already authenticated, show Welcome Back screen instead of login form
+  if (state.isAuthenticated && state.hospital?.totpEnabled) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 sm:p-8 animate-fadeIn">
+          <LogoHeader hospitalName={state.hospital.hospitalName} subtitle="Secure Admin Portal" />
+
+          <div className="mt-8 text-center space-y-6">
+            <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm">
+              <p className="font-medium">Welcome back!</p>
+              <p>You are already signed in as <strong>{state.hospital.email}</strong></p>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                label="Continue to Dashboard"
+                onClick={() => navigate("/dashboard")}
+                variant="primary"
+                fullWidth
+              />
+              <Button
+                label="Sign Out"
+                onClick={logout}
+                variant="ghost"
+                fullWidth
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Add window-level error logging
   React.useEffect(() => {
@@ -117,22 +157,34 @@ export const Login: React.FC = () => {
     try {
       persistentLogger.log("Login", "Calling login() with:", { email: formData.email });
       console.log("[Login] Calling login() with:", { email: formData.email });
-      await login(formData.email, formData.password);
-      persistentLogger.log("Login", "Login successful, navigating to /verify-otp");
-      console.log("[Login] Login successful, navigating to /verify-otp");
-      navigate("/verify-otp");
+
+      // Login returns true if completed (TOTP not enabled), false if TOTP needed
+      const loginComplete = await login(formData.email, formData.password);
+
+      if (loginComplete === true) {
+        // Direct login success - TOTP not enabled, go to dashboard
+        persistentLogger.log("Login", "Login complete, navigating to /dashboard");
+        console.log("[Login] Login complete (no TOTP), navigating to /dashboard");
+        navigate("/dashboard");
+      } else if (loginComplete === "SETUP_NEEDED") {
+        // Mandatory TOTP Setup Required
+        persistentLogger.log("Login", "Mandatory TOTP setup required, navigating to /setup-2fa");
+        navigate(`/setup-2fa?email=${encodeURIComponent(formData.email)}&hospital=MyHospital`);
+      } else {
+        // TOTP required - navigate to OTP verification page
+        persistentLogger.log("Login", "TOTP required, navigating to /verify-otp");
+        console.log("[Login] TOTP required, navigating to /verify-otp");
+        navigate("/verify-otp");
+      }
     } catch (error: any) {
       persistentLogger.error("Login", "Login error:", error);
       console.error("[Login] Login error:", error);
-      console.error("[Login] Error message:", error.message);
-      console.error("[Login] Error details:", error);
 
       if (error.response?.status === 423) {
         const lockUntil = new Date(error.response.data.lockUntil);
         const timeStr = lockUntil.toLocaleTimeString();
         setDisplayError(`Account locked until ${timeStr}. Please try again later.`);
       } else {
-        // Error is already set in state by useAuth hook, but we can set it here too for immediate feedback
         setDisplayError(error.message || "Login failed");
       }
     }

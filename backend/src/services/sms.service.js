@@ -1,16 +1,28 @@
 /**
  * SMS Service
  * Placeholder for SMS gateway integration (Twilio, AWS SNS, etc.)
+ *
+ * ========================================
+ * LEGACY SMS OTP (DISABLED – replaced by TOTP)
+ * ========================================
+ * SMS OTP sending functions are disabled.
+ * The TOTP implementation replaces SMS-based OTP.
+ * maskPhoneNumber and formatPhoneNumber are still active for display.
+ * ========================================
  */
 
-import config from "../config/env.js";
 
+// ========================================
+// LEGACY SMS OTP (DISABLED – replaced by TOTP)
+// ========================================
+/*
 /**
  * Send OTP via SMS
  * @param {string} phone - Phone number in E.164 format
  * @param {string} otp - OTP to send
  * @returns {Promise<object>} SMS send result
  */
+/*
 export const sendOtpSms = async (phone, otp) => {
   try {
     // Placeholder: Replace with actual SMS gateway implementation
@@ -44,13 +56,16 @@ export const sendOtpSms = async (phone, otp) => {
     throw new Error(`Failed to send OTP SMS: ${error.message}`);
   }
 };
+*/
 
+/*
 /**
  * Send verification confirmation SMS
  * @param {string} phone - Phone number
  * @param {string} hospitalName - Hospital name
  * @returns {Promise<object>} SMS send result
  */
+/*
 export const sendVerificationConfirmationSms = async (phone, hospitalName) => {
   try {
     console.log(`[SMS Service] Sending confirmation SMS to ${phone}`);
@@ -64,6 +79,14 @@ export const sendVerificationConfirmationSms = async (phone, hospitalName) => {
     throw new Error(`Failed to send confirmation SMS: ${error.message}`);
   }
 };
+*/
+// ========================================
+// END LEGACY SMS OTP
+// ========================================
+
+// Disabled exports (kept for backward compatibility)
+export const sendOtpSms = null;
+export const sendVerificationConfirmationSms = null;
 
 /**
  * Mask phone number for display (show last 4 digits)

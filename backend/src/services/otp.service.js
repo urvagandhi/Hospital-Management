@@ -1,13 +1,21 @@
 /**
  * OTP Service
  * Handles OTP generation, storage, validation, and cleanup
+ *
+ * ========================================
+ * LEGACY SMS OTP (DISABLED – replaced by TOTP)
+ * ========================================
+ * This entire service is preserved but disabled.
+ * The TOTP implementation in totp.service.js replaces this functionality.
+ * To restore SMS OTP, uncomment the code below and update auth.controller.js
+ * ========================================
  */
 
-import Otp from "../models/Otp.js";
-import { generateUniqueOtp } from "../utils/generateOtp.js";
-import { hashOtp, compareOtp } from "../utils/hash.js";
-import config from "../config/env.js";
 
+// ========================================
+// LEGACY SMS OTP (DISABLED – replaced by TOTP)
+// ========================================
+/*
 /**
  * Create and store new OTP
  * @param {string} hospitalId - Hospital ID
@@ -15,6 +23,7 @@ import config from "../config/env.js";
  * @param {string} userAgent - User agent string
  * @returns {Promise<object>} OTP record (without plaintext otp)
  */
+/*
 export const createOtp = async (hospitalId, ipAddress, userAgent) => {
   try {
     // Delete any existing OTP for this hospital
@@ -48,13 +57,16 @@ export const createOtp = async (hospitalId, ipAddress, userAgent) => {
     throw new Error(`Failed to create OTP: ${error.message}`);
   }
 };
+*/
 
+/*
 /**
  * Verify OTP
  * @param {string} hospitalId - Hospital ID
  * @param {string} otp - OTP entered by user
  * @returns {Promise<boolean>} True if OTP is valid
  */
+/*
 export const verifyOtp = async (hospitalId, otp) => {
   try {
     // Find active OTP for hospital
@@ -92,12 +104,15 @@ export const verifyOtp = async (hospitalId, otp) => {
     throw error;
   }
 };
+*/
 
+/*
 /**
  * Get OTP expiry time remaining in seconds
  * @param {string} hospitalId - Hospital ID
  * @returns {Promise<number>} Seconds remaining
  */
+/*
 export const getOtpExpiry = async (hospitalId) => {
   try {
     const otpRecord = await Otp.findOne({
@@ -117,7 +132,9 @@ export const getOtpExpiry = async (hospitalId) => {
     throw new Error(`Failed to get OTP expiry: ${error.message}`);
   }
 };
+*/
 
+/*
 /**
  * Resend OTP (creates new OTP)
  * @param {string} hospitalId - Hospital ID
@@ -125,6 +142,7 @@ export const getOtpExpiry = async (hospitalId) => {
  * @param {string} userAgent - User agent string
  * @returns {Promise<object>} New OTP record
  */
+/*
 export const resendOtp = async (hospitalId, ipAddress, userAgent) => {
   try {
     return await createOtp(hospitalId, ipAddress, userAgent);
@@ -132,11 +150,14 @@ export const resendOtp = async (hospitalId, ipAddress, userAgent) => {
     throw new Error(`Failed to resend OTP: ${error.message}`);
   }
 };
+*/
 
+/*
 /**
  * Clean up expired OTPs (manual cleanup)
  * @returns {Promise<object>} Deletion result
  */
+/*
 export const cleanupExpiredOtps = async () => {
   try {
     const result = await Otp.deleteMany({
@@ -147,6 +168,19 @@ export const cleanupExpiredOtps = async () => {
     throw new Error(`Failed to cleanup OTPs: ${error.message}`);
   }
 };
+*/
+
+// ========================================
+// END LEGACY SMS OTP
+// ========================================
+
+// Empty exports to prevent import errors
+// These functions are disabled but exports are kept for backward compatibility
+export const createOtp = null;
+export const verifyOtp = null;
+export const getOtpExpiry = null;
+export const resendOtp = null;
+export const cleanupExpiredOtps = null;
 
 export default {
   createOtp,

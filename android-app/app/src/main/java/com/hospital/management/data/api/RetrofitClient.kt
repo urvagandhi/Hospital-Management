@@ -10,7 +10,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    private const val BASE_URL = "https://hospital-management-ku71.onrender.com"
+    private const val BASE_URL = "https://hospital-management-ku71.onrender.com" // Production URL
 
     private var retrofit: Retrofit? = null
 
@@ -43,7 +43,7 @@ object RetrofitClient {
         }
         return retrofit!!
     }
-    
+
     fun getApiService(context: Context): ApiService {
         return getClient(context).create(ApiService::class.java)
     }

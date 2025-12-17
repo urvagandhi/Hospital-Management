@@ -36,15 +36,61 @@ export const generateRefreshToken = (hospitalId) => {
 
 /**
  * Generate temporary token for OTP verification
+ * 🔑 [SECURITY] Purpose-Scoped Temp Tokens
+ *
  * @param {string} hospitalId - Hospital ID
+ * @param {string} purpose - Token purpose (e.g., 'TOTP_LOGIN')
  * @returns {string} Temporary token valid for 10 minutes
  */
-export const generateTempToken = (hospitalId) => {
+export const generateTempToken = (hospitalId, purpose = "TOTP_LOGIN") => {
   try {
-    const token = jwt.sign({ id: hospitalId, type: "temp" }, config.JWT_SECRET, { expiresIn: "10m" });
+    const token = jwt.sign(
+      {
+        id: hospitalId,
+        type: "temp",
+        purpose: purpose  // Single-purpose token
+      },
+      config.JWT_SECRET,
+      { expiresIn: "10m" }
+    );
     return token;
   } catch (error) {
     throw new Error(`Temporary token generation failed: ${error.message}`);
+  }
+};
+
+/**
+ * Verify temp token and check purpose
+ * 🔑 [SECURITY] Rejects tokens with mismatched purpose
+ *
+ * @param {string} token - Temp token to verify
+ * @param {string} expectedPurpose - Expected token purpose
+ * @returns {object} Decoded token payload
+ * @throws {Error} If token is invalid or purpose doesn't match
+ */
+export const verifyTempTokenPurpose = (token, expectedPurpose = "TOTP_LOGIN") => {
+  try {
+    const decoded = jwt.verify(token, config.JWT_SECRET);
+
+    // Verify token type
+    if (decoded.type !== "temp") {
+      throw new Error("Invalid token type");
+    }
+
+    // Verify purpose matches
+    if (decoded.purpose !== expectedPurpose) {
+      throw new Error(`Token purpose mismatch: expected ${expectedPurpose}, got ${decoded.purpose}`);
+    }
+
+    return decoded;
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      throw new Error("Token has expired");
+    }
+    if (error.name === "JsonWebTokenError") {
+      throw new Error("Invalid token");
+    }
+    throw error;
   }
 };
 
@@ -94,7 +140,9 @@ export default {
   generateAccessToken,
   generateRefreshToken,
   generateTempToken,
+  verifyTempTokenPurpose,
   verifyToken,
   verifyRefreshToken,
   extractTokenFromHeader,
 };
+

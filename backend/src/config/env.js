@@ -5,7 +5,17 @@
 
 import dotenv from "dotenv";
 
-dotenv.config();
+import fs from "fs";
+import path from "path";
+
+// Load .env.development for development if it exists
+const devEnvPath = path.resolve(process.cwd(), ".env.development");
+if (fs.existsSync(devEnvPath)) {
+  console.log("Loading environment from .env.development");
+  dotenv.config({ path: devEnvPath });
+} else {
+  dotenv.config();
+}
 
 const config = {
   // Server
@@ -25,6 +35,15 @@ const config = {
   OTP_EXPIRY_MINUTES: parseInt(process.env.OTP_EXPIRY_MINUTES || "5"),
   OTP_LENGTH: parseInt(process.env.OTP_LENGTH || "6"),
   MAX_OTP_ATTEMPTS: parseInt(process.env.MAX_OTP_ATTEMPTS || "3"),
+
+  // TOTP 2FA Configuration
+  TOTP_ENCRYPTION_KEY: process.env.TOTP_ENCRYPTION_KEY,
+  TOTP_ISSUER: process.env.TOTP_ISSUER || "HospitalManagement",
+  TOTP_WINDOW: parseInt(process.env.TOTP_WINDOW || "1"),       // ±1 for login only
+  TOTP_SETUP_WINDOW: 0,                                         // Strict for setup (no drift)
+  MAX_BACKUP_CODES: 10,
+  TOTP_MAX_ATTEMPTS: parseInt(process.env.TOTP_MAX_ATTEMPTS || "5"),
+  TOTP_LOCK_DURATION_MINUTES: parseInt(process.env.TOTP_LOCK_DURATION_MINUTES || "5"),
 
   // SMS Gateway
   SMS_GATEWAY_API_KEY: process.env.SMS_GATEWAY_API_KEY,

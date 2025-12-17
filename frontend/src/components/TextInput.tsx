@@ -17,6 +17,7 @@ interface TextInputProps {
   autoFocus?: boolean;
   required?: boolean;
   icon?: React.ReactNode;
+  maxLength?: number;
 }
 
 export const TextInput: React.FC<TextInputProps> = ({
@@ -31,6 +32,7 @@ export const TextInput: React.FC<TextInputProps> = ({
   autoFocus = false,
   required = false,
   icon,
+  maxLength,
 }) => {
   return (
     <div className="w-full">
@@ -52,6 +54,7 @@ export const TextInput: React.FC<TextInputProps> = ({
           disabled={disabled}
           autoComplete={autoComplete}
           autoFocus={autoFocus}
+          maxLength={maxLength}
           className={`
             w-full px-4 py-2.5 rounded-lg border-2 transition-all duration-200
             ${icon ? "pl-10" : ""}

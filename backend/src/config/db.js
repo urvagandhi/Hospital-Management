@@ -11,6 +11,7 @@ const connectDB = async () => {
     console.log("[Database] Attempting to connect to MongoDB...");
     console.log("[Database] URI:", mongoURI);
 
+    console.log("Connecting to MongoDB URI:", mongoURI.replace(/:([^@]+)@/, ":****@")); // Mask password
     const connection = await mongoose.connect(mongoURI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,

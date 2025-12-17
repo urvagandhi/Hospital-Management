@@ -66,6 +66,50 @@ const hospitalSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    // ========================================
+    // TOTP 2FA Fields
+    // ========================================
+    totpEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    totpSecretEncrypted: {
+      type: String, // AES-256-GCM encrypted TOTP secret
+    },
+    totpVerified: {
+      type: Boolean,
+      default: false, // True after first OTP verification during setup
+    },
+    totpPendingSecret: {
+      type: String, // Temporary secret during rotation/reset
+    },
+
+    // 🔐 [SECURITY] TOTP Timestamps for audit compliance & dormancy detection
+    totpSetupAt: {
+      type: Date, // Set on successful /2fa/verify
+    },
+    totpLastUsedAt: {
+      type: Date, // Updated on each successful /login/totp
+    },
+
+    // 🚫 [SECURITY] TOTP Attempt Counters for brute-force protection
+    totpFailedAttempts: {
+      type: Number,
+      default: 0,
+    },
+    totpLockedUntil: {
+      type: Date, // Lock for 5 min after 5 failed attempts
+    },
+
+    // 🧠 [ENTERPRISE] Optional future-proofing fields
+    totpSecretVersion: {
+      type: Number,
+      default: 1, // Allows crypto rotation later
+    },
+    totpIssuer: {
+      type: String, // White-labeling: "HospitalName (YourApp)"
+    },
   },
   {
     timestamps: true,
@@ -85,6 +129,12 @@ hospitalSchema.virtual("fullAddress").get(function () {
 hospitalSchema.methods.toJSON = function () {
   const { passwordHash, ...rest } = this.toObject();
   return rest;
+};
+
+// Match user entered password to hashed password in database
+hospitalSchema.methods.matchPassword = async function (enteredPassword) {
+  const { comparePassword } = await import("../utils/hash.js");
+  return await comparePassword(enteredPassword, this.passwordHash);
 };
 
 const Hospital = mongoose.model("Hospital", hospitalSchema);
