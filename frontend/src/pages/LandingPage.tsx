@@ -99,15 +99,9 @@ const LandingPage: React.FC = () => {
               <>
                 <button
                   onClick={() => navigate("/login")}
-                  className="hidden md:block px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors"
                 >
                   Sign In
-                </button>
-                <button
-                  onClick={() => navigate("/register")}
-                  className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-full hover:bg-blue-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/30 active:scale-95"
-                >
-                  Get Started
                 </button>
               </>
             )}
@@ -141,7 +135,7 @@ const LandingPage: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-slideUp animation-delay-400">
             <button
-              onClick={() => navigate(state?.hospital ? "/dashboard" : "/register")}
+              onClick={() => navigate(state?.hospital ? "/dashboard" : "/login")}
               className="px-8 py-4 bg-gray-900 text-white text-lg font-semibold rounded-full hover:bg-gray-800 transition-all transform hover:-translate-y-1 shadow-xl hover:shadow-2xl min-w-[180px]"
             >
               Start using for free
@@ -219,16 +213,16 @@ const LandingPage: React.FC = () => {
       <section className="py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-blue-600"></div>
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-        <div className="max-w-4xl mx-auto px-4 relative z-10 text-center text-white">
+          <div className="max-w-4xl mx-auto px-4 relative z-10 text-center text-white">
           <h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to modernize your healthcare facility?</h2>
           <p className="text-blue-100 text-lg mb-10 max-w-2xl mx-auto">
             Join hundreds of hospitals improving patient outcomes with our platform today.
           </p>
           <button
-            onClick={() => navigate("/register")}
+            onClick={() => navigate("/login")}
             className="px-10 py-4 bg-white text-blue-600 text-lg font-bold rounded-full hover:bg-blue-50 transition-all transform hover:scale-105 shadow-xl"
           >
-            Get Started Now
+            Sign In
           </button>
         </div>
       </section>

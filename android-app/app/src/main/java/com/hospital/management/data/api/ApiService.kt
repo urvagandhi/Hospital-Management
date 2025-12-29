@@ -20,6 +20,18 @@ interface ApiService {
         @Header("Authorization") authorization: String
     ): Response<Map<String, Any>>
 
+    @POST("/api/auth/login/totp")
+    suspend fun verifyTotpLogin(
+        @Header("Authorization") authorization: String,
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    @POST("/api/auth/login/recovery")
+    suspend fun recoveryLogin(
+        @Header("Authorization") authorization: String,
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
     @POST("/api/patients")
     suspend fun createPatient(
         @Body body: com.hospital.management.data.models.PatientRequest

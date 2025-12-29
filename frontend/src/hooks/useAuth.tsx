@@ -129,6 +129,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const requireTotp = response.requireTotp;
       console.log("[useAuth] Login response requireTotp:", requireTotp);
 
+      // Check if password change is required first
+      if ((response as any).requirePasswordChange) {
+        const tempToken = response.data?.tempToken || response.tempToken || response.data?.data?.tempToken || "";
+        if (tempToken) authService.storeTempToken(tempToken);
+        setState((prev) => ({ ...prev, tempToken: tempToken, loading: false }));
+        return "PASSWORD_CHANGE" as any;
+      }
+
       if (requireTotp === false) {
         // Check if mandatory setup is required (for existing users with no TOTP)
         // Backend returns requireTotpSetup: true in this case

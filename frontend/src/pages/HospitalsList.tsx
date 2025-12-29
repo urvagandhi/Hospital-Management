@@ -6,8 +6,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ErrorMessage } from "../components/ErrorMessage";
-import { Navbar } from "../components/Navbar";
 import { SkeletonLoader } from "../components/SkeletonLoader";
+import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 
 interface Hospital {
@@ -23,6 +23,11 @@ interface Hospital {
 
 export const HospitalsList: React.FC = () => {
   const navigate = useNavigate();
+  const { state } = useAuth();
+  const { hospital } = state;
+
+  // Temporary admin check until role field is added
+  const isAdmin = hospital?.email === "admin@citymedical.com";
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -150,7 +155,6 @@ export const HospitalsList: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
-      <Navbar />
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between">
@@ -158,15 +162,17 @@ export const HospitalsList: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Registered Hospitals</h1>
             <p className="text-gray-600">View all hospitals registered in the system</p>
           </div>
-          <button
-            onClick={() => navigate("/register")}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-colors flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-            Register Hospital
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => navigate("/register")}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition-colors flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+              Register Hospital
+            </button>
+          )}
         </div>
 
         {/* Search Bar */}

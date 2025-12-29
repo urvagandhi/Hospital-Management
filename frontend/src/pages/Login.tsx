@@ -170,6 +170,10 @@ export const Login: React.FC = () => {
         // Mandatory TOTP Setup Required
         persistentLogger.log("Login", "Mandatory TOTP setup required, navigating to /setup-2fa");
         navigate(`/setup-2fa?email=${encodeURIComponent(formData.email)}&hospital=MyHospital`);
+      } else if (loginComplete === "PASSWORD_CHANGE") {
+        // Force user to change password before proceeding
+        persistentLogger.log("Login", "Password change required, navigating to /change-password");
+        navigate("/change-password");
       } else {
         // TOTP required - navigate to OTP verification page
         persistentLogger.log("Login", "TOTP required, navigating to /verify-otp");
@@ -256,14 +260,7 @@ export const Login: React.FC = () => {
           </p>
         </div>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Don't have an account?{" "}
-            <button type="button" onClick={() => navigate("/register")} className="text-blue-600 hover:text-blue-700 font-medium focus:outline-none focus:underline">
-              Register Hospital
-            </button>
-          </p>
-        </div>
+        {/* Registration is admin-only; remove public register link */}
       </div>
     </div>
   );

@@ -9,24 +9,21 @@ import { Button } from "../components/Button";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { LogoHeader } from "../components/LogoHeader";
 import { Navbar } from "../components/Navbar";
-import { OtpInput } from "../components/OtpInput";
+// OtpInput removed — registration no longer requires TOTP verification
 import { TextInput } from "../components/TextInput";
 import api from "../services/api";
-import { getEmailError, getPasswordError } from "../utils/validator";
+import { getEmailError } from "../utils/validator";
 
 export const HospitalRegistration: React.FC = () => {
   const navigate = useNavigate();
 
   // Step 1: Registration Details
-  // Step 2: TOTP Verification
-  // Step 3: Success & Backup Codes
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Step 2: Success
+  const [step, setStep] = useState<1 | 2>(1);
 
   const [formData, setFormData] = useState({
     hospitalName: "",
     email: "",
-    password: "",
-    confirmPassword: "",
     phoneNumber: "",
     address: "",
   });
@@ -34,8 +31,6 @@ export const HospitalRegistration: React.FC = () => {
   const [errors, setErrors] = useState({
     hospitalName: "",
     email: "",
-    password: "",
-    confirmPassword: "",
     phoneNumber: "",
     address: "",
     logo: "",
@@ -44,23 +39,13 @@ export const HospitalRegistration: React.FC = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  // Registration Response Data (for Step 2)
-  const [registrationData, setRegistrationData] = useState<{
-    registrationToken: string;
-    qrCode: string;
-    secret: string;
-    otpauthUrl: string;
-  } | null>(null);
-
-  // TOTP Input (for Step 2)
-  const [totpCode, setTotpCode] = useState("");
-
-  // Success Data (for Step 3)
+  // Success Data (for Step 2)
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [invitationSent, setInvitationSent] = useState<boolean>(false);
+  const [registeredEmail, setRegisteredEmail] = useState<string>("");
 
   const [submitted, setSubmitted] = useState(false);
   const [displayError, setDisplayError] = useState<string | null>(null);
-  const [displaySuccess, setDisplaySuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   // --- Step 1 Handlers ---
@@ -69,8 +54,6 @@ export const HospitalRegistration: React.FC = () => {
     const newErrors = {
       hospitalName: !formData.hospitalName ? "Hospital name is required" : "",
       email: getEmailError(formData.email) || "",
-      password: getPasswordError(formData.password) || "",
-      confirmPassword: formData.password !== formData.confirmPassword ? "Passwords do not match" : "",
       phoneNumber: !formData.phoneNumber ? "Phone number is required" : !/^[0-9]{10}$/.test(formData.phoneNumber) ? "Phone number must be 10 digits" : "",
       address: !formData.address ? "Address is required" : "",
       logo: !logoFile ? "Hospital logo is required" : "",
@@ -83,17 +66,24 @@ export const HospitalRegistration: React.FC = () => {
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev: typeof formData) => ({ ...prev, [field]: value }));
     setDisplayError(null);
-    setDisplaySuccess(null);
 
     if (submitted) {
       let error = "";
       switch (field) {
-        case "hospitalName": error = !value ? "Hospital name is required" : ""; break;
-        case "email": error = getEmailError(value) || ""; break;
-        case "password": error = getPasswordError(value) || ""; break;
-        case "confirmPassword": error = value !== formData.password ? "Passwords do not match" : ""; break;
-        case "phoneNumber": error = !value ? "Phone number is required" : !/^[0-9]{10}$/.test(value) ? "Phone number must be 10 digits" : ""; break;
-        case "address": error = !value ? "Address is required" : ""; break;
+        case "hospitalName":
+          error = !value ? "Hospital name is required" : "";
+          break;
+        case "email":
+          error = getEmailError(value) || "";
+          break;
+        case "phoneNumber":
+          error = !value ? "Phone number is required" : !/^[0-9]{10}$/.test(value) ? "Phone number must be 10 digits" : "";
+          break;
+        case "address":
+          error = !value ? "Address is required" : "";
+          break;
+        default:
+          error = "";
       }
       setErrors((prev: typeof errors) => ({ ...prev, [field]: error }));
     }
@@ -133,7 +123,6 @@ export const HospitalRegistration: React.FC = () => {
       const formDataToSend = new FormData();
       formDataToSend.append("hospitalName", formData.hospitalName);
       formDataToSend.append("email", formData.email);
-      formDataToSend.append("password", formData.password);
       formDataToSend.append("phoneNumber", formData.phoneNumber);
       formDataToSend.append("address", formData.address);
       if (logoFile) formDataToSend.append("logo", logoFile);
@@ -142,19 +131,16 @@ export const HospitalRegistration: React.FC = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const data = response.data?.data || response.data;
+      const data = (response.data as any)?.data || response.data;
 
-      // Save data for Step 2
-      setRegistrationData({
-        registrationToken: data.registrationToken,
-        qrCode: data.qrCode,
-        secret: data.secret,
-        otpauthUrl: data.otpauthUrl,
-      });
-
-      // Move to Step 2
+      // Store email status and hospital email
+      setInvitationSent(data.invitationSent || false);
+      setRegisteredEmail(formData.email);
+      
+      // Backend now creates hospital immediately (admin registration).
+      // If backend returns backupCodes (unlikely now), store them
+      if (data.backupCodes) setBackupCodes(data.backupCodes || []);
       setStep(2);
-      setDisplaySuccess("Details accepted. Please complete 2FA setup.");
 
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || "Registration failed";
@@ -164,45 +150,7 @@ export const HospitalRegistration: React.FC = () => {
     }
   };
 
-  // --- Step 2 Handlers (Verify TOTP) ---
-
-  const handleVerifyTotp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!totpCode || totpCode.length !== 6) return;
-    if (!registrationData) {
-      setDisplayError("Session expired. Please refresh and try again.");
-      return;
-    }
-
-    setLoading(true);
-    setDisplayError(null);
-
-    try {
-      const response = await api.post("/auth/verify-registration", {
-        registrationToken: registrationData.registrationToken,
-        totpCode,
-      });
-
-      const data = response.data?.data || response.data;
-
-      // Store tokens
-      if (data.accessToken) localStorage.setItem("accessToken", data.accessToken);
-      if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
-
-      // Store backup codes to show
-      setBackupCodes(data.backupCodes || []);
-
-      // Move to Step 3 (Success)
-      setStep(3);
-      setDisplaySuccess("Registration complete!");
-
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || "Verification failed";
-      setDisplayError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // No TOTP verification step – registration completes immediately.
 
   // --- Step 3 Handlers (Finish) ---
 
@@ -273,39 +221,7 @@ export const HospitalRegistration: React.FC = () => {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <TextInput
-          label="Password"
-          type="password"
-          placeholder="••••••••"
-          value={formData.password}
-          onChange={(value: string) => handleChange("password", value)}
-          error={errors.password}
-          autoComplete="new-password"
-          required
-          icon={
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" />
-            </svg>
-          }
-        />
-
-        <TextInput
-          label="Confirm Password"
-          type="password"
-          placeholder="••••••••"
-          value={formData.confirmPassword}
-          onChange={(value: string) => handleChange("confirmPassword", value)}
-          error={errors.confirmPassword}
-          autoComplete="new-password"
-          required
-          icon={
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" />
-            </svg>
-          }
-        />
-      </div>
+      
 
       <TextInput
         label="Phone Number"
@@ -340,63 +256,11 @@ export const HospitalRegistration: React.FC = () => {
         }
       />
 
-      <Button label={loading ? "Processing..." : "Next: Verify & Register"} type="submit" variant="primary" size="lg" fullWidth disabled={loading} loading={loading} />
+      <Button label={loading ? "Processing..." : "Register Hospital"} type="submit" variant="primary" size="lg" fullWidth disabled={loading} loading={loading} />
     </form>
   );
 
-  const renderStep2 = () => (
-    <div className="space-y-6 mt-6 animate-fadeIn">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-        <p className="font-semibold">Step 2 of 3: Secure your account</p>
-        <p>Scan the QR code below with your Authenticator App (Google Authenticator, Authy, etc.).</p>
-      </div>
-
-      <div className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
-        {registrationData?.qrCode ? (
-          <img src={registrationData.qrCode} alt="2FA QR Code" className="w-48 h-48" />
-        ) : (
-          <div className="w-48 h-48 bg-gray-100 animate-pulse rounded"></div>
-        )}
-        <p className="mt-4 text-xs text-gray-500 font-mono bg-gray-100 px-3 py-1 rounded">
-          {registrationData?.secret || "Loading secret..."}
-        </p>
-      </div>
-
-      <div className="space-y-4">
-        <label className="block text-sm font-medium text-gray-700 text-center">
-          Enter 6-digit Code from Authenticator App
-        </label>
-        <div className="flex justify-center">
-          <OtpInput
-            length={6}
-            value={totpCode}
-            onChange={setTotpCode}
-            disabled={loading}
-          />
-        </div>
-      </div>
-
-      <Button
-        label={loading ? "Verifying..." : "Complete Registration"}
-        onClick={() => handleVerifyTotp()}
-        disabled={loading || totpCode.length !== 6}
-        variant="primary"
-        size="lg"
-        fullWidth
-        loading={loading}
-      />
-
-      <div className="text-center">
-        <button
-          type="button"
-          onClick={() => setStep(1)}
-          className="text-sm text-gray-500 hover:text-gray-700 underline"
-        >
-          Back to Details
-        </button>
-      </div>
-    </div>
-  );
+  // removed TOTP setup UI
 
   const renderStep3 = () => (
     <div className="space-y-6 mt-6 animate-fadeIn">
@@ -406,34 +270,69 @@ export const HospitalRegistration: React.FC = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-xl font-bold text-green-800">Registration Successful!</h3>
-        <p className="text-green-700 mt-2">Your hospital has been verified and registered.</p>
+        <h3 className="text-xl font-bold text-green-800">Registration Complete</h3>
+        <p className="text-green-700 mt-2">Hospital has been successfully registered.</p>
       </div>
 
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
-        <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          Save your Backup Codes
-        </h4>
-        <p className="text-sm text-yellow-800 mb-4">
-          If you lose access to your authenticator device, you can use these codes to log in.
-          <strong> These will only be shown once.</strong>
-        </p>
-
-        <div className="grid grid-cols-2 gap-2 bg-white p-3 rounded border border-yellow-100">
-          {backupCodes.map((code, index) => (
-            <div key={index} className="text-center font-mono text-xs py-1 bg-gray-50 rounded select-all border border-gray-100">
-              {code}
+      {/* Email Invitation Status */}
+      {invitationSent ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <div className="flex-1">
+              <h4 className="font-semibold text-blue-900 mb-1">Invitation Email Sent</h4>
+              <p className="text-sm text-blue-800">
+                A temporary password has been sent to <strong>{registeredEmail}</strong>. 
+                The hospital admin can use it to sign in and will be prompted to change the password on first login.
+              </p>
             </div>
-          ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="flex-1">
+              <h4 className="font-semibold text-yellow-900 mb-1">Email Delivery Failed</h4>
+              <p className="text-sm text-yellow-800">
+                Hospital registered successfully, but the invitation email could not be sent. 
+                Please manually share the temporary password with <strong>{registeredEmail}</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {backupCodes.length > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
+          <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Save your Backup Codes
+          </h4>
+          <p className="text-sm text-yellow-800 mb-4">
+            If you lose access to your authenticator device, you can use these codes to log in.
+            <strong> These will only be shown once.</strong>
+          </p>
+
+          <div className="grid grid-cols-2 gap-2 bg-white p-3 rounded border border-yellow-100">
+            {backupCodes.map((code, index) => (
+              <div key={index} className="text-center font-mono text-xs py-1 bg-gray-50 rounded select-all border border-gray-100">
+                {code}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Button
-        label="Go to Dashboard"
-        onClick={handleFinish}
+        label="Back to Hospitals List"
+        onClick={() => navigate("/hospitals")}
         variant="primary"
         size="lg"
         fullWidth
@@ -446,25 +345,14 @@ export const HospitalRegistration: React.FC = () => {
       <Navbar />
       <div className="flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
         <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-6 sm:p-8 animate-fadeIn">
-          <LogoHeader hospitalName="Hospital Registration" subtitle={step === 1 ? "Register your hospital" : step === 2 ? "Setup 2FA Verification" : "Registration Complete"} />
+          <LogoHeader hospitalName="Hospital Registration" subtitle={step === 1 ? "Register your hospital" : "Registration Complete"} />
 
           {displayError && <ErrorMessage message={displayError} type="error" onClose={() => setDisplayError(null)} />}
-          {displaySuccess && <ErrorMessage message={displaySuccess} type="success" onClose={() => setDisplaySuccess(null)} />}
 
           {step === 1 && renderStep1()}
-          {step === 2 && renderStep2()}
-          {step === 3 && renderStep3()}
+          {step === 2 && renderStep3()}
 
-          {step === 1 && (
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Already have an account?{" "}
-                <button type="button" onClick={() => navigate("/login")} className="text-blue-600 hover:text-blue-700 font-medium focus:outline-none focus:underline">
-                  Sign In
-                </button>
-              </p>
-            </div>
-          )}
+          {/* Removed public sign-in prompt; registration is admin-driven */}
         </div>
       </div>
     </div>

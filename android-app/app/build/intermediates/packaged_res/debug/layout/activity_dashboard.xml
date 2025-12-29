@@ -77,7 +77,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:src="@android:drawable/ic_menu_add"
-                    android:tint="@color/primary" />
+                    app:tint="@color/primary" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -107,7 +107,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@android:drawable/ic_menu_report_image"
-                    android:tint="#9CA3AF" />
+                    app:tint="#9CA3AF" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -133,7 +133,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:src="@android:drawable/ic_menu_my_calendar"
-                    android:tint="@color/success" />
+                    app:tint="@color/success" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -163,7 +163,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@android:drawable/ic_menu_report_image"
-                    android:tint="#9CA3AF" />
+                    app:tint="#9CA3AF" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 

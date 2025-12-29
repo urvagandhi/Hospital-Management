@@ -49,6 +49,14 @@ const config = {
   SMS_GATEWAY_API_KEY: process.env.SMS_GATEWAY_API_KEY,
   SMS_GATEWAY_SENDER: process.env.SMS_GATEWAY_SENDER || "Hospital",
 
+  // SMTP (email)
+  SMTP_HOST: process.env.SMTP_HOST,
+  SMTP_PORT: process.env.SMTP_PORT || 587,
+  SMTP_USER: process.env.SMTP_USER,
+  SMTP_PASS: process.env.SMTP_PASS,
+  SMTP_FROM: process.env.SMTP_FROM,
+  SMTP_SECURE: process.env.SMTP_SECURE || "false",
+
   // CORS
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3000",
 

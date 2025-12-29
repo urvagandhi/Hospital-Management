@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AdminRoute from "../components/AdminRoute";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { MainLayout } from "../layouts/MainLayout";
+import ChangePassword from "../pages/ChangePassword";
 import Dashboard from "../pages/Dashboard";
 import HospitalRegistration from "../pages/HospitalRegistration";
 import HospitalsList from "../pages/HospitalsList";
@@ -18,7 +19,13 @@ export const AppRoutes: React.FC = () => {
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<HospitalRegistration />} />
+      <Route 
+        path="/register" 
+        element={
+          <AdminRoute>
+            <HospitalRegistration />
+          </AdminRoute>}
+      />
 
       {/* TOTP Verification (for users with 2FA enabled) */}
       <Route path="/verify-totp" element={<TotpVerification />} />
@@ -28,6 +35,9 @@ export const AppRoutes: React.FC = () => {
 
       {/* Mandatory TOTP Setup (after registration) */}
       <Route path="/setup-2fa" element={<TotpSetupMandatory />} />
+
+      {/* Password change page (first-login) - public route that uses tempToken */}
+      <Route path="/change-password" element={<ChangePassword />} />
 
       {/* Admin Only Routes */}
       {/* <Route
@@ -48,6 +58,14 @@ export const AppRoutes: React.FC = () => {
         }
       >
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route
+          path="/hospitals"
+          element={
+            <AdminRoute>
+              <HospitalsList />
+            </AdminRoute>
+          }
+        />
         <Route path="/security" element={<SecuritySettings />} />
 
         {/* Add other protected routes here */}

@@ -110,6 +110,11 @@ const hospitalSchema = new mongoose.Schema(
     totpIssuer: {
       type: String, // White-labeling: "HospitalName (YourApp)"
     },
+    // Force hospital admin to change password on first login (set by super-admin)
+    mustChangePassword: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

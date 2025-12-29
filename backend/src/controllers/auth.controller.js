@@ -14,20 +14,98 @@ import Session from "../models/Session.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken"; // Import jwt for registration token
 import PendingHospital from "../models/PendingHospital.js"; // Import PendingHospital
+import { sendInvitationEmail } from "../services/email.service.js";
 import { createSession, invalidateSession, refreshAccessToken } from "../services/token.service.js";
 import {
-  checkTotpLockout,
-  generateBackupCodes,
-  generateTotpSecret,
-  getBackupCodesCount,
-  recordFailedAttempt,
-  resetFailedAttempts,
-  updateTotpLastUsed,
-  verifyBackupCode,
-  verifyTotpToken,
+    checkTotpLockout,
+    generateBackupCodes,
+    generateTotpSecret,
+    getBackupCodesCount,
+    recordFailedAttempt,
+    resetFailedAttempts,
+    updateTotpLastUsed,
+    verifyBackupCode,
+    verifyTotpToken,
 } from "../services/totp.service.js";
 import { comparePassword, hashPassword } from "../utils/hash.js";
 import { generateTempToken } from "../utils/jwt.js";
+
+/**
+ * Change Password - used with purpose-scoped temp token (PASSWORD_CHANGE)
+ * Expects: Authorization: Bearer <tempToken>
+ * Body: { newPassword }
+ */
+export const changePassword = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    const { newPassword } = req.body;
+
+    if (!hospitalId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "New password must be at least 6 characters" });
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+
+    // Hash and update password, clear mustChangePassword flag
+    const newHash = await hashPassword(newPassword);
+    hospital.passwordHash = newHash;
+    hospital.mustChangePassword = false;
+    await hospital.save();
+
+    // Create a session so user is logged in and can proceed to setup 2FA
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers["user-agent"] || "unknown";
+    const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
+    const session = await createSession(hospital._id, deviceId, ipAddress, userAgent);
+
+    // Audit
+    try {
+      await AuditLog.create({
+        userId: hospital._id,
+        action: "PASSWORD_CHANGE",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+      });
+    } catch (e) {
+      console.error("AuditLog error (password change):", e);
+    }
+
+    // Set cookies
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("accessToken", session.accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie("refreshToken", session.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed. Please complete 2FA setup.",
+      requireTotpSetup: true,
+      data: {
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+        hospital: hospital.toJSON(),
+      },
+    });
+
+  } catch (error) {
+    console.error("changePassword error:", error);
+    return res.status(500).json({ success: false, message: "Password change failed" });
+  }
+};
 
 /**
  * Register Hospital - Create new hospital account
@@ -35,10 +113,10 @@ import { generateTempToken } from "../utils/jwt.js";
  */
 export const registerHospital = async (req, res) => {
   try {
-    const { hospitalName, email, password, phoneNumber, address } = req.body;
+    const { hospitalName, email, phoneNumber, address } = req.body;
 
     // Validate inputs
-    if (!hospitalName || !email || !password || !phoneNumber || !address) {
+    if (!hospitalName || !email || !phoneNumber || !address) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -65,40 +143,93 @@ export const registerHospital = async (req, res) => {
     // Convert logo to base64 data URL for storage
     const logoBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
 
-    // Hash password
-    const passwordHash = await hashPassword(password);
+    // Generate a secure temporary password (12 chars: uppercase, lowercase, digits, special)
+    const generateSecurePassword = () => {
+      const length = 12;
+      const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // Exclude I, O
+      const lowercase = "abcdefghijkmnopqrstuvwxyz"; // Exclude l
+      const digits = "23456789"; // Exclude 0, 1
+      const special = "!@#$%^&*";
+      const allChars = uppercase + lowercase + digits + special;
+      
+      // Ensure at least one of each type
+      let password = "";
+      password += uppercase[crypto.randomInt(0, uppercase.length)];
+      password += lowercase[crypto.randomInt(0, lowercase.length)];
+      password += digits[crypto.randomInt(0, digits.length)];
+      password += special[crypto.randomInt(0, special.length)];
+      
+      // Fill remaining with random chars
+      for (let i = password.length; i < length; i++) {
+        password += allChars[crypto.randomInt(0, allChars.length)];
+      }
+      
+      // Shuffle to avoid predictable pattern
+      return password.split("").sort(() => Math.random() - 0.5).join("");
+    };
+    
+    const tempPassword = generateSecurePassword();
+    const passwordHash = await hashPassword(tempPassword);
 
-    // Generate TOTP secret
-    const customIssuer = `${hospitalName}`;
-    const totpData = await generateTotpSecret(hospitalName, email, customIssuer);
-
-    // Create PendingHospital Entry (Expires in 15 mins)
-    const pendingHospital = await PendingHospital.create({
+    // Create permanent Hospital directly (registration performed by admin)
+    const hospital = await Hospital.create({
       hospitalName,
       email: email.toLowerCase(),
       passwordHash,
-      phoneNumber,
+      phone: phoneNumber,
       address,
       logoUrl: logoBase64,
-      totpSecretEncrypted: totpData.encryptedSecret,
-      totpIssuer: customIssuer,
+      isActive: true,
+      totpEnabled: false,
+      totpVerified: false,
+      // Mark that admin-set password must be changed on first login
+      mustChangePassword: true,
+      failedLoginAttempts: 0,
     });
 
-    // Generate a temporary registration token (contains pending ID)
-    const registrationToken = jwt.sign(
-      { pendingId: pendingHospital._id, type: "REGISTRATION_VERIFY" },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
-    );
+    // Audit Log
+    try {
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.headers["user-agent"];
+      await AuditLog.create({
+        userId: hospital._id,
+        action: "HOSPITAL_REGISTRATION",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+        details: { hospitalName: hospital.hospitalName },
+      });
+    } catch (e) {
+      console.error("AuditLog error (registration):", e);
+    }
 
-    return res.status(200).json({
+    // Send invitation email with temporary password (best-effort)
+    let invitationSent = false;
+    let emailError = null;
+    try {
+      await sendInvitationEmail(email, hospital.hospitalName, tempPassword);
+      invitationSent = true;
+      console.log(`✅ Invitation email sent to ${email} with temporary password`);
+    } catch (emailErr) {
+      emailError = emailErr.message;
+      console.error("❌ Invitation email send failed:", emailErr);
+      // Continue - hospital created, admin can share credentials manually
+    }
+
+    return res.status(201).json({
       success: true,
-      message: "Registration initiated. Please setup 2FA to complete registration.",
+      message: invitationSent 
+        ? "Hospital registered successfully. Invitation email with temporary password sent to hospital admin."
+        : "Hospital registered successfully. Warning: Failed to send invitation email. Please share login credentials manually.",
       data: {
-        registrationToken,
-        qrCode: totpData.qrCode,
-        secret: totpData.secret, // Unmasked for manual entry
-        otpauthUrl: totpData.otpauthUrl,
+        hospital: {
+          id: hospital._id,
+          hospitalName: hospital.hospitalName,
+          email: hospital.email,
+          logoUrl: hospital.logoUrl,
+        },
+        invitationSent,
+        emailError: invitationSent ? undefined : emailError,
       },
     });
 
@@ -369,6 +500,34 @@ export const login = async (req, res) => {
       hospital.failedLoginAttempts = 0;
       hospital.lockUntil = undefined;
       await hospital.save();
+    }
+
+    // If admin created account with a temporary password, force password change
+    if (hospital.mustChangePassword) {
+      const tempToken = generateTempToken(hospital._id, "PASSWORD_CHANGE");
+      try {
+        await AuditLog.create({
+          userId: hospital._id,
+          action: "LOGIN_ATTEMPT",
+          status: "SUCCESS",
+          ipAddress,
+          userAgent,
+          details: { step: "PASSWORD_VERIFIED", requirePasswordChange: true },
+        });
+      } catch (e) {
+        console.error("AuditLog error (password change required):", e);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Password change required. Please change your password to continue.",
+        requirePasswordChange: true,
+        data: {
+          tempToken,
+          hospitalName: hospital.hospitalName,
+          logoUrl: hospital.logoUrl,
+        },
+      });
     }
 
     // Check if TOTP 2FA is enabled

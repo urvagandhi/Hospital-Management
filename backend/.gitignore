@@ -3,11 +3,33 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+package-lock.json
 
 # Environment variables
 .env
 .env.local
 .env.*.local
+.env.production
+
+# Test coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+dumps/
+*.dump
+*.sql
+
+# Uploads and temporary files
+uploads/
+temp/
+tmp/
+*.tmp
 
 # IDE
 .vscode/
@@ -25,16 +47,44 @@ build/
 # Logs
 logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # OS
 Thumbs.db
 .DS_Store
+ehthumbs.db
+Desktop.ini
 
-# Temporary files
-tmp/
-temp/
-*.tmp
+# Security and secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+.secrets/
 
 # User-specific files
 *.sublime-project
 *.sublime-workspace
+
+# PM2
+.pm2/
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Backup files
+*.bak
+*.backup
+*.old
+*~

@@ -6,6 +6,7 @@
 import express from "express";
 import { body } from "express-validator";
 import {
+  changePassword,
   disableTotp,
   login,
   logout,
@@ -14,7 +15,6 @@ import {
   registerHospital,
   resetTotp,
   setupTotp,
-  verifyRegistration,
   verifyTotpLogin,
   verifyTotpReset,
   verifyTotpSetup,
@@ -23,8 +23,12 @@ import { verifyAccessToken, verifyTempToken } from "../middleware/auth.js";
 import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
 import { uploadSingle } from "../middleware/upload.js";
 import { handleValidationErrors, sanitizeRequest } from "../middleware/validateRequest.js";
+import { verifyToken } from "../utils/jwt.js";
 
 const router = express.Router();
+
+// Debug: indicate this routes file was loaded (helps ensure nodemon restarted)
+console.log(`[auth.routes] loaded at ${new Date().toISOString()}`);
 
 // Apply sanitization to all auth routes
 router.use(sanitizeRequest);
@@ -61,8 +65,7 @@ router.post(
   },
   [
     body("hospitalName").notEmpty().trim().withMessage("Hospital name is required"),
-    body("email").isEmail().normalizeEmail().withMessage("Invalid email format"),
-    body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
+    body("email").isEmail().normalizeEmail({ gmail_remove_dots: false }).withMessage("Invalid email format"),
     body("phoneNumber")
       .matches(/^\d{10}$/)
       .withMessage("Phone number must be 10 digits"),
@@ -73,20 +76,7 @@ router.post(
   registerHospital,
 );
 
-/**
- * POST /api/auth/verify-registration
- * Verify registration TOTP vs PendingHospital
- */
-router.post(
-  "/verify-registration",
-  authLimiter,
-  [
-    body("registrationToken").notEmpty().withMessage("Registration token is required"),
-    body("totpCode").matches(/^\d{6}$/).withMessage("TOTP code must be 6 digits"),
-  ],
-  handleValidationErrors,
-  verifyRegistration
-);
+// Note: registration no longer requires TOTP verification (admin-only registration)
 
 /**
  * POST /api/auth/login
@@ -97,11 +87,40 @@ router.post(
   "/login",
   authLimiter,
   [
-    body("email").isEmail().normalizeEmail().withMessage("Invalid email format"),
+    body("email").isEmail().normalizeEmail({ gmail_remove_dots: false }).withMessage("Invalid email format"),
     body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
   ],
   handleValidationErrors,
   login,
+);
+
+/**
+ * POST /api/auth/change-password
+ * Change password using purpose-scoped temp token (PASSWORD_CHANGE)
+ */
+router.post(
+  "/change-password",
+  authLimiter,
+  (req, res, next) => {
+    console.log("[auth.routes] change-password middleware invoked", { path: req.path });
+    try {
+      const token = req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.split(" ")[1] : null;
+      if (!token) return res.status(401).json({ success: false, message: "No token provided" });
+      const decoded = verifyToken(token);
+      if (decoded.type !== "temp" || decoded.purpose !== "PASSWORD_CHANGE") {
+        return res.status(401).json({ success: false, message: "Invalid token for password change" });
+      }
+      req.hospital = { id: decoded.id };
+      next();
+    } catch (e) {
+      return res.status(401).json({ success: false, message: e.message });
+    }
+  },
+  [
+    body("newPassword").isLength({ min: 6 }).withMessage("New password must be at least 6 characters"),
+  ],
+  handleValidationErrors,
+  changePassword,
 );
 
 // ========================================
