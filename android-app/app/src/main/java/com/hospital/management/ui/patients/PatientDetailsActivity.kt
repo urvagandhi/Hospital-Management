@@ -21,6 +21,8 @@ import com.hospital.management.presentation.viewmodel.PatientState
 import com.hospital.management.presentation.viewmodel.PatientViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.data.models.Patient
+import com.hospital.management.ui.folders.FolderAdapter
+import com.hospital.management.ui.folders.FolderDetailsActivity
 
 class PatientDetailsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPatientDetailsBinding
@@ -118,7 +120,7 @@ class PatientDetailsActivity : AppCompatActivity() {
         if (folders.isNotEmpty()) {
             val folderAdapter = FolderAdapter(folders) { folder ->
                 // Navigate to folder details
-                val intent = android.content.Intent(this, com.hospital.management.FolderDetailsActivity::class.java)
+                val intent = android.content.Intent(this, FolderDetailsActivity::class.java)
                 intent.putExtra("PATIENT_ID", patient._id)
                 intent.putExtra("FOLDER_NAME", folder.name)
                 intent.putExtra("FILE_COUNT", folder.fileCount)

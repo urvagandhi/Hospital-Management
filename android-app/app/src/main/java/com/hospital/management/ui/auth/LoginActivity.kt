@@ -21,9 +21,13 @@ import com.hospital.management.utils.BiometricHelper
 import com.hospital.management.utils.SessionManager
 import com.hospital.management.data.local.TokenManager
 import android.view.View
-import androidx.lifecycle.lifecycleScope (LANGUAGE_KOTLIN)
+import androidx.lifecycle.lifecycleScope
 
-    private lateinit var authViewModel: AuthViewModel
+class LoginActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityLoginBinding
+    private lateinit var tokenManager: TokenManager
+    private lateinit var biometricHelper: BiometricHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

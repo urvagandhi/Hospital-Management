@@ -1,4 +1,6 @@
-package com.hospital.management
+package com.hospital.management.ui.folders
+
+import com.hospital.management.R
 
 import android.content.Intent
 import android.os.Bundle
@@ -54,13 +56,7 @@ class FolderDetailsActivity : AppCompatActivity() {
         patientViewModel = ViewModelProvider(this, factory)[PatientViewModel::class.java]
     }
 
-        // Get folder info from intent
-        patientId = intent.getStringExtra("PATIENT_ID") ?: ""
-        folderName = intent.getStringExtra("FOLDER_NAME") ?: ""
 
-        setupViews()
-        loadFiles()
-    }
 
     private fun setupViews() {
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
@@ -79,7 +75,7 @@ class FolderDetailsActivity : AppCompatActivity() {
 
         // FAB for scan document
         findViewById<View>(R.id.fabScan).setOnClickListener {
-            val intent = Intent(this, ScannerActivity::class.java)
+            val intent = Intent(this, com.hospital.management.ui.scanner.ScannerActivity::class.java)
             intent.putExtra("PATIENT_ID", patientId)
             intent.putExtra("FOLDER_NAME", folderName)
             startActivity(intent)

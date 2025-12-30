@@ -42,9 +42,9 @@
         <activity android:name=".ui.upload.UploadActivity" />
         <activity android:name=".ui.patients.PatientListActivity" />
         <activity android:name=".ui.patients.PatientDetailsActivity" />
-        <activity android:name=".FolderViewActivity" />
-        <activity android:name=".FolderDetailsActivity" />
-        <activity android:name=".ScannerActivity" />
+        <activity android:name=".ui.folders.FolderViewActivity" />
+        <activity android:name=".ui.folders.FolderDetailsActivity" />
+
 
     </application>
 

@@ -11,11 +11,42 @@ import java.util.Locale
 class PatientAdapter(
     private var patients: List<Patient>,
     private val onPatientClick: (Patient) -> Unit
-) : RecyclerView.Adapter<PatientAdapter.PatientViewHolder>() {
+) : RecyclerView.Adapter<PatientAdapter.PatientViewHolder>(), android.widget.Filterable {
+
+    private var patientsFiltered: List<Patient> = patients
 
     fun updateList(newPatients: List<Patient>) {
         patients = newPatients
+        patientsFiltered = newPatients
         notifyDataSetChanged()
+    }
+
+    override fun getFilter(): android.widget.Filter {
+        return object : android.widget.Filter() {
+            override fun performFiltering(constraint: CharSequence?): FilterResults {
+                val charString = constraint?.toString() ?: ""
+                patientsFiltered = if (charString.isEmpty()) {
+                    patients
+                } else {
+                    val filteredList = ArrayList<Patient>()
+                    for (row in patients) {
+                        if (row.patientName.lowercase().contains(charString.lowercase()) ||
+                            row.medicalRecordNumber.contains(charString)) {
+                            filteredList.add(row)
+                        }
+                    }
+                    filteredList
+                }
+                val filterResults = FilterResults()
+                filterResults.values = patientsFiltered
+                return filterResults
+            }
+
+            override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
+                patientsFiltered = results?.values as? List<Patient> ?: emptyList()
+                notifyDataSetChanged()
+            }
+        }
     }
 
     inner class PatientViewHolder(private val binding: ItemPatientBinding) :
@@ -25,7 +56,7 @@ class PatientAdapter(
             binding.tvPatientName.text = patient.patientName
             binding.tvMrn.text = "MRN: ${patient.medicalRecordNumber}"
             binding.tvPhone.text = patient.phone
-            binding.tvDob.text = "DOB: ${formatDate(patient.dateOfBirth)}"
+            // binding.tvDob.text = "DOB: ${formatDate(patient.dateOfBirth)}" // Removed as view is missing
 
             binding.root.setOnClickListener {
                 onPatientClick(patient)
@@ -54,8 +85,8 @@ class PatientAdapter(
     }
 
     override fun onBindViewHolder(holder: PatientViewHolder, position: Int) {
-        holder.bind(patients[position])
+        holder.bind(patientsFiltered[position])
     }
 
-    override fun getItemCount() = patients.size
+    override fun getItemCount() = patientsFiltered.size
 }

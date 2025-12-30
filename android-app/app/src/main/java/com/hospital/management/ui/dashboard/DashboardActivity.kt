@@ -13,7 +13,7 @@ import com.hospital.management.ui.admission.AdmissionActivity
 import com.hospital.management.ui.auth.LoginActivity
 import com.hospital.management.ui.patients.PatientListActivity
 import com.hospital.management.ui.scanner.ScannerActivity
-import androidx.lifecycle.lifecycleScope (LANGUAGE_KOTLIN)
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModelProvider
 import com.hospital.management.presentation.viewmodel.AuthViewModel
@@ -22,9 +22,9 @@ import com.hospital.management.data.repository.AuthRepository
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 
+class DashboardActivity : AppCompatActivity() {
 
-    private lateinit var authViewModel: AuthViewModel
-    private lateinit var tokenManager: TokenManager
+    private lateinit var binding: ActivityDashboardBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -1,4 +1,6 @@
-package com.hospital.management
+package com.hospital.management.ui.folders
+
+import com.hospital.management.R
 
 import android.content.Intent
 import android.os.Bundle
@@ -175,7 +177,8 @@ class FolderViewActivity : AppCompatActivity() {
             .setTitle("Select Folder")
             .setItems(folderNames) { _, which ->
                 // Navigate to scanner
-                val intent = Intent(this@FolderViewActivity, ScannerActivity::class.java)
+                // Navigate to scanner
+                val intent = Intent(this@FolderViewActivity, com.hospital.management.ui.scanner.ScannerActivity::class.java)
                 intent.putExtra("PATIENT_ID", patientId)
                 intent.putExtra("FOLDER_NAME", folderNames[which])
                 startActivity(intent)

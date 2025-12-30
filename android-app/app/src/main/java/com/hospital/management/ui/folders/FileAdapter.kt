@@ -1,4 +1,6 @@
-package com.hospital.management
+package com.hospital.management.ui.folders
+
+import com.hospital.management.R
 
 import android.view.LayoutInflater
 import android.view.View
