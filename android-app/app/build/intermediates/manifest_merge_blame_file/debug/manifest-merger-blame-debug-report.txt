@@ -19,491 +19,490 @@
 14-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:7:5-64
 14-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:7:19-61
 15
-16    <uses-permission android:name="android.permission.WAKE_LOCK" />
-16-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:23:5-68
-16-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:23:22-65
-17    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-17-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:24:5-79
-17-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:24:22-76
-18    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-18-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:25:5-81
-18-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:25:22-78
-19    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-19-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:26:5-77
-19-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:26:22-74
-20
-21    <permission
-21-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
-22        android:name="com.hospital.management.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
-22-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
-23        android:protectionLevel="signature" />
-23-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
-24
-25    <uses-permission android:name="com.hospital.management.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
-25-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
-25-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
+16    <uses-permission android:name="android.permission.USE_BIOMETRIC" /> <!-- suppress DeprecatedClassUsageInspection -->
+16-->[androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:24:5-72
+16-->[androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:24:22-69
+17    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+17-->[androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:27:5-74
+17-->[androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:27:22-71
+18    <uses-permission android:name="android.permission.WAKE_LOCK" />
+18-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:23:5-68
+18-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:23:22-65
+19    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+19-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:24:5-79
+19-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:24:22-76
+20    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+20-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:25:5-81
+20-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:25:22-78
+21    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+21-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:26:5-77
+21-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:26:22-74
+22
+23    <permission
+23-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
+24        android:name="com.hospital.management.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+24-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
+25        android:protectionLevel="signature" />
+25-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
 26
-27    <application
-27-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-51:19
-28        android:name="com.hospital.management.HospitalApplication"
-28-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:10:9-44
-29        android:allowBackup="true"
-29-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:11:9-35
-30        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
-30-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
-31        android:dataExtractionRules="@xml/data_extraction_rules"
-31-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:12:9-65
-32        android:debuggable="true"
-33        android:extractNativeLibs="false"
-34        android:fullBackupContent="@xml/backup_rules"
-34-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:13:9-54
+27    <uses-permission android:name="com.hospital.management.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+27-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
+27-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
+28
+29    <application
+29-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-49:19
+30        android:name="com.hospital.management.HospitalApplication"
+30-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:10:9-44
+31        android:allowBackup="false"
+31-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:11:9-36
+32        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+32-->[androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
+33        android:debuggable="true"
+34        android:extractNativeLibs="false"
 35        android:icon="@mipmap/ic_launcher"
-35-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:14:9-43
+35-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:12:9-43
 36        android:label="@string/app_name"
-36-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:15:9-41
+36-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:13:9-41
 37        android:roundIcon="@mipmap/ic_launcher_round"
-37-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:16:9-54
+37-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:14:9-54
 38        android:supportsRtl="true"
-38-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:17:9-35
+38-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:15:9-35
 39        android:theme="@style/Theme.HospitalManagement"
-39-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:19:9-56
-40        android:usesCleartextTraffic="true" >
-40-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:18:9-44
+39-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:17:9-56
+40        android:usesCleartextTraffic="false" >
+40-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:16:9-45
 41        <activity
-41-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:22:9-29:20
+41-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:20:9-27:20
 42            android:name="com.hospital.management.ui.auth.LoginActivity"
-42-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:23:13-50
+42-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:21:13-50
 43            android:exported="true" >
-43-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:13-36
+43-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:22:13-36
 44            <intent-filter>
-44-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:13-28:29
+44-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:23:13-26:29
 45                <action android:name="android.intent.action.MAIN" />
-45-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:26:17-69
-45-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:26:25-66
+45-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:17-69
+45-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:25-66
 46
 47                <category android:name="android.intent.category.LAUNCHER" />
-47-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:27:17-77
-47-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:27:27-74
+47-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:17-77
+47-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:27-74
 48            </intent-filter>
 49        </activity>
 50        <activity android:name="com.hospital.management.ui.auth.OtpActivity" />
-50-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:9-57
-50-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:19-54
+50-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:29:9-57
+50-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:29:19-54
 51        <activity
-51-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:32:9-34:52
+51-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:30:9-32:52
 52            android:name="com.hospital.management.ui.auth.ChangePasswordActivity"
-52-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:33:13-59
+52-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:13-59
 53            android:screenOrientation="portrait" />
-53-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:34:13-49
+53-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:32:13-49
 54        <activity
-54-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:9-37:52
+54-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:33:9-35:52
 55            android:name="com.hospital.management.ui.auth.TotpSetupActivity"
-55-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:13-54
+55-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:34:13-54
 56            android:screenOrientation="portrait" />
-56-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:13-49
+56-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:13-49
 57        <activity
-57-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:9-40:52
+57-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:9-38:52
 58            android:name="com.hospital.management.ui.auth.TotpVerificationActivity"
-58-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:13-61
+58-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:13-61
 59            android:screenOrientation="portrait" />
-59-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:13-49
+59-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:13-49
 60        <activity android:name="com.hospital.management.ui.dashboard.DashboardActivity" />
-60-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:9-68
-60-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:19-65
+60-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:9-68
+60-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:19-65
 61        <activity android:name="com.hospital.management.ui.admission.AdmissionActivity" />
-61-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:9-68
-61-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:19-65
+61-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:9-68
+61-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:19-65
 62        <activity android:name="com.hospital.management.ui.scanner.ScannerActivity" />
-62-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:9-64
-62-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:19-61
+62-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:9-64
+62-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:19-61
 63        <activity android:name="com.hospital.management.ui.upload.UploadActivity" />
-63-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:9-62
-63-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:19-59
+63-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:9-62
+63-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:19-59
 64        <activity android:name="com.hospital.management.ui.patients.PatientListActivity" />
-64-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:9-69
-64-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:19-66
+64-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:9-69
+64-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:19-66
 65        <activity android:name="com.hospital.management.ui.patients.PatientDetailsActivity" />
-65-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:9-72
-65-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:19-69
-66        <activity android:name="com.hospital.management.FolderViewActivity" />
-66-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:47:9-56
-66-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:47:19-53
-67        <activity android:name="com.hospital.management.FolderDetailsActivity" />
-67-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:48:9-59
-67-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:48:19-56
-68        <activity android:name="com.hospital.management.ScannerActivity" />
-68-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:49:9-53
-68-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:49:19-50
-69        <activity
-69-->[androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:23:9-25:39
-70            android:name="androidx.compose.ui.tooling.PreviewActivity"
-70-->[androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:24:13-71
-71            android:exported="true" />
-71-->[androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:25:13-36
-72
-73        <service
-73-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:24:9-33:19
-74            android:name="androidx.camera.core.impl.MetadataHolderService"
-74-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:25:13-75
-75            android:enabled="false"
-75-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:26:13-36
-76            android:exported="false" >
-76-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:27:13-37
-77            <meta-data
-77-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:30:13-32:89
-78                android:name="androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER"
-78-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:31:17-103
-79                android:value="androidx.camera.camera2.Camera2Config$DefaultProvider" />
-79-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:32:17-86
-80        </service>
-81        <!--
-82        This activity is an invisible delegate activity to start scanner activity
-83        and receive result, so it's unnecessary to support screen orientation and
-84        we can avoid any side effect from activity recreation in any case.
-85        -->
-86        <activity
-86-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:15:9-21:20
-87            android:name="com.google.mlkit.vision.documentscanner.internal.GmsDocumentScanningDelegateActivity"
-87-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:16:13-112
-88            android:exported="false"
-88-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:17:13-37
-89            android:screenOrientation="portrait"
-89-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:18:13-49
-90            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" >
-90-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:19:13-77
-91        </activity>
-92
-93        <provider
-93-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:9:9-13:38
-94            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
-94-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:10:13-78
-95            android:authorities="com.hospital.management.mlkitinitprovider"
-95-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:11:13-69
-96            android:exported="false"
-96-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:12:13-37
-97            android:initOrder="99" />
-97-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:13:13-35
-98
-99        <service
-99-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:15:9-23:19
-100            android:name="com.google.mlkit.common.internal.MlKitComponentDiscoveryService"
-100-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:16:13-91
-101            android:directBootAware="true"
-101-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:17:13-43
-102            android:exported="false" >
-102-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:18:13-37
-103            <meta-data
-103-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:20:13-22:85
-104                android:name="com.google.firebase.components:com.google.mlkit.common.internal.CommonComponentRegistrar"
-104-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:21:17-120
-105                android:value="com.google.firebase.components.ComponentRegistrar" />
-105-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:22:17-82
-106        </service>
-107
-108        <activity
-108-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5ede27bb7590a43712e511c5d193d097\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:20:9-22:45
-109            android:name="com.google.android.gms.common.api.GoogleApiActivity"
-109-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5ede27bb7590a43712e511c5d193d097\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:20:19-85
-110            android:exported="false"
-110-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5ede27bb7590a43712e511c5d193d097\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:22:19-43
-111            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-111-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5ede27bb7590a43712e511c5d193d097\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:21:19-78
-112
-113        <meta-data
-113-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\7706e47bec672c3c9895d93b6a299bb9\transformed\jetified-play-services-basement-18.1.0\AndroidManifest.xml:21:9-23:69
-114            android:name="com.google.android.gms.version"
-114-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\7706e47bec672c3c9895d93b6a299bb9\transformed\jetified-play-services-basement-18.1.0\AndroidManifest.xml:22:13-58
-115            android:value="@integer/google_play_services_version" />
-115-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\7706e47bec672c3c9895d93b6a299bb9\transformed\jetified-play-services-basement-18.1.0\AndroidManifest.xml:23:13-66
-116
-117        <provider
-117-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:29:9-37:20
-118            android:name="androidx.startup.InitializationProvider"
-118-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:30:13-67
-119            android:authorities="com.hospital.management.androidx-startup"
-119-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:31:13-68
-120            android:exported="false" >
-120-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:32:13-37
-121            <meta-data
-121-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:34:13-36:52
-122                android:name="androidx.work.WorkManagerInitializer"
-122-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:35:17-68
-123                android:value="androidx.startup" />
-123-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:36:17-49
-124            <meta-data
-124-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\883597d4a39e567e9e4b01074e51bf32\transformed\jetified-emoji2-1.4.0\AndroidManifest.xml:29:13-31:52
-125                android:name="androidx.emoji2.text.EmojiCompatInitializer"
-125-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\883597d4a39e567e9e4b01074e51bf32\transformed\jetified-emoji2-1.4.0\AndroidManifest.xml:30:17-75
-126                android:value="androidx.startup" />
-126-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\883597d4a39e567e9e4b01074e51bf32\transformed\jetified-emoji2-1.4.0\AndroidManifest.xml:31:17-49
-127            <meta-data
-127-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2e108c3a7317aca648bd934fc980a101\transformed\jetified-lifecycle-process-2.6.2\AndroidManifest.xml:29:13-31:52
-128                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
-128-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2e108c3a7317aca648bd934fc980a101\transformed\jetified-lifecycle-process-2.6.2\AndroidManifest.xml:30:17-78
-129                android:value="androidx.startup" />
-129-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2e108c3a7317aca648bd934fc980a101\transformed\jetified-lifecycle-process-2.6.2\AndroidManifest.xml:31:17-49
-130            <meta-data
-130-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
-131                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
-131-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
-132                android:value="androidx.startup" />
-132-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
-133        </provider>
-134
-135        <service
-135-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:39:9-45:35
-136            android:name="androidx.work.impl.background.systemalarm.SystemAlarmService"
-136-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:40:13-88
-137            android:directBootAware="false"
-137-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:41:13-44
-138            android:enabled="@bool/enable_system_alarm_service_default"
-138-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:42:13-72
-139            android:exported="false" />
-139-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:43:13-37
-140        <service
-140-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:46:9-52:35
-141            android:name="androidx.work.impl.background.systemjob.SystemJobService"
-141-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:47:13-84
-142            android:directBootAware="false"
-142-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:48:13-44
-143            android:enabled="@bool/enable_system_job_service_default"
-143-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:49:13-70
-144            android:exported="true"
-144-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:50:13-36
-145            android:permission="android.permission.BIND_JOB_SERVICE" />
-145-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:51:13-69
-146        <service
-146-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:53:9-59:35
-147            android:name="androidx.work.impl.foreground.SystemForegroundService"
-147-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:54:13-81
-148            android:directBootAware="false"
-148-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:55:13-44
-149            android:enabled="@bool/enable_system_foreground_service_default"
-149-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:56:13-77
-150            android:exported="false" />
-150-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:57:13-37
-151
-152        <receiver
-152-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:61:9-66:35
-153            android:name="androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver"
-153-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:62:13-88
-154            android:directBootAware="false"
-154-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:63:13-44
-155            android:enabled="true"
-155-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:64:13-35
-156            android:exported="false" />
-156-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:65:13-37
-157        <receiver
-157-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:67:9-77:20
-158            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy"
-158-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:68:13-106
-159            android:directBootAware="false"
-159-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:69:13-44
-160            android:enabled="false"
-160-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:70:13-36
-161            android:exported="false" >
-161-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:71:13-37
-162            <intent-filter>
-162-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:73:13-76:29
-163                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
-163-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:74:17-87
-163-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:74:25-84
-164                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
-164-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:75:17-90
-164-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:75:25-87
-165            </intent-filter>
-166        </receiver>
-167        <receiver
-167-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:78:9-88:20
-168            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy"
-168-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:79:13-104
-169            android:directBootAware="false"
-169-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:80:13-44
-170            android:enabled="false"
-170-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:81:13-36
-171            android:exported="false" >
-171-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:82:13-37
-172            <intent-filter>
-172-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:84:13-87:29
-173                <action android:name="android.intent.action.BATTERY_OKAY" />
-173-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:85:17-77
-173-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:85:25-74
-174                <action android:name="android.intent.action.BATTERY_LOW" />
-174-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:86:17-76
-174-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:86:25-73
-175            </intent-filter>
-176        </receiver>
-177        <receiver
-177-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:89:9-99:20
-178            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy"
-178-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:90:13-104
-179            android:directBootAware="false"
-179-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:91:13-44
-180            android:enabled="false"
-180-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:92:13-36
-181            android:exported="false" >
-181-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:93:13-37
-182            <intent-filter>
-182-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:95:13-98:29
-183                <action android:name="android.intent.action.DEVICE_STORAGE_LOW" />
-183-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:96:17-83
-183-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:96:25-80
-184                <action android:name="android.intent.action.DEVICE_STORAGE_OK" />
-184-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:97:17-82
-184-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:97:25-79
-185            </intent-filter>
-186        </receiver>
-187        <receiver
-187-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:100:9-109:20
-188            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy"
-188-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:101:13-103
-189            android:directBootAware="false"
-189-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:102:13-44
-190            android:enabled="false"
-190-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:103:13-36
-191            android:exported="false" >
-191-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:104:13-37
-192            <intent-filter>
-192-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:106:13-108:29
-193                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
-193-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:107:17-79
-193-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:107:25-76
-194            </intent-filter>
-195        </receiver>
-196        <receiver
-196-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:110:9-121:20
-197            android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
-197-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:111:13-88
-198            android:directBootAware="false"
-198-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:112:13-44
-199            android:enabled="false"
-199-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:113:13-36
-200            android:exported="false" >
-200-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:114:13-37
-201            <intent-filter>
-201-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:116:13-120:29
-202                <action android:name="android.intent.action.BOOT_COMPLETED" />
-202-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:117:17-79
-202-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:117:25-76
-203                <action android:name="android.intent.action.TIME_SET" />
-203-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:118:17-73
-203-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:118:25-70
-204                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
-204-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:119:17-81
-204-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:119:25-78
-205            </intent-filter>
-206        </receiver>
-207        <receiver
-207-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:122:9-131:20
-208            android:name="androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver"
-208-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:123:13-99
-209            android:directBootAware="false"
-209-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:124:13-44
-210            android:enabled="@bool/enable_system_alarm_service_default"
-210-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:125:13-72
-211            android:exported="false" >
-211-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:126:13-37
-212            <intent-filter>
-212-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:128:13-130:29
-213                <action android:name="androidx.work.impl.background.systemalarm.UpdateProxies" />
-213-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:129:17-98
-213-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:129:25-95
-214            </intent-filter>
-215        </receiver>
-216        <receiver
-216-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:132:9-142:20
-217            android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver"
-217-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:133:13-78
-218            android:directBootAware="false"
-218-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:134:13-44
-219            android:enabled="true"
-219-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:135:13-35
-220            android:exported="true"
-220-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:136:13-36
-221            android:permission="android.permission.DUMP" >
-221-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:137:13-57
-222            <intent-filter>
-222-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:139:13-141:29
-223                <action android:name="androidx.work.diagnostics.REQUEST_DIAGNOSTICS" />
-223-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:140:17-88
-223-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:140:25-85
-224            </intent-filter>
-225        </receiver>
-226
-227        <service
-227-->[androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:24:9-28:63
-228            android:name="androidx.room.MultiInstanceInvalidationService"
-228-->[androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:25:13-74
-229            android:directBootAware="true"
-229-->[androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:26:13-43
-230            android:exported="false" />
-230-->[androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:27:13-37
-231        <service
-231-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:29:9-35:19
-232            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
-232-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:30:13-103
-233            android:exported="false" >
-233-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:31:13-37
-234            <meta-data
-234-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:32:13-34:39
-235                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
-235-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:33:17-94
-236                android:value="cct" />
-236-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:34:17-36
-237        </service>
-238        <service
-238-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:26:9-30:19
-239            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
-239-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:27:13-117
-240            android:exported="false"
-240-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:28:13-37
-241            android:permission="android.permission.BIND_JOB_SERVICE" >
-241-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:29:13-69
-242        </service>
-243
-244        <receiver
-244-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:32:9-34:40
-245            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
-245-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:33:13-132
-246            android:exported="false" />
-246-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:34:13-37
-247        <receiver
-247-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
-248            android:name="androidx.profileinstaller.ProfileInstallReceiver"
-248-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
-249            android:directBootAware="false"
-249-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
-250            android:enabled="true"
-250-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
-251            android:exported="true"
-251-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
-252            android:permission="android.permission.DUMP" >
-252-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
-253            <intent-filter>
-253-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
-254                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
-254-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
-254-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
-255            </intent-filter>
-256            <intent-filter>
-256-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
-257                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
-257-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
-257-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
-258            </intent-filter>
-259            <intent-filter>
-259-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
-260                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
-260-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
-260-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
-261            </intent-filter>
-262            <intent-filter>
-262-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
-263                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
-263-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
-263-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
-264            </intent-filter>
-265        </receiver>
-266    </application>
-267
-268</manifest>
+65-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:9-72
+65-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:19-69
+66        <activity android:name="com.hospital.management.ui.folders.FolderViewActivity" />
+66-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:9-67
+66-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:19-64
+67        <activity android:name="com.hospital.management.ui.folders.FolderDetailsActivity" />
+67-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:9-70
+67-->F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:19-67
+68        <activity
+68-->[androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:23:9-25:39
+69            android:name="androidx.compose.ui.tooling.PreviewActivity"
+69-->[androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:24:13-71
+70            android:exported="true" />
+70-->[androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:25:13-36
+71
+72        <service
+72-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:24:9-33:19
+73            android:name="androidx.camera.core.impl.MetadataHolderService"
+73-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:25:13-75
+74            android:enabled="false"
+74-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:26:13-36
+75            android:exported="false" >
+75-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:27:13-37
+76            <meta-data
+76-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:30:13-32:89
+77                android:name="androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER"
+77-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:31:17-103
+78                android:value="androidx.camera.camera2.Camera2Config$DefaultProvider" />
+78-->[androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:32:17-86
+79        </service>
+80        <!--
+81        This activity is an invisible delegate activity to start scanner activity
+82        and receive result, so it's unnecessary to support screen orientation and
+83        we can avoid any side effect from activity recreation in any case.
+84        -->
+85        <activity
+85-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:15:9-21:20
+86            android:name="com.google.mlkit.vision.documentscanner.internal.GmsDocumentScanningDelegateActivity"
+86-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:16:13-112
+87            android:exported="false"
+87-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:17:13-37
+88            android:screenOrientation="portrait"
+88-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:18:13-49
+89            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" >
+89-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f356abf3daa0164d7af71586a488c4db\transformed\jetified-play-services-mlkit-document-scanner-16.0.0-beta1\AndroidManifest.xml:19:13-77
+90        </activity>
+91
+92        <provider
+92-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:9:9-13:38
+93            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
+93-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:10:13-78
+94            android:authorities="com.hospital.management.mlkitinitprovider"
+94-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:11:13-69
+95            android:exported="false"
+95-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:12:13-37
+96            android:initOrder="99" />
+96-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:13:13-35
+97
+98        <service
+98-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:15:9-23:19
+99            android:name="com.google.mlkit.common.internal.MlKitComponentDiscoveryService"
+99-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:16:13-91
+100            android:directBootAware="true"
+100-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:17:13-43
+101            android:exported="false" >
+101-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:18:13-37
+102            <meta-data
+102-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:20:13-22:85
+103                android:name="com.google.firebase.components:com.google.mlkit.common.internal.CommonComponentRegistrar"
+103-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:21:17-120
+104                android:value="com.google.firebase.components.ComponentRegistrar" />
+104-->[com.google.mlkit:common:18.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\543caa5e40ed46154eee26dcc12cf7b6\transformed\jetified-common-18.10.0\AndroidManifest.xml:22:17-82
+105        </service>
+106
+107        <activity
+107-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5ede27bb7590a43712e511c5d193d097\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:20:9-22:45
+108            android:name="com.google.android.gms.common.api.GoogleApiActivity"
+108-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5ede27bb7590a43712e511c5d193d097\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:20:19-85
+109            android:exported="false"
+109-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5ede27bb7590a43712e511c5d193d097\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:22:19-43
+110            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+110-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5ede27bb7590a43712e511c5d193d097\transformed\jetified-play-services-base-18.1.0\AndroidManifest.xml:21:19-78
+111
+112        <meta-data
+112-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\7706e47bec672c3c9895d93b6a299bb9\transformed\jetified-play-services-basement-18.1.0\AndroidManifest.xml:21:9-23:69
+113            android:name="com.google.android.gms.version"
+113-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\7706e47bec672c3c9895d93b6a299bb9\transformed\jetified-play-services-basement-18.1.0\AndroidManifest.xml:22:13-58
+114            android:value="@integer/google_play_services_version" />
+114-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\7706e47bec672c3c9895d93b6a299bb9\transformed\jetified-play-services-basement-18.1.0\AndroidManifest.xml:23:13-66
+115
+116        <provider
+116-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:29:9-37:20
+117            android:name="androidx.startup.InitializationProvider"
+117-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:30:13-67
+118            android:authorities="com.hospital.management.androidx-startup"
+118-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:31:13-68
+119            android:exported="false" >
+119-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:32:13-37
+120            <meta-data
+120-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:34:13-36:52
+121                android:name="androidx.work.WorkManagerInitializer"
+121-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:35:17-68
+122                android:value="androidx.startup" />
+122-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:36:17-49
+123            <meta-data
+123-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\883597d4a39e567e9e4b01074e51bf32\transformed\jetified-emoji2-1.4.0\AndroidManifest.xml:29:13-31:52
+124                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+124-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\883597d4a39e567e9e4b01074e51bf32\transformed\jetified-emoji2-1.4.0\AndroidManifest.xml:30:17-75
+125                android:value="androidx.startup" />
+125-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\883597d4a39e567e9e4b01074e51bf32\transformed\jetified-emoji2-1.4.0\AndroidManifest.xml:31:17-49
+126            <meta-data
+126-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2e108c3a7317aca648bd934fc980a101\transformed\jetified-lifecycle-process-2.6.2\AndroidManifest.xml:29:13-31:52
+127                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+127-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2e108c3a7317aca648bd934fc980a101\transformed\jetified-lifecycle-process-2.6.2\AndroidManifest.xml:30:17-78
+128                android:value="androidx.startup" />
+128-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2e108c3a7317aca648bd934fc980a101\transformed\jetified-lifecycle-process-2.6.2\AndroidManifest.xml:31:17-49
+129            <meta-data
+129-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+130                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+130-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+131                android:value="androidx.startup" />
+131-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+132        </provider>
+133
+134        <service
+134-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:39:9-45:35
+135            android:name="androidx.work.impl.background.systemalarm.SystemAlarmService"
+135-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:40:13-88
+136            android:directBootAware="false"
+136-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:41:13-44
+137            android:enabled="@bool/enable_system_alarm_service_default"
+137-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:42:13-72
+138            android:exported="false" />
+138-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:43:13-37
+139        <service
+139-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:46:9-52:35
+140            android:name="androidx.work.impl.background.systemjob.SystemJobService"
+140-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:47:13-84
+141            android:directBootAware="false"
+141-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:48:13-44
+142            android:enabled="@bool/enable_system_job_service_default"
+142-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:49:13-70
+143            android:exported="true"
+143-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:50:13-36
+144            android:permission="android.permission.BIND_JOB_SERVICE" />
+144-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:51:13-69
+145        <service
+145-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:53:9-59:35
+146            android:name="androidx.work.impl.foreground.SystemForegroundService"
+146-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:54:13-81
+147            android:directBootAware="false"
+147-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:55:13-44
+148            android:enabled="@bool/enable_system_foreground_service_default"
+148-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:56:13-77
+149            android:exported="false" />
+149-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:57:13-37
+150
+151        <receiver
+151-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:61:9-66:35
+152            android:name="androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver"
+152-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:62:13-88
+153            android:directBootAware="false"
+153-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:63:13-44
+154            android:enabled="true"
+154-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:64:13-35
+155            android:exported="false" />
+155-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:65:13-37
+156        <receiver
+156-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:67:9-77:20
+157            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy"
+157-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:68:13-106
+158            android:directBootAware="false"
+158-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:69:13-44
+159            android:enabled="false"
+159-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:70:13-36
+160            android:exported="false" >
+160-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:71:13-37
+161            <intent-filter>
+161-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:73:13-76:29
+162                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
+162-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:74:17-87
+162-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:74:25-84
+163                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+163-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:75:17-90
+163-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:75:25-87
+164            </intent-filter>
+165        </receiver>
+166        <receiver
+166-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:78:9-88:20
+167            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy"
+167-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:79:13-104
+168            android:directBootAware="false"
+168-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:80:13-44
+169            android:enabled="false"
+169-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:81:13-36
+170            android:exported="false" >
+170-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:82:13-37
+171            <intent-filter>
+171-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:84:13-87:29
+172                <action android:name="android.intent.action.BATTERY_OKAY" />
+172-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:85:17-77
+172-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:85:25-74
+173                <action android:name="android.intent.action.BATTERY_LOW" />
+173-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:86:17-76
+173-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:86:25-73
+174            </intent-filter>
+175        </receiver>
+176        <receiver
+176-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:89:9-99:20
+177            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy"
+177-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:90:13-104
+178            android:directBootAware="false"
+178-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:91:13-44
+179            android:enabled="false"
+179-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:92:13-36
+180            android:exported="false" >
+180-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:93:13-37
+181            <intent-filter>
+181-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:95:13-98:29
+182                <action android:name="android.intent.action.DEVICE_STORAGE_LOW" />
+182-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:96:17-83
+182-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:96:25-80
+183                <action android:name="android.intent.action.DEVICE_STORAGE_OK" />
+183-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:97:17-82
+183-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:97:25-79
+184            </intent-filter>
+185        </receiver>
+186        <receiver
+186-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:100:9-109:20
+187            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy"
+187-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:101:13-103
+188            android:directBootAware="false"
+188-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:102:13-44
+189            android:enabled="false"
+189-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:103:13-36
+190            android:exported="false" >
+190-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:104:13-37
+191            <intent-filter>
+191-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:106:13-108:29
+192                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+192-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:107:17-79
+192-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:107:25-76
+193            </intent-filter>
+194        </receiver>
+195        <receiver
+195-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:110:9-121:20
+196            android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
+196-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:111:13-88
+197            android:directBootAware="false"
+197-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:112:13-44
+198            android:enabled="false"
+198-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:113:13-36
+199            android:exported="false" >
+199-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:114:13-37
+200            <intent-filter>
+200-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:116:13-120:29
+201                <action android:name="android.intent.action.BOOT_COMPLETED" />
+201-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:117:17-79
+201-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:117:25-76
+202                <action android:name="android.intent.action.TIME_SET" />
+202-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:118:17-73
+202-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:118:25-70
+203                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+203-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:119:17-81
+203-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:119:25-78
+204            </intent-filter>
+205        </receiver>
+206        <receiver
+206-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:122:9-131:20
+207            android:name="androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver"
+207-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:123:13-99
+208            android:directBootAware="false"
+208-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:124:13-44
+209            android:enabled="@bool/enable_system_alarm_service_default"
+209-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:125:13-72
+210            android:exported="false" >
+210-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:126:13-37
+211            <intent-filter>
+211-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:128:13-130:29
+212                <action android:name="androidx.work.impl.background.systemalarm.UpdateProxies" />
+212-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:129:17-98
+212-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:129:25-95
+213            </intent-filter>
+214        </receiver>
+215        <receiver
+215-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:132:9-142:20
+216            android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver"
+216-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:133:13-78
+217            android:directBootAware="false"
+217-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:134:13-44
+218            android:enabled="true"
+218-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:135:13-35
+219            android:exported="true"
+219-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:136:13-36
+220            android:permission="android.permission.DUMP" >
+220-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:137:13-57
+221            <intent-filter>
+221-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:139:13-141:29
+222                <action android:name="androidx.work.diagnostics.REQUEST_DIAGNOSTICS" />
+222-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:140:17-88
+222-->[androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:140:25-85
+223            </intent-filter>
+224        </receiver>
+225
+226        <service
+226-->[androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:24:9-28:63
+227            android:name="androidx.room.MultiInstanceInvalidationService"
+227-->[androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:25:13-74
+228            android:directBootAware="true"
+228-->[androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:26:13-43
+229            android:exported="false" />
+229-->[androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:27:13-37
+230        <service
+230-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:29:9-35:19
+231            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+231-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:30:13-103
+232            android:exported="false" >
+232-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:31:13-37
+233            <meta-data
+233-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:32:13-34:39
+234                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
+234-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:33:17-94
+235                android:value="cct" />
+235-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:34:17-36
+236        </service>
+237        <service
+237-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:26:9-30:19
+238            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
+238-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:27:13-117
+239            android:exported="false"
+239-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:28:13-37
+240            android:permission="android.permission.BIND_JOB_SERVICE" >
+240-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:29:13-69
+241        </service>
+242
+243        <receiver
+243-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:32:9-34:40
+244            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
+244-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:33:13-132
+245            android:exported="false" />
+245-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:34:13-37
+246        <receiver
+246-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+247            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+247-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+248            android:directBootAware="false"
+248-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+249            android:enabled="true"
+249-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+250            android:exported="true"
+250-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+251            android:permission="android.permission.DUMP" >
+251-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+252            <intent-filter>
+252-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+253                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+253-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+253-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+254            </intent-filter>
+255            <intent-filter>
+255-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+256                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+256-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+256-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+257            </intent-filter>
+258            <intent-filter>
+258-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+259                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+259-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+259-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+260            </intent-filter>
+261            <intent-filter>
+261-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+262                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+262-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+262-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\1e9ab05b35afb4708bfb813e183d4f5b\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+263            </intent-filter>
+264        </receiver>
+265    </application>
+266
+267</manifest>

@@ -56,7 +56,7 @@ class AuthViewModel(
                          // If we got tokens:
                         if (data?.accessToken != null && data.refreshToken != null) {
                             saveTokensUseCase(data.accessToken, data.refreshToken)
-                            val hospitalName = data.hospitalName ?: data.hospital?.name ?: ""
+                            val hospitalName = data.hospitalName ?: data.hospital?.hospitalName ?: ""
                             val hospitalId = data.hospital?._id ?: ""
                             saveHospitalInfoUseCase(hospitalId, hospitalName, data.logoUrl ?: "")
                              _authState.value = AuthState.Success("TOTP Setup Required", "SETUP_REQUIRED")
@@ -69,7 +69,7 @@ class AuthViewModel(
                         val refreshToken = data?.refreshToken
                         if (accessToken != null && refreshToken != null) {
                             saveTokensUseCase(accessToken, refreshToken)
-                            val hospitalName = data.hospitalName ?: data.hospital?.name ?: ""
+                            val hospitalName = data.hospitalName ?: data.hospital?.hospitalName ?: ""
                             val hospitalId = data.hospital?._id ?: ""
                             saveHospitalInfoUseCase(hospitalId, hospitalName, data.logoUrl ?: "")
                             _authState.value = AuthState.Success("Login successful", "LoggedIn")
@@ -135,7 +135,7 @@ class AuthViewModel(
                     val body = response.body()!!
                     if (body.data != null) {
                          saveTokensUseCase(body.data.accessToken, body.data.refreshToken)
-                         saveHospitalInfoUseCase(body.data.hospital._id, body.data.hospital.name, "")
+                         saveHospitalInfoUseCase(body.data.hospital._id, body.data.hospital.hospitalName, "")
                     }
                     if (body.requireTotpSetup == true) {
                          _authState.value = AuthState.Success("Password changed. 2FA Setup required.", "SETUP_REQUIRED")
@@ -195,7 +195,7 @@ class AuthViewModel(
                      val data = response.body()?.data
                      if (data?.accessToken != null && data.refreshToken != null) {
                          saveTokensUseCase(data.accessToken, data.refreshToken)
-                         saveHospitalInfoUseCase(data.hospital?._id ?: "", data.hospitalName ?: data.hospital?.name ?: "", data.logoUrl ?: "")
+                         saveHospitalInfoUseCase(data.hospital?._id ?: "", data.hospitalName ?: data.hospital?.hospitalName ?: "", data.logoUrl ?: "")
                          _authState.value = AuthState.Success("Login successful", "LoggedIn")
                      } else {
                          _authState.value = AuthState.Error("Invalid token response")

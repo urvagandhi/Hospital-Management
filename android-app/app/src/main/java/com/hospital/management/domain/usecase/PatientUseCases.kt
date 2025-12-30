@@ -55,6 +55,6 @@ class GetFolderFilesUseCase(private val repository: PatientRepository) {
 }
 
 class UpdatePatientUseCase(private val repository: PatientRepository) {
-    suspend operator fun invoke(patientId: String, data: Map<String, Any>) =
+    suspend operator fun invoke(patientId: String, data: Map<String, String>) =
         repository.updatePatient(patientId, data)
 }

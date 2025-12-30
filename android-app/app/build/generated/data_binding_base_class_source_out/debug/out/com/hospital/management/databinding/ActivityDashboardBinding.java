@@ -4,54 +4,66 @@ package com.hospital.management.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.cardview.widget.CardView;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
 import com.google.android.material.card.MaterialCardView;
 import com.hospital.management.R;
+import de.hdodenhof.circleimageview.CircleImageView;
 import java.lang.NullPointerException;
 import java.lang.Override;
 import java.lang.String;
 
 public final class ActivityDashboardBinding implements ViewBinding {
   @NonNull
-  private final ScrollView rootView;
+  private final ConstraintLayout rootView;
 
   @NonNull
   public final MaterialCardView btnLogout;
 
   @NonNull
-  public final CardView cardNewAdmission;
+  public final MaterialCardView cardNewAdmission;
 
   @NonNull
-  public final CardView cardShowPatients;
+  public final MaterialCardView cardScanner;
 
   @NonNull
-  public final ImageView ivHospitalLogo;
+  public final MaterialCardView cardShowPatients;
+
+  @NonNull
+  public final CircleImageView ivHospitalLogo;
 
   @NonNull
   public final TextView tvHospitalName;
 
-  private ActivityDashboardBinding(@NonNull ScrollView rootView,
-      @NonNull MaterialCardView btnLogout, @NonNull CardView cardNewAdmission,
-      @NonNull CardView cardShowPatients, @NonNull ImageView ivHospitalLogo,
-      @NonNull TextView tvHospitalName) {
+  @NonNull
+  public final TextView tvWelcome;
+
+  @NonNull
+  public final View viewHeader;
+
+  private ActivityDashboardBinding(@NonNull ConstraintLayout rootView,
+      @NonNull MaterialCardView btnLogout, @NonNull MaterialCardView cardNewAdmission,
+      @NonNull MaterialCardView cardScanner, @NonNull MaterialCardView cardShowPatients,
+      @NonNull CircleImageView ivHospitalLogo, @NonNull TextView tvHospitalName,
+      @NonNull TextView tvWelcome, @NonNull View viewHeader) {
     this.rootView = rootView;
     this.btnLogout = btnLogout;
     this.cardNewAdmission = cardNewAdmission;
+    this.cardScanner = cardScanner;
     this.cardShowPatients = cardShowPatients;
     this.ivHospitalLogo = ivHospitalLogo;
     this.tvHospitalName = tvHospitalName;
+    this.tvWelcome = tvWelcome;
+    this.viewHeader = viewHeader;
   }
 
   @Override
   @NonNull
-  public ScrollView getRoot() {
+  public ConstraintLayout getRoot() {
     return rootView;
   }
 
@@ -83,19 +95,25 @@ public final class ActivityDashboardBinding implements ViewBinding {
       }
 
       id = R.id.cardNewAdmission;
-      CardView cardNewAdmission = ViewBindings.findChildViewById(rootView, id);
+      MaterialCardView cardNewAdmission = ViewBindings.findChildViewById(rootView, id);
       if (cardNewAdmission == null) {
         break missingId;
       }
 
+      id = R.id.cardScanner;
+      MaterialCardView cardScanner = ViewBindings.findChildViewById(rootView, id);
+      if (cardScanner == null) {
+        break missingId;
+      }
+
       id = R.id.cardShowPatients;
-      CardView cardShowPatients = ViewBindings.findChildViewById(rootView, id);
+      MaterialCardView cardShowPatients = ViewBindings.findChildViewById(rootView, id);
       if (cardShowPatients == null) {
         break missingId;
       }
 
       id = R.id.ivHospitalLogo;
-      ImageView ivHospitalLogo = ViewBindings.findChildViewById(rootView, id);
+      CircleImageView ivHospitalLogo = ViewBindings.findChildViewById(rootView, id);
       if (ivHospitalLogo == null) {
         break missingId;
       }
@@ -106,8 +124,20 @@ public final class ActivityDashboardBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityDashboardBinding((ScrollView) rootView, btnLogout, cardNewAdmission,
-          cardShowPatients, ivHospitalLogo, tvHospitalName);
+      id = R.id.tvWelcome;
+      TextView tvWelcome = ViewBindings.findChildViewById(rootView, id);
+      if (tvWelcome == null) {
+        break missingId;
+      }
+
+      id = R.id.viewHeader;
+      View viewHeader = ViewBindings.findChildViewById(rootView, id);
+      if (viewHeader == null) {
+        break missingId;
+      }
+
+      return new ActivityDashboardBinding((ConstraintLayout) rootView, btnLogout, cardNewAdmission,
+          cardScanner, cardShowPatients, ivHospitalLogo, tvHospitalName, tvWelcome, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

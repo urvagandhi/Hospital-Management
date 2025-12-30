@@ -4,12 +4,13 @@ package com.hospital.management.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.cardview.widget.CardView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.card.MaterialCardView;
 import com.hospital.management.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -17,10 +18,16 @@ import java.lang.String;
 
 public final class ItemPatientBinding implements ViewBinding {
   @NonNull
-  private final CardView rootView;
+  private final MaterialCardView rootView;
 
   @NonNull
-  public final TextView tvDob;
+  public final MaterialCardView cvAvatar;
+
+  @NonNull
+  public final ImageView ivChevron;
+
+  @NonNull
+  public final TextView tvInitials;
 
   @NonNull
   public final TextView tvMrn;
@@ -31,10 +38,13 @@ public final class ItemPatientBinding implements ViewBinding {
   @NonNull
   public final TextView tvPhone;
 
-  private ItemPatientBinding(@NonNull CardView rootView, @NonNull TextView tvDob,
-      @NonNull TextView tvMrn, @NonNull TextView tvPatientName, @NonNull TextView tvPhone) {
+  private ItemPatientBinding(@NonNull MaterialCardView rootView, @NonNull MaterialCardView cvAvatar,
+      @NonNull ImageView ivChevron, @NonNull TextView tvInitials, @NonNull TextView tvMrn,
+      @NonNull TextView tvPatientName, @NonNull TextView tvPhone) {
     this.rootView = rootView;
-    this.tvDob = tvDob;
+    this.cvAvatar = cvAvatar;
+    this.ivChevron = ivChevron;
+    this.tvInitials = tvInitials;
     this.tvMrn = tvMrn;
     this.tvPatientName = tvPatientName;
     this.tvPhone = tvPhone;
@@ -42,7 +52,7 @@ public final class ItemPatientBinding implements ViewBinding {
 
   @Override
   @NonNull
-  public CardView getRoot() {
+  public MaterialCardView getRoot() {
     return rootView;
   }
 
@@ -67,9 +77,21 @@ public final class ItemPatientBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
-      id = R.id.tvDob;
-      TextView tvDob = ViewBindings.findChildViewById(rootView, id);
-      if (tvDob == null) {
+      id = R.id.cvAvatar;
+      MaterialCardView cvAvatar = ViewBindings.findChildViewById(rootView, id);
+      if (cvAvatar == null) {
+        break missingId;
+      }
+
+      id = R.id.ivChevron;
+      ImageView ivChevron = ViewBindings.findChildViewById(rootView, id);
+      if (ivChevron == null) {
+        break missingId;
+      }
+
+      id = R.id.tvInitials;
+      TextView tvInitials = ViewBindings.findChildViewById(rootView, id);
+      if (tvInitials == null) {
         break missingId;
       }
 
@@ -91,7 +113,8 @@ public final class ItemPatientBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ItemPatientBinding((CardView) rootView, tvDob, tvMrn, tvPatientName, tvPhone);
+      return new ItemPatientBinding((MaterialCardView) rootView, cvAvatar, ivChevron, tvInitials,
+          tvMrn, tvPatientName, tvPhone);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

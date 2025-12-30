@@ -9,7 +9,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
@@ -21,7 +21,7 @@ import java.lang.String;
 
 public final class ActivityFolderDetailsBinding implements ViewBinding {
   @NonNull
-  private final CoordinatorLayout rootView;
+  private final ConstraintLayout rootView;
 
   @NonNull
   public final ImageButton btnBack;
@@ -44,10 +44,14 @@ public final class ActivityFolderDetailsBinding implements ViewBinding {
   @NonNull
   public final TextView tvFolderName;
 
-  private ActivityFolderDetailsBinding(@NonNull CoordinatorLayout rootView,
+  @NonNull
+  public final View viewHeader;
+
+  private ActivityFolderDetailsBinding(@NonNull ConstraintLayout rootView,
       @NonNull ImageButton btnBack, @NonNull FloatingActionButton fabDownload,
       @NonNull FloatingActionButton fabScan, @NonNull ProgressBar progressBar,
-      @NonNull RecyclerView rvFiles, @NonNull TextView tvEmpty, @NonNull TextView tvFolderName) {
+      @NonNull RecyclerView rvFiles, @NonNull TextView tvEmpty, @NonNull TextView tvFolderName,
+      @NonNull View viewHeader) {
     this.rootView = rootView;
     this.btnBack = btnBack;
     this.fabDownload = fabDownload;
@@ -56,11 +60,12 @@ public final class ActivityFolderDetailsBinding implements ViewBinding {
     this.rvFiles = rvFiles;
     this.tvEmpty = tvEmpty;
     this.tvFolderName = tvFolderName;
+    this.viewHeader = viewHeader;
   }
 
   @Override
   @NonNull
-  public CoordinatorLayout getRoot() {
+  public ConstraintLayout getRoot() {
     return rootView;
   }
 
@@ -127,8 +132,14 @@ public final class ActivityFolderDetailsBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityFolderDetailsBinding((CoordinatorLayout) rootView, btnBack, fabDownload,
-          fabScan, progressBar, rvFiles, tvEmpty, tvFolderName);
+      id = R.id.viewHeader;
+      View viewHeader = ViewBindings.findChildViewById(rootView, id);
+      if (viewHeader == null) {
+        break missingId;
+      }
+
+      return new ActivityFolderDetailsBinding((ConstraintLayout) rootView, btnBack, fabDownload,
+          fabScan, progressBar, rvFiles, tvEmpty, tvFolderName, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

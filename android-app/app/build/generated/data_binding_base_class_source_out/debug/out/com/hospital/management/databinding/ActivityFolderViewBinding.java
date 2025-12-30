@@ -9,7 +9,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
@@ -21,7 +21,7 @@ import java.lang.String;
 
 public final class ActivityFolderViewBinding implements ViewBinding {
   @NonNull
-  private final CoordinatorLayout rootView;
+  private final ConstraintLayout rootView;
 
   @NonNull
   public final ImageButton btnBack;
@@ -50,11 +50,18 @@ public final class ActivityFolderViewBinding implements ViewBinding {
   @NonNull
   public final TextView tvPatientName;
 
-  private ActivityFolderViewBinding(@NonNull CoordinatorLayout rootView,
+  @NonNull
+  public final TextView tvTitle;
+
+  @NonNull
+  public final View viewHeader;
+
+  private ActivityFolderViewBinding(@NonNull ConstraintLayout rootView,
       @NonNull ImageButton btnBack, @NonNull ImageButton btnPatientDetails,
       @NonNull FloatingActionButton fabCreateFolder, @NonNull FloatingActionButton fabDownloadAll,
       @NonNull FloatingActionButton fabScan, @NonNull ProgressBar progressBar,
-      @NonNull RecyclerView rvFolders, @NonNull TextView tvEmpty, @NonNull TextView tvPatientName) {
+      @NonNull RecyclerView rvFolders, @NonNull TextView tvEmpty, @NonNull TextView tvPatientName,
+      @NonNull TextView tvTitle, @NonNull View viewHeader) {
     this.rootView = rootView;
     this.btnBack = btnBack;
     this.btnPatientDetails = btnPatientDetails;
@@ -65,11 +72,13 @@ public final class ActivityFolderViewBinding implements ViewBinding {
     this.rvFolders = rvFolders;
     this.tvEmpty = tvEmpty;
     this.tvPatientName = tvPatientName;
+    this.tvTitle = tvTitle;
+    this.viewHeader = viewHeader;
   }
 
   @Override
   @NonNull
-  public CoordinatorLayout getRoot() {
+  public ConstraintLayout getRoot() {
     return rootView;
   }
 
@@ -148,8 +157,21 @@ public final class ActivityFolderViewBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityFolderViewBinding((CoordinatorLayout) rootView, btnBack, btnPatientDetails,
-          fabCreateFolder, fabDownloadAll, fabScan, progressBar, rvFolders, tvEmpty, tvPatientName);
+      id = R.id.tvTitle;
+      TextView tvTitle = ViewBindings.findChildViewById(rootView, id);
+      if (tvTitle == null) {
+        break missingId;
+      }
+
+      id = R.id.viewHeader;
+      View viewHeader = ViewBindings.findChildViewById(rootView, id);
+      if (viewHeader == null) {
+        break missingId;
+      }
+
+      return new ActivityFolderViewBinding((ConstraintLayout) rootView, btnBack, btnPatientDetails,
+          fabCreateFolder, fabDownloadAll, fabScan, progressBar, rvFolders, tvEmpty, tvPatientName,
+          tvTitle, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

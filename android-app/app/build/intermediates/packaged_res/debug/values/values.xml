@@ -1,27 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="accent">#10B981</color>
-    <color name="accent_dark">#059669</color>
-    <color name="background">#F9FAFB</color>
+    <color name="accent">#06B6D4</color>
+    <color name="accent_dark">#0891B2</color>
+    <color name="accent_light">#67E8F9</color>
+    <color name="background">#F8FAFC</color>
     <color name="black">#FF000000</color>
     <color name="error">#EF4444</color>
     <color name="gray">#6B7280</color>
     <color name="info">#3B82F6</color>
-    <color name="light_blue">#E0F2FE</color>
-    <color name="primary">#2563EB</color>
-    <color name="primary_dark">#1E40AF</color>
-    <color name="primary_light">#3B82F6</color>
+    <color name="light_blue">#DBEAFE</color>
+    <color name="primary">#4F46E5</color>
+    <color name="primary_dark">#4338CA</color>
+    <color name="primary_light">#818CF8</color>
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
     <color name="success">#10B981</color>
     <color name="surface">#FFFFFF</color>
-    <color name="surface_variant">#F3F4F6</color>
+    <color name="surface_variant">#F1F5F9</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
-    <color name="text_hint">#9CA3AF</color>
-    <color name="text_primary">#111827</color>
-    <color name="text_secondary">#6B7280</color>
+    <color name="text_hint">#94A3B8</color>
+    <color name="text_inverse">#FFFFFF</color>
+    <color name="text_primary">#1E293B</color>
+    <color name="text_secondary">#64748B</color>
     <color name="warning">#F59E0B</color>
     <color name="white">#FFFFFFFF</color>
     <string name="admission_date">Admission Date</string>
@@ -68,23 +70,60 @@
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryVariant">@color/primary_dark</item>
         <item name="colorOnPrimary">@color/white</item>
-        
+
         
         <item name="colorSecondary">@color/accent</item>
         <item name="colorSecondaryVariant">@color/accent_dark</item>
         <item name="colorOnSecondary">@color/white</item>
+
         
-        
-        <item name="android:statusBarColor">@color/primary_dark</item>
-        
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">true</item>
+
         
         <item name="android:colorBackground">@color/background</item>
         <item name="colorSurface">@color/surface</item>
-        
+        <item name="colorSurfaceVariant">@color/surface_variant</item>
+
         
         <item name="android:textColorPrimary">@color/text_primary</item>
         <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="android:textColorHint">@color/text_hint</item>
+
+        
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.App.SmallComponent</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.App.MediumComponent</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.App.LargeComponent</item>
+
+        
+        <item name="materialButtonStyle">@style/Widget.App.Button</item>
+
+        
+        <item name="textInputStyle">@style/Widget.App.TextInputLayout</item>
+    </style>
+    <style name="ShapeAppearance.App.LargeComponent" parent="ShapeAppearance.Material3.LargeComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+    <style name="ShapeAppearance.App.MediumComponent" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+    <style name="ShapeAppearance.App.SmallComponent" parent="ShapeAppearance.Material3.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">8dp</item>
     </style>
     <style name="Theme.HospitalManagement" parent="Base.Theme.HospitalManagement"/>
+    <style name="Widget.App.Button" parent="Widget.Material3.Button">
+        <item name="android:paddingVertical">12dp</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.App.MediumComponent</item>
+    </style>
+    <style name="Widget.App.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+        <item name="boxStrokeColor">@color/primary</item>
+        <item name="hintTextColor">@color/primary</item>
+    </style>
 </resources>

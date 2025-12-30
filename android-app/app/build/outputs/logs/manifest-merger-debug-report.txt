@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-53:12
-INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-53:12
-INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-53:12
-INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-53:12
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-51:12
+INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-51:12
+INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-51:12
+INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-51:12
 MERGED from [androidx.databinding:viewbinding:8.2.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\814606bc4845b7e48b42056e540bc238\transformed\jetified-viewbinding-8.2.0\AndroidManifest.xml:2:1-7:12
 MERGED from [io.coil-kt:coil-compose:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\97e4ddb784780a14318bf6378cc2e355\transformed\jetified-coil-compose-2.5.0\AndroidManifest.xml:2:1-7:12
 MERGED from [io.coil-kt:coil-compose-base:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\0c43152e92bfffe9ccafce3181081988\transformed\jetified-coil-compose-base-2.5.0\AndroidManifest.xml:2:1-7:12
@@ -38,6 +38,7 @@ MERGED from [androidx.compose.ui:ui-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B
 MERGED from [androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:17:1-28:12
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\ab3c8dbcc57d3f9eb3b19bcbf26edef1\transformed\material-1.10.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\508bc57a17fbd2e1a4dee4f69911074e\transformed\constraintlayout-2.1.4\AndroidManifest.xml:2:1-11:12
+MERGED from [androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:17:1-29:12
 MERGED from [androidx.camera:camera-video:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\8f071e73664534f2fb563acd3f303546\transformed\jetified-camera-video-1.3.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.camera:camera-lifecycle:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\d00220ea760c5660ec6e3e0dd571eddc\transformed\jetified-camera-lifecycle-1.3.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:17:1-36:12
@@ -58,15 +59,14 @@ MERGED from [androidx.activity:activity:1.8.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gr
 MERGED from [androidx.activity:activity-compose:1.8.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\a2b74e3cd755266fcf4de2d9438200be\transformed\jetified-activity-compose-1.8.1\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.activity:activity-ktx:1.8.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3c0ea731670f3a5a68792885d98be69b\transformed\jetified-activity-ktx-1.8.1\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.customview:customview-poolingcontainer:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\6bb92417062027a1abebee602af5a4b0\transformed\jetified-customview-poolingcontainer-1.0.0\AndroidManifest.xml:17:1-23:12
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9a9f87df8d3587e439f07b5f0b921c0c\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3070fa949ec9ab275bb8104e45706b07\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.work:work-runtime-ktx:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\0943abed1a6d9d2eb660810012471a86\transformed\work-runtime-ktx-2.9.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:17:1-145:12
 MERGED from [androidx.emoji2:emoji2-views-helper:1.4.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\8e25224d28f63e397dfbcdfcd1516f20\transformed\jetified-emoji2-views-helper-1.4.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.emoji2:emoji2:1.4.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\883597d4a39e567e9e4b01074e51bf32\transformed\jetified-emoji2-1.4.0\AndroidManifest.xml:17:1-35:12
 MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2e108c3a7317aca648bd934fc980a101\transformed\jetified-lifecycle-process-2.6.2\AndroidManifest.xml:17:1-35:12
 MERGED from [androidx.lifecycle:lifecycle-service:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5aa2e6a63d4fb70bb43552eb49074a40\transformed\jetified-lifecycle-service-2.6.2\AndroidManifest.xml:17:1-22:12
-MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\d493de6dd9ea426b8c25d3a2e517ff24\transformed\lifecycle-livedata-core-2.6.2\AndroidManifest.xml:17:1-22:12
-MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9a9f87df8d3587e439f07b5f0b921c0c\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:17:1-22:12
-MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3070fa949ec9ab275bb8104e45706b07\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.lifecycle:lifecycle-livedata-core-ktx:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f440ac0e715c3df5e41a977dc41a704b\transformed\jetified-lifecycle-livedata-core-ktx-2.6.2\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.dynamicanimation:dynamicanimation:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\acd3634b6169635bd4f3712489e83765\transformed\dynamicanimation-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.legacy:legacy-support-core-utils:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\d35ae6cb608958d32b3bdf62265c4b1c\transformed\legacy-support-core-utils-1.0.0\AndroidManifest.xml:17:1-22:12
@@ -86,6 +86,7 @@ MERGED from [androidx.customview:customview:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B
 MERGED from [androidx.autofill:autofill:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2e5b6a6247ac524ad2c183b78785390a\transformed\jetified-autofill-1.0.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:17:1-30:12
 MERGED from [androidx.lifecycle:lifecycle-runtime:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\882c9312cac4f8d3d267c0bb76821180\transformed\lifecycle-runtime-2.6.2\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\d493de6dd9ea426b8c25d3a2e517ff24\transformed\lifecycle-livedata-core-2.6.2\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.lifecycle:lifecycle-runtime-ktx:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\edcb9b4f2a165abf9078d68af1872ab6\transformed\jetified-lifecycle-runtime-ktx-2.6.2\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.lifecycle:lifecycle-livedata-ktx:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\b1cf430171d4aeab54a5cd945c6981ea\transformed\jetified-lifecycle-livedata-ktx-2.6.2\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\362d07b204a43782f717d26925f8c63a\transformed\jetified-lifecycle-viewmodel-compose-2.6.2\AndroidManifest.xml:17:1-22:12
@@ -95,6 +96,8 @@ MERGED from [androidx.datastore:datastore:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.
 MERGED from [androidx.room:room-ktx:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\6654ce5b9087ffcd520c0bb3f9704e70\transformed\jetified-room-ktx-2.5.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:17:1-31:12
 MERGED from [androidx.cardview:cardview:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\b203de62faa9cec647d20a118c4857ce\transformed\cardview-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.security:security-crypto:1.1.0-alpha06] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bbf15bd23ec9794204f6420c518da663\transformed\jetified-security-crypto-1.1.0-alpha06\AndroidManifest.xml:17:1-22:12
+MERGED from [de.hdodenhof:circleimageview:3.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9e67fae205f8d0596203592c80e0f19c\transformed\jetified-circleimageview-3.1.0\AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fabfc4dd0fc4f8ebf0bb6439b522482a\transformed\cursoradapter-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\6d1e0f3976b9df5991123433d10fbf14\transformed\interpolator-1.0.0\AndroidManifest.xml:17:1-22:12
 MERGED from [com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:15:1-38:12
@@ -141,8 +144,8 @@ ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidM
 	android:name
 		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:7:19-61
 application
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-51:19
-INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-51:19
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-49:19
+INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-49:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:22:5-26:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:22:5-26:19
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\ab3c8dbcc57d3f9eb3b19bcbf26edef1\transformed\material-1.10.0\AndroidManifest.xml:22:5-20
@@ -173,6 +176,8 @@ MERGED from [androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\ca
 MERGED from [androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:28:5-89
 MERGED from [androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:23:5-29:19
 MERGED from [androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:23:5-29:19
+MERGED from [de.hdodenhof:circleimageview:3.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9e67fae205f8d0596203592c80e0f19c\transformed\jetified-circleimageview-3.1.0\AndroidManifest.xml:9:5-20
+MERGED from [de.hdodenhof:circleimageview:3.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9e67fae205f8d0596203592c80e0f19c\transformed\jetified-circleimageview-3.1.0\AndroidManifest.xml:9:5-20
 MERGED from [com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:28:5-36:19
 MERGED from [com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\66d35205fcd0fdfe8c056b7af9186904\transformed\jetified-transport-backend-cct-2.3.3\AndroidManifest.xml:28:5-36:19
 MERGED from [com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2264d75a9839388ad30966f6543fc8f2\transformed\jetified-transport-runtime-2.2.6\AndroidManifest.xml:25:5-39:19
@@ -188,101 +193,93 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Ur
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:17:9-35
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:15:9-35
 	android:label
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:15:9-41
-	android:fullBackupContent
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:13:9-54
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:13:9-41
 	android:roundIcon
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:16:9-54
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:14:9-54
 	tools:targetApi
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:20:9-29
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:18:9-29
 	android:icon
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:14:9-43
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:12:9-43
 	android:allowBackup
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:11:9-35
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:11:9-36
 	android:theme
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:19:9-56
-	android:dataExtractionRules
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:12:9-65
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:17:9-56
 	android:usesCleartextTraffic
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:18:9-44
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:16:9-45
 	android:name
 		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:10:9-44
 activity#com.hospital.management.ui.auth.LoginActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:22:9-29:20
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:20:9-27:20
 	android:exported
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:13-36
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:22:13-36
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:23:13-50
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:21:13-50
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:13-28:29
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:23:13-26:29
 action#android.intent.action.MAIN
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:26:17-69
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:17-69
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:26:25-66
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:25-66
 category#android.intent.category.LAUNCHER
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:27:17-77
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:17-77
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:27:27-74
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:27-74
 activity#com.hospital.management.ui.auth.OtpActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:9-57
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:29:9-57
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:19-54
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:29:19-54
 activity#com.hospital.management.ui.auth.ChangePasswordActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:32:9-34:52
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:30:9-32:52
 	android:screenOrientation
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:34:13-49
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:32:13-49
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:33:13-59
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:13-59
 activity#com.hospital.management.ui.auth.TotpSetupActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:9-37:52
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:33:9-35:52
 	android:screenOrientation
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:13-49
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:13-49
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:13-54
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:34:13-54
 activity#com.hospital.management.ui.auth.TotpVerificationActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:9-40:52
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:9-38:52
 	android:screenOrientation
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:13-49
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:13-49
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:13-61
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:13-61
 activity#com.hospital.management.ui.dashboard.DashboardActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:9-68
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:9-68
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:19-65
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:19-65
 activity#com.hospital.management.ui.admission.AdmissionActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:9-68
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:9-68
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:19-65
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:19-65
 activity#com.hospital.management.ui.scanner.ScannerActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:9-64
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:9-64
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:19-61
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:19-61
 activity#com.hospital.management.ui.upload.UploadActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:9-62
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:9-62
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:19-59
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:19-59
 activity#com.hospital.management.ui.patients.PatientListActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:9-69
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:9-69
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:19-66
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:19-66
 activity#com.hospital.management.ui.patients.PatientDetailsActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:9-72
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:9-72
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:19-69
-activity#com.hospital.management.FolderViewActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:47:9-56
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:19-69
+activity#com.hospital.management.ui.folders.FolderViewActivity
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:9-67
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:47:19-53
-activity#com.hospital.management.FolderDetailsActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:48:9-59
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:19-64
+activity#com.hospital.management.ui.folders.FolderDetailsActivity
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:9-70
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:48:19-56
-activity#com.hospital.management.ScannerActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:49:9-53
-	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:49:19-50
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:19-67
 uses-sdk
 INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml
@@ -355,6 +352,8 @@ MERGED from [com.google.android.material:material:1.10.0] C:\Users\Urva.DESKTOP-
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\ab3c8dbcc57d3f9eb3b19bcbf26edef1\transformed\material-1.10.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\508bc57a17fbd2e1a4dee4f69911074e\transformed\constraintlayout-2.1.4\AndroidManifest.xml:5:5-7:41
 MERGED from [androidx.constraintlayout:constraintlayout:2.1.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\508bc57a17fbd2e1a4dee4f69911074e\transformed\constraintlayout-2.1.4\AndroidManifest.xml:5:5-7:41
+MERGED from [androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.camera:camera-video:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\8f071e73664534f2fb563acd3f303546\transformed\jetified-camera-video-1.3.0\AndroidManifest.xml:5:5-44
 MERGED from [androidx.camera:camera-video:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\8f071e73664534f2fb563acd3f303546\transformed\jetified-camera-video-1.3.0\AndroidManifest.xml:5:5-44
 MERGED from [androidx.camera:camera-lifecycle:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\d00220ea760c5660ec6e3e0dd571eddc\transformed\jetified-camera-lifecycle-1.3.0\AndroidManifest.xml:5:5-44
@@ -395,6 +394,10 @@ MERGED from [androidx.activity:activity-ktx:1.8.1] C:\Users\Urva.DESKTOP-IOHAI7B
 MERGED from [androidx.activity:activity-ktx:1.8.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3c0ea731670f3a5a68792885d98be69b\transformed\jetified-activity-ktx-1.8.1\AndroidManifest.xml:5:5-44
 MERGED from [androidx.customview:customview-poolingcontainer:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\6bb92417062027a1abebee602af5a4b0\transformed\jetified-customview-poolingcontainer-1.0.0\AndroidManifest.xml:20:5-21:38
 MERGED from [androidx.customview:customview-poolingcontainer:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\6bb92417062027a1abebee602af5a4b0\transformed\jetified-customview-poolingcontainer-1.0.0\AndroidManifest.xml:20:5-21:38
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9a9f87df8d3587e439f07b5f0b921c0c\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9a9f87df8d3587e439f07b5f0b921c0c\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3070fa949ec9ab275bb8104e45706b07\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:20:5-44
+MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3070fa949ec9ab275bb8104e45706b07\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.work:work-runtime-ktx:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\0943abed1a6d9d2eb660810012471a86\transformed\work-runtime-ktx-2.9.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.work:work-runtime-ktx:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\0943abed1a6d9d2eb660810012471a86\transformed\work-runtime-ktx-2.9.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.work:work-runtime:2.9.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\165bb9166fef9b89c0b4641db7a696dd\transformed\work-runtime-2.9.0\AndroidManifest.xml:21:5-44
@@ -407,12 +410,6 @@ MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\Urva.DESKTOP-I
 MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\2e108c3a7317aca648bd934fc980a101\transformed\jetified-lifecycle-process-2.6.2\AndroidManifest.xml:21:5-44
 MERGED from [androidx.lifecycle:lifecycle-service:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5aa2e6a63d4fb70bb43552eb49074a40\transformed\jetified-lifecycle-service-2.6.2\AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-service:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5aa2e6a63d4fb70bb43552eb49074a40\transformed\jetified-lifecycle-service-2.6.2\AndroidManifest.xml:20:5-44
-MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\d493de6dd9ea426b8c25d3a2e517ff24\transformed\lifecycle-livedata-core-2.6.2\AndroidManifest.xml:20:5-44
-MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\d493de6dd9ea426b8c25d3a2e517ff24\transformed\lifecycle-livedata-core-2.6.2\AndroidManifest.xml:20:5-44
-MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9a9f87df8d3587e439f07b5f0b921c0c\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:20:5-44
-MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9a9f87df8d3587e439f07b5f0b921c0c\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:20:5-44
-MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3070fa949ec9ab275bb8104e45706b07\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:20:5-44
-MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3070fa949ec9ab275bb8104e45706b07\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-livedata-core-ktx:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f440ac0e715c3df5e41a977dc41a704b\transformed\jetified-lifecycle-livedata-core-ktx-2.6.2\AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-livedata-core-ktx:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f440ac0e715c3df5e41a977dc41a704b\transformed\jetified-lifecycle-livedata-core-ktx-2.6.2\AndroidManifest.xml:20:5-44
 MERGED from [androidx.dynamicanimation:dynamicanimation:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\acd3634b6169635bd4f3712489e83765\transformed\dynamicanimation-1.0.0\AndroidManifest.xml:20:5-44
@@ -451,6 +448,8 @@ MERGED from [androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\ca
 MERGED from [androidx.core:core:1.12.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\5490b645e9d6a61333b77d70f2a2a530\transformed\core-1.12.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-runtime:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\882c9312cac4f8d3d267c0bb76821180\transformed\lifecycle-runtime-2.6.2\AndroidManifest.xml:5:5-44
 MERGED from [androidx.lifecycle:lifecycle-runtime:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\882c9312cac4f8d3d267c0bb76821180\transformed\lifecycle-runtime-2.6.2\AndroidManifest.xml:5:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\d493de6dd9ea426b8c25d3a2e517ff24\transformed\lifecycle-livedata-core-2.6.2\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\d493de6dd9ea426b8c25d3a2e517ff24\transformed\lifecycle-livedata-core-2.6.2\AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-runtime-ktx:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\edcb9b4f2a165abf9078d68af1872ab6\transformed\jetified-lifecycle-runtime-ktx-2.6.2\AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-runtime-ktx:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\edcb9b4f2a165abf9078d68af1872ab6\transformed\jetified-lifecycle-runtime-ktx-2.6.2\AndroidManifest.xml:20:5-44
 MERGED from [androidx.lifecycle:lifecycle-livedata-ktx:2.6.2] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\b1cf430171d4aeab54a5cd945c6981ea\transformed\jetified-lifecycle-livedata-ktx-2.6.2\AndroidManifest.xml:20:5-44
@@ -469,6 +468,10 @@ MERGED from [androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gr
 MERGED from [androidx.room:room-runtime:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9c89f3450dccdd5a12621cff50efdd65\transformed\room-runtime-2.5.0\AndroidManifest.xml:21:5-44
 MERGED from [androidx.cardview:cardview:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\b203de62faa9cec647d20a118c4857ce\transformed\cardview-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.cardview:cardview:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\b203de62faa9cec647d20a118c4857ce\transformed\cardview-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.security:security-crypto:1.1.0-alpha06] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bbf15bd23ec9794204f6420c518da663\transformed\jetified-security-crypto-1.1.0-alpha06\AndroidManifest.xml:20:5-44
+MERGED from [androidx.security:security-crypto:1.1.0-alpha06] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bbf15bd23ec9794204f6420c518da663\transformed\jetified-security-crypto-1.1.0-alpha06\AndroidManifest.xml:20:5-44
+MERGED from [de.hdodenhof:circleimageview:3.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9e67fae205f8d0596203592c80e0f19c\transformed\jetified-circleimageview-3.1.0\AndroidManifest.xml:5:5-7:41
+MERGED from [de.hdodenhof:circleimageview:3.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\9e67fae205f8d0596203592c80e0f19c\transformed\jetified-circleimageview-3.1.0\AndroidManifest.xml:5:5-7:41
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fabfc4dd0fc4f8ebf0bb6439b522482a\transformed\cursoradapter-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fabfc4dd0fc4f8ebf0bb6439b522482a\transformed\cursoradapter-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\6d1e0f3976b9df5991123433d10fbf14\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
@@ -521,6 +524,14 @@ ADDED from [androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-
 		ADDED from [androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:25:13-36
 	android:name
 		ADDED from [androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:24:13-71
+uses-permission#android.permission.USE_BIOMETRIC
+ADDED from [androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:24:5-72
+	android:name
+		ADDED from [androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:24:22-69
+uses-permission#android.permission.USE_FINGERPRINT
+ADDED from [androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:27:5-74
+	android:name
+		ADDED from [androidx.biometric:biometric:1.1.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\3eb31051de5fe16a4563a335a489fce9\transformed\biometric-1.1.0\AndroidManifest.xml:27:22-71
 service#androidx.camera.core.impl.MetadataHolderService
 ADDED from [androidx.camera:camera-camera2:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\bf193de65be784d334c83c05ba6cade6\transformed\jetified-camera-camera2-1.3.0\AndroidManifest.xml:24:9-33:19
 MERGED from [androidx.camera:camera-core:1.3.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\f1b7756c8da2f754f45ce81c9474aba1\transformed\jetified-camera-core-1.3.0\AndroidManifest.xml:29:9-33:78

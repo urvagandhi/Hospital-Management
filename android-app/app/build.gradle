@@ -51,7 +51,7 @@ dependencies {
     implementation 'androidx.coordinatorlayout:coordinatorlayout:1.2.0'
 
     // Security
-    implementation "androidx.security:security-crypto:1.0.0"
+    implementation "androidx.security:security-crypto:1.1.0-alpha06"
     implementation "androidx.biometric:biometric:1.1.0"
 
     // Jetpack Compose
@@ -100,6 +100,9 @@ dependencies {
 
     // Glide for image loading
     implementation 'com.github.bumptech.glide:glide:4.16.0'
+
+    // CircleImageView
+    implementation 'de.hdodenhof:circleimageview:3.1.0'
 
     // PDF generation
     implementation 'com.itextpdf:itext7-core:7.2.5'

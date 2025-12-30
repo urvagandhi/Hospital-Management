@@ -7,9 +7,9 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.cardview.widget.CardView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.card.MaterialCardView;
 import com.hospital.management.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -17,7 +17,7 @@ import java.lang.String;
 
 public final class ItemFileBinding implements ViewBinding {
   @NonNull
-  private final CardView rootView;
+  private final MaterialCardView rootView;
 
   @NonNull
   public final TextView tvFileName;
@@ -25,7 +25,7 @@ public final class ItemFileBinding implements ViewBinding {
   @NonNull
   public final TextView tvFileSize;
 
-  private ItemFileBinding(@NonNull CardView rootView, @NonNull TextView tvFileName,
+  private ItemFileBinding(@NonNull MaterialCardView rootView, @NonNull TextView tvFileName,
       @NonNull TextView tvFileSize) {
     this.rootView = rootView;
     this.tvFileName = tvFileName;
@@ -34,7 +34,7 @@ public final class ItemFileBinding implements ViewBinding {
 
   @Override
   @NonNull
-  public CardView getRoot() {
+  public MaterialCardView getRoot() {
     return rootView;
   }
 
@@ -71,7 +71,7 @@ public final class ItemFileBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ItemFileBinding((CardView) rootView, tvFileName, tvFileSize);
+      return new ItemFileBinding((MaterialCardView) rootView, tvFileName, tvFileSize);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

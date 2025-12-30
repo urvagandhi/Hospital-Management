@@ -11,12 +11,12 @@ import com.hospital.management.ui.dashboard.DashboardActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.lifecycle.ViewModelProvider
 import com.hospital.management.presentation.viewmodel.AuthState
 import com.hospital.management.presentation.viewmodel.AuthViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.data.repository.AuthRepository
-import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.utils.BiometricHelper
 import com.hospital.management.utils.SessionManager
 import com.hospital.management.data.local.TokenManager
@@ -28,6 +28,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
     private lateinit var tokenManager: TokenManager
     private lateinit var biometricHelper: BiometricHelper
+    private lateinit var authViewModel: AuthViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -167,8 +168,8 @@ class LoginActivity : AppCompatActivity() {
                         onSuccess = {
                             authViewModel.login(email, password)
                         },
-                        onError = { error ->
-                            Toast.makeText(this@LoginActivity, error, Toast.LENGTH_SHORT).show()
+                        onError = {
+                            Toast.makeText(this@LoginActivity, "Authentication failed", Toast.LENGTH_SHORT).show()
                         }
                     )
                 }

@@ -127,7 +127,7 @@ class PatientViewModel(
         }
     }
 
-    fun updatePatient(id: String, data: Map<String, Any>) {
+    fun updatePatient(id: String, data: Map<String, String>) {
         viewModelScope.launch {
             _patientState.value = PatientState.Loading
             try {

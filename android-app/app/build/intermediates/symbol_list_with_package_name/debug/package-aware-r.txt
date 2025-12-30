@@ -78,6 +78,11 @@ animator mtrl_fab_hide_motion_spec
 animator mtrl_fab_show_motion_spec
 animator mtrl_fab_transformation_sheet_collapse_spec
 animator mtrl_fab_transformation_sheet_expand_spec
+array assume_strong_biometrics_models
+array crypto_fingerprint_fallback_prefixes
+array crypto_fingerprint_fallback_vendors
+array delay_showing_prompt_models
+array hide_fingerprint_instantly_prefixes
 attr SharedValue
 attr SharedValueId
 attr action
@@ -298,6 +303,10 @@ attr circularflow_defaultAngle
 attr circularflow_defaultRadius
 attr circularflow_radiusInDP
 attr circularflow_viewCenter
+attr civ_border_color
+attr civ_border_overlay
+attr civ_border_width
+attr civ_circle_background_color
 attr clearsTag
 attr clickAction
 attr clockFaceBackgroundColor
@@ -1383,6 +1392,7 @@ color abc_tint_spinner
 color abc_tint_switch_track
 color accent
 color accent_dark
+color accent_light
 color accent_material_dark
 color accent_material_light
 color androidx_core_ripple_material_light
@@ -1392,6 +1402,7 @@ color background_floating_material_dark
 color background_floating_material_light
 color background_material_dark
 color background_material_light
+color biometric_error_color
 color black
 color bright_foreground_disabled_material_dark
 color bright_foreground_disabled_material_light
@@ -2128,6 +2139,7 @@ color switch_thumb_normal_material_light
 color teal_200
 color teal_700
 color text_hint
+color text_inverse
 color text_primary
 color text_secondary
 color tooltip_background_dark
@@ -2283,6 +2295,7 @@ dimen disabled_alpha_material_light
 dimen fastscroll_default_thickness
 dimen fastscroll_margin
 dimen fastscroll_minimum_range
+dimen fingerprint_icon_size
 dimen highlight_alpha_material_colored
 dimen highlight_alpha_material_dark
 dimen highlight_alpha_material_light
@@ -3012,6 +3025,8 @@ drawable abc_textfield_search_material
 drawable abc_vector_test
 drawable avd_hide_password
 drawable avd_show_password
+drawable bg_login_gradient
+drawable bg_rounded_surface
 drawable btn_checkbox_checked_mtrl
 drawable btn_checkbox_checked_to_unchecked_mtrl_animation
 drawable btn_checkbox_unchecked_mtrl
@@ -3044,20 +3059,29 @@ drawable design_ic_visibility
 drawable design_ic_visibility_off
 drawable design_password_eye
 drawable design_snackbar_background
+drawable fingerprint_dialog_error
+drawable fingerprint_dialog_fp_icon
 drawable googleg_disabled_color_18
 drawable googleg_standard_color_18
 drawable ic_arrow_back_black_24
+drawable ic_calendar
 drawable ic_call_answer
 drawable ic_call_answer_low
 drawable ic_call_answer_video
 drawable ic_call_answer_video_low
 drawable ic_call_decline
 drawable ic_call_decline_low
+drawable ic_chevron_right
 drawable ic_clear_black_24
 drawable ic_clock_black_24dp
+drawable ic_edit_pencil
+drawable ic_email
+drawable ic_file_document
+drawable ic_folder
 drawable ic_keyboard_black_24dp
 drawable ic_launcher_background
 drawable ic_launcher_foreground
+drawable ic_logout
 drawable ic_m3_chip_check
 drawable ic_m3_chip_checked_circle
 drawable ic_m3_chip_close
@@ -3065,6 +3089,11 @@ drawable ic_mtrl_checked_circle
 drawable ic_mtrl_chip_checked_black
 drawable ic_mtrl_chip_checked_circle
 drawable ic_mtrl_chip_close_circle
+drawable ic_patient
+drawable ic_people
+drawable ic_person_add
+drawable ic_phone
+drawable ic_scanner
 drawable ic_search_black_24
 drawable logout_button_ripple
 drawable m3_appbar_background
@@ -3246,6 +3275,7 @@ id bounceEnd
 id bounceStart
 id btnBack
 id btnBackToLogin
+id btnBiometric
 id btnCapture
 id btnChangePassword
 id btnContinueToDashboard
@@ -3264,6 +3294,8 @@ id callMeasure
 id cancel_button
 id cardBackupCodes
 id cardNewAdmission
+id cardScanner
+id cardSearch
 id cardShowPatients
 id carryVelocity
 id center
@@ -3304,6 +3336,7 @@ id currentState
 id custom
 id customPanel
 id cut
+id cvAvatar
 id dark
 id date_picker_actions
 id decelerate
@@ -3365,6 +3398,7 @@ id etTotpCode
 id exitUntilCollapsed
 id expand_activities_button
 id expanded_menu
+id fabAddPatient
 id fabCreateFolder
 id fabDownload
 id fabDownloadAll
@@ -3377,6 +3411,10 @@ id fillStart
 id fill_horizontal
 id fill_vertical
 id filled
+id fingerprint_description
+id fingerprint_error
+id fingerprint_icon
+id fingerprint_subtitle
 id fitCenter
 id fitEnd
 id fitStart
@@ -3423,6 +3461,7 @@ id inward
 id is_pooling_container_tag
 id italic
 id item_touch_helper_previous_elevation
+id ivChevron
 id ivHospitalLogo
 id ivPreview
 id ivQrCode
@@ -3430,6 +3469,7 @@ id jumpToEnd
 id jumpToStart
 id labeled
 id layout
+id layoutEmpty
 id left
 id leftToRight
 id legacy
@@ -3582,6 +3622,7 @@ id scrollIndicatorDown
 id scrollIndicatorUp
 id scrollView
 id scrollable
+id searchView
 id search_badge
 id search_bar
 id search_button
@@ -3665,7 +3706,9 @@ id textinput_placeholder
 id textinput_prefix_text
 id textinput_suffix_text
 id tilConfirmPassword
+id tilEmail
 id tilNewPassword
+id tilPassword
 id tilTotpCode
 id time
 id title
@@ -3686,7 +3729,6 @@ id triangle
 id tvBackupCode
 id tvBackupCodes
 id tvCountdown
-id tvDob
 id tvEmpty
 id tvError
 id tvFileCount
@@ -3694,6 +3736,7 @@ id tvFileName
 id tvFileSize
 id tvFolderName
 id tvHospitalName
+id tvInitials
 id tvInstruction
 id tvManualKey
 id tvManualKeyLabel
@@ -3703,6 +3746,7 @@ id tvPatientName
 id tvPhone
 id tvSubtitle
 id tvTitle
+id tvWelcome
 id unchecked
 id uniform
 id unlabeled
@@ -3710,6 +3754,7 @@ id up
 id useLogo
 id vertical_only
 id viewFinder
+id viewHeader
 id view_offset_helper
 id view_transition
 id view_tree_lifecycle_owner
@@ -3873,6 +3918,7 @@ layout design_navigation_menu
 layout design_navigation_menu_item
 layout design_text_input_end_icon
 layout design_text_input_start_icon
+layout fingerprint_dialog_layout
 layout ime_base_split_test_activity
 layout ime_secondary_split_test_activity
 layout item_file
@@ -4018,6 +4064,7 @@ string common_google_play_services_wear_update_text
 string common_open_on_phone
 string common_signin_button_text
 string common_signin_button_text_long
+string confirm_device_credential_password
 string dashboard_title
 string date_input_headline
 string date_input_headline_description
@@ -4051,6 +4098,7 @@ string date_range_picker_scroll_to_previous_month
 string date_range_picker_start_headline
 string date_range_picker_title
 string default_error_message
+string default_error_msg
 string default_popup_window_title
 string dialog
 string didnt_receive_code
@@ -4063,6 +4111,16 @@ string expanded
 string exposed_dropdown_menu_content_description
 string fab_transformation_scrim_behavior
 string fab_transformation_sheet_behavior
+string fingerprint_dialog_touch_sensor
+string fingerprint_error_hw_not_available
+string fingerprint_error_hw_not_present
+string fingerprint_error_lockout
+string fingerprint_error_no_fingerprints
+string fingerprint_error_user_canceled
+string fingerprint_not_recognized
+string generic_error_no_device_credential
+string generic_error_no_keyguard
+string generic_error_user_canceled
 string hide_bottom_view_on_scroll_behavior
 string icon_content_description
 string in_progress
@@ -4583,6 +4641,9 @@ style RtlOverlay_Widget_AppCompat_Search_DropDown_Text
 style RtlOverlay_Widget_AppCompat_SearchView_MagIcon
 style RtlUnderlay_Widget_AppCompat_ActionButton
 style RtlUnderlay_Widget_AppCompat_ActionButton_Overflow
+style ShapeAppearance_App_LargeComponent
+style ShapeAppearance_App_MediumComponent
+style ShapeAppearance_App_SmallComponent
 style ShapeAppearance_M3_Comp_Badge_Large_Shape
 style ShapeAppearance_M3_Comp_Badge_Shape
 style ShapeAppearance_M3_Comp_BottomAppBar_Container_Shape
@@ -4982,6 +5043,8 @@ style ThemeOverlay_MaterialComponents_TimePicker_Display_TextInputEditText
 style ThemeOverlay_MaterialComponents_Toolbar_Popup_Primary
 style ThemeOverlay_MaterialComponents_Toolbar_Primary
 style ThemeOverlay_MaterialComponents_Toolbar_Surface
+style Widget_App_Button
+style Widget_App_TextInputLayout
 style Widget_AppCompat_ActionBar
 style Widget_AppCompat_ActionBar_Solid
 style Widget_AppCompat_ActionBar_TabBar
@@ -5390,6 +5453,7 @@ styleable Carousel carousel_backwardTransition carousel_emptyViewsBehavior carou
 styleable CheckedTextView android_checkMark checkMarkCompat checkMarkTint checkMarkTintMode
 styleable Chip android_textAppearance android_textSize android_textColor android_ellipsize android_maxWidth android_text android_checkable checkedIcon checkedIconEnabled checkedIconTint checkedIconVisible chipBackgroundColor chipCornerRadius chipEndPadding chipIcon chipIconEnabled chipIconSize chipIconTint chipIconVisible chipMinHeight chipMinTouchTargetSize chipStartPadding chipStrokeColor chipStrokeWidth chipSurfaceColor closeIcon closeIconEnabled closeIconEndPadding closeIconSize closeIconStartPadding closeIconTint closeIconVisible ensureMinTouchTargetSize hideMotionSpec iconEndPadding iconStartPadding rippleColor shapeAppearance shapeAppearanceOverlay showMotionSpec textEndPadding textStartPadding
 styleable ChipGroup checkedChip chipSpacing chipSpacingHorizontal chipSpacingVertical selectionRequired singleLine singleSelection
+styleable CircleImageView civ_border_color civ_border_overlay civ_border_width civ_circle_background_color
 styleable CircularProgressIndicator indicatorDirectionCircular indicatorInset indicatorSize
 styleable ClockFaceView clockFaceBackgroundColor clockNumberTextColor
 styleable ClockHandView clockHandColor materialCircleRadius selectorSize

@@ -36,13 +36,13 @@ class AuthRepository(
     suspend fun setupTotp(): Response<TotpSetupResponse> {
         // Need access token. Assuming we are logged in or have a token.
         // For setup, we usually expect the user to be fully logged in (AccessToken).
-        val accessToken = tokenManager.getAccessToken().firstOrNull() ?: ""
+        val accessToken = tokenManager.accessToken.firstOrNull() ?: ""
         val authHeader = "Bearer $accessToken"
         return apiService.setupTotp(authHeader)
     }
 
     suspend fun verifyTotpSetup(totp: String): Response<TotpVerifyResponse> {
-        val accessToken = tokenManager.getAccessToken().firstOrNull() ?: ""
+        val accessToken = tokenManager.accessToken.firstOrNull() ?: ""
         val authHeader = "Bearer $accessToken"
         return apiService.verifyTotpSetup(authHeader, mapOf("token" to totp))
     }
