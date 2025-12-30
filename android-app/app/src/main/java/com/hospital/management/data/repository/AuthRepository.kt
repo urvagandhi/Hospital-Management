@@ -2,6 +2,7 @@ package com.hospital.management.data.repository
 
 import com.hospital.management.data.api.ApiService
 import com.hospital.management.data.local.TokenManager
+import com.hospital.management.data.models.LoginResponse
 import retrofit2.Response
 
 class AuthRepository(
@@ -9,7 +10,7 @@ class AuthRepository(
     private val tokenManager: TokenManager
 ) {
     
-    suspend fun login(email: String, password: String): Response<Map<String, Any>> {
+    suspend fun login(email: String, password: String): Response<LoginResponse> {
         return apiService.login(mapOf("email" to email, "password" to password))
     }
     

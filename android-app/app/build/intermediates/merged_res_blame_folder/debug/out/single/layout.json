@@ -8,24 +8,16 @@
         "source": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_login.xml"
     },
     {
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_change_password.xml",
+        "source": "com.hospital.management.app-main-86:/layout/activity_change_password.xml"
+    },
+    {
         "merged": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_folder_details.xml",
         "source": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_folder_details.xml"
     },
     {
         "merged": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_patient_list.xml",
         "source": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_patient_list.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_folder_details.xml",
-        "source": "com.hospital.management.app-main-86:/layout/activity_folder_details.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/item_file.xml",
-        "source": "com.hospital.management.app-main-86:/layout/item_file.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/item_patient.xml",
-        "source": "com.hospital.management.app-main-86:/layout/item_patient.xml"
     },
     {
         "merged": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_dashboard.xml",
@@ -36,40 +28,28 @@
         "source": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_patient_details.xml"
     },
     {
-        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_dashboard.xml",
-        "source": "com.hospital.management.app-main-86:/layout/activity_dashboard.xml"
-    },
-    {
         "merged": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\item_file.xml",
         "source": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\item_file.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_folder_view.xml",
-        "source": "com.hospital.management.app-main-86:/layout/activity_folder_view.xml"
-    },
-    {
-        "merged": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_upload.xml",
-        "source": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_upload.xml"
     },
     {
         "merged": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_folder_view.xml",
         "source": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_folder_view.xml"
     },
     {
-        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_patient_details.xml",
-        "source": "com.hospital.management.app-main-86:/layout/activity_patient_details.xml"
+        "merged": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\activity_upload.xml",
+        "source": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\activity_upload.xml"
     },
     {
-        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/item_folder.xml",
-        "source": "com.hospital.management.app-main-86:/layout/item_folder.xml"
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_totp_verification.xml",
+        "source": "com.hospital.management.app-main-86:/layout/activity_totp_verification.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_totp_setup.xml",
+        "source": "com.hospital.management.app-main-86:/layout/activity_totp_setup.xml"
     },
     {
         "merged": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\item_folder.xml",
         "source": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-main-86:\\layout\\item_folder.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-mergeDebugResources-83:/layout/activity_patient_list.xml",
-        "source": "com.hospital.management.app-main-86:/layout/activity_patient_list.xml"
     },
     {
         "merged": "C:\\Users\\Urva.DESKTOP-IOHAI7B\\.gradle\\daemon\\8.5\\com.hospital.management.app-mergeDebugResources-83:\\layout\\item_patient.xml",

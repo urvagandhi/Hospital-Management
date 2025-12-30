@@ -5,7 +5,9 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.hospital.management.data.api.RetrofitClient
+import com.hospital.management.data.models.LoginResponse
 import com.hospital.management.databinding.ActivityLoginBinding
+import com.hospital.management.ui.dashboard.DashboardActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,16 +46,11 @@ class LoginActivity : AppCompatActivity() {
                     binding.progressBar.visibility = android.view.View.GONE
                     binding.btnLogin.isEnabled = true
 
-                    if (response.isSuccessful && response.body()?.get("success") == true) {
-                        val responseData = response.body()?.get("data") as? Map<*, *>
-                        val tempToken = responseData?.get("tempToken") as? String
-                        val intent = Intent(this@LoginActivity, OtpActivity::class.java)
-                        intent.putExtra("tempToken", tempToken)
-                        intent.putExtra("email", email)
-                        startActivity(intent)
-                        finish()
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        handleLoginResponse(response.body()!!)
                     } else {
-                        Toast.makeText(this@LoginActivity, "Login failed: ${response.message()}", Toast.LENGTH_SHORT).show()
+                        val errorMsg = response.body()?.message ?: "Login failed: ${response.message()}"
+                        Toast.makeText(this@LoginActivity, errorMsg, Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
@@ -65,4 +62,59 @@ class LoginActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun handleLoginResponse(loginResponse: LoginResponse) {
+        val data = loginResponse.data
+
+        when {
+            // First login - must change password
+            loginResponse.requirePasswordChange == true && data?.tempToken != null -> {
+                val intent = Intent(this, ChangePasswordActivity::class.java)
+                intent.putExtra("tempToken", data.tempToken)
+                intent.putExtra("hospitalName", data.hospitalName)
+                startActivity(intent)
+                finish()
+            }
+
+            // TOTP verification required (subsequent logins)
+            loginResponse.requireTotp == true && data?.tempToken != null -> {
+                val intent = Intent(this, TotpVerificationActivity::class.java)
+                intent.putExtra("tempToken", data.tempToken)
+                intent.putExtra("hospitalName", data.hospitalName)
+                startActivity(intent)
+                finish()
+            }
+
+            // Password changed but TOTP not set up yet
+            loginResponse.requireTotpSetup == true && data?.accessToken != null -> {
+                saveTokens(data.accessToken, data.refreshToken ?: "")
+                val intent = Intent(this, TotpSetupActivity::class.java)
+                startActivity(intent)
+                finish()
+            }
+
+            // Normal login - already has TOTP configured
+            data?.accessToken != null -> {
+                saveTokens(data.accessToken, data.refreshToken ?: "")
+                val intent = Intent(this, DashboardActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+                finish()
+            }
+
+            else -> {
+                Toast.makeText(this, "Unexpected login response", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun saveTokens(accessToken: String, refreshToken: String) {
+        val sharedPrefs = getSharedPreferences("hospital_prefs", MODE_PRIVATE)
+        sharedPrefs.edit().apply {
+            putString("accessToken", accessToken)
+            putString("refreshToken", refreshToken)
+            apply()
+        }
+    }
 }
+

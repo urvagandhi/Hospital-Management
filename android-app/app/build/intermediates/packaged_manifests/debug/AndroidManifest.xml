@@ -36,7 +36,6 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:testOnly="true"
         android:theme="@style/Theme.HospitalManagement"
         android:usesCleartextTraffic="true" >
         <activity
@@ -49,6 +48,15 @@
             </intent-filter>
         </activity>
         <activity android:name="com.hospital.management.ui.auth.OtpActivity" />
+        <activity
+            android:name="com.hospital.management.ui.auth.ChangePasswordActivity"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name="com.hospital.management.ui.auth.TotpSetupActivity"
+            android:screenOrientation="portrait" />
+        <activity
+            android:name="com.hospital.management.ui.auth.TotpVerificationActivity"
+            android:screenOrientation="portrait" />
         <activity android:name="com.hospital.management.ui.dashboard.DashboardActivity" />
         <activity android:name="com.hospital.management.ui.admission.AdmissionActivity" />
         <activity android:name="com.hospital.management.ui.scanner.ScannerActivity" />

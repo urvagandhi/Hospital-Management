@@ -1,5 +1,6 @@
 package com.hospital.management.data.api
 
+import com.hospital.management.data.models.*
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -7,7 +8,24 @@ import retrofit2.http.*
 
 interface ApiService {
     @POST("/api/auth/login")
-    suspend fun login(@Body body: Map<String, String>): Response<Map<String, Any>>
+    suspend fun login(@Body body: Map<String, String>): Response<LoginResponse>
+
+    @POST("/api/auth/change-password")
+    suspend fun changePassword(
+        @Header("Authorization") authorization: String,
+        @Body body: Map<String, String>
+    ): Response<ChangePasswordResponse>
+
+    @GET("/api/auth/2fa/setup")
+    suspend fun setupTotp(
+        @Header("Authorization") authorization: String
+    ): Response<TotpSetupResponse>
+
+    @POST("/api/auth/2fa/verify")
+    suspend fun verifyTotpSetup(
+        @Header("Authorization") authorization: String,
+        @Body body: Map<String, String>
+    ): Response<TotpVerifyResponse>
 
     @POST("/api/auth/verify-otp")
     suspend fun verifyOtp(
@@ -24,7 +42,7 @@ interface ApiService {
     suspend fun verifyTotpLogin(
         @Header("Authorization") authorization: String,
         @Body body: Map<String, String>
-    ): Response<Map<String, Any>>
+    ): Response<LoginResponse>
 
     @POST("/api/auth/login/recovery")
     suspend fun recoveryLogin(

@@ -32,4 +32,8 @@
     <color name="success">#10B981</color>
     <color name="warning">#F59E0B</color>
     <color name="info">#3B82F6</color>
+    
+    <!-- Additional Colors -->
+    <color name="gray">#6B7280</color>
+    <color name="light_blue">#E0F2FE</color>
 </resources>

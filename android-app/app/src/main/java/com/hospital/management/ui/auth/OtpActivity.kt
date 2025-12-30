@@ -49,7 +49,11 @@ class OtpActivity : AppCompatActivity() {
         binding.btnVerify.setOnClickListener {
             val otp = binding.etOtp.text.toString()
             if (otp.length == 6) {
-                verifyOtp(otp)
+                if (showRecovery) {
+                    verifyRecovery(otp)
+                } else {
+                    verifyTotp(otp)
+                }
             } else {
                 showError("Please enter a valid 6-digit OTP")
             }
@@ -122,32 +126,23 @@ class OtpActivity : AppCompatActivity() {
                     binding.progressBar.visibility = android.view.View.GONE
                     binding.btnVerify.isEnabled = true
 
-                    if (response.isSuccessful && response.body()?.get("success") == true) {
-                        // Handle same success flow as before
-                        val data = response.body()?.get("data") as? Map<*, *>
-                        val hospital = data?.get("hospital") as? Map<*, *>
+                    if (response.isSuccessful && response.body()?.success == true) {
+                        val data = response.body()?.data
 
-                        if (hospital != null) {
-                            val hospitalId = hospital["_id"] as? String ?: ""
-                            val hospitalName = hospital["hospitalName"] as? String ?: ""
-                            val logoUrl = hospital["logoUrl"] as? String ?: ""
+                        if (data != null && data.accessToken != null && data.refreshToken != null) {
+                            saveTokens(data.accessToken, data.refreshToken)
 
-                            val sharedPrefs = getSharedPreferences("HospitalPrefs", MODE_PRIVATE)
-                            sharedPrefs.edit().apply {
-                                putString("hospital_id", hospitalId)
-                                putString("hospital_name", hospitalName)
-                                putString("hospital_logo_url", logoUrl)
-                                apply()
-                            }
+                            Toast.makeText(this@OtpActivity, "Verified successfully", Toast.LENGTH_SHORT).show()
+                            val intent = Intent(this@OtpActivity, DashboardActivity::class.java)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            startActivity(intent)
+                            finish()
+                        } else {
+                            showError("Invalid response data")
+                            binding.etOtp.text?.clear()
                         }
-
-                        Toast.makeText(this@OtpActivity, "Verified successfully", Toast.LENGTH_SHORT).show()
-                        val intent = Intent(this@OtpActivity, DashboardActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        startActivity(intent)
-                        finish()
                     } else {
-                        val errorMsg = response.body()?.get("message") as? String ?: "Verification failed"
+                        val errorMsg = response.body()?.message ?: "Verification failed"
                         showError(errorMsg)
                         binding.etOtp.text?.clear()
                     }
@@ -256,6 +251,15 @@ class OtpActivity : AppCompatActivity() {
     private fun showError(message: String) {
         binding.tvError.text = message
         binding.tvError.visibility = android.view.View.VISIBLE
+    }
+
+    private fun saveTokens(accessToken: String, refreshToken: String) {
+        val sharedPrefs = getSharedPreferences("hospital_prefs", MODE_PRIVATE)
+        sharedPrefs.edit().apply {
+            putString("accessToken", accessToken)
+            putString("refreshToken", refreshToken)
+            apply()
+        }
     }
 
     override fun onDestroy() {

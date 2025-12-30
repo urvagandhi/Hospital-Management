@@ -28,12 +28,12 @@ class AuthViewModel(
             _authState.value = AuthState.Loading
             try {
                 val response = loginUseCase(email, password)
-                if (response.isSuccessful && response.body()?.get("success") == true) {
-                    val data = response.body()?.get("data") as? Map<*, *>
-                    val tempToken = data?.get("tempToken") as? String
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data
+                    val tempToken = data?.tempToken
                     _authState.value = AuthState.Success("OTP sent successfully", tempToken)
                 } else {
-                    val errorMsg = response.body()?.get("message") as? String ?: "Login failed"
+                    val errorMsg = response.body()?.message ?: "Login failed"
                     _authState.value = AuthState.Error(errorMsg)
                 }
             } catch (e: Exception) {
