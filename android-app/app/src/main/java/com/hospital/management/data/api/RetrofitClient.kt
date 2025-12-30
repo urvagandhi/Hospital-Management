@@ -28,8 +28,13 @@ object RetrofitClient {
                 }
             }
 
+            val certificatePinner = okhttp3.CertificatePinner.Builder()
+                .add("hospital-management-ku71.onrender.com", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") // TODO: Replace with actual hash
+                .build()
+
             val client = OkHttpClient.Builder()
                 .cookieJar(cookieJar)
+                // .certificatePinner(certificatePinner) // TODO: Uncomment after adding correct hash
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)

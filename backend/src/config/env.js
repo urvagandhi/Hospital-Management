@@ -78,7 +78,16 @@ const config = {
 // Validate required environment variables in production
 if (config.NODE_ENV === "production") {
   if (!config.JWT_SECRET || config.JWT_SECRET.includes("dev-")) {
-    throw new Error("JWT_SECRET must be set in production");
+    throw new Error("SECURITY ALERT: JWT_SECRET must be set to a secure value in production (cannot contain 'dev-')");
+  }
+  if (!config.REFRESH_TOKEN_SECRET || config.REFRESH_TOKEN_SECRET.includes("dev-")) {
+    throw new Error("SECURITY ALERT: REFRESH_TOKEN_SECRET must be set to a secure value in production");
+  }
+  if (!config.TOTP_ENCRYPTION_KEY) {
+    throw new Error("SECURITY ALERT: TOTP_ENCRYPTION_KEY must be set in production");
+  }
+  if (config.TOTP_ENCRYPTION_KEY.length < 32) {
+    throw new Error("SECURITY ALERT: TOTP_ENCRYPTION_KEY must be at least 32 characters long");
   }
   if (!config.MONGODB_URI) {
     throw new Error("MONGODB_URI must be set in production");

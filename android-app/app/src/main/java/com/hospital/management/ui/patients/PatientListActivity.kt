@@ -5,34 +5,53 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.hospital.management.FolderViewActivity
 import com.hospital.management.data.api.RetrofitClient
+import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.models.Patient
+import com.hospital.management.data.repository.PatientRepository
 import com.hospital.management.databinding.ActivityPatientListBinding
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.hospital.management.presentation.viewmodel.PatientState
+import com.hospital.management.presentation.viewmodel.PatientViewModel
+import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class PatientListActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPatientListBinding
     private lateinit var adapter: PatientAdapter
-    private val patients = mutableListOf<Patient>()
+    private lateinit var patientViewModel: PatientViewModel
+    private lateinit var tokenManager: TokenManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityPatientListBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        tokenManager = TokenManager(this)
+
+        setupViewModel()
         setupRecyclerView()
         setupClickListeners()
+        setupObservers()
+
+        // Initial Load
         loadPatients()
     }
 
+    private fun setupViewModel() {
+        val apiService = RetrofitClient.getApiService(this)
+        val patientRepository = PatientRepository(apiService, tokenManager)
+        val factory = ViewModelFactory(patientRepository = patientRepository)
+        patientViewModel = ViewModelProvider(this, factory)[PatientViewModel::class.java]
+    }
+
     private fun setupRecyclerView() {
-        adapter = PatientAdapter(patients) { patient ->
+        adapter = PatientAdapter(mutableListOf()) { patient ->
             // Navigate to patient details/folders
-            val intent = Intent(this, com.hospital.management.FolderViewActivity::class.java)
+            val intent = Intent(this, FolderViewActivity::class.java)
             intent.putExtra("PATIENT_ID", patient._id)
             intent.putExtra("PATIENT_NAME", patient.patientName)
             startActivity(intent)
@@ -47,77 +66,69 @@ class PatientListActivity : AppCompatActivity() {
             finish()
         }
 
+        binding.fabAddPatient.setOnClickListener {
+            startActivity(Intent(this, com.hospital.management.ui.admission.AdmissionActivity::class.java))
+        }
+
         binding.swipeRefresh.setOnRefreshListener {
             loadPatients()
+        }
+
+        binding.searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                adapter.filter.filter(query)
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                adapter.filter.filter(newText)
+                return false
+            }
+        })
+    }
+
+    private fun setupObservers() {
+        // Observe State
+        lifecycleScope.launch {
+            patientViewModel.patientState.collect { state ->
+                when (state) {
+                    is PatientState.Loading -> {
+                        binding.progressBar.visibility = View.VISIBLE
+                    }
+                    is PatientState.Success -> {
+                        binding.progressBar.visibility = View.GONE
+                        binding.swipeRefresh.isRefreshing = false
+                    }
+                    is PatientState.Error -> {
+                        binding.progressBar.visibility = View.GONE
+                        binding.swipeRefresh.isRefreshing = false
+                        Toast.makeText(this@PatientListActivity, state.message, Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        binding.progressBar.visibility = View.GONE
+                        binding.swipeRefresh.isRefreshing = false
+                    }
+                }
+            }
+        }
+
+        // Observe Data
+        lifecycleScope.launch {
+            patientViewModel.patients.collect { patients ->
+               if (patients.isEmpty()) {
+                   binding.layoutEmpty.visibility = View.VISIBLE
+                   binding.rvPatients.visibility = View.GONE
+                   adapter.updateList(emptyList())
+               } else {
+                   binding.layoutEmpty.visibility = View.GONE
+                   binding.rvPatients.visibility = View.VISIBLE
+                   adapter.updateList(patients)
+               }
+            }
         }
     }
 
     private fun loadPatients() {
-        binding.progressBar.visibility = View.VISIBLE
-        binding.swipeRefresh.isRefreshing = true
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val apiService = RetrofitClient.getApiService(this@PatientListActivity)
-                val response = apiService.getPatients(limit = 100, skip = 0)
-
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
-                    binding.swipeRefresh.isRefreshing = false
-
-                    if (response.isSuccessful && response.body()?.get("success") == true) {
-                        val data = response.body()?.get("data") as? Map<*, *>
-                        val patientsList = data?.get("patients") as? List<*>
-
-                        patients.clear()
-                        patientsList?.forEach { item ->
-                            val patientMap = item as? Map<*, *>
-                            if (patientMap != null) {
-                                patients.add(
-                                    Patient(
-                                        _id = patientMap["_id"] as? String ?: "",
-                                        patientName = patientMap["patientName"] as? String ?: "",
-                                        email = patientMap["email"] as? String,
-                                        phone = patientMap["phone"] as? String ?: "",
-                                        dateOfBirth = patientMap["dateOfBirth"] as? String ?: "",
-                                        medicalRecordNumber = patientMap["medicalRecordNumber"] as? String ?: "",
-                                        hospitalId = patientMap["hospitalId"] as? String ?: "",
-                                        folders = emptyList(),
-                                        status = patientMap["status"] as? String ?: "active",
-                                        createdAt = patientMap["createdAt"] as? String ?: ""
-                                    )
-                                )
-                            }
-                        }
-
-                        adapter.notifyDataSetChanged()
-
-                        if (patients.isEmpty()) {
-                            binding.tvEmpty.visibility = View.VISIBLE
-                            binding.rvPatients.visibility = View.GONE
-                        } else {
-                            binding.tvEmpty.visibility = View.GONE
-                            binding.rvPatients.visibility = View.VISIBLE
-                        }
-                    } else {
-                        Toast.makeText(
-                            this@PatientListActivity,
-                            "Failed to load patients",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
-                    binding.swipeRefresh.isRefreshing = false
-                    Toast.makeText(
-                        this@PatientListActivity,
-                        "Error: ${e.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
-        }
+        patientViewModel.getPatients()
     }
 }

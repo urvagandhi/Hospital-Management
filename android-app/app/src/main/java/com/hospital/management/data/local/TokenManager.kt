@@ -1,73 +1,126 @@
 package com.hospital.management.data.local
 
 import android.content.Context
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "hospital_prefs")
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.onStart
 
 class TokenManager(private val context: Context) {
-    
+
     companion object {
-        private val ACCESS_TOKEN = stringPreferencesKey("access_token")
-        private val REFRESH_TOKEN = stringPreferencesKey("refresh_token")
-        private val TEMP_TOKEN = stringPreferencesKey("temp_token")
-        private val HOSPITAL_ID = stringPreferencesKey("hospital_id")
-        private val HOSPITAL_NAME = stringPreferencesKey("hospital_name")
-        private val HOSPITAL_LOGO_URL = stringPreferencesKey("hospital_logo_url")
-        private val DEVICE_ID = stringPreferencesKey("device_id")
+        private const val PREFS_NAME = "secure_hospital_prefs"
+        private const val ACCESS_TOKEN = "access_token"
+        private const val REFRESH_TOKEN = "refresh_token"
+        private const val TEMP_TOKEN = "temp_token"
+        private const val HOSPITAL_ID = "hospital_id"
+        private const val HOSPITAL_NAME = "hospital_name"
+        private const val HOSPITAL_LOGO_URL = "hospital_logo_url"
+        private const val DEVICE_ID = "device_id"
+        private const val USER_EMAIL = "user_email"
+        private const val USER_PASSWORD = "user_password"
     }
-    
-    val accessToken: Flow<String?> = context.dataStore.data.map { it[ACCESS_TOKEN] }
-    val refreshToken: Flow<String?> = context.dataStore.data.map { it[REFRESH_TOKEN] }
-    val tempToken: Flow<String?> = context.dataStore.data.map { it[TEMP_TOKEN] }
-    val hospitalId: Flow<String?> = context.dataStore.data.map { it[HOSPITAL_ID] }
-    val hospitalName: Flow<String?> = context.dataStore.data.map { it[HOSPITAL_NAME] }
-    val hospitalLogoUrl: Flow<String?> = context.dataStore.data.map { it[HOSPITAL_LOGO_URL] }
-    
+
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
+        context,
+        PREFS_NAME,
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+
+    // Helper to generic flow from preferences
+    private fun getFlow(key: String): Flow<String?> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, k ->
+            if (key == k) {
+                trySend(sharedPreferences.getString(key, null))
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        // Send initial value
+        trySend(prefs.getString(key, null))
+
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.onStart { emit(prefs.getString(key, null)) }.distinctUntilChanged()
+
+    val accessToken: Flow<String?> = getFlow(ACCESS_TOKEN)
+    val refreshToken: Flow<String?> = getFlow(REFRESH_TOKEN)
+    val tempToken: Flow<String?> = getFlow(TEMP_TOKEN)
+    val hospitalId: Flow<String?> = getFlow(HOSPITAL_ID)
+    val hospitalName: Flow<String?> = getFlow(HOSPITAL_NAME)
+    val hospitalLogoUrl: Flow<String?> = getFlow(HOSPITAL_LOGO_URL)
+
     suspend fun saveTokens(accessToken: String, refreshToken: String) {
-        context.dataStore.edit { prefs ->
-            prefs[ACCESS_TOKEN] = accessToken
-            prefs[REFRESH_TOKEN] = refreshToken
+        prefs.edit().apply {
+            putString(ACCESS_TOKEN, accessToken)
+            putString(REFRESH_TOKEN, refreshToken)
+            apply()
         }
     }
-    
+
     suspend fun saveTempToken(token: String) {
-        context.dataStore.edit { prefs ->
-            prefs[TEMP_TOKEN] = token
+        prefs.edit().apply {
+            putString(TEMP_TOKEN, token)
+            apply()
         }
     }
-    
+
     suspend fun saveHospitalInfo(id: String, name: String, logoUrl: String = "") {
-        context.dataStore.edit { prefs ->
-            prefs[HOSPITAL_ID] = id
-            prefs[HOSPITAL_NAME] = name
-            prefs[HOSPITAL_LOGO_URL] = logoUrl
+        prefs.edit().apply {
+            putString(HOSPITAL_ID, id)
+            putString(HOSPITAL_NAME, name)
+            putString(HOSPITAL_LOGO_URL, logoUrl)
+            apply()
         }
     }
-    
+
     suspend fun saveDeviceId(deviceId: String) {
-        context.dataStore.edit { prefs ->
-            prefs[DEVICE_ID] = deviceId
+        prefs.edit().apply {
+            putString(DEVICE_ID, deviceId)
+            apply()
         }
     }
-    
+
     suspend fun clearAll() {
-        context.dataStore.edit { prefs ->
-            prefs.clear()
+        prefs.edit().apply {
+            remove(ACCESS_TOKEN)
+            remove(REFRESH_TOKEN)
+            remove(TEMP_TOKEN)
+            remove(HOSPITAL_ID)
+            remove(HOSPITAL_NAME)
+            remove(HOSPITAL_LOGO_URL)
+            apply()
         }
     }
-    
+
     suspend fun getAccessToken(): String? {
-        var token: String? = null
-        context.dataStore.data.collect { prefs ->
-            token = prefs[ACCESS_TOKEN]
-        }
-        return token
+        return prefs.getString(ACCESS_TOKEN, null)
     }
+
+    suspend fun getHospitalName(): String? {
+        return prefs.getString(HOSPITAL_NAME, null)
+    }
+
+    suspend fun getHospitalLogoUrl(): String? {
+        return prefs.getString(HOSPITAL_LOGO_URL, null)
+    }
+
+    suspend fun saveCredentials(email: String, password: String) {
+        prefs.edit().apply {
+            putString(USER_EMAIL, email)
+            putString(USER_PASSWORD, password)
+            apply()
+        }
+    }
+
+    suspend fun getEmail(): String? = prefs.getString(USER_EMAIL, null)
+    suspend fun getPassword(): String? = prefs.getString(USER_PASSWORD, null)
 }

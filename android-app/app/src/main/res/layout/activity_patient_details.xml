@@ -1,250 +1,244 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="#F9FAFB">
+    android:background="@color/background">
 
-    <!-- Header -->
-    <LinearLayout
+    <!-- Header Section -->
+    <View
+        android:id="@+id/viewHeader"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
+        android:layout_height="120dp"
         android:background="@color/primary"
-        android:gravity="center_vertical">
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <ImageButton
-            android:id="@+id/btnBack"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_revert"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            app:tint="@android:color/white" />
+    <ImageButton
+        android:id="@+id/btnBack"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="12dp"
+        android:src="@drawable/ic_chevron_right"
+        android:rotation="180"
+        app:tint="@color/white"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Patient Details"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="@android:color/white"
-            android:layout_marginStart="8dp" />
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Patient Profile"
+        android:textColor="@color/white"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@id/btnBack"
+        app:layout_constraintStart_toEndOf="@id/btnBack"
+        app:layout_constraintTop_toTopOf="@id/btnBack" />
 
-        <Button
-            android:id="@+id/btnEdit"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:text="Edit"
-            android:textColor="@color/primary"
-            android:backgroundTint="@android:color/white"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp"
-            style="?attr/materialButtonOutlinedStyle" />
-    </LinearLayout>
-
-    <!-- Content -->
-    <FrameLayout
+    <!-- Scrollable Content -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scrollView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:paddingBottom="88dp"
+        app:layout_constraintTop_toBottomOf="@id/btnBack"
+        app:layout_constraintBottom_toBottomOf="parent">
 
-        <ScrollView
-            android:id="@+id/scrollView"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
 
-            <LinearLayout
+            <!-- Personal Info Card -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/surface">
 
-                <com.google.android.material.card.MaterialCardView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="2dp"
-                    android:layout_marginBottom="16dp">
+                    android:orientation="vertical"
+                    android:padding="24dp">
 
-                    <LinearLayout
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Personal Information"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="24dp" />
+
+                    <!-- Name -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.App.TextInputLayout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="20dp">
+                        android:hint="Full Name"
+                        android:layout_marginBottom="16dp">
 
-                        <!-- Patient Name -->
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Patient Name"
-                            android:textSize="12sp"
-                            android:textColor="#6B7280"
-                            android:textStyle="bold" />
-
-                        <EditText
+                        <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etPatientName"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Enter patient name"
-                            android:textSize="16sp"
-                            android:textColor="#111827"
+                            android:inputType="textPersonName"
                             android:enabled="false"
-                            android:background="@android:color/transparent"
-                            android:paddingTop="8dp"
-                            android:paddingBottom="16dp" />
+                            android:textColor="@color/text_primary"/>
+                    </com.google.android.material.textfield.TextInputLayout>
 
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="#E5E7EB"
-                            android:layout_marginBottom="16dp" />
+                    <!-- MRN & DOB Row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:baselineAligned="false"
+                        android:layout_marginBottom="16dp">
 
-                        <!-- Email -->
-                        <TextView
-                            android:layout_width="wrap_content"
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.App.TextInputLayout"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Email"
-                            android:textSize="12sp"
-                            android:textColor="#6B7280"
-                            android:textStyle="bold" />
+                            android:layout_weight="1"
+                            android:hint="MRN"
+                            android:layout_marginEnd="8dp">
 
-                        <EditText
-                            android:id="@+id/etEmail"
-                            android:layout_width="match_parent"
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etMrn"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:enabled="false"
+                                android:textColor="@color/text_primary"/>
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.App.TextInputLayout"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:hint="Enter email address"
-                            android:inputType="textEmailAddress"
-                            android:textSize="16sp"
-                            android:textColor="#111827"
-                            android:enabled="false"
-                            android:background="@android:color/transparent"
-                            android:paddingTop="8dp"
-                            android:paddingBottom="16dp" />
+                            android:layout_weight="1"
+                            android:hint="Date of Birth"
+                            android:layout_marginStart="8dp">
 
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="#E5E7EB"
-                            android:layout_marginBottom="16dp" />
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etDateOfBirth"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="date"
+                                android:enabled="false"
+                                android:textColor="@color/text_primary"/>
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
 
-                        <!-- Phone -->
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Phone"
-                            android:textSize="12sp"
-                            android:textColor="#6B7280"
-                            android:textStyle="bold" />
+                    <!-- Contact Info -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.App.TextInputLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Phone Number"
+                        android:layout_marginBottom="16dp"
+                        app:startIconDrawable="@drawable/ic_phone"
+                        app:startIconTint="@color/primary">
 
-                        <EditText
+                        <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etPhone"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Enter phone number"
                             android:inputType="phone"
-                            android:textSize="16sp"
-                            android:textColor="#111827"
                             android:enabled="false"
-                            android:background="@android:color/transparent"
-                            android:paddingTop="8dp"
-                            android:paddingBottom="16dp" />
+                            android:textColor="@color/text_primary"/>
+                    </com.google.android.material.textfield.TextInputLayout>
 
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="#E5E7EB"
-                            android:layout_marginBottom="16dp" />
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.App.TextInputLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Email Address"
+                        android:layout_marginBottom="16dp"
+                        app:startIconDrawable="@drawable/ic_email"
+                        app:startIconTint="@color/primary">
 
-                        <!-- Date of Birth -->
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Date of Birth"
-                            android:textSize="12sp"
-                            android:textColor="#6B7280"
-                            android:textStyle="bold" />
-
-                        <EditText
-                            android:id="@+id/etDateOfBirth"
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etEmail"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="YYYY-MM-DD"
-                            android:textSize="16sp"
-                            android:textColor="#111827"
+                            android:inputType="textEmailAddress"
                             android:enabled="false"
-                            android:background="@android:color/transparent"
-                            android:paddingTop="8dp"
-                            android:paddingBottom="16dp" />
+                            android:textColor="@color/text_primary"/>
+                    </com.google.android.material.textfield.TextInputLayout>
 
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="#E5E7EB"
-                            android:layout_marginBottom="16dp" />
+                    <!-- Notes -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.App.TextInputLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Medical Notes">
 
-                        <!-- Medical Record Number -->
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Medical Record Number"
-                            android:textSize="12sp"
-                            android:textColor="#6B7280"
-                            android:textStyle="bold" />
-
-                        <EditText
-                            android:id="@+id/etMrn"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:hint="Enter MRN"
-                            android:textSize="16sp"
-                            android:textColor="#111827"
-                            android:enabled="false"
-                            android:background="@android:color/transparent"
-                            android:paddingTop="8dp"
-                            android:paddingBottom="16dp" />
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:background="#E5E7EB"
-                            android:layout_marginBottom="16dp" />
-
-                        <!-- Notes -->
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Notes"
-                            android:textSize="12sp"
-                            android:textColor="#6B7280"
-                            android:textStyle="bold" />
-
-                        <EditText
+                        <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etNotes"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Enter notes (optional)"
                             android:inputType="textMultiLine"
                             android:minLines="3"
                             android:gravity="top"
-                            android:textSize="16sp"
-                            android:textColor="#111827"
                             android:enabled="false"
-                            android:background="@android:color/transparent"
-                            android:paddingTop="8dp"
-                            android:paddingBottom="8dp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-            </LinearLayout>
-        </ScrollView>
+                            android:textColor="@color/text_primary"/>
+                    </com.google.android.material.textfield.TextInputLayout>
 
-        <ProgressBar
-            android:id="@+id/progressBar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:indeterminateTint="@color/primary" />
-    </FrameLayout>
-</LinearLayout>
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Folders Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Patient Documents"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="16dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvFolders"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false" />
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:indeterminateTint="@color/primary"
+        android:visibility="gone" />
+
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/btnEdit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="24dp"
+        android:text="Edit Profile"
+        android:textColor="@color/white"
+        app:icon="@drawable/ic_edit_pencil"
+        app:iconTint="@color/white"
+        app:backgroundTint="@color/primary"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

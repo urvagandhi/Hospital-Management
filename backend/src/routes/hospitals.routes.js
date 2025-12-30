@@ -5,9 +5,13 @@
 
 import express from "express";
 import { getAllHospitals, getHospitalById, updateHospital } from "../controllers/hospitals.controller.js";
+import { verifyAccessToken } from "../middleware/auth.js";
 import { uploadSingle } from "../middleware/upload.js";
 
 const router = express.Router();
+
+// Apply auth middleware to all routes
+router.use(verifyAccessToken);
 
 /**
  * GET /api/hospitals

@@ -15,9 +15,17 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import com.hospital.management.presentation.viewmodel.PatientState
+import com.hospital.management.presentation.viewmodel.PatientViewModel
+import com.hospital.management.presentation.viewmodel.ViewModelFactory
+import com.hospital.management.data.models.Patient
+
 class PatientDetailsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPatientDetailsBinding
-    private lateinit var repository: PatientRepository
+    private lateinit var patientViewModel: PatientViewModel
+    private lateinit var tokenManager: TokenManager
     private var patientId: String = ""
     private var isEditMode = false
 
@@ -26,19 +34,31 @@ class PatientDetailsActivity : AppCompatActivity() {
         binding = ActivityPatientDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val tokenManager = TokenManager(this)
-        val apiService = RetrofitClient.getApiService(this)
-        repository = PatientRepository(apiService, tokenManager)
+        tokenManager = TokenManager(this)
+        setupViewModel()
 
         patientId = intent.getStringExtra("PATIENT_ID") ?: ""
 
+        setupViews()
         setupClickListeners()
+        setupObservers()
         loadPatientDetails()
+    }
+
+    private fun setupViewModel() {
+        val apiService = RetrofitClient.getApiService(this)
+        val patientRepository = PatientRepository(apiService, tokenManager)
+        val factory = ViewModelFactory(patientRepository = patientRepository)
+        patientViewModel = ViewModelProvider(this, factory)[PatientViewModel::class.java]
+    }
+
+    private fun setupViews() {
+        binding.scrollView.visibility = View.GONE
     }
 
     private fun setupClickListeners() {
         binding.btnBack.setOnClickListener { finish() }
-        
+
         binding.btnEdit.setOnClickListener {
             if (isEditMode) {
                 savePatientDetails()
@@ -48,43 +68,68 @@ class PatientDetailsActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadPatientDetails() {
-        binding.progressBar.visibility = View.VISIBLE
-        binding.scrollView.visibility = View.GONE
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val response = repository.getPatientById(patientId)
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
-                    binding.scrollView.visibility = View.VISIBLE
-
-                    if (response.isSuccessful && response.body()?.get("success") == true) {
-                        val data = response.body()?.get("data") as? Map<*, *>
-                        displayPatientInfo(data)
-                    } else {
-                        Toast.makeText(this@PatientDetailsActivity, "Failed to load patient details", Toast.LENGTH_SHORT).show()
-                        finish()
+    private fun setupObservers() {
+         lifecycleScope.launch {
+            patientViewModel.patientState.collect { state ->
+                when(state) {
+                    is PatientState.Loading -> binding.progressBar.visibility = View.VISIBLE
+                    is PatientState.Success -> {
+                        binding.progressBar.visibility = View.GONE
+                        if (state.message == "Patient updated successfully") {
+                             Toast.makeText(this@PatientDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
+                             disableEditMode()
+                        } else if (state.message?.isNotEmpty() == true && state.message != "Patient loaded") {
+                             Toast.makeText(this@PatientDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
+                        }
                     }
+                    is PatientState.Error -> {
+                        binding.progressBar.visibility = View.GONE
+                        Toast.makeText(this@PatientDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
+                    }
+                    else -> binding.progressBar.visibility = View.GONE
                 }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
-                    Toast.makeText(this@PatientDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    finish()
-                }
+            }
+        }
+
+        lifecycleScope.launch {
+            patientViewModel.currentPatient.collect { patient ->
+                 if (patient != null && patient._id == patientId) {
+                     displayPatientInfo(patient)
+                     binding.scrollView.visibility = View.VISIBLE
+                 }
             }
         }
     }
 
-    private fun displayPatientInfo(data: Map<*, *>?) {
-        data?.let {
-            binding.etPatientName.setText(it["patientName"] as? String ?: "")
-            binding.etEmail.setText(it["email"] as? String ?: "")
-            binding.etPhone.setText(it["phone"] as? String ?: "")
-            binding.etDateOfBirth.setText(formatDate(it["dateOfBirth"] as? String ?: ""))
-            binding.etMrn.setText(it["medicalRecordNumber"] as? String ?: "")
-            binding.etNotes.setText(it["notes"] as? String ?: "")
+    private fun loadPatientDetails() {
+         patientViewModel.getPatientById(patientId)
+    }
+
+    private fun displayPatientInfo(patient: Patient) {
+        binding.etPatientName.setText(patient.patientName)
+        binding.etEmail.setText(patient.email ?: "")
+        binding.etPhone.setText(patient.phone)
+        binding.etDateOfBirth.setText(formatDate(patient.dateOfBirth))
+        binding.etMrn.setText(patient.medicalRecordNumber)
+        binding.etNotes.setText("") // Placeholder as notes not in model yet
+
+        // Setup Folders RecyclerView
+        val folders = patient.folders
+        if (folders.isNotEmpty()) {
+            val folderAdapter = FolderAdapter(folders) { folder ->
+                // Navigate to folder details
+                val intent = android.content.Intent(this, com.hospital.management.FolderDetailsActivity::class.java)
+                intent.putExtra("PATIENT_ID", patient._id)
+                intent.putExtra("FOLDER_NAME", folder.name)
+                intent.putExtra("FILE_COUNT", folder.fileCount)
+                startActivity(intent)
+            }
+            binding.rvFolders.layoutManager = androidx.recyclerview.widget.GridLayoutManager(this, 2)
+            binding.rvFolders.adapter = folderAdapter
+            binding.rvFolders.visibility = View.VISIBLE
+        } else {
+            binding.rvFolders.visibility = View.GONE
+            // Optionally show "No folders" text if added to layout
         }
     }
 
@@ -135,37 +180,15 @@ class PatientDetailsActivity : AppCompatActivity() {
             return
         }
 
-        binding.progressBar.visibility = View.VISIBLE
+        val requestBody = mapOf(
+            "patientName" to patientName,
+            "email" to email,
+            "phone" to phone,
+            "dateOfBirth" to dateOfBirth,
+            "medicalRecordNumber" to mrn,
+            "notes" to notes
+        )
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val requestBody = mapOf(
-                    "patientName" to patientName,
-                    "email" to email,
-                    "phone" to phone,
-                    "dateOfBirth" to dateOfBirth,
-                    "medicalRecordNumber" to mrn,
-                    "notes" to notes
-                )
-
-                val response = repository.updatePatient(patientId, requestBody)
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
-
-                    if (response.isSuccessful && response.body()?.get("success") == true) {
-                        Toast.makeText(this@PatientDetailsActivity, "Patient updated successfully", Toast.LENGTH_SHORT).show()
-                        disableEditMode()
-                    } else {
-                        val errorMsg = response.body()?.get("message") as? String ?: "Failed to update patient"
-                        Toast.makeText(this@PatientDetailsActivity, errorMsg, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
-                    Toast.makeText(this@PatientDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
+        patientViewModel.updatePatient(patientId, requestBody)
     }
 }

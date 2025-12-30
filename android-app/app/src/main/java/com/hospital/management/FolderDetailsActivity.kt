@@ -9,18 +9,24 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.hospital.management.data.repository.PatientRepository
-import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
+import com.hospital.management.presentation.viewmodel.PatientState
+import com.hospital.management.presentation.viewmodel.PatientViewModel
+import com.hospital.management.presentation.viewmodel.ViewModelFactory
+import com.hospital.management.data.models.FileItem
 import kotlinx.coroutines.launch
 
 class FolderDetailsActivity : AppCompatActivity() {
 
-    private lateinit var repository: PatientRepository
+    private lateinit var patientViewModel: PatientViewModel
     private lateinit var rvFiles: RecyclerView
     private lateinit var fileAdapter: FileAdapter
     private lateinit var progressBar: View
     private lateinit var tvEmpty: View
+    private lateinit var tokenManager: TokenManager
 
     private var patientId: String = ""
     private var folderName: String = ""
@@ -29,9 +35,24 @@ class FolderDetailsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_folder_details)
 
-        val tokenManager = TokenManager(this)
+        tokenManager = TokenManager(this)
+        setupViewModel()
+
+        // Get folder info from intent
+        patientId = intent.getStringExtra("PATIENT_ID") ?: ""
+        folderName = intent.getStringExtra("FOLDER_NAME") ?: ""
+
+        setupViews()
+        setupObservers()
+        loadFiles()
+    }
+
+    private fun setupViewModel() {
         val apiService = RetrofitClient.getApiService(this)
-        repository = PatientRepository(apiService, tokenManager)
+        val patientRepository = PatientRepository(apiService, tokenManager)
+        val factory = ViewModelFactory(patientRepository = patientRepository)
+        patientViewModel = ViewModelProvider(this, factory)[PatientViewModel::class.java]
+    }
 
         // Get folder info from intent
         patientId = intent.getStringExtra("PATIENT_ID") ?: ""
@@ -43,7 +64,7 @@ class FolderDetailsActivity : AppCompatActivity() {
 
     private fun setupViews() {
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
-        
+
         val displayName = folderName
             .replace("-", " ")
             .split(" ")
@@ -70,66 +91,51 @@ class FolderDetailsActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadFiles() {
-        progressBar.visibility = View.VISIBLE
-        rvFiles.visibility = View.GONE
-        tvEmpty.visibility = View.GONE
+    private fun setupObservers() {
+        lifecycleScope.launch {
+            patientViewModel.patientState.collect { state ->
+                when(state) {
+                    is PatientState.Loading -> progressBar.visibility = View.VISIBLE
+                    is PatientState.Success -> {
+                        progressBar.visibility = View.GONE
+                        if (state.message?.isNotEmpty() == true && state.message != "Files loaded") {
+                            Toast.makeText(this@FolderDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    is PatientState.Error -> {
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this@FolderDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
+                    }
+                    else -> progressBar.visibility = View.GONE
+                }
+            }
+        }
 
         lifecycleScope.launch {
-            try {
-                val response = repository.getPatientById(patientId)
-                if (response.isSuccessful && response.body()?.get("success") == true) {
-                    val data = response.body()?.get("data") as? Map<*, *>
-                    val foldersData = data?.get("folders") as? List<*>
-                    val folderData = foldersData?.find { (it as? Map<*, *>)?.get("name") == folderName } as? Map<*, *>
-                    
-                    val folder = if (folderData != null) {
-                        val filesData = folderData["files"] as? List<*>
-                        val files = mutableListOf<com.hospital.management.data.models.FileItem>()
-                        filesData?.forEach { fileItem ->
-                            val fileMap = fileItem as? Map<*, *>
-                            if (fileMap != null) {
-                                files.add(
-                                    com.hospital.management.data.models.FileItem(
-                                        fileName = fileMap["fileName"] as? String ?: "",
-                                        url = fileMap["url"] as? String ?: "",
-                                        size = (fileMap["size"] as? Number)?.toLong() ?: 0L,
-                                        uploadedAt = fileMap["uploadedAt"] as? String ?: ""
-                                    )
-                                )
-                            }
-                        }
-                        com.hospital.management.data.models.Folder(
-                            name = folderData["name"] as? String ?: "",
-                            files = files,
-                            fileCount = files.size
-                        )
-                    } else null
-                    if (folder != null && folder.files.isNotEmpty()) {
-                        fileAdapter = FileAdapter(folder.files) { file ->
-                            // View or download file
-                            Toast.makeText(this@FolderDetailsActivity, "Opening ${file.name}", Toast.LENGTH_SHORT).show()
-                        }
-                        rvFiles.adapter = fileAdapter
-                        rvFiles.visibility = View.VISIBLE
-                    } else {
-                        tvEmpty.visibility = View.VISIBLE
+            patientViewModel.currentFolderFiles.collect { files ->
+                if (files.isNotEmpty()) {
+                    fileAdapter = FileAdapter(files) { file ->
+                        // View or download file
+                        Toast.makeText(this@FolderDetailsActivity, "Opening ${file.name}", Toast.LENGTH_SHORT).show()
                     }
-                    progressBar.visibility = View.GONE
+                    rvFiles.adapter = fileAdapter
+                    rvFiles.visibility = View.VISIBLE
+                    tvEmpty.visibility = View.GONE
                 } else {
-                    progressBar.visibility = View.GONE
-                    Toast.makeText(this@FolderDetailsActivity, "Failed to load files", Toast.LENGTH_SHORT).show()
+                    rvFiles.visibility = View.GONE
+                    tvEmpty.visibility = View.VISIBLE
                 }
-            } catch (e: Exception) {
-                progressBar.visibility = View.GONE
-                Toast.makeText(this@FolderDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    private fun loadFiles() {
+        patientViewModel.getFolderFiles(patientId, folderName)
+    }
+
     private fun showDownloadOptionsDialog() {
         val options = arrayOf("Download as PDF", "Download as ZIP")
-        
+
         AlertDialog.Builder(this)
             .setTitle("Download Folder Files")
             .setItems(options) { _, which ->
@@ -143,35 +149,11 @@ class FolderDetailsActivity : AppCompatActivity() {
     }
 
     private fun downloadFolderPdf() {
-        lifecycleScope.launch {
-            try {
-                Toast.makeText(this@FolderDetailsActivity, "Preparing PDF...", Toast.LENGTH_SHORT).show()
-                val response = repository.downloadFolderPdf(patientId, folderName)
-                if (response.isSuccessful) {
-                    Toast.makeText(this@FolderDetailsActivity, "PDF downloaded successfully", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this@FolderDetailsActivity, "Download failed", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(this@FolderDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
+        patientViewModel.downloadFolderPdf(patientId, folderName)
     }
 
     private fun downloadFolderZip() {
-        lifecycleScope.launch {
-            try {
-                Toast.makeText(this@FolderDetailsActivity, "Preparing ZIP...", Toast.LENGTH_SHORT).show()
-                val response = repository.downloadFolderZip(patientId, folderName)
-                if (response.isSuccessful) {
-                    Toast.makeText(this@FolderDetailsActivity, "ZIP downloaded successfully", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this@FolderDetailsActivity, "Download failed", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(this@FolderDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
+        patientViewModel.downloadFolderZip(patientId, folderName)
     }
 
     override fun onResume() {

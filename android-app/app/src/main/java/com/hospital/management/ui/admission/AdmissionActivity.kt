@@ -10,16 +10,68 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import com.hospital.management.data.repository.PatientRepository
+import com.hospital.management.data.local.TokenManager
+import com.hospital.management.presentation.viewmodel.PatientState
+import com.hospital.management.presentation.viewmodel.PatientViewModel
+import com.hospital.management.presentation.viewmodel.ViewModelFactory
+import android.view.View
+
 class AdmissionActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAdmissionBinding
+    private lateinit var patientViewModel: PatientViewModel
+    private lateinit var tokenManager: TokenManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityAdmissionBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        tokenManager = TokenManager(this)
+        setupViewModel()
+        setupObservers()
+
         binding.btnSubmit.setOnClickListener {
             createPatient()
+        }
+    }
+
+    private fun setupViewModel() {
+        val apiService = RetrofitClient.getApiService(this)
+        val patientRepository = PatientRepository(apiService, tokenManager)
+        val factory = ViewModelFactory(patientRepository = patientRepository)
+        patientViewModel = ViewModelProvider(this, factory)[PatientViewModel::class.java]
+    }
+
+    private fun setupObservers() {
+        lifecycleScope.launch {
+             patientViewModel.patientState.collect { state ->
+                 when(state) {
+                     is PatientState.Loading -> {
+                         binding.progressBar.visibility = View.VISIBLE
+                         binding.btnSubmit.isEnabled = false
+                     }
+                     is PatientState.Success -> {
+                         binding.progressBar.visibility = View.GONE
+                         binding.btnSubmit.isEnabled = true
+                         if (state.message == "Patient created successfully") {
+                             Toast.makeText(this@AdmissionActivity, state.message, Toast.LENGTH_SHORT).show()
+                             finish()
+                         }
+                     }
+                     is PatientState.Error -> {
+                         binding.progressBar.visibility = View.GONE
+                         binding.btnSubmit.isEnabled = true
+                         Toast.makeText(this@AdmissionActivity, state.message, Toast.LENGTH_SHORT).show()
+                     }
+                     else -> {
+                         binding.progressBar.visibility = View.GONE
+                         binding.btnSubmit.isEnabled = true
+                     }
+                 }
+             }
         }
     }
 
@@ -35,41 +87,14 @@ class AdmissionActivity : AppCompatActivity() {
             return
         }
 
-        binding.progressBar.visibility = android.view.View.VISIBLE
-        binding.btnSubmit.isEnabled = false
+        val patientRequest = com.hospital.management.data.models.PatientRequest(
+            patientName = name,
+            dateOfBirth = dob,
+            phone = phone,
+            email = if (email.isNotEmpty()) email else null,
+            medicalRecordNumber = mrn
+        )
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val apiService = RetrofitClient.getApiService(this@AdmissionActivity)
-                val patientRequest = com.hospital.management.data.models.PatientRequest(
-                    patientName = name,
-                    dateOfBirth = dob,
-                    phone = phone,
-                    email = if (email.isNotEmpty()) email else null,
-                    medicalRecordNumber = mrn
-                )
-                
-                // Cookies with auth tokens are automatically sent by OkHttp CookieJar
-                val response = apiService.createPatient(patientRequest)
-
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = android.view.View.GONE
-                    binding.btnSubmit.isEnabled = true
-
-                    if (response.isSuccessful && response.body()?.get("success") == true) {
-                        Toast.makeText(this@AdmissionActivity, "Patient created successfully", Toast.LENGTH_SHORT).show()
-                        finish()
-                    } else {
-                        Toast.makeText(this@AdmissionActivity, "Failed: ${response.message()}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = android.view.View.GONE
-                    binding.btnSubmit.isEnabled = true
-                    Toast.makeText(this@AdmissionActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
+        patientViewModel.createPatient(patientRequest)
     }
 }

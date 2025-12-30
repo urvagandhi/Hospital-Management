@@ -65,4 +65,50 @@ export const sendInvitationEmail = async (to, hospitalName, tempPassword) => {
   return transporter.sendMail(mailOptions);
 };
 
-export default { sendInvitationEmail };
+export const sendAccountLockedEmail = async (to, hospitalName, lockDurationMinutes) => {
+  const subject = `Security Alert: Account Locked - ${hospitalName}`;
+  const unlockTime = new Date(Date.now() + lockDurationMinutes * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const html = `
+  <html>
+    <body style="font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f6f9fc; padding:20px;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 8px 24px rgba(16,24,40,0.08); border-top: 4px solid #ef4444;">
+              <tr>
+                <td style="padding:28px 32px; text-align:left;">
+                  <h1 style="margin:0 0 8px; font-size:20px; color:#0f172a;">Account Locked</h1>
+                  <p style="margin:0 0 18px; color:#475569; font-size:14px; line-height:1.5;">
+                    Your account for <strong>${hospitalName}</strong> has been temporarily locked due to too many failed authentication attempts.
+                  </p>
+
+                  <div style="background:#fef2f2; padding:14px; border-radius:8px; margin-bottom:18px; border: 1px solid #fee2e2;">
+                    <p style="margin:0; font-size:14px; color:#991b1b;"><strong>Status: Locked</strong></p>
+                    <p style="margin:6px 0 0; font-size:13px; color:#b91c1c;">Your account will automatically unlock in approximately <strong>${lockDurationMinutes} minutes</strong> (around ${unlockTime}).</p>
+                  </div>
+
+                  <p style="margin:0 0 18px; color:#475569; font-size:14px;">If this wasn't you, please contact your administrator immediately or reset your credentials once access is restored.</p>
+
+                  <p style="margin:18px 0 0; color:#94a3b8; font-size:12px;">— ${config.APP_NAME || "Hospital Management"} Security Team</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `;
+
+  const mailOptions = {
+    from: config.SMTP_FROM || `no-reply@${config.SMTP_HOST || "example.com"}`,
+    to,
+    subject,
+    html,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+export default { sendInvitationEmail, sendAccountLockedEmail };

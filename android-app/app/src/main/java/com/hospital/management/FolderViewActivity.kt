@@ -9,18 +9,24 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.hospital.management.data.repository.PatientRepository
-import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
+import com.hospital.management.presentation.viewmodel.PatientState
+import com.hospital.management.presentation.viewmodel.PatientViewModel
+import com.hospital.management.presentation.viewmodel.ViewModelFactory
+import com.hospital.management.data.models.Folder
 import kotlinx.coroutines.launch
 
 class FolderViewActivity : AppCompatActivity() {
 
-    private lateinit var repository: PatientRepository
+    private lateinit var patientViewModel: PatientViewModel
     private lateinit var rvFolders: RecyclerView
     private lateinit var folderAdapter: FolderAdapter
     private lateinit var progressBar: View
     private lateinit var tvEmpty: View
+    private lateinit var tokenManager: TokenManager
 
     private var patientId: String = ""
     private var patientName: String = ""
@@ -29,16 +35,23 @@ class FolderViewActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_folder_view)
 
-        val tokenManager = TokenManager(this)
-        val apiService = RetrofitClient.getApiService(this)
-        repository = PatientRepository(apiService, tokenManager)
+        tokenManager = TokenManager(this)
+        setupViewModel()
 
         // Get patient info from intent
         patientId = intent.getStringExtra("PATIENT_ID") ?: ""
         patientName = intent.getStringExtra("PATIENT_NAME") ?: "Patient"
 
         setupViews()
+        setupObservers()
         loadFolders()
+    }
+
+    private fun setupViewModel() {
+        val apiService = RetrofitClient.getApiService(this)
+        val patientRepository = PatientRepository(apiService, tokenManager)
+        val factory = ViewModelFactory(patientRepository = patientRepository)
+        patientViewModel = ViewModelProvider(this, factory)[PatientViewModel::class.java]
     }
 
     private fun setupViews() {
@@ -67,39 +80,37 @@ class FolderViewActivity : AppCompatActivity() {
         findViewById<View>(R.id.fabDownloadAll).setOnClickListener {
             showDownloadOptionsDialog()
         }
-        
+
         // FAB for create folder
         findViewById<View>(R.id.fabCreateFolder)?.setOnClickListener {
             showCreateFolderDialog()
         }
     }
 
-    private fun loadFolders() {
-        progressBar.visibility = View.VISIBLE
-        rvFolders.visibility = View.GONE
-        tvEmpty.visibility = View.GONE
-
+    private fun setupObservers() {
         lifecycleScope.launch {
-            try {
-                val response = repository.getPatientById(patientId)
-                if (response.isSuccessful && response.body()?.get("success") == true) {
-                    val data = response.body()?.get("data") as? Map<*, *>
-                    val foldersData = data?.get("folders") as? List<*>
-                    val folders = mutableListOf<com.hospital.management.data.models.Folder>()
-                    
-                    foldersData?.forEach { folderItem ->
-                        val folderMap = folderItem as? Map<*, *>
-                        if (folderMap != null) {
-                            folders.add(
-                                com.hospital.management.data.models.Folder(
-                                    name = folderMap["name"] as? String ?: "",
-                                    files = emptyList(),
-                                    fileCount = (folderMap["fileCount"] as? Number)?.toInt() ?: 0
-                                )
-                            )
+            patientViewModel.patientState.collect { state ->
+                when(state) {
+                    is PatientState.Loading -> progressBar.visibility = View.VISIBLE
+                    is PatientState.Success -> {
+                        progressBar.visibility = View.GONE
+                        if (state.message?.isNotEmpty() == true && state.message != "Patient loaded") {
+                             Toast.makeText(this@FolderViewActivity, state.message, Toast.LENGTH_SHORT).show()
                         }
                     }
-                    
+                    is PatientState.Error -> {
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this@FolderViewActivity, state.message, Toast.LENGTH_SHORT).show()
+                    }
+                    else -> progressBar.visibility = View.GONE
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            patientViewModel.currentPatient.collect { patient ->
+                if (patient != null && patient._id == patientId) {
+                    val folders = patient.folders
                     if (folders.isNotEmpty()) {
                         folderAdapter = FolderAdapter(folders) { folder ->
                             // Navigate to folder details
@@ -111,26 +122,25 @@ class FolderViewActivity : AppCompatActivity() {
                         }
                         rvFolders.adapter = folderAdapter
                         rvFolders.visibility = View.VISIBLE
+                        tvEmpty.visibility = View.GONE
                     } else {
+                        rvFolders.visibility = View.GONE
                         tvEmpty.visibility = View.VISIBLE
                     }
-                    progressBar.visibility = View.GONE
-                } else {
-                    progressBar.visibility = View.GONE
-                    Toast.makeText(this@FolderViewActivity, "Failed to load folders", Toast.LENGTH_SHORT).show()
                 }
-            } catch (e: Exception) {
-                progressBar.visibility = View.GONE
-                Toast.makeText(this@FolderViewActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun loadFolders() {
+        patientViewModel.getPatientById(patientId)
     }
 
     private fun showCreateFolderDialog() {
         val input = android.widget.EditText(this)
         input.hint = "Enter folder name"
         input.setPadding(50, 20, 50, 20)
-        
+
         AlertDialog.Builder(this)
             .setTitle("Create New Folder")
             .setView(input)
@@ -145,71 +155,38 @@ class FolderViewActivity : AppCompatActivity() {
             .setNegativeButton("Cancel", null)
             .show()
     }
-    
+
     private fun createFolder(folderName: String) {
-        lifecycleScope.launch {
-            try {
-                Toast.makeText(this@FolderViewActivity, "Creating folder...", Toast.LENGTH_SHORT).show()
-                val response = repository.createFolder(patientId, folderName)
-                if (response.isSuccessful && response.body()?.get("success") == true) {
-                    Toast.makeText(this@FolderViewActivity, "Folder created successfully", Toast.LENGTH_SHORT).show()
-                    loadFolders() // Refresh the folder list
-                } else {
-                    val message = response.body()?.get("message") as? String ?: "Failed to create folder"
-                    Toast.makeText(this@FolderViewActivity, message, Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(this@FolderViewActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
+        patientViewModel.createFolder(patientId, folderName)
     }
 
     private fun showFolderSelectionDialog() {
-        lifecycleScope.launch {
-            try {
-                // Get current folders from patient
-                val response = repository.getPatientById(patientId)
-                if (response.isSuccessful && response.body()?.get("success") == true) {
-                    val data = response.body()?.get("data") as? Map<*, *>
-                    val foldersData = data?.get("folders") as? List<*>
-                    val folderNames = mutableListOf<String>()
-                    
-                    foldersData?.forEach { folderItem ->
-                        val folderMap = folderItem as? Map<*, *>
-                        val name = folderMap?.get("name") as? String
-                        if (name != null) {
-                            folderNames.add(name)
-                        }
-                    }
-                    
-                    if (folderNames.isEmpty()) {
-                        Toast.makeText(this@FolderViewActivity, "No folders available", Toast.LENGTH_SHORT).show()
-                        return@launch
-                    }
-                    
-                    AlertDialog.Builder(this@FolderViewActivity)
-                        .setTitle("Select Folder")
-                        .setItems(folderNames.toTypedArray()) { _, which ->
-                            // Navigate to scanner
-                            val intent = Intent(this@FolderViewActivity, ScannerActivity::class.java)
-                            intent.putExtra("PATIENT_ID", patientId)
-                            intent.putExtra("FOLDER_NAME", folderNames[which])
-                            startActivity(intent)
-                        }
-                        .setNegativeButton("Cancel", null)
-                        .show()
-                } else {
-                    Toast.makeText(this@FolderViewActivity, "Failed to load folders", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(this@FolderViewActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+        val patient = patientViewModel.currentPatient.value ?: return
+        val folders = patient.folders
+
+        if (folders.isEmpty()) {
+            Toast.makeText(this@FolderViewActivity, "No folders available", Toast.LENGTH_SHORT).show()
+            return
         }
+
+        val folderNames = folders.map { it.name }.toTypedArray()
+
+        AlertDialog.Builder(this@FolderViewActivity)
+            .setTitle("Select Folder")
+            .setItems(folderNames) { _, which ->
+                // Navigate to scanner
+                val intent = Intent(this@FolderViewActivity, ScannerActivity::class.java)
+                intent.putExtra("PATIENT_ID", patientId)
+                intent.putExtra("FOLDER_NAME", folderNames[which])
+                startActivity(intent)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showDownloadOptionsDialog() {
         val options = arrayOf("Download as PDF", "Download as ZIP")
-        
+
         AlertDialog.Builder(this)
             .setTitle("Download All Files")
             .setItems(options) { _, which ->
@@ -223,37 +200,11 @@ class FolderViewActivity : AppCompatActivity() {
     }
 
     private fun downloadAllPdf() {
-        lifecycleScope.launch {
-            try {
-                Toast.makeText(this@FolderViewActivity, "Preparing PDF...", Toast.LENGTH_SHORT).show()
-                val response = repository.downloadAllPdf(patientId)
-                if (response.isSuccessful) {
-                    // Handle PDF download
-                    Toast.makeText(this@FolderViewActivity, "PDF downloaded successfully", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this@FolderViewActivity, "Download failed", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(this@FolderViewActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
+        patientViewModel.downloadAllPdf(patientId)
     }
 
     private fun downloadAllZip() {
-        lifecycleScope.launch {
-            try {
-                Toast.makeText(this@FolderViewActivity, "Preparing ZIP...", Toast.LENGTH_SHORT).show()
-                val response = repository.downloadAllZip(patientId)
-                if (response.isSuccessful) {
-                    // Handle ZIP download
-                    Toast.makeText(this@FolderViewActivity, "ZIP downloaded successfully", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this@FolderViewActivity, "Download failed", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(this@FolderViewActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
+        patientViewModel.downloadAllZip(patientId)
     }
 
     override fun onResume() {

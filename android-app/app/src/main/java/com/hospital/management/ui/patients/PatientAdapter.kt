@@ -9,9 +9,14 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 class PatientAdapter(
-    private val patients: List<Patient>,
+    private var patients: List<Patient>,
     private val onPatientClick: (Patient) -> Unit
 ) : RecyclerView.Adapter<PatientAdapter.PatientViewHolder>() {
+
+    fun updateList(newPatients: List<Patient>) {
+        patients = newPatients
+        notifyDataSetChanged()
+    }
 
     inner class PatientViewHolder(private val binding: ItemPatientBinding) :
         RecyclerView.ViewHolder(binding.root) {

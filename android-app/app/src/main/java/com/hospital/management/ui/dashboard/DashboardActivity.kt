@@ -13,35 +13,56 @@ import com.hospital.management.ui.admission.AdmissionActivity
 import com.hospital.management.ui.auth.LoginActivity
 import com.hospital.management.ui.patients.PatientListActivity
 import com.hospital.management.ui.scanner.ScannerActivity
+import androidx.lifecycle.lifecycleScope (LANGUAGE_KOTLIN)
+import kotlinx.coroutines.launch
+import androidx.lifecycle.ViewModelProvider
+import com.hospital.management.presentation.viewmodel.AuthViewModel
+import com.hospital.management.presentation.viewmodel.ViewModelFactory
+import com.hospital.management.data.repository.AuthRepository
+import com.hospital.management.data.api.RetrofitClient
+import com.hospital.management.data.local.TokenManager
 
-class DashboardActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityDashboardBinding
+
+    private lateinit var authViewModel: AuthViewModel
+    private lateinit var tokenManager: TokenManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityDashboardBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        tokenManager = TokenManager(this)
+        setupViewModel()
         setupHospitalInfo()
         setupClickListeners()
     }
 
+    private fun setupViewModel() {
+        val apiService = RetrofitClient.getApiService(this)
+        val authRepository = AuthRepository(apiService, tokenManager)
+        val factory = ViewModelFactory(authRepository = authRepository)
+        authViewModel = ViewModelProvider(this, factory)[AuthViewModel::class.java]
+    }
+
     private fun setupHospitalInfo() {
-        val sharedPrefs = getSharedPreferences("HospitalPrefs", MODE_PRIVATE)
-        val hospitalName = sharedPrefs.getString("hospital_name", "Hospital Management")
-        val logoUrl = sharedPrefs.getString("hospital_logo_url", "")
+        val tokenManager = com.hospital.management.data.local.TokenManager(this)
 
-        // Set hospital name
-        binding.tvHospitalName.text = hospitalName
+        lifecycleScope.launch {
+            val hospitalName = tokenManager.getHospitalName() ?: "Hospital Management"
+            val logoUrl = tokenManager.getHospitalLogoUrl() ?: ""
 
-        // Load logo if available
-        if (!logoUrl.isNullOrEmpty()) {
-            Glide.with(this)
-                .load(logoUrl)
-                .circleCrop()
-                .placeholder(R.mipmap.ic_launcher)
-                .error(R.mipmap.ic_launcher)
-                .into(binding.ivHospitalLogo)
+            // Set hospital name
+            binding.tvHospitalName.text = hospitalName
+
+            // Load logo if available
+            if (logoUrl.isNotEmpty()) {
+                Glide.with(this@DashboardActivity)
+                    .load(logoUrl)
+                    .circleCrop()
+                    .placeholder(R.mipmap.ic_launcher)
+                    .error(R.mipmap.ic_launcher)
+                    .into(binding.ivHospitalLogo)
+            }
         }
     }
 
@@ -54,10 +75,14 @@ class DashboardActivity : AppCompatActivity() {
             startActivity(Intent(this, PatientListActivity::class.java))
         }
 
+        binding.cardScanner.setOnClickListener {
+            startActivity(Intent(this, ScannerActivity::class.java))
+        }
+
         binding.btnLogout.setOnClickListener {
             showLogoutDialog()
         }
-        
+
         // Add touch animation to logout button
         binding.btnLogout.setOnTouchListener { view, event ->
             when (event.action) {
@@ -86,12 +111,11 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun logout() {
-        // Clear session data
-        val sharedPrefs = getSharedPreferences("HospitalPrefs", MODE_PRIVATE)
-        sharedPrefs.edit().clear().apply()
+        // Use ViewModel to logout (clears tokens)
+        authViewModel.logout()
 
         // Navigate to login
-        val intent = Intent(this, LoginActivity::class.java)
+        val intent = Intent(this@DashboardActivity, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()

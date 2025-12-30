@@ -1,5 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Brand Colors -->
+    <color name="primary">#4F46E5</color> <!-- Indigo 600 -->
+    <color name="primary_dark">#4338CA</color> <!-- Indigo 700 -->
+    <color name="primary_light">#818CF8</color> <!-- Indigo 400 -->
+
+    <!-- Secondary/Accent Colors -->
+    <color name="accent">#06B6D4</color> <!-- Cyan 500 -->
+    <color name="accent_dark">#0891B2</color> <!-- Cyan 600 -->
+    <color name="accent_light">#67E8F9</color> <!-- Cyan 300 -->
+
+    <!-- Neutral Colors -->
+    <color name="background">#F8FAFC</color> <!-- Slate 50 -->
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#F1F5F9</color> <!-- Slate 100 -->
+
+    <!-- Text Colors -->
+    <color name="text_primary">#1E293B</color> <!-- Slate 800 -->
+    <color name="text_secondary">#64748B</color> <!-- Slate 500 -->
+    <color name="text_hint">#94A3B8</color> <!-- Slate 400 -->
+    <color name="text_inverse">#FFFFFF</color>
+
+    <!-- Semantic Colors -->
+    <color name="success">#10B981</color> <!-- Emerald 500 -->
+    <color name="error">#EF4444</color> <!-- Red 500 -->
+    <color name="warning">#F59E0B</color> <!-- Amber 500 -->
+    <color name="info">#3B82F6</color> <!-- Blue 500 -->
+
+    <!-- Legacy/Required by templates -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
@@ -7,33 +35,4 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    
-    <!-- Primary Colors -->
-    <color name="primary">#2563EB</color>
-    <color name="primary_dark">#1E40AF</color>
-    <color name="primary_light">#3B82F6</color>
-    
-    <!-- Accent Colors -->
-    <color name="accent">#10B981</color>
-    <color name="accent_dark">#059669</color>
-    
-    <!-- Background Colors -->
-    <color name="background">#F9FAFB</color>
-    <color name="surface">#FFFFFF</color>
-    <color name="surface_variant">#F3F4F6</color>
-    
-    <!-- Text Colors -->
-    <color name="text_primary">#111827</color>
-    <color name="text_secondary">#6B7280</color>
-    <color name="text_hint">#9CA3AF</color>
-    
-    <!-- Status Colors -->
-    <color name="error">#EF4444</color>
-    <color name="success">#10B981</color>
-    <color name="warning">#F59E0B</color>
-    <color name="info">#3B82F6</color>
-    
-    <!-- Additional Colors -->
-    <color name="gray">#6B7280</color>
-    <color name="light_blue">#E0F2FE</color>
 </resources>

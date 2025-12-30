@@ -74,13 +74,13 @@ class TotpVerificationActivity : AppCompatActivity() {
                         if (data?.accessToken != null && data.refreshToken != null) {
                             // Save tokens
                             saveTokens(data.accessToken, data.refreshToken)
-                            
+
                             Toast.makeText(
                                 this@TotpVerificationActivity,
                                 "Login successful",
                                 Toast.LENGTH_SHORT
                             ).show()
-                            
+
                             navigateToDashboard()
                         } else {
                             Toast.makeText(
@@ -113,11 +113,9 @@ class TotpVerificationActivity : AppCompatActivity() {
     }
 
     private fun saveTokens(accessToken: String, refreshToken: String) {
-        val sharedPrefs = getSharedPreferences("hospital_prefs", MODE_PRIVATE)
-        sharedPrefs.edit().apply {
-            putString("accessToken", accessToken)
-            putString("refreshToken", refreshToken)
-            apply()
+        val tokenManager = com.hospital.management.data.local.TokenManager(this)
+        CoroutineScope(Dispatchers.IO).launch {
+            tokenManager.saveTokens(accessToken, refreshToken)
         }
     }
 
