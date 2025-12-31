@@ -7,11 +7,16 @@ import android.widget.Toast
 import com.hospital.management.utils.SecurityUtils
 import com.hospital.management.utils.SessionManager
 import com.hospital.management.ui.auth.LoginActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class HospitalApplication : Application() {
 
     private var activityReferences = 0
     private var isActivityChangingConfigurations = false
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
         super.onCreate()
@@ -34,9 +39,13 @@ class HospitalApplication : Application() {
                 // Check for session timeout
                 // We only force logout if the session was explicitly marked active (user logged in)
                 // and the time has expired.
-                if (SessionManager.isSessionActive && !SessionManager.isSessionValid() && activity !is LoginActivity) {
-                     Toast.makeText(activity, "Session expired due to inactivity", Toast.LENGTH_LONG).show()
-                     SessionManager.logoutUser(activity)
+                if (SessionManager.isSessionActive && activity !is LoginActivity) {
+                    applicationScope.launch {
+                        if (!SessionManager.isSessionValid(activity)) {
+                            Toast.makeText(activity, "Session expired due to inactivity", Toast.LENGTH_LONG).show()
+                            SessionManager.logoutUser(activity)
+                        }
+                    }
                 }
             }
 
@@ -44,7 +53,7 @@ class HospitalApplication : Application() {
                 // Update interaction time when app pauses (going background or rotation)
                 // This implements "Background Timeout" logic.
                 if (SessionManager.isSessionActive) {
-                    SessionManager.updateLastInteractionTime()
+                    SessionManager.updateLastInteractionTime(activity)
                 }
             }
 

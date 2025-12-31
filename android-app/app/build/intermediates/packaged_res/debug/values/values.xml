@@ -5,18 +5,45 @@
     <color name="accent_light">#67E8F9</color>
     <color name="background">#F8FAFC</color>
     <color name="black">#FF000000</color>
+    <color name="card_bg_amber">#FFFBEB</color>
+    <color name="card_bg_cyan">#ECFEFF</color>
+    <color name="card_bg_green">#ECFDF5</color>
+    <color name="card_bg_primary">#EEF2FF</color>
+    <color name="card_bg_purple">#F5F3FF</color>
+    <color name="card_bg_red">#FEF2F2</color>
+    <color name="card_gradient_amber_end">#D97706</color>
+    <color name="card_gradient_amber_start">#FBBF24</color>
+    <color name="card_gradient_blue_end">#1D4ED8</color>
+    <color name="card_gradient_blue_start">#3B82F6</color>
+    <color name="card_gradient_cyan_end">#0891B2</color>
+    <color name="card_gradient_cyan_start">#22D3EE</color>
+    <color name="card_gradient_purple_end">#6D28D9</color>
+    <color name="card_gradient_purple_start">#8B5CF6</color>
+    <color name="divider">#E2E8F0</color>
     <color name="error">#EF4444</color>
+    <color name="error_light">#FEE2E2</color>
+    <color name="gradient_accent_end">#10B981</color>
+    <color name="gradient_accent_start">#06B6D4</color>
+    <color name="gradient_center">#7C3AED</color>
+    <color name="gradient_end">#EC4899</color>
+    <color name="gradient_start">#4F46E5</color>
     <color name="gray">#6B7280</color>
     <color name="info">#3B82F6</color>
+    <color name="info_light">#DBEAFE</color>
     <color name="light_blue">#DBEAFE</color>
     <color name="primary">#4F46E5</color>
     <color name="primary_dark">#4338CA</color>
     <color name="primary_light">#818CF8</color>
+    <color name="primary_lighter">#C7D2FE</color>
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
+    <color name="shimmer_base">#F1F5F9</color>
+    <color name="shimmer_highlight">#E2E8F0</color>
     <color name="success">#10B981</color>
+    <color name="success_light">#D1FAE5</color>
     <color name="surface">#FFFFFF</color>
+    <color name="surface_elevated">#FFFFFF</color>
     <color name="surface_variant">#F1F5F9</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
@@ -25,6 +52,7 @@
     <color name="text_primary">#1E293B</color>
     <color name="text_secondary">#64748B</color>
     <color name="warning">#F59E0B</color>
+    <color name="warning_light">#FEF3C7</color>
     <color name="white">#FFFFFFFF</color>
     <string name="admission_date">Admission Date</string>
     <string name="admission_title">Patient Admission</string>
@@ -65,6 +93,11 @@
     <string name="upload_documents">Upload Documents</string>
     <string name="upload_title">Upload Documents</string>
     <string name="verify_otp">Verify OTP</string>
+    <style name="AlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.App.MediumComponent</item>
+    </style>
     <style name="Base.Theme.HospitalManagement" parent="Theme.Material3.DayNight.NoActionBar">
         
         <item name="colorPrimary">@color/primary</item>
@@ -114,6 +147,12 @@
         <item name="cornerSize">8dp</item>
     </style>
     <style name="Theme.HospitalManagement" parent="Base.Theme.HospitalManagement"/>
+    <style name="Theme.HospitalManagement.Splash" parent="Base.Theme.HospitalManagement">
+        <item name="android:windowBackground">@drawable/bg_splash_gradient</item>
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:navigationBarColor">@color/primary_light</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
     <style name="Widget.App.Button" parent="Widget.Material3.Button">
         <item name="android:paddingVertical">12dp</item>
         <item name="shapeAppearance">@style/ShapeAppearance.App.MediumComponent</item>

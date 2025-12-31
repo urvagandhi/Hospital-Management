@@ -4,6 +4,7 @@ package com.hospital.management.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.GridLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -34,10 +35,16 @@ public final class ActivityDashboardBinding implements ViewBinding {
   public final MaterialCardView cardShowPatients;
 
   @NonNull
+  public final GridLayout gridLayout;
+
+  @NonNull
   public final CircleImageView ivHospitalLogo;
 
   @NonNull
   public final TextView tvHospitalName;
+
+  @NonNull
+  public final TextView tvQuickActions;
 
   @NonNull
   public final TextView tvWelcome;
@@ -48,15 +55,18 @@ public final class ActivityDashboardBinding implements ViewBinding {
   private ActivityDashboardBinding(@NonNull ConstraintLayout rootView,
       @NonNull MaterialCardView btnLogout, @NonNull MaterialCardView cardNewAdmission,
       @NonNull MaterialCardView cardScanner, @NonNull MaterialCardView cardShowPatients,
-      @NonNull CircleImageView ivHospitalLogo, @NonNull TextView tvHospitalName,
+      @NonNull GridLayout gridLayout, @NonNull CircleImageView ivHospitalLogo,
+      @NonNull TextView tvHospitalName, @NonNull TextView tvQuickActions,
       @NonNull TextView tvWelcome, @NonNull View viewHeader) {
     this.rootView = rootView;
     this.btnLogout = btnLogout;
     this.cardNewAdmission = cardNewAdmission;
     this.cardScanner = cardScanner;
     this.cardShowPatients = cardShowPatients;
+    this.gridLayout = gridLayout;
     this.ivHospitalLogo = ivHospitalLogo;
     this.tvHospitalName = tvHospitalName;
+    this.tvQuickActions = tvQuickActions;
     this.tvWelcome = tvWelcome;
     this.viewHeader = viewHeader;
   }
@@ -112,6 +122,12 @@ public final class ActivityDashboardBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.gridLayout;
+      GridLayout gridLayout = ViewBindings.findChildViewById(rootView, id);
+      if (gridLayout == null) {
+        break missingId;
+      }
+
       id = R.id.ivHospitalLogo;
       CircleImageView ivHospitalLogo = ViewBindings.findChildViewById(rootView, id);
       if (ivHospitalLogo == null) {
@@ -121,6 +137,12 @@ public final class ActivityDashboardBinding implements ViewBinding {
       id = R.id.tvHospitalName;
       TextView tvHospitalName = ViewBindings.findChildViewById(rootView, id);
       if (tvHospitalName == null) {
+        break missingId;
+      }
+
+      id = R.id.tvQuickActions;
+      TextView tvQuickActions = ViewBindings.findChildViewById(rootView, id);
+      if (tvQuickActions == null) {
         break missingId;
       }
 
@@ -137,7 +159,8 @@ public final class ActivityDashboardBinding implements ViewBinding {
       }
 
       return new ActivityDashboardBinding((ConstraintLayout) rootView, btnLogout, cardNewAdmission,
-          cardScanner, cardShowPatients, ivHospitalLogo, tvHospitalName, tvWelcome, viewHeader);
+          cardScanner, cardShowPatients, gridLayout, ivHospitalLogo, tvHospitalName, tvQuickActions,
+          tvWelcome, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

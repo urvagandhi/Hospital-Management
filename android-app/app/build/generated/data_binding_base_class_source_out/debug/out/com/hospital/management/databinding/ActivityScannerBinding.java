@@ -4,13 +4,15 @@ package com.hospital.management.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.camera.view.PreviewView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.button.MaterialButton;
 import com.hospital.management.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -21,16 +23,34 @@ public final class ActivityScannerBinding implements ViewBinding {
   private final ConstraintLayout rootView;
 
   @NonNull
-  public final Button btnCapture;
+  public final MaterialButton btnCancel;
 
   @NonNull
-  public final PreviewView viewFinder;
+  public final MaterialButton btnStartScan;
 
-  private ActivityScannerBinding(@NonNull ConstraintLayout rootView, @NonNull Button btnCapture,
-      @NonNull PreviewView viewFinder) {
+  @NonNull
+  public final LinearLayout featurePills;
+
+  @NonNull
+  public final FrameLayout iconContainer;
+
+  @NonNull
+  public final TextView tvSubtitle;
+
+  @NonNull
+  public final TextView tvTitle;
+
+  private ActivityScannerBinding(@NonNull ConstraintLayout rootView,
+      @NonNull MaterialButton btnCancel, @NonNull MaterialButton btnStartScan,
+      @NonNull LinearLayout featurePills, @NonNull FrameLayout iconContainer,
+      @NonNull TextView tvSubtitle, @NonNull TextView tvTitle) {
     this.rootView = rootView;
-    this.btnCapture = btnCapture;
-    this.viewFinder = viewFinder;
+    this.btnCancel = btnCancel;
+    this.btnStartScan = btnStartScan;
+    this.featurePills = featurePills;
+    this.iconContainer = iconContainer;
+    this.tvSubtitle = tvSubtitle;
+    this.tvTitle = tvTitle;
   }
 
   @Override
@@ -60,19 +80,44 @@ public final class ActivityScannerBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
-      id = R.id.btnCapture;
-      Button btnCapture = ViewBindings.findChildViewById(rootView, id);
-      if (btnCapture == null) {
+      id = R.id.btnCancel;
+      MaterialButton btnCancel = ViewBindings.findChildViewById(rootView, id);
+      if (btnCancel == null) {
         break missingId;
       }
 
-      id = R.id.viewFinder;
-      PreviewView viewFinder = ViewBindings.findChildViewById(rootView, id);
-      if (viewFinder == null) {
+      id = R.id.btnStartScan;
+      MaterialButton btnStartScan = ViewBindings.findChildViewById(rootView, id);
+      if (btnStartScan == null) {
         break missingId;
       }
 
-      return new ActivityScannerBinding((ConstraintLayout) rootView, btnCapture, viewFinder);
+      id = R.id.featurePills;
+      LinearLayout featurePills = ViewBindings.findChildViewById(rootView, id);
+      if (featurePills == null) {
+        break missingId;
+      }
+
+      id = R.id.iconContainer;
+      FrameLayout iconContainer = ViewBindings.findChildViewById(rootView, id);
+      if (iconContainer == null) {
+        break missingId;
+      }
+
+      id = R.id.tvSubtitle;
+      TextView tvSubtitle = ViewBindings.findChildViewById(rootView, id);
+      if (tvSubtitle == null) {
+        break missingId;
+      }
+
+      id = R.id.tvTitle;
+      TextView tvTitle = ViewBindings.findChildViewById(rootView, id);
+      if (tvTitle == null) {
+        break missingId;
+      }
+
+      return new ActivityScannerBinding((ConstraintLayout) rootView, btnCancel, btnStartScan,
+          featurePills, iconContainer, tvSubtitle, tvTitle);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

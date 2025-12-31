@@ -4,14 +4,17 @@ package com.hospital.management.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.ScrollView;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.hospital.management.R;
 import java.lang.NullPointerException;
@@ -20,10 +23,13 @@ import java.lang.String;
 
 public final class ActivityUploadBinding implements ViewBinding {
   @NonNull
-  private final ScrollView rootView;
+  private final ConstraintLayout rootView;
 
   @NonNull
-  public final Button btnUpload;
+  public final ImageButton btnBack;
+
+  @NonNull
+  public final MaterialButton btnUpload;
 
   @NonNull
   public final TextInputEditText etFolderName;
@@ -37,20 +43,48 @@ public final class ActivityUploadBinding implements ViewBinding {
   @NonNull
   public final ProgressBar progressBar;
 
-  private ActivityUploadBinding(@NonNull ScrollView rootView, @NonNull Button btnUpload,
-      @NonNull TextInputEditText etFolderName, @NonNull TextInputEditText etPatientId,
-      @NonNull ImageView ivPreview, @NonNull ProgressBar progressBar) {
+  @NonNull
+  public final RecyclerView rvPages;
+
+  @NonNull
+  public final TextView tvPageCount;
+
+  @NonNull
+  public final TextView tvPagesLabel;
+
+  @NonNull
+  public final TextView tvTitle;
+
+  @NonNull
+  public final TextView tvUploadProgress;
+
+  @NonNull
+  public final View viewHeader;
+
+  private ActivityUploadBinding(@NonNull ConstraintLayout rootView, @NonNull ImageButton btnBack,
+      @NonNull MaterialButton btnUpload, @NonNull TextInputEditText etFolderName,
+      @NonNull TextInputEditText etPatientId, @NonNull ImageView ivPreview,
+      @NonNull ProgressBar progressBar, @NonNull RecyclerView rvPages,
+      @NonNull TextView tvPageCount, @NonNull TextView tvPagesLabel, @NonNull TextView tvTitle,
+      @NonNull TextView tvUploadProgress, @NonNull View viewHeader) {
     this.rootView = rootView;
+    this.btnBack = btnBack;
     this.btnUpload = btnUpload;
     this.etFolderName = etFolderName;
     this.etPatientId = etPatientId;
     this.ivPreview = ivPreview;
     this.progressBar = progressBar;
+    this.rvPages = rvPages;
+    this.tvPageCount = tvPageCount;
+    this.tvPagesLabel = tvPagesLabel;
+    this.tvTitle = tvTitle;
+    this.tvUploadProgress = tvUploadProgress;
+    this.viewHeader = viewHeader;
   }
 
   @Override
   @NonNull
-  public ScrollView getRoot() {
+  public ConstraintLayout getRoot() {
     return rootView;
   }
 
@@ -75,8 +109,14 @@ public final class ActivityUploadBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.btnBack;
+      ImageButton btnBack = ViewBindings.findChildViewById(rootView, id);
+      if (btnBack == null) {
+        break missingId;
+      }
+
       id = R.id.btnUpload;
-      Button btnUpload = ViewBindings.findChildViewById(rootView, id);
+      MaterialButton btnUpload = ViewBindings.findChildViewById(rootView, id);
       if (btnUpload == null) {
         break missingId;
       }
@@ -105,8 +145,45 @@ public final class ActivityUploadBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityUploadBinding((ScrollView) rootView, btnUpload, etFolderName, etPatientId,
-          ivPreview, progressBar);
+      id = R.id.rvPages;
+      RecyclerView rvPages = ViewBindings.findChildViewById(rootView, id);
+      if (rvPages == null) {
+        break missingId;
+      }
+
+      id = R.id.tvPageCount;
+      TextView tvPageCount = ViewBindings.findChildViewById(rootView, id);
+      if (tvPageCount == null) {
+        break missingId;
+      }
+
+      id = R.id.tvPagesLabel;
+      TextView tvPagesLabel = ViewBindings.findChildViewById(rootView, id);
+      if (tvPagesLabel == null) {
+        break missingId;
+      }
+
+      id = R.id.tvTitle;
+      TextView tvTitle = ViewBindings.findChildViewById(rootView, id);
+      if (tvTitle == null) {
+        break missingId;
+      }
+
+      id = R.id.tvUploadProgress;
+      TextView tvUploadProgress = ViewBindings.findChildViewById(rootView, id);
+      if (tvUploadProgress == null) {
+        break missingId;
+      }
+
+      id = R.id.viewHeader;
+      View viewHeader = ViewBindings.findChildViewById(rootView, id);
+      if (viewHeader == null) {
+        break missingId;
+      }
+
+      return new ActivityUploadBinding((ConstraintLayout) rootView, btnBack, btnUpload,
+          etFolderName, etPatientId, ivPreview, progressBar, rvPages, tvPageCount, tvPagesLabel,
+          tvTitle, tvUploadProgress, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

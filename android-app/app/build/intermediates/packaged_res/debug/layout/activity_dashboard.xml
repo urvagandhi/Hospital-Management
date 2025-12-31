@@ -6,25 +6,46 @@
     android:layout_height="match_parent"
     android:background="@color/background">
 
-    <!-- Header Section -->
+    <!-- Premium Header with Gradient -->
     <View
         android:id="@+id/viewHeader"
         android:layout_width="match_parent"
-        android:layout_height="220dp"
-        android:background="@color/primary"
+        android:layout_height="260dp"
+        android:background="@drawable/bg_dashboard_gradient"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/tvHospitalName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hospital Management"
-        android:textColor="@color/white"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:layout_marginTop="48dp"
-        android:layout_marginStart="24dp"
+    <!-- Decorative Circle 1 -->
+    <View
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:background="@drawable/bg_glow_circle"
+        android:alpha="0.15"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="-20dp"
+        android:layout_marginEnd="-30dp" />
+
+    <!-- Decorative Circle 2 -->
+    <View
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:background="@drawable/bg_glow_circle"
+        android:alpha="0.1"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="140dp"
+        android:layout_marginStart="-20dp" />
+
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/ivHospitalLogo"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:src="@mipmap/ic_launcher_round"
+        android:layout_marginTop="48dp"
+        android:layout_marginEnd="24dp"
+        app:civ_border_width="3dp"
+        app:civ_border_color="#80FFFFFF"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
@@ -33,226 +54,259 @@
         android:layout_height="wrap_content"
         android:text="Welcome Back,"
         android:textColor="@color/white"
-        android:alpha="0.8"
-        android:textSize="14sp"
-        android:layout_marginTop="4dp"
-        app:layout_constraintStart_toStartOf="@id/tvHospitalName"
-        app:layout_constraintTop_toBottomOf="@id/tvHospitalName" />
+        android:alpha="0.85"
+        android:textSize="15sp"
+        android:fontFamily="sans-serif-light"
+        android:layout_marginTop="52dp"
+        android:layout_marginStart="24dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <de.hdodenhof.circleimageview.CircleImageView
-        android:id="@+id/ivHospitalLogo"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:src="@mipmap/ic_launcher_round"
-        android:layout_marginEnd="24dp"
-        app:civ_border_width="2dp"
-        app:civ_border_color="@color/white"
+    <TextView
+        android:id="@+id/tvHospitalName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Hospital Management"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        android:fontFamily="sans-serif-medium"
+        android:textStyle="bold"
+        android:letterSpacing="0.01"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="80dp"
+        app:layout_constraintStart_toStartOf="@id/tvWelcome"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/tvHospitalName"
-        app:layout_constraintBottom_toBottomOf="@id/tvWelcome" />
+        app:layout_constraintTop_toBottomOf="@id/tvWelcome" />
+
+    <TextView
+        android:id="@+id/tvQuickActions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Quick Actions"
+        android:textColor="@color/white"
+        android:alpha="0.9"
+        android:textSize="18sp"
+        android:fontFamily="sans-serif-medium"
+        android:textStyle="bold"
+        android:layout_marginTop="32dp"
+        app:layout_constraintStart_toStartOf="@id/tvWelcome"
+        app:layout_constraintTop_toBottomOf="@id/tvHospitalName" />
 
     <!-- Scrollable Content -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="16dp"
         android:clipToPadding="false"
-        android:paddingBottom="24dp"
-        app:layout_constraintTop_toBottomOf="@id/tvWelcome"
+        android:paddingBottom="32dp"
+        android:overScrollMode="never"
+        app:layout_constraintTop_toBottomOf="@id/tvQuickActions"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <LinearLayout
+        <GridLayout
+            android:id="@+id/gridLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="24dp">
+            android:columnCount="2"
+            android:rowCount="2"
+            android:alignmentMode="alignMargins"
+            android:columnOrderPreserved="false"
+            android:useDefaultMargins="false"
+            android:paddingHorizontal="16dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- New Admission Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardNewAdmission"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Quick Actions"
-                android:textColor="@color/white"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="16dp" />
+                android:layout_columnWeight="1"
+                android:layout_margin="8dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:strokeWidth="0dp"
+                android:foreground="?android:attr/selectableItemBackground">
 
-            <GridLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:columnCount="2"
-                android:rowCount="2"
-                android:alignmentMode="alignMargins"
-                android:columnOrderPreserved="false"
-                android:useDefaultMargins="true">
-
-                <!-- New Admission -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardNewAdmission"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_columnWeight="1"
-                    android:layout_marginEnd="8dp"
-                    android:layout_marginBottom="16dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
-                    android:clickable="true"
-                    android:foreground="?android:attr/selectableItemBackground">
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:gravity="center"
+                    android:background="@drawable/bg_card_gradient_blue">
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:gravity="center">
+                    <FrameLayout
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:background="@drawable/bg_icon_circle_white">
 
                         <ImageView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_gravity="center"
                             android:src="@drawable/ic_edit_pencil"
-                            app:tint="@color/primary"
-                            android:padding="8dp"
-                            android:background="@drawable/bg_rounded_surface"
-                            android:backgroundTint="#EEF2FF" />
+                            app:tint="@color/card_gradient_blue_end" />
+                    </FrameLayout>
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="New\nAdmission"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_primary"
-                            android:gravity="center"
-                            android:layout_marginTop="12dp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Show Patients -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardShowPatients"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_columnWeight="1"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginBottom="16dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
-                    android:clickable="true"
-                    android:foreground="?android:attr/selectableItemBackground">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:gravity="center">
+                        android:text="New\nAdmission"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:gravity="center"
+                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginTop="14dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- View Patients Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardShowPatients"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="8dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:strokeWidth="0dp"
+                android:foreground="?android:attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:gravity="center"
+                    android:background="@drawable/bg_card_gradient_cyan">
+
+                    <FrameLayout
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:background="@drawable/bg_icon_circle_white">
 
                         <ImageView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_gravity="center"
                             android:src="@drawable/ic_patient"
-                            app:tint="@color/accent"
-                            android:padding="8dp"
-                            android:background="@drawable/bg_rounded_surface"
-                            android:backgroundTint="#ECFEFF" />
+                            app:tint="@color/card_gradient_cyan_end" />
+                    </FrameLayout>
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="View\nPatients"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_primary"
-                            android:gravity="center"
-                            android:layout_marginTop="12dp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Scanner -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardScanner"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_columnWeight="1"
-                    android:layout_marginEnd="8dp"
-                    android:layout_marginBottom="16dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
-                    android:clickable="true"
-                    android:foreground="?android:attr/selectableItemBackground">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:gravity="center">
+                        android:text="View\nPatients"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:gravity="center"
+                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginTop="14dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Scanner Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardScanner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="8dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:strokeWidth="0dp"
+                android:foreground="?android:attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:gravity="center"
+                    android:background="@drawable/bg_card_gradient_amber">
+
+                    <FrameLayout
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:background="@drawable/bg_icon_circle_white">
 
                         <ImageView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_gravity="center"
                             android:src="@drawable/ic_scanner"
-                            app:tint="@color/warning"
-                            android:padding="8dp"
-                            android:background="@drawable/bg_rounded_surface"
-                            android:backgroundTint="#FFFBEB" />
+                            app:tint="@color/card_gradient_amber_end" />
+                    </FrameLayout>
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Scan\nDocument"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_primary"
-                            android:gravity="center"
-                            android:layout_marginTop="12dp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Logout -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/btnLogout"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_columnWeight="1"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginBottom="16dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
-                    android:clickable="true"
-                    app:cardBackgroundColor="#FEF2F2"
-                    android:foreground="?android:attr/selectableItemBackground">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp"
-                        android:gravity="center">
+                        android:text="Scan\nDocument"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:gravity="center"
+                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginTop="14dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Logout Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnLogout"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_columnWeight="1"
+                android:layout_margin="8dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:strokeWidth="0dp"
+                android:foreground="?android:attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+                    android:gravity="center"
+                    android:background="@drawable/bg_card_gradient_red">
+
+                    <FrameLayout
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:background="@drawable/bg_icon_circle_white">
 
                         <ImageView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_gravity="center"
                             android:src="@drawable/ic_logout"
-                            app:tint="@color/error"
-                            android:padding="8dp"
-                            android:background="@drawable/bg_rounded_surface"
-                            android:backgroundTint="#FEF2F2" />
+                            app:tint="@color/error" />
+                    </FrameLayout>
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Logout\nSystem"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/error"
-                            android:gravity="center"
-                            android:layout_marginTop="12dp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Logout\nSystem"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:gravity="center"
+                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginTop="14dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-            </GridLayout>
-
-        </LinearLayout>
+        </GridLayout>
     </androidx.core.widget.NestedScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -38,15 +38,23 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HospitalManagement"
         android:usesCleartextTraffic="false" >
+
+        <!-- Splash Screen - New Launcher -->
         <activity
-            android:name="com.hospital.management.ui.auth.LoginActivity"
-            android:exported="true" >
+            android:name="com.hospital.management.ui.splash.SplashActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement.Splash" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name="com.hospital.management.ui.auth.LoginActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
         <activity android:name="com.hospital.management.ui.auth.OtpActivity" />
         <activity
             android:name="com.hospital.management.ui.auth.ChangePasswordActivity"

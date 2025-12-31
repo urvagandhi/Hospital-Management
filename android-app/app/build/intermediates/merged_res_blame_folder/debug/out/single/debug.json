@@ -1,63 +1,27 @@
 [
     {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_scanner.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/activity_scanner.xml"
-    },
-    {
         "merged": "com.hospital.management.app-merged_res-87:/layout_item_folder.xml.flat",
         "source": "com.hospital.management.app-main-89:/layout/item_folder.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-merged_res-87:/mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "com.hospital.management.app-main-89:/mipmap-anydpi-v26/ic_launcher.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_change_password.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/activity_change_password.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_chevron_right.xml.flat",
-        "source": "com.hospital.management.app-main-89:/drawable/ic_chevron_right.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_patient_details.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/activity_patient_details.xml"
     },
     {
         "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_calendar.xml.flat",
         "source": "com.hospital.management.app-main-89:/drawable/ic_calendar.xml"
     },
     {
-        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_scanner.xml.flat",
-        "source": "com.hospital.management.app-main-89:/drawable/ic_scanner.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_totp_verification.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/activity_totp_verification.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_launcher_background.xml.flat",
-        "source": "com.hospital.management.app-main-89:/drawable/ic_launcher_background.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_dashboard.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_dashboard.xml"
     },
     {
         "merged": "com.hospital.management.app-merged_res-87:/layout_activity_folder_view.xml.flat",
         "source": "com.hospital.management.app-main-89:/layout/activity_folder_view.xml"
     },
     {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_dashboard.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/activity_dashboard.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_item_file.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/item_file.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_totp_verification.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_totp_verification.xml"
     },
     {
         "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_email.xml.flat",
         "source": "com.hospital.management.app-main-89:/drawable/ic_email.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_folder_details.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/activity_folder_details.xml"
     },
     {
         "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_phone.xml.flat",
@@ -68,16 +32,12 @@
         "source": "com.hospital.management.app-main-89:/xml/backup_rules.xml"
     },
     {
-        "merged": "com.hospital.management.app-merged_res-87:/anim_button_scale_up.xml.flat",
-        "source": "com.hospital.management.app-main-89:/anim/button_scale_up.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_item_patient.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/item_patient.xml"
-    },
-    {
         "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_person_add.xml.flat",
         "source": "com.hospital.management.app-main-89:/drawable/ic_person_add.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_red.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_card_gradient_red.xml"
     },
     {
         "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_rounded_surface.xml.flat",
@@ -92,10 +52,6 @@
         "source": "com.hospital.management.app-main-89:/layout/activity_upload.xml"
     },
     {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_otp.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/activity_otp.xml"
-    },
-    {
         "merged": "com.hospital.management.app-merged_res-87:/layout_activity_admission.xml.flat",
         "source": "com.hospital.management.app-main-89:/layout/activity_admission.xml"
     },
@@ -106,6 +62,102 @@
     {
         "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_file_document.xml.flat",
         "source": "com.hospital.management.app-main-89:/drawable/ic_file_document.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_amber.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_card_gradient_amber.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_item_page_thumbnail.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/item_page_thumbnail.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_patient_list.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_patient_list.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_logout.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_logout.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_login_gradient.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_login_gradient.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_dashboard_gradient.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_dashboard_gradient.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_blue.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_card_gradient_blue.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_glow_circle.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_glow_circle.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_scanner.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_scanner.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.hospital.management.app-main-89:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_change_password.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_change_password.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_pill_white.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_pill_white.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_chevron_right.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_chevron_right.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_patient_details.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_patient_details.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_scanner.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_scanner.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_arrow_back.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_arrow_back.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_item_file.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/item_file.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_upload.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_upload.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_folder_details.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_folder_details.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_splash_gradient.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_splash_gradient.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/anim_button_scale_up.xml.flat",
+        "source": "com.hospital.management.app-main-89:/anim/button_scale_up.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_item_patient.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/item_patient.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_otp.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_otp.xml"
     },
     {
         "merged": "com.hospital.management.app-merged_res-87:/drawable_logout_button_ripple.xml.flat",
@@ -124,12 +176,12 @@
         "source": "com.hospital.management.app-main-89:/drawable/ic_patient.xml"
     },
     {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_patient_list.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/activity_patient_list.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_delete_button.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_delete_button.xml"
     },
     {
-        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_logout.xml.flat",
-        "source": "com.hospital.management.app-main-89:/drawable/ic_logout.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_cyan.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_card_gradient_cyan.xml"
     },
     {
         "merged": "com.hospital.management.app-merged_res-87:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
@@ -140,12 +192,20 @@
         "source": "com.hospital.management.app-main-89:/layout/activity_login.xml"
     },
     {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_splash.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_splash.xml"
+    },
+    {
         "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_edit_pencil.xml.flat",
         "source": "com.hospital.management.app-main-89:/drawable/ic_edit_pencil.xml"
     },
     {
-        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_login_gradient.xml.flat",
-        "source": "com.hospital.management.app-main-89:/drawable/bg_login_gradient.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_close.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_close.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_icon_circle_white.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_icon_circle_white.xml"
     },
     {
         "merged": "com.hospital.management.app-merged_res-87:/layout_activity_totp_setup.xml.flat",

@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-51:12
-INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-51:12
-INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-51:12
-INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-51:12
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-58:12
+INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-58:12
+INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-58:12
+INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:2:1-58:12
 MERGED from [androidx.databinding:viewbinding:8.2.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\814606bc4845b7e48b42056e540bc238\transformed\jetified-viewbinding-8.2.0\AndroidManifest.xml:2:1-7:12
 MERGED from [io.coil-kt:coil-compose:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\97e4ddb784780a14318bf6378cc2e355\transformed\jetified-coil-compose-2.5.0\AndroidManifest.xml:2:1-7:12
 MERGED from [io.coil-kt:coil-compose-base:2.5.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\0c43152e92bfffe9ccafce3181081988\transformed\jetified-coil-compose-base-2.5.0\AndroidManifest.xml:2:1-7:12
@@ -144,8 +144,8 @@ ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidM
 	android:name
 		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:7:19-61
 application
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-49:19
-INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-49:19
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-56:19
+INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:9:5-56:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:22:5-26:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\fdd5f8087eaddb5808ec95193d453c09\transformed\jetified-ui-tooling-release\AndroidManifest.xml:22:5-26:19
 MERGED from [com.google.android.material:material:1.10.0] C:\Users\Urva.DESKTOP-IOHAI7B\.gradle\caches\transforms-3\ab3c8dbcc57d3f9eb3b19bcbf26edef1\transformed\material-1.10.0\AndroidManifest.xml:22:5-20
@@ -210,76 +210,88 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] C:\Users\Ur
 		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:16:9-45
 	android:name
 		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:10:9-44
-activity#com.hospital.management.ui.auth.LoginActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:20:9-27:20
-	android:exported
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:22:13-36
-	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:21:13-50
-intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:23:13-26:29
-action#android.intent.action.MAIN
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:17-69
-	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:25-66
-category#android.intent.category.LAUNCHER
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:17-77
-	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:27-74
-activity#com.hospital.management.ui.auth.OtpActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:29:9-57
-	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:29:19-54
-activity#com.hospital.management.ui.auth.ChangePasswordActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:30:9-32:52
+activity#com.hospital.management.ui.splash.SplashActivity
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:21:9-30:20
 	android:screenOrientation
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:32:13-49
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:24:13-49
+	android:exported
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:23:13-36
+	android:theme
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:25:13-67
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:31:13-59
-activity#com.hospital.management.ui.auth.TotpSetupActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:33:9-35:52
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:22:13-53
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:26:13-29:29
+action#android.intent.action.MAIN
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:27:17-69
+	android:name
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:27:25-66
+category#android.intent.category.LAUNCHER
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:28:17-77
+	android:name
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:28:27-74
+activity#com.hospital.management.ui.auth.LoginActivity
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:32:9-35:52
 	android:screenOrientation
 		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:35:13-49
+	android:exported
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:34:13-37
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:34:13-54
-activity#com.hospital.management.ui.auth.TotpVerificationActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:9-38:52
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:33:13-50
+activity#com.hospital.management.ui.auth.OtpActivity
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:9-57
+	android:name
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:36:19-54
+activity#com.hospital.management.ui.auth.ChangePasswordActivity
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:9-39:52
 	android:screenOrientation
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:13-49
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:13-49
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:37:13-61
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:38:13-59
+activity#com.hospital.management.ui.auth.TotpSetupActivity
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:9-42:52
+	android:screenOrientation
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:13-49
+	android:name
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:13-54
+activity#com.hospital.management.ui.auth.TotpVerificationActivity
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:9-45:52
+	android:screenOrientation
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:13-49
+	android:name
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:13-61
 activity#com.hospital.management.ui.dashboard.DashboardActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:9-68
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:9-68
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:39:19-65
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:19-65
 activity#com.hospital.management.ui.admission.AdmissionActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:9-68
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:47:9-68
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:40:19-65
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:47:19-65
 activity#com.hospital.management.ui.scanner.ScannerActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:9-64
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:48:9-64
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:41:19-61
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:48:19-61
 activity#com.hospital.management.ui.upload.UploadActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:9-62
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:49:9-62
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:42:19-59
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:49:19-59
 activity#com.hospital.management.ui.patients.PatientListActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:9-69
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:50:9-69
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:43:19-66
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:50:19-66
 activity#com.hospital.management.ui.patients.PatientDetailsActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:9-72
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:51:9-72
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:44:19-69
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:51:19-69
 activity#com.hospital.management.ui.folders.FolderViewActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:9-67
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:52:9-67
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:45:19-64
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:52:19-64
 activity#com.hospital.management.ui.folders.FolderDetailsActivity
-ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:9-70
+ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:53:9-70
 	android:name
-		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:46:19-67
+		ADDED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml:53:19-67
 uses-sdk
 INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from F:\Project\Temp\Hospital-Management\android-app\app\src\main\AndroidManifest.xml

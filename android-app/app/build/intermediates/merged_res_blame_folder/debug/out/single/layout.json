@@ -1,5 +1,13 @@
 [
     {
+        "merged": "com.hospital.management.app-mergeDebugResources-86:/layout/activity_splash.xml",
+        "source": "com.hospital.management.app-main-89:/layout/activity_splash.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-mergeDebugResources-86:/layout/item_page_thumbnail.xml",
+        "source": "com.hospital.management.app-main-89:/layout/item_page_thumbnail.xml"
+    },
+    {
         "merged": "com.hospital.management.app-mergeDebugResources-86:/layout/item_patient.xml",
         "source": "com.hospital.management.app-main-89:/layout/item_patient.xml"
     },
