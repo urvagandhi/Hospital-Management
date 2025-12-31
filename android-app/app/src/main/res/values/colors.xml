@@ -1,19 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand Colors -->
+    <!-- Brand Colors - Premium Gradient Palette -->
     <color name="primary">#4F46E5</color> <!-- Indigo 600 -->
     <color name="primary_dark">#4338CA</color> <!-- Indigo 700 -->
     <color name="primary_light">#818CF8</color> <!-- Indigo 400 -->
+    <color name="primary_lighter">#C7D2FE</color> <!-- Indigo 200 -->
 
     <!-- Secondary/Accent Colors -->
     <color name="accent">#06B6D4</color> <!-- Cyan 500 -->
     <color name="accent_dark">#0891B2</color> <!-- Cyan 600 -->
     <color name="accent_light">#67E8F9</color> <!-- Cyan 300 -->
 
+    <!-- Gradient Colors -->
+    <color name="gradient_start">#4F46E5</color>
+    <color name="gradient_center">#7C3AED</color> <!-- Violet 600 -->
+    <color name="gradient_end">#EC4899</color> <!-- Pink 500 -->
+    <color name="gradient_accent_start">#06B6D4</color>
+    <color name="gradient_accent_end">#10B981</color> <!-- Emerald 500 -->
+
+    <!-- Card Gradient Colors -->
+    <color name="card_gradient_blue_start">#3B82F6</color>
+    <color name="card_gradient_blue_end">#1D4ED8</color>
+    <color name="card_gradient_purple_start">#8B5CF6</color>
+    <color name="card_gradient_purple_end">#6D28D9</color>
+    <color name="card_gradient_cyan_start">#22D3EE</color>
+    <color name="card_gradient_cyan_end">#0891B2</color>
+    <color name="card_gradient_amber_start">#FBBF24</color>
+    <color name="card_gradient_amber_end">#D97706</color>
+
     <!-- Neutral Colors -->
     <color name="background">#F8FAFC</color> <!-- Slate 50 -->
     <color name="surface">#FFFFFF</color>
     <color name="surface_variant">#F1F5F9</color> <!-- Slate 100 -->
+    <color name="surface_elevated">#FFFFFF</color>
 
     <!-- Text Colors -->
     <color name="text_primary">#1E293B</color> <!-- Slate 800 -->
@@ -23,13 +42,30 @@
 
     <!-- Semantic Colors -->
     <color name="success">#10B981</color> <!-- Emerald 500 -->
+    <color name="success_light">#D1FAE5</color> <!-- Emerald 100 -->
     <color name="error">#EF4444</color> <!-- Red 500 -->
+    <color name="error_light">#FEE2E2</color> <!-- Red 100 -->
     <color name="warning">#F59E0B</color> <!-- Amber 500 -->
+    <color name="warning_light">#FEF3C7</color> <!-- Amber 100 -->
     <color name="info">#3B82F6</color> <!-- Blue 500 -->
+    <color name="info_light">#DBEAFE</color> <!-- Blue 100 -->
 
     <!-- Additional UI Colors -->
     <color name="gray">#6B7280</color> <!-- Gray 500 -->
     <color name="light_blue">#DBEAFE</color> <!-- Blue 100 -->
+    <color name="divider">#E2E8F0</color> <!-- Slate 200 -->
+
+    <!-- Shimmer Colors -->
+    <color name="shimmer_base">#F1F5F9</color>
+    <color name="shimmer_highlight">#E2E8F0</color>
+
+    <!-- Card Background Colors (Subtle) -->
+    <color name="card_bg_primary">#EEF2FF</color> <!-- Indigo 50 -->
+    <color name="card_bg_cyan">#ECFEFF</color> <!-- Cyan 50 -->
+    <color name="card_bg_amber">#FFFBEB</color> <!-- Amber 50 -->
+    <color name="card_bg_red">#FEF2F2</color> <!-- Red 50 -->
+    <color name="card_bg_green">#ECFDF5</color> <!-- Emerald 50 -->
+    <color name="card_bg_purple">#F5F3FF</color> <!-- Violet 50 -->
 
     <!-- Legacy/Required by templates -->
     <color name="purple_200">#FFBB86FC</color>

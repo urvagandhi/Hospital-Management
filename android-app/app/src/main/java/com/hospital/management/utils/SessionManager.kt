@@ -7,36 +7,82 @@ import com.hospital.management.ui.auth.LoginActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 object SessionManager {
     private const val SESSION_TIMEOUT_MS = 15 * 60 * 1000L // 15 minutes
-    private var lastInteractionTime: Long = 0
-    var isSessionActive = false
 
-    fun startSession() {
-        lastInteractionTime = System.currentTimeMillis()
-        isSessionActive = true
-    }
+    @Volatile
+    private var _isSessionActive = false
 
-    fun updateLastInteractionTime() {
-        lastInteractionTime = System.currentTimeMillis()
-    }
+    val isSessionActive: Boolean
+        get() = _isSessionActive
 
-    fun isSessionValid(): Boolean {
-        if (!isSessionActive) return false
-        val currentTime = System.currentTimeMillis()
-        return (currentTime - lastInteractionTime) < SESSION_TIMEOUT_MS
-    }
-
-    fun logoutUser(context: Context) {
-        isSessionActive = false
-        val tokenManager = TokenManager(context)
+    /**
+     * Start a new session and persist the timestamp
+     */
+    fun startSession(context: Context) {
+        _isSessionActive = true
         CoroutineScope(Dispatchers.IO).launch {
-            tokenManager.clearAll()
-
-            val intent = Intent(context, LoginActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            context.startActivity(intent)
+            val tokenManager = TokenManager(context)
+            tokenManager.saveSessionTimestamp(System.currentTimeMillis())
         }
+    }
+
+    /**
+     * Update the last interaction time (for session timeout tracking)
+     */
+    fun updateLastInteractionTime(context: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val tokenManager = TokenManager(context)
+            tokenManager.saveSessionTimestamp(System.currentTimeMillis())
+        }
+    }
+
+    /**
+     * Check if session is valid based on persisted timestamp
+     */
+    suspend fun isSessionValid(context: Context): Boolean {
+        val tokenManager = TokenManager(context)
+        val accessToken = tokenManager.getAccessToken()
+
+        if (accessToken.isNullOrEmpty()) {
+            _isSessionActive = false
+            return false
+        }
+
+        val lastTimestamp = tokenManager.getSessionTimestamp()
+        if (lastTimestamp == 0L) {
+            _isSessionActive = false
+            return false
+        }
+
+        val currentTime = System.currentTimeMillis()
+        val isValid = (currentTime - lastTimestamp) < SESSION_TIMEOUT_MS
+        _isSessionActive = isValid
+
+        return isValid
+    }
+
+    /**
+     * Restore session from persisted state (call on app startup)
+     */
+    suspend fun restoreSession(context: Context): Boolean {
+        return isSessionValid(context)
+    }
+
+    /**
+     * Logout user and clear all session data
+     */
+    fun logoutUser(context: Context) {
+        _isSessionActive = false
+        CoroutineScope(Dispatchers.IO).launch {
+            val tokenManager = TokenManager(context)
+            tokenManager.clearAll()
+        }
+
+        val intent = Intent(context, LoginActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        context.startActivity(intent)
     }
 }

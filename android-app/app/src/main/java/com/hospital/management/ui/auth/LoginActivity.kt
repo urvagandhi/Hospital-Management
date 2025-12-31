@@ -126,13 +126,13 @@ class LoginActivity : AppCompatActivity() {
                 finish()
             }
             "TOTP Setup Required" -> {
-                SessionManager.startSession()
+                SessionManager.startSession(this)
                 Toast.makeText(this, "Please setup 2FA", Toast.LENGTH_LONG).show()
                 startActivity(Intent(this, TotpSetupActivity::class.java))
                 finish()
             }
             "Login successful" -> {
-                SessionManager.startSession()
+                SessionManager.startSession(this)
 
                 // Save credentials for future biometric login if successful
                 val email = binding.etHospitalId.text.toString()

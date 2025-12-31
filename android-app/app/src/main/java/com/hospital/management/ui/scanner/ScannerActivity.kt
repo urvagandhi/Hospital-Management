@@ -1,150 +1,121 @@
 package com.hospital.management.ui.scanner
 
-import android.Manifest
+import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_JPEG
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_FULL
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import com.hospital.management.databinding.ActivityScannerBinding
 import com.hospital.management.ui.upload.UploadActivity
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 class ScannerActivity : AppCompatActivity() {
+
     private lateinit var binding: ActivityScannerBinding
-    private var imageCapture: ImageCapture? = null
-    private lateinit var cameraExecutor: ExecutorService
-    private lateinit var outputDirectory: File
+    private lateinit var scannerLauncher: ActivityResultLauncher<IntentSenderRequest>
+
+    companion object {
+        private const val TAG = "DocumentScanner"
+        const val EXTRA_SCANNED_PAGES = "scanned_pages"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityScannerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Request camera permissions
-        if (allPermissionsGranted()) {
-            startCamera()
-        } else {
-            ActivityCompat.requestPermissions(
-                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
-            )
-        }
+        setupScannerLauncher()
+        setupClickListeners()
 
-        binding.btnCapture.setOnClickListener { takePhoto() }
-
-        outputDirectory = getOutputDirectory()
-        cameraExecutor = Executors.newSingleThreadExecutor()
+        // Auto-start scanner when activity opens
+        startDocumentScanner()
     }
 
-    private fun takePhoto() {
-        val imageCapture = imageCapture ?: return
+    private fun setupScannerLauncher() {
+        scannerLauncher = registerForActivityResult(
+            ActivityResultContracts.StartIntentSenderForResult()
+        ) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
 
-        val photoFile = File(
-            outputDirectory,
-            SimpleDateFormat(FILENAME_FORMAT, Locale.US).format(System.currentTimeMillis()) + ".jpg"
-        )
+                scanningResult?.pages?.let { pages ->
+                    if (pages.isNotEmpty()) {
+                        Log.d(TAG, "Scanned ${pages.size} page(s)")
 
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+                        // Get URIs of all scanned pages
+                        val pageUris = pages.map { it.imageUri.toString() }.toTypedArray()
 
-        imageCapture.takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onError(exc: ImageCaptureException) {
-                    Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
-                }
-
-                override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    val savedUri = Uri.fromFile(photoFile)
-                    val msg = "Photo capture succeeded: $savedUri"
-                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                    Log.d(TAG, msg)
-
-                    // Navigate to UploadActivity
-                    val intent = Intent(this@ScannerActivity, UploadActivity::class.java)
-                    intent.putExtra("imageUri", savedUri.toString())
-                    startActivity(intent)
+                        // Navigate to upload activity with all pages
+                        val intent = Intent(this, UploadActivity::class.java).apply {
+                            putExtra(EXTRA_SCANNED_PAGES, pageUris)
+                            // Also pass first page for backward compatibility
+                            putExtra("imageUri", pageUris.firstOrNull())
+                        }
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        Toast.makeText(this, "No pages scanned", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
+                } ?: run {
+                    // Check for PDF result (optional)
+                    scanningResult?.pdf?.let { pdf ->
+                        Log.d(TAG, "PDF generated: ${pdf.uri}, ${pdf.pageCount} pages")
+                        Toast.makeText(this, "Document scanned: ${pdf.pageCount} pages", Toast.LENGTH_SHORT).show()
+                    }
                     finish()
                 }
-            }
-        )
-    }
-
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
-        cameraProviderFuture.addListener({
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
-                }
-
-            imageCapture = ImageCapture.Builder().build()
-
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageCapture
-                )
-            } catch (exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
-            }
-
-        }, ContextCompat.getMainExecutor(this))
-    }
-
-    private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun getOutputDirectory(): File {
-        val mediaDir = externalMediaDirs.firstOrNull()?.let {
-            File(it, "HospitalManagement").apply { mkdirs() }
-        }
-        return if (mediaDir != null && mediaDir.exists()) mediaDir else filesDir
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        cameraExecutor.shutdown()
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<String>, grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (allPermissionsGranted()) {
-                startCamera()
             } else {
-                Toast.makeText(this, "Permissions not granted by the user.", Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "Scanning cancelled or failed")
                 finish()
             }
         }
     }
 
-    companion object {
-        private const val TAG = "CameraXBasic"
-        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
-        private const val REQUEST_CODE_PERMISSIONS = 10
-        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+    private fun setupClickListeners() {
+        binding.btnStartScan.setOnClickListener {
+            startDocumentScanner()
+        }
+
+        binding.btnCancel.setOnClickListener {
+            finish()
+        }
+    }
+
+    private fun startDocumentScanner() {
+        // Configure the scanner options
+        val options = GmsDocumentScannerOptions.Builder()
+            .setGalleryImportAllowed(true)       // Allow importing from gallery
+            .setPageLimit(20)                     // Allow up to 20 pages
+            .setResultFormats(RESULT_FORMAT_JPEG) // Get JPEG images
+            .setScannerMode(SCANNER_MODE_FULL)    // Full mode with all features
+            .build()
+
+        val scanner = GmsDocumentScanning.getClient(options)
+
+        scanner.getStartScanIntent(this)
+            .addOnSuccessListener { intentSender ->
+                scannerLauncher.launch(
+                    IntentSenderRequest.Builder(intentSender).build()
+                )
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Failed to start scanner", e)
+                Toast.makeText(
+                    this,
+                    "Failed to start scanner: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+                finish()
+            }
     }
 }

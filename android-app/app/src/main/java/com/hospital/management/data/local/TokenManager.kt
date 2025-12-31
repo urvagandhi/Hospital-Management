@@ -23,6 +23,7 @@ class TokenManager(private val context: Context) {
         private const val DEVICE_ID = "device_id"
         private const val USER_EMAIL = "user_email"
         private const val USER_PASSWORD = "user_password"
+        private const val SESSION_TIMESTAMP = "session_timestamp"
     }
 
     private val masterKey = MasterKey.Builder(context)
@@ -97,6 +98,7 @@ class TokenManager(private val context: Context) {
             remove(HOSPITAL_ID)
             remove(HOSPITAL_NAME)
             remove(HOSPITAL_LOGO_URL)
+            remove(SESSION_TIMESTAMP)
             apply()
         }
     }
@@ -123,4 +125,21 @@ class TokenManager(private val context: Context) {
 
     suspend fun getEmail(): String? = prefs.getString(USER_EMAIL, null)
     suspend fun getPassword(): String? = prefs.getString(USER_PASSWORD, null)
+
+    // Session timestamp methods for persistent session state
+    suspend fun saveSessionTimestamp(timestamp: Long) {
+        prefs.edit().apply {
+            putLong(SESSION_TIMESTAMP, timestamp)
+            apply()
+        }
+    }
+
+    suspend fun getSessionTimestamp(): Long {
+        return prefs.getLong(SESSION_TIMESTAMP, 0L)
+    }
+
+    suspend fun hasValidToken(): Boolean {
+        return !prefs.getString(ACCESS_TOKEN, null).isNullOrEmpty()
+    }
 }
+

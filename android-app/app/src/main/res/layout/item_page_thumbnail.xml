@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardThumbnail"
+    android:layout_width="100dp"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ImageView
+            android:id="@+id/ivThumbnail"
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:scaleType="centerCrop"
+            android:background="@color/surface_variant"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvPageNumber"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Page 1"
+            android:textSize="11sp"
+            android:textColor="@color/text_secondary"
+            android:gravity="center"
+            android:paddingVertical="6dp"
+            android:background="@color/surface"
+            app:layout_constraintTop_toBottomOf="@id/ivThumbnail" />
+
+        <ImageButton
+            android:id="@+id/btnDelete"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_margin="4dp"
+            android:background="@drawable/bg_delete_button"
+            android:src="@drawable/ic_close"
+            android:scaleType="centerInside"
+            android:padding="4dp"
+            app:tint="@color/white"
+            android:contentDescription="Delete page"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>
