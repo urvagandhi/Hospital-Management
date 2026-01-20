@@ -21,9 +21,9 @@ object SessionManager {
     /**
      * Start a new session and persist the timestamp
      */
-    fun startSession(context: Context) {
+    suspend fun startSession(context: Context) {
         _isSessionActive = true
-        CoroutineScope(Dispatchers.IO).launch {
+        kotlinx.coroutines.withContext(Dispatchers.IO) {
             val tokenManager = TokenManager(context)
             tokenManager.saveSessionTimestamp(System.currentTimeMillis())
         }

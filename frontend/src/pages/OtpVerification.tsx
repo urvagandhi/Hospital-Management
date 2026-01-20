@@ -76,67 +76,7 @@ export const OtpVerification: React.FC = () => {
 
   const hospitalName = state.hospital?.hospitalName || "Hospital";
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 sm:p-8 animate-fadeIn">
-        <LogoHeader hospitalName={hospitalName} subtitle="Verify Your Identity" />
-
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-800">
-          <p className="font-semibold mb-1">OTP Sent Successfully</p>
-          <p>
-            We've sent a 6-digit code to <strong>+91 XXXXX1234</strong>
-          </p>
-        </div>
-
-        {error && <ErrorMessage message={error} type="error" onClose={() => setError("")} />}
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleVerify();
-          }}
-          className="space-y-6 mt-6"
-        >
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-4">Enter 6-Digit OTP</label>
-            <OtpInput length={OTP_LENGTH} value={otp} onChange={setOtp} disabled={isVerifying || state.loading} error={error && otp.length === OTP_LENGTH ? error : ""} />
-          </div>
-
-          <Button
-            label={isVerifying ? "Verifying..." : "Verify OTP"}
-            type="submit"
-            variant="primary"
-            size="lg"
-            fullWidth
-            disabled={otp.length !== OTP_LENGTH || isVerifying || state.loading}
-            loading={isVerifying || state.loading}
-          />
-        </form>
-
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Didn't receive code?</span>
-          </div>
-          <div className="mt-3">
-            <CountdownTimer initialSeconds={30} onResendClick={handleResend} isResending={isResending} />
-          </div>
-        </div>
-
-        <div className="mt-4 text-center">
-          <Button
-            label="Back to Login"
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              localStorage.removeItem("tempToken");
-              navigate("/login");
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 };
 
 export default OtpVerification;

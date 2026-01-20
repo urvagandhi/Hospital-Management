@@ -7,6 +7,14 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface ApiService {
+
+        // Fetch current authenticated hospital info
+        @GET("/api/hospitals/me")
+        suspend fun getCurrentHospital(): Response<com.hospital.management.data.models.Hospital>
+
+        // Fetch hospital info by ID
+        @GET("/api/hospitals/{id}")
+        suspend fun getHospitalById(@Path("id") id: String): Response<com.hospital.management.data.models.Hospital>
     @POST("/api/auth/login")
     suspend fun login(@Body body: Map<String, String>): Response<LoginResponse>
 

@@ -25,7 +25,7 @@
             app:tint="@color/primary"
             android:padding="8dp"
             android:background="@drawable/bg_rounded_surface"
-            android:backgroundTint="#EFF6FF" />
+            android:backgroundTint="@color/surface_variant" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -41,7 +41,7 @@
                 android:text="file_name.pdf"
                 android:textSize="14sp"
                 android:textStyle="bold"
-                android:textColor="#111827"
+                android:textColor="@color/text_primary"
                 android:maxLines="1"
                 android:ellipsize="middle" />
 
@@ -51,7 +51,7 @@
                 android:layout_height="wrap_content"
                 android:text="1.2 MB"
                 android:textSize="12sp"
-                android:textColor="#6B7280"
+                android:textColor="@color/text_secondary"
                 android:layout_marginTop="2dp" />
         </LinearLayout>
 

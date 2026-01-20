@@ -22,7 +22,7 @@
     
     <!-- Dashboard -->
     <string name="dashboard_title">Dashboard</string>
-    <string name="new_admission">New Admission</string>
+    <string name="new_admission">New Patient</string>
     <string name="scan_uhid">Scan UHID</string>
     <string name="logout">Logout</string>
     

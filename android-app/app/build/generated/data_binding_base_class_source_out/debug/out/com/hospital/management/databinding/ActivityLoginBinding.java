@@ -5,7 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.ProgressBar;
+import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -35,7 +35,7 @@ public final class ActivityLoginBinding implements ViewBinding {
   public final TextInputEditText etPassword;
 
   @NonNull
-  public final ProgressBar progressBar;
+  public final FrameLayout loadingOverlay;
 
   @NonNull
   public final TextInputLayout tilEmail;
@@ -45,14 +45,14 @@ public final class ActivityLoginBinding implements ViewBinding {
 
   private ActivityLoginBinding(@NonNull ConstraintLayout rootView, @NonNull Button btnBiometric,
       @NonNull Button btnLogin, @NonNull TextInputEditText etHospitalId,
-      @NonNull TextInputEditText etPassword, @NonNull ProgressBar progressBar,
+      @NonNull TextInputEditText etPassword, @NonNull FrameLayout loadingOverlay,
       @NonNull TextInputLayout tilEmail, @NonNull TextInputLayout tilPassword) {
     this.rootView = rootView;
     this.btnBiometric = btnBiometric;
     this.btnLogin = btnLogin;
     this.etHospitalId = etHospitalId;
     this.etPassword = etPassword;
-    this.progressBar = progressBar;
+    this.loadingOverlay = loadingOverlay;
     this.tilEmail = tilEmail;
     this.tilPassword = tilPassword;
   }
@@ -108,9 +108,9 @@ public final class ActivityLoginBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.progressBar;
-      ProgressBar progressBar = ViewBindings.findChildViewById(rootView, id);
-      if (progressBar == null) {
+      id = R.id.loadingOverlay;
+      FrameLayout loadingOverlay = ViewBindings.findChildViewById(rootView, id);
+      if (loadingOverlay == null) {
         break missingId;
       }
 
@@ -127,7 +127,7 @@ public final class ActivityLoginBinding implements ViewBinding {
       }
 
       return new ActivityLoginBinding((ConstraintLayout) rootView, btnBiometric, btnLogin,
-          etHospitalId, etPassword, progressBar, tilEmail, tilPassword);
+          etHospitalId, etPassword, loadingOverlay, tilEmail, tilPassword);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

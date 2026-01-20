@@ -4,7 +4,7 @@
  */
 
 import express from "express";
-import { getAllHospitals, getHospitalById, updateHospital } from "../controllers/hospitals.controller.js";
+import { getAllHospitals, getCurrentHospital, getHospitalById, updateHospital } from "../controllers/hospitals.controller.js";
 import { verifyAccessToken } from "../middleware/auth.js";
 import { uploadSingle } from "../middleware/upload.js";
 
@@ -18,6 +18,12 @@ router.use(verifyAccessToken);
  * Get all hospitals
  */
 router.get("/", getAllHospitals);
+
+/**
+ * GET /api/hospitals/me
+ * Get current authenticated hospital
+ */
+router.get("/me", getCurrentHospital);
 
 /**
  * GET /api/hospitals/:id

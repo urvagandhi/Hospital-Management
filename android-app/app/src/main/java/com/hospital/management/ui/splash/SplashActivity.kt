@@ -63,10 +63,10 @@ class SplashActivity : AppCompatActivity() {
         }
 
         // Text fade in
-        binding.tvAppName.alpha = 0f
+        binding.llAppName.alpha = 0f
         binding.tvTagline.alpha = 0f
 
-        ObjectAnimator.ofFloat(binding.tvAppName, View.ALPHA, 0f, 1f).apply {
+        ObjectAnimator.ofFloat(binding.llAppName, View.ALPHA, 0f, 1f).apply {
             startDelay = 400
             duration = 500
             start()

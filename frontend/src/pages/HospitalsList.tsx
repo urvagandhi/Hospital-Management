@@ -47,6 +47,7 @@ export const HospitalsList: React.FC = () => {
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = "Hospitals - Hospital Management";
     loadHospitals();
   }, []);
 

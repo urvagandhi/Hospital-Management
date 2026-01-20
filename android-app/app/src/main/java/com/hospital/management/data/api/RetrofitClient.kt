@@ -14,11 +14,15 @@ object RetrofitClient {
 
     private var retrofit: Retrofit? = null
 
+    private val cookieStore = HashMap<String, List<Cookie>>()
+
+    fun clearCookies() {
+        cookieStore.clear()
+    }
+
     fun getClient(context: Context): Retrofit {
         if (retrofit == null) {
             val cookieJar = object : CookieJar {
-                private val cookieStore = HashMap<String, List<Cookie>>()
-
                 override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
                     cookieStore[url.host] = cookies
                 }
@@ -35,6 +39,7 @@ object RetrofitClient {
             val client = OkHttpClient.Builder()
                 .cookieJar(cookieJar)
                 // .certificatePinner(certificatePinner) // TODO: Uncomment after adding correct hash
+                .addInterceptor(AuthInterceptor(context))
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)

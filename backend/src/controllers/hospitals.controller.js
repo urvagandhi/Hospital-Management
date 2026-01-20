@@ -28,6 +28,43 @@ export const getAllHospitals = async (req, res) => {
 };
 
 /**
+ * Get current authenticated hospital
+ * GET /api/hospitals/me
+ */
+export const getCurrentHospital = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+
+    if (!hospitalId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const hospital = await Hospital.findById(hospitalId).select("-passwordHash -failedLoginAttempts -lockUntil -__v");
+
+    if (!hospital) {
+      return res.status(404).json({
+        success: false,
+        message: "Hospital not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: hospital,
+    });
+  } catch (error) {
+    console.error("Get current hospital error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch hospital",
+    });
+  }
+};
+
+/**
  * Get hospital by ID
  * GET /api/hospitals/:id
  */
@@ -160,6 +197,7 @@ export const updateHospital = async (req, res) => {
 
 export default {
   getAllHospitals,
+  getCurrentHospital,
   getHospitalById,
   updateHospital,
 };

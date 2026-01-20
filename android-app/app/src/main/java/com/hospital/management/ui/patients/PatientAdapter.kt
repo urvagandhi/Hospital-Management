@@ -56,7 +56,13 @@ class PatientAdapter(
             binding.tvPatientName.text = patient.patientName
             binding.tvMrn.text = "MRN: ${patient.medicalRecordNumber}"
             binding.tvPhone.text = patient.phone
-            // binding.tvDob.text = "DOB: ${formatDate(patient.dateOfBirth)}" // Removed as view is missing
+            
+            // Set first character of name
+            binding.tvInitials.text = if (patient.patientName.isNotEmpty()) {
+                patient.patientName.first().toString().uppercase()
+            } else {
+                "?"
+            }
 
             binding.root.setOnClickListener {
                 onPatientClick(patient)

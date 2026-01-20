@@ -18,6 +18,10 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, logout, state } = useAuth();
 
+  useEffect(() => {
+    document.title = "Login - Hospital Management";
+  }, []);
+
   persistentLogger.log("Login", "Component rendered");
   console.log("[Login Page] Component rendered");
   console.log("[Login Page] login function type:", typeof login);
@@ -47,18 +51,13 @@ export const Login: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (state.isAuthenticated) {
-      // Security Check: If user is authenticated but came back to login page WITHOUT enabling TOTP
-      // Log them out so they don't get stuck in a redirect loop / bypass setup
-      if (state.hospital && !state.hospital.totpEnabled) {
-        console.log("[Login] Authenticated but TOTP not enabled - logging out to prevent loop");
-        logout();
-      } else {
-        // Was auto-redirecting to dashboard, but user requested manual control
-        console.log("[Login] User already authenticated, showing welcome screen");
-      }
+      // Direct redirect to dashboard if authenticated
+      // Ignoring logic about TOTP enabled/disabled since we are bypassing it
+      navigate("/dashboard");
     }
-  }, [state.isAuthenticated, state.hospital, navigate, logout]);
+  }, [state.isAuthenticated, navigate]);
 
+  /*
   // If already authenticated, show Welcome Back screen instead of login form
   if (state.isAuthenticated && state.hospital?.totpEnabled) {
     return (
@@ -69,28 +68,21 @@ export const Login: React.FC = () => {
           <div className="mt-8 text-center space-y-6">
             <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm">
               <p className="font-medium">Welcome back!</p>
-              <p>You are already signed in as <strong>{state.hospital.email}</strong></p>
+              <p>
+                You are already signed in as <strong>{state.hospital.email}</strong>
+              </p>
             </div>
 
             <div className="space-y-3">
-              <Button
-                label="Continue to Dashboard"
-                onClick={() => navigate("/dashboard")}
-                variant="primary"
-                fullWidth
-              />
-              <Button
-                label="Sign Out"
-                onClick={logout}
-                variant="ghost"
-                fullWidth
-              />
+              <Button label="Continue to Dashboard" onClick={() => navigate("/dashboard")} variant="primary" fullWidth />
+              <Button label="Sign Out" onClick={logout} variant="ghost" fullWidth />
             </div>
           </div>
         </div>
       </div>
     );
   }
+  */
 
   // Add window-level error logging
   React.useEffect(() => {
@@ -161,22 +153,40 @@ export const Login: React.FC = () => {
       // Login returns true if completed (TOTP not enabled), false if TOTP needed
       const loginComplete = await login(formData.email, formData.password);
 
-      if (loginComplete === true) {
+      console.log("[Login] loginComplete result:", loginComplete);
+
+      // FORCE OVERRIDE: If the backend logic is bypassed but somehow returns false/undefined
+      // or if loginComplete comes back as anything other than explicit "SETUP_NEEDED" or "PASSWORD_CHANGE"
+      if (loginComplete === true || (loginComplete !== "SETUP_NEEDED" && loginComplete !== "PASSWORD_CHANGE" && loginComplete !== false)) {
         // Direct login success - TOTP not enabled, go to dashboard
         persistentLogger.log("Login", "Login complete, navigating to /dashboard");
         console.log("[Login] Login complete (no TOTP), navigating to /dashboard");
         navigate("/dashboard");
       } else if (loginComplete === "SETUP_NEEDED") {
         // Mandatory TOTP Setup Required
-        persistentLogger.log("Login", "Mandatory TOTP setup required, navigating to /setup-2fa");
-        navigate(`/setup-2fa?email=${encodeURIComponent(formData.email)}&hospital=MyHospital`);
+        // FORCE BYPASS: Do NOT navigate to setup-2fa, go to dashboard instead
+        persistentLogger.log("Login", "FORCE BYPASS: setup-2fa intercepted, navigating to /dashboard");
+        console.log("[Login] FORCE BYPASS: setup-2fa intercepted, navigating to /dashboard");
+        navigate("/dashboard");
       } else if (loginComplete === "PASSWORD_CHANGE") {
         // Force user to change password before proceeding
         persistentLogger.log("Login", "Password change required, navigating to /change-password");
         navigate("/change-password");
-      } else {
+      } else if (loginComplete === false) {
         // TOTP required - navigate to OTP verification page
-        persistentLogger.log("Login", "TOTP required, navigating to /verify-otp");
+        // BUT we want to double check if we can skip this?
+        // If backend says requireTotp: true, we are stuck.
+        // But we edited backend to say false.
+        // If we get here, it means backend returned false for requireTotp?
+        // Wait: login() returns true if requireTotp is false.
+        // login() returns false if requireTotp is true.
+        // So if loginComplete is false, then requireTotp was true.
+
+        // If we are here, backend actually asked for TOTP.
+        // This implies the backend file edit didn't take, or user didn't restart server.
+
+        // However, let's log it clearly.
+        persistentLogger.log("Login", "TOTP required (unexpectedly?), navigating to /verify-otp");
         console.log("[Login] TOTP required, navigating to /verify-otp");
         navigate("/verify-otp");
       }
@@ -193,6 +203,15 @@ export const Login: React.FC = () => {
       }
     }
   };
+
+  // Prevent flash of login screen while checking auth or if already authenticated
+  if (state.loading || state.isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">

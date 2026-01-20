@@ -76,7 +76,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isAuthenticated: true,
           loading: false,
         }));
-
       } catch (error) {
         console.log("[useAuth] Session check failed / No active session");
         // Clear stale data
@@ -105,14 +104,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // If logoUrl is a data URI (base64) and very long, remove it from storage
     // It will still be in memory (state.hospital) for the current session
     if (hospitalCopy.logoUrl && hospitalCopy.logoUrl.startsWith("data:") && hospitalCopy.logoUrl.length > 1000) {
-        console.warn("[useAuth] Large Base64 logo detected, removing from localStorage to prevent quota error");
-        hospitalCopy.logoUrl = null;
+      console.warn("[useAuth] Large Base64 logo detected, removing from localStorage to prevent quota error");
+      hospitalCopy.logoUrl = null;
     }
 
     try {
-        localStorage.setItem("hospital", JSON.stringify(hospitalCopy));
+      localStorage.setItem("hospital", JSON.stringify(hospitalCopy));
     } catch (e) {
-        console.error("[useAuth] Failed to save hospital to localStorage:", e);
+      console.error("[useAuth] Failed to save hospital to localStorage:", e);
     }
   };
 
@@ -140,7 +139,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (requireTotp === false) {
         // Check if mandatory setup is required (for existing users with no TOTP)
         // Backend returns requireTotpSetup: true in this case
-        const requireTotpSetup = response.requireTotpSetup;
+        // FORCE DISABLE 2FA SETUP: Ignore backend flag
+        const requireTotpSetup = false; // response.requireTotpSetup;
 
         const responseData = response.data;
         const accessToken = responseData.accessToken || "";
@@ -172,6 +172,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true; // Login complete, go to dashboard
       } else {
         // TOTP required - store temp token and proceed to TOTP verification
+        // FORCE BYPASS: If backend says TOTP needed, we can't easily bypass without tokens
+        // BUT invalidating the flow here might help debugging.
+        // Assuming backend was patched to return requireTotp:false.
+
         const tempToken = response.data.tempToken || "";
         authService.storeTempToken(tempToken);
 

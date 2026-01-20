@@ -10,8 +10,8 @@
     <View
         android:id="@+id/viewHeader"
         android:layout_width="match_parent"
-        android:layout_height="140dp"
-        android:background="@color/primary"
+        android:layout_height="180dp"
+        android:background="@drawable/bg_dashboard_header"
         app:layout_constraintTop_toTopOf="parent" />
 
     <ImageButton
@@ -40,31 +40,71 @@
         app:layout_constraintStart_toEndOf="@id/btnBack"
         app:layout_constraintTop_toTopOf="@id/btnBack" />
 
-    <TextView
-        android:id="@+id/tvPatientName"
-        android:layout_width="wrap_content"
+    <!-- Patient Info Card -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cvPatientInfo"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Patient Name"
-        android:textColor="#E0E0E0"
-        android:textSize="14sp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="4dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvTitle" />
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="16dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="@color/surface"
+        app:layout_constraintTop_toBottomOf="@id/btnBack">
 
-    <!-- Info/Details Button -->
-    <ImageButton
-        android:id="@+id/btnPatientDetails"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="12dp"
-        android:src="@android:drawable/ic_menu_info_details"
-        app:tint="@color/white"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/tvPatientName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="Patient Name"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btnEditPatient" />
+
+            <TextView
+                android:id="@+id/tvMrn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MRN: --"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:layout_marginTop="4dp"
+                app:layout_constraintStart_toStartOf="@id/tvPatientName"
+                app:layout_constraintTop_toBottomOf="@id/tvPatientName" />
+
+            <TextView
+                android:id="@+id/tvPhone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Phone: --"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:layout_marginTop="2dp"
+                app:layout_constraintStart_toStartOf="@id/tvPatientName"
+                app:layout_constraintTop_toBottomOf="@id/tvMrn" />
+
+            <ImageButton
+                android:id="@+id/btnEditPatient"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_edit"
+                app:tint="@color/primary"
+                android:padding="8dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.cardview.widget.CardView>
 
     <!-- Content -->
     <androidx.recyclerview.widget.RecyclerView
@@ -76,7 +116,8 @@
         android:paddingTop="8dp"
         android:paddingBottom="88dp"
         android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/viewHeader"
+
+        app:layout_constraintTop_toBottomOf="@id/cvPatientInfo"
         app:layout_constraintBottom_toBottomOf="parent" />
 
     <TextView
@@ -105,28 +146,16 @@
 
     <!-- FABs -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabScan"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="24dp"
-        android:src="@drawable/ic_scanner"
-        app:tint="@color/white"
-        app:backgroundTint="@color/primary"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabCreateFolder"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_margin="24dp"
         android:src="@android:drawable/ic_input_add"
         app:tint="@color/white"
         app:backgroundTint="#F59E0B"
-        app:fabSize="mini"
-        app:layout_constraintBottom_toTopOf="@id/fabScan"
-        app:layout_constraintEnd_toEndOf="@id/fabScan"
-        app:layout_constraintStart_toStartOf="@id/fabScan" />
+        app:fabSize="normal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabDownloadAll"
@@ -138,6 +167,6 @@
         app:backgroundTint="#10B981"
         app:fabSize="mini"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/fabScan" />
+        app:layout_constraintEnd_toStartOf="@id/fabCreateFolder" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

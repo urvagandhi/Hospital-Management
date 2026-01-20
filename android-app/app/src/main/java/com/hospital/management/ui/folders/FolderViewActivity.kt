@@ -58,24 +58,28 @@ class FolderViewActivity : AppCompatActivity() {
 
     private fun setupViews() {
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
-        findViewById<android.widget.TextView>(R.id.tvPatientName).text = patientName
-
+        
+        // Initialize views
         rvFolders = findViewById(R.id.rvFolders)
         progressBar = findViewById(R.id.progressBar)
         tvEmpty = findViewById(R.id.tvEmpty)
+        val tvPatientName = findViewById<android.widget.TextView>(R.id.tvPatientName)
+        val tvMrn = findViewById<android.widget.TextView>(R.id.tvMrn)
+        val tvPhone = findViewById<android.widget.TextView>(R.id.tvPhone)
+
+        // Set initial data (might be empty initially)
+        tvPatientName.text = patientName
 
         rvFolders.layoutManager = GridLayoutManager(this, 2)
 
-        // Button to view patient details
-        findViewById<View>(R.id.btnPatientDetails).setOnClickListener {
-            val intent = Intent(this, com.hospital.management.ui.patients.PatientDetailsActivity::class.java)
-            intent.putExtra("PATIENT_ID", patientId)
-            startActivity(intent)
-        }
-
-        // FAB for scan document
-        findViewById<View>(R.id.fabScan).setOnClickListener {
-            showFolderSelectionDialog()
+        // Edit Button Logic
+        findViewById<View>(R.id.btnEditPatient).setOnClickListener {
+            val currentPatient = patientViewModel.currentPatient.value
+            if (currentPatient != null && currentPatient._id == patientId) {
+                showEditPatientDialog(currentPatient)
+            } else {
+                Toast.makeText(this, "Patient data not fully loaded yet", Toast.LENGTH_SHORT).show()
+            }
         }
 
         // FAB for download all
@@ -96,13 +100,18 @@ class FolderViewActivity : AppCompatActivity() {
                     is PatientState.Loading -> progressBar.visibility = View.VISIBLE
                     is PatientState.Success -> {
                         progressBar.visibility = View.GONE
-                        if (state.message?.isNotEmpty() == true && state.message != "Patient loaded") {
+                        if (state.message?.isNotEmpty() == true && state.message != "Patient loaded" && state.message != "Files loaded") {
                              Toast.makeText(this@FolderViewActivity, state.message, Toast.LENGTH_SHORT).show()
                         }
                     }
                     is PatientState.Error -> {
                         progressBar.visibility = View.GONE
-                        Toast.makeText(this@FolderViewActivity, state.message, Toast.LENGTH_SHORT).show()
+                        val msg = state.message
+                        if (msg.contains("duplicate key error") || msg.contains("medicalRecordNumber")) {
+                             showErrorDialog("Update Failed", "A patient with this Medical Record Number (MRN) already exists.\nPlease use a unique MRN.")
+                        } else {
+                             Toast.makeText(this@FolderViewActivity, msg, Toast.LENGTH_SHORT).show()
+                        }
                     }
                     else -> progressBar.visibility = View.GONE
                 }
@@ -112,6 +121,11 @@ class FolderViewActivity : AppCompatActivity() {
         lifecycleScope.launch {
             patientViewModel.currentPatient.collect { patient ->
                 if (patient != null && patient._id == patientId) {
+                    // Update UI with patient details
+                    findViewById<android.widget.TextView>(R.id.tvPatientName).text = patient.patientName
+                    findViewById<android.widget.TextView>(R.id.tvMrn).text = "MRN: ${patient.medicalRecordNumber}"
+                    findViewById<android.widget.TextView>(R.id.tvPhone).text = "Phone: ${patient.phone}"
+
                     val folders = patient.folders
                     if (folders.isNotEmpty()) {
                         folderAdapter = FolderAdapter(folders) { folder ->
@@ -132,6 +146,58 @@ class FolderViewActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun showEditPatientDialog(patient: com.hospital.management.data.models.Patient) {
+        // Let's create a layout programmatically to avoid creating a new file for now, or just inflate a simple linear layout
+        val layout = android.widget.LinearLayout(this)
+        layout.orientation = android.widget.LinearLayout.VERTICAL
+        layout.setPadding(50, 40, 50, 40)
+
+        val etName = android.widget.EditText(this)
+        etName.hint = "Patient Name"
+        etName.setText(patient.patientName)
+        layout.addView(etName)
+
+        val etMrn = android.widget.EditText(this)
+        etMrn.hint = "Medical Record Number"
+        etMrn.setText(patient.medicalRecordNumber)
+        layout.addView(etMrn)
+
+        val etPhone = android.widget.EditText(this)
+        etPhone.hint = "Phone Number"
+        etPhone.setText(patient.phone)
+        layout.addView(etPhone)
+
+        AlertDialog.Builder(this)
+            .setTitle("Edit Patient Details")
+            .setView(layout)
+            .setPositiveButton("Update") { _, _ ->
+                val name = etName.text.toString().trim()
+                val mrn = etMrn.text.toString().trim()
+                val phone = etPhone.text.toString().trim()
+
+                if (name.isNotEmpty() && mrn.isNotEmpty()) {
+                    val updateData = mapOf(
+                        "patientName" to name,
+                        "medicalRecordNumber" to mrn,
+                        "phone" to phone
+                    )
+                    patientViewModel.updatePatient(patientId, updateData)
+                } else {
+                    Toast.makeText(this, "Name and MRN are required", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showErrorDialog(title: String, message: String) {
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun loadFolders() {
@@ -162,30 +228,7 @@ class FolderViewActivity : AppCompatActivity() {
         patientViewModel.createFolder(patientId, folderName)
     }
 
-    private fun showFolderSelectionDialog() {
-        val patient = patientViewModel.currentPatient.value ?: return
-        val folders = patient.folders
 
-        if (folders.isEmpty()) {
-            Toast.makeText(this@FolderViewActivity, "No folders available", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val folderNames = folders.map { it.name }.toTypedArray()
-
-        AlertDialog.Builder(this@FolderViewActivity)
-            .setTitle("Select Folder")
-            .setItems(folderNames) { _, which ->
-                // Navigate to scanner
-                // Navigate to scanner
-                val intent = Intent(this@FolderViewActivity, com.hospital.management.ui.scanner.ScannerActivity::class.java)
-                intent.putExtra("PATIENT_ID", patientId)
-                intent.putExtra("FOLDER_NAME", folderNames[which])
-                startActivity(intent)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
 
     private fun showDownloadOptionsDialog() {
         val options = arrayOf("Download as PDF", "Download as ZIP")

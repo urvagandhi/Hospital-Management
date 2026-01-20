@@ -9,6 +9,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
@@ -27,16 +28,16 @@ public final class ActivityFolderViewBinding implements ViewBinding {
   public final ImageButton btnBack;
 
   @NonNull
-  public final ImageButton btnPatientDetails;
+  public final ImageButton btnEditPatient;
+
+  @NonNull
+  public final CardView cvPatientInfo;
 
   @NonNull
   public final FloatingActionButton fabCreateFolder;
 
   @NonNull
   public final FloatingActionButton fabDownloadAll;
-
-  @NonNull
-  public final FloatingActionButton fabScan;
 
   @NonNull
   public final ProgressBar progressBar;
@@ -48,7 +49,13 @@ public final class ActivityFolderViewBinding implements ViewBinding {
   public final TextView tvEmpty;
 
   @NonNull
+  public final TextView tvMrn;
+
+  @NonNull
   public final TextView tvPatientName;
+
+  @NonNull
+  public final TextView tvPhone;
 
   @NonNull
   public final TextView tvTitle;
@@ -57,21 +64,24 @@ public final class ActivityFolderViewBinding implements ViewBinding {
   public final View viewHeader;
 
   private ActivityFolderViewBinding(@NonNull ConstraintLayout rootView,
-      @NonNull ImageButton btnBack, @NonNull ImageButton btnPatientDetails,
-      @NonNull FloatingActionButton fabCreateFolder, @NonNull FloatingActionButton fabDownloadAll,
-      @NonNull FloatingActionButton fabScan, @NonNull ProgressBar progressBar,
-      @NonNull RecyclerView rvFolders, @NonNull TextView tvEmpty, @NonNull TextView tvPatientName,
-      @NonNull TextView tvTitle, @NonNull View viewHeader) {
+      @NonNull ImageButton btnBack, @NonNull ImageButton btnEditPatient,
+      @NonNull CardView cvPatientInfo, @NonNull FloatingActionButton fabCreateFolder,
+      @NonNull FloatingActionButton fabDownloadAll, @NonNull ProgressBar progressBar,
+      @NonNull RecyclerView rvFolders, @NonNull TextView tvEmpty, @NonNull TextView tvMrn,
+      @NonNull TextView tvPatientName, @NonNull TextView tvPhone, @NonNull TextView tvTitle,
+      @NonNull View viewHeader) {
     this.rootView = rootView;
     this.btnBack = btnBack;
-    this.btnPatientDetails = btnPatientDetails;
+    this.btnEditPatient = btnEditPatient;
+    this.cvPatientInfo = cvPatientInfo;
     this.fabCreateFolder = fabCreateFolder;
     this.fabDownloadAll = fabDownloadAll;
-    this.fabScan = fabScan;
     this.progressBar = progressBar;
     this.rvFolders = rvFolders;
     this.tvEmpty = tvEmpty;
+    this.tvMrn = tvMrn;
     this.tvPatientName = tvPatientName;
+    this.tvPhone = tvPhone;
     this.tvTitle = tvTitle;
     this.viewHeader = viewHeader;
   }
@@ -109,9 +119,15 @@ public final class ActivityFolderViewBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.btnPatientDetails;
-      ImageButton btnPatientDetails = ViewBindings.findChildViewById(rootView, id);
-      if (btnPatientDetails == null) {
+      id = R.id.btnEditPatient;
+      ImageButton btnEditPatient = ViewBindings.findChildViewById(rootView, id);
+      if (btnEditPatient == null) {
+        break missingId;
+      }
+
+      id = R.id.cvPatientInfo;
+      CardView cvPatientInfo = ViewBindings.findChildViewById(rootView, id);
+      if (cvPatientInfo == null) {
         break missingId;
       }
 
@@ -124,12 +140,6 @@ public final class ActivityFolderViewBinding implements ViewBinding {
       id = R.id.fabDownloadAll;
       FloatingActionButton fabDownloadAll = ViewBindings.findChildViewById(rootView, id);
       if (fabDownloadAll == null) {
-        break missingId;
-      }
-
-      id = R.id.fabScan;
-      FloatingActionButton fabScan = ViewBindings.findChildViewById(rootView, id);
-      if (fabScan == null) {
         break missingId;
       }
 
@@ -151,9 +161,21 @@ public final class ActivityFolderViewBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.tvMrn;
+      TextView tvMrn = ViewBindings.findChildViewById(rootView, id);
+      if (tvMrn == null) {
+        break missingId;
+      }
+
       id = R.id.tvPatientName;
       TextView tvPatientName = ViewBindings.findChildViewById(rootView, id);
       if (tvPatientName == null) {
+        break missingId;
+      }
+
+      id = R.id.tvPhone;
+      TextView tvPhone = ViewBindings.findChildViewById(rootView, id);
+      if (tvPhone == null) {
         break missingId;
       }
 
@@ -169,9 +191,9 @@ public final class ActivityFolderViewBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityFolderViewBinding((ConstraintLayout) rootView, btnBack, btnPatientDetails,
-          fabCreateFolder, fabDownloadAll, fabScan, progressBar, rvFolders, tvEmpty, tvPatientName,
-          tvTitle, viewHeader);
+      return new ActivityFolderViewBinding((ConstraintLayout) rootView, btnBack, btnEditPatient,
+          cvPatientInfo, fabCreateFolder, fabDownloadAll, progressBar, rvFolders, tvEmpty, tvMrn,
+          tvPatientName, tvPhone, tvTitle, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

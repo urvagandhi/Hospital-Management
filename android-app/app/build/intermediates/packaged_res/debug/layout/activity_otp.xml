@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F9FAFB"
+    android:background="@color/background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -20,7 +20,7 @@
             android:text="Hospital Management"
             android:textSize="24sp"
             android:textStyle="bold"
-            android:textColor="#111827"
+            android:textColor="@color/text_primary"
             android:layout_marginBottom="8dp" />
 
         <TextView
@@ -28,7 +28,7 @@
             android:layout_height="wrap_content"
             android:text="Verify Your Identity"
             android:textSize="14sp"
-            android:textColor="#6B7280"
+            android:textColor="@color/text_secondary"
             android:layout_marginBottom="24dp" />
 
         <!-- Info Card -->
@@ -36,7 +36,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="#EFF6FF"
+            app:cardBackgroundColor="@color/surface_variant"
             app:cardCornerRadius="8dp"
             app:cardElevation="0dp">
 
@@ -52,7 +52,7 @@
                     android:text="OTP Sent Successfully"
                     android:textStyle="bold"
                     android:textSize="14sp"
-                    android:textColor="#1E40AF"
+                    android:textColor="@color/primary"
                     android:layout_marginBottom="4dp" />
 
                 <TextView
@@ -61,7 +61,7 @@
                     android:layout_height="wrap_content"
                     android:text="We've sent a 6-digit code to your registered phone"
                     android:textSize="13sp"
-                    android:textColor="#1E40AF" />
+                    android:textColor="@color/primary" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -71,9 +71,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:background="#FEE2E2"
+            android:background="@color/error_light"
             android:padding="12dp"
-            android:textColor="#DC2626"
+            android:textColor="@color/error"
             android:textSize="13sp"
             android:visibility="gone" />
 
@@ -84,7 +84,7 @@
             android:text="Enter 6-Digit OTP"
             android:textSize="14sp"
             android:textStyle="bold"
-            android:textColor="#374151"
+            android:textColor="@color/text_primary"
             android:layout_gravity="start"
             android:layout_marginBottom="12dp" />
 
@@ -132,7 +132,7 @@
             android:layout_height="1dp"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="24dp"
-            android:background="#E5E7EB" />
+            android:background="@color/surface_variant" />
 
         <!-- Resend Section -->
         <LinearLayout
@@ -147,7 +147,7 @@
                 android:layout_weight="1"
                 android:text="Didn't receive code?"
                 android:textSize="13sp"
-                android:textColor="#6B7280" />
+                android:textColor="@color/text_secondary" />
 
             <TextView
                 android:id="@+id/tvCountdown"
@@ -155,7 +155,7 @@
                 android:layout_height="wrap_content"
                 android:text="Resend in 30s"
                 android:textSize="13sp"
-                android:textColor="#6B7280"
+                android:textColor="@color/text_secondary"
                 android:visibility="visible" />
         </LinearLayout>
 

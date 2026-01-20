@@ -3057,7 +3057,10 @@ drawable bg_card_gradient_amber
 drawable bg_card_gradient_blue
 drawable bg_card_gradient_cyan
 drawable bg_card_gradient_red
+drawable bg_circle_light
+drawable bg_circle_white_alpha
 drawable bg_dashboard_gradient
+drawable bg_dashboard_header
 drawable bg_delete_button
 drawable bg_glow_circle
 drawable bg_icon_circle_white
@@ -3101,6 +3104,7 @@ drawable fingerprint_dialog_error
 drawable fingerprint_dialog_fp_icon
 drawable googleg_disabled_color_18
 drawable googleg_standard_color_18
+drawable ic_add
 drawable ic_arrow_back
 drawable ic_arrow_back_black_24
 drawable ic_calendar
@@ -3120,7 +3124,9 @@ drawable ic_file_document
 drawable ic_folder
 drawable ic_keyboard_black_24dp
 drawable ic_launcher_background
+drawable ic_launcher_background_h
 drawable ic_launcher_foreground
+drawable ic_launcher_foreground_h
 drawable ic_logout
 drawable ic_m3_chip_check
 drawable ic_m3_chip_checked_circle
@@ -3135,6 +3141,7 @@ drawable ic_person_add
 drawable ic_phone
 drawable ic_scanner
 drawable ic_search_black_24
+drawable ic_splash_logo
 drawable ic_upload
 drawable logout_button_ripple
 drawable m3_appbar_background
@@ -3275,6 +3282,7 @@ id action_container
 id action_context_bar
 id action_divider
 id action_image
+id action_logout
 id action_menu_divider
 id action_menu_presenter
 id action_mode_bar
@@ -3323,9 +3331,9 @@ id btnContinueToDashboard
 id btnCopyBackupCodes
 id btnDelete
 id btnEdit
+id btnEditPatient
 id btnLogin
-id btnLogout
-id btnPatientDetails
+id btnNewAdmission
 id btnResend
 id btnStartScan
 id btnSubmit
@@ -3336,11 +3344,9 @@ id cache_measures
 id callMeasure
 id cancel_button
 id cardBackupCodes
-id cardNewAdmission
-id cardScanner
 id cardSearch
-id cardShowPatients
 id cardThumbnail
+id cardTotalPatients
 id carryVelocity
 id center
 id centerCrop
@@ -3381,6 +3387,7 @@ id custom
 id customPanel
 id cut
 id cvAvatar
+id cvPatientInfo
 id dark
 id date_picker_actions
 id decelerate
@@ -3478,7 +3485,6 @@ id glide_custom_view_target_tag
 id gone
 id graph
 id graph_wrap
-id gridLayout
 id group_divider
 id grouping
 id groups
@@ -3509,16 +3515,18 @@ id is_pooling_container_tag
 id italic
 id item_touch_helper_previous_elevation
 id ivChevron
-id ivHospitalLogo
 id ivLogo
 id ivPreview
 id ivQrCode
 id ivThumbnail
+id ivToolbarLogo
 id jumpToEnd
 id jumpToStart
 id labeled
 id layout
 id layoutEmpty
+id layoutStats
+id lblPatients
 id left
 id leftToRight
 id legacy
@@ -3528,6 +3536,8 @@ id line3
 id linear
 id listMode
 id list_item
+id llAppName
+id loadingOverlay
 id m3_side_sheet
 id marquee
 id masked
@@ -3765,6 +3775,7 @@ id title
 id titleDividerNoCustom
 id title_template
 id toggle
+id toolbar
 id top
 id topPanel
 id touch_outside
@@ -3776,7 +3787,6 @@ id transition_position
 id transition_scene_layoutid_cache
 id transition_transform
 id triangle
-id tvAppName
 id tvBackupCode
 id tvBackupCodes
 id tvCountdown
@@ -3797,12 +3807,14 @@ id tvMrn
 id tvPageCount
 id tvPageNumber
 id tvPagesLabel
+id tvPatientCount
 id tvPatientName
 id tvPhone
 id tvQuickActions
 id tvSubtitle
 id tvTagline
 id tvTitle
+id tvToolbarHospitalName
 id tvUploadProgress
 id tvWelcome
 id unchecked
@@ -4045,6 +4057,7 @@ layout select_dialog_item_material
 layout select_dialog_multichoice_material
 layout select_dialog_singlechoice_material
 layout support_simple_spinner_dropdown_item
+menu dashboard_menu
 mipmap ic_launcher
 mipmap ic_launcher_round
 plurals mtrl_badge_content_description

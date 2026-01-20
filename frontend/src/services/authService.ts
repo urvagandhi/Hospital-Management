@@ -137,6 +137,8 @@ export const authService = {
   storeTokens: (accessToken: string, refreshToken: string) => {
     if (accessToken) localStorage.setItem("accessToken", accessToken);
     if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
+    // Clear temp token as we are now fully authenticated
+    localStorage.removeItem("tempToken");
   },
 
   /**

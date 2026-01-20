@@ -22,10 +22,10 @@
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:src="@drawable/ic_folder"
-            app:tint="#F59E0B"
+            app:tint="@color/warning"
             android:padding="8dp"
             android:background="@drawable/bg_rounded_surface"
-            android:backgroundTint="#FFFBEB" />
+            android:backgroundTint="@color/warning_light" />
 
         <TextView
             android:id="@+id/tvFolderName"

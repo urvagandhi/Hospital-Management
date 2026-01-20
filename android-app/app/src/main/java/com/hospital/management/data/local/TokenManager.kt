@@ -12,6 +12,10 @@ import kotlinx.coroutines.flow.onStart
 
 class TokenManager(private val context: Context) {
 
+    suspend fun getHospitalId(): String? {
+        return prefs.getString(HOSPITAL_ID, null)
+    }
+
     companion object {
         private const val PREFS_NAME = "secure_hospital_prefs"
         private const val ACCESS_TOKEN = "access_token"

@@ -136,12 +136,11 @@ export const HospitalRegistration: React.FC = () => {
       // Store email status and hospital email
       setInvitationSent(data.invitationSent || false);
       setRegisteredEmail(formData.email);
-      
+
       // Backend now creates hospital immediately (admin registration).
       // If backend returns backupCodes (unlikely now), store them
       if (data.backupCodes) setBackupCodes(data.backupCodes || []);
       setStep(2);
-
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || "Registration failed";
       setDisplayError(errorMessage);
@@ -221,8 +220,6 @@ export const HospitalRegistration: React.FC = () => {
         }
       />
 
-      
-
       <TextInput
         label="Phone Number"
         type="tel"
@@ -279,13 +276,18 @@ export const HospitalRegistration: React.FC = () => {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
           <div className="flex items-start gap-3">
             <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
             </svg>
             <div className="flex-1">
               <h4 className="font-semibold text-blue-900 mb-1">Invitation Email Sent</h4>
               <p className="text-sm text-blue-800">
-                A temporary password has been sent to <strong>{registeredEmail}</strong>. 
-                The hospital admin can use it to sign in and will be prompted to change the password on first login.
+                A temporary password has been sent to <strong>{registeredEmail}</strong>. The hospital admin can use it to sign in and will be prompted to change the password on
+                first login.
               </p>
             </div>
           </div>
@@ -294,13 +296,17 @@ export const HospitalRegistration: React.FC = () => {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
           <div className="flex items-start gap-3">
             <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
             <div className="flex-1">
               <h4 className="font-semibold text-yellow-900 mb-1">Email Delivery Failed</h4>
               <p className="text-sm text-yellow-800">
-                Hospital registered successfully, but the invitation email could not be sent. 
-                Please manually share the temporary password with <strong>{registeredEmail}</strong>.
+                Hospital registered successfully, but the invitation email could not be sent. Please manually share the temporary password with <strong>{registeredEmail}</strong>.
               </p>
             </div>
           </div>
@@ -311,7 +317,12 @@ export const HospitalRegistration: React.FC = () => {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
           <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
             Save your Backup Codes
           </h4>
@@ -330,18 +341,12 @@ export const HospitalRegistration: React.FC = () => {
         </div>
       )}
 
-      <Button
-        label="Back to Hospitals List"
-        onClick={() => navigate("/hospitals")}
-        variant="primary"
-        size="lg"
-        fullWidth
-      />
+      <Button label="Back to Hospitals" onClick={() => navigate("/hospitals")} variant="primary" size="lg" fullWidth />
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 pt-16">
       <Navbar />
       <div className="flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
         <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-6 sm:p-8 animate-fadeIn">

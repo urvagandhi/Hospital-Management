@@ -63,7 +63,7 @@
             android:textSize="12sp"
             android:textColor="@color/text_secondary"
             android:background="@drawable/bg_rounded_surface"
-            android:backgroundTint="#F3F4F6"
+            android:backgroundTint="@color/surface_variant"
             android:paddingHorizontal="6dp"
             android:paddingVertical="2dp"
             android:layout_marginTop="4dp"

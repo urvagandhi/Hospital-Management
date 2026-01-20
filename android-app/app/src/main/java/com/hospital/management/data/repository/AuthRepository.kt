@@ -1,6 +1,7 @@
 package com.hospital.management.data.repository
 
 import com.hospital.management.data.api.ApiService
+import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.models.ChangePasswordResponse
 import com.hospital.management.data.models.LoginResponse
@@ -71,5 +72,6 @@ class AuthRepository(
 
     suspend fun logout() {
         tokenManager.clearAll()
+        RetrofitClient.clearCookies()
     }
 }

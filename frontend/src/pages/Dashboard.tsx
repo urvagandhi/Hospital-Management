@@ -22,15 +22,15 @@ const Dashboard: React.FC = () => {
   const [limit] = useState(10);
 
   useEffect(() => {
+    document.title = "Dashboard - Hospital Management";
     fetchPatients();
   }, [page, search]);
+
 
   const fetchPatients = async () => {
     try {
       setLoading(true);
-      const response = await api.get<{ success: boolean; data: { patients: Patient[]; total: number } }>(
-        `/patients?limit=${limit}&skip=${page * limit}&search=${search}`
-      );
+      const response = await api.get<{ success: boolean; data: { patients: Patient[]; total: number } }>(`/patients?limit=${limit}&skip=${page * limit}&search=${search}`);
       setPatients(response.data.data.patients);
       setTotal(response.data.data.total);
     } catch (error) {
@@ -71,21 +71,11 @@ const Dashboard: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    MRN
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date of Birth
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created At
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MRN</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Birth</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -103,11 +93,7 @@ const Dashboard: React.FC = () => {
                   </tr>
                 ) : (
                   patients.map((patient) => (
-                    <tr
-                      key={patient._id}
-                      onClick={() => handleRowClick(patient._id)}
-                      className="hover:bg-gray-50 cursor-pointer transition-colors"
-                    >
+                    <tr key={patient._id} onClick={() => handleRowClick(patient._id)} className="hover:bg-gray-50 cursor-pointer transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{patient.patientName}</div>
                       </td>
@@ -115,24 +101,18 @@ const Dashboard: React.FC = () => {
                         <div className="text-sm text-gray-500">{patient.medicalRecordNumber || "-"}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString() : "-"}
-                        </div>
+                        <div className="text-sm text-gray-500">{patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString() : "-"}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${patient.status === "active"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${patient.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                             }`}
                         >
                           {patient.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {new Date(patient.createdAt).toLocaleDateString()}
-                        </div>
+                        <div className="text-sm text-gray-500">{new Date(patient.createdAt).toLocaleDateString()}</div>
                       </td>
                     </tr>
                   ))
@@ -162,8 +142,7 @@ const Dashboard: React.FC = () => {
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">{page * limit + 1}</span> to{" "}
-                  <span className="font-medium">{Math.min((page + 1) * limit, total)}</span> of{" "}
+                  Showing <span className="font-medium">{page * limit + 1}</span> to <span className="font-medium">{Math.min((page + 1) * limit, total)}</span> of{" "}
                   <span className="font-medium">{total}</span> results
                 </p>
               </div>

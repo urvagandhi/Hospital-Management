@@ -68,7 +68,7 @@
     <string name="loading">Loading…</string>
     <string name="login_title">Hospital Management System</string>
     <string name="logout">Logout</string>
-    <string name="new_admission">New Admission</string>
+    <string name="new_admission">New Patient</string>
     <string name="ok">OK</string>
     <string name="otp_sent_message">We\'ve sent a 6-digit code to your registered phone</string>
     <string name="otp_sent_success">OTP Sent Successfully</string>

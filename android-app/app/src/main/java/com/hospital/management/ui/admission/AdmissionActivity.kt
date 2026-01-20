@@ -33,9 +33,36 @@ class AdmissionActivity : AppCompatActivity() {
         setupViewModel()
         setupObservers()
 
+        // Setup Date Picker for DOB
+        binding.etDob.isFocusable = false
+        binding.etDob.isClickable = true
+        binding.etDob.setOnClickListener {
+            showDatePickerDialog()
+        }
+
         binding.btnSubmit.setOnClickListener {
             createPatient()
         }
+    }
+
+    private fun showDatePickerDialog() {
+        val calendar = java.util.Calendar.getInstance()
+        val year = calendar.get(java.util.Calendar.YEAR)
+        val month = calendar.get(java.util.Calendar.MONTH)
+        val day = calendar.get(java.util.Calendar.DAY_OF_MONTH)
+
+        val datePickerDialog = android.app.DatePickerDialog(
+            this,
+            { _, selectedYear, selectedMonth, selectedDay ->
+                // Format: YYYY-MM-DD
+                val formattedDate = String.format("%04d-%02d-%02d", selectedYear, selectedMonth + 1, selectedDay)
+                binding.etDob.setText(formattedDate)
+            },
+            year,
+            month,
+            day
+        )
+        datePickerDialog.show()
     }
 
     private fun setupViewModel() {

@@ -86,21 +86,21 @@ class LoginActivity : AppCompatActivity() {
             authViewModel.authState.collect { state ->
                 when (state) {
                     is AuthState.Loading -> {
-                        binding.progressBar.visibility = View.VISIBLE
+                        binding.loadingOverlay.visibility = View.VISIBLE
                         binding.btnLogin.isEnabled = false
                     }
                     is AuthState.Success -> {
-                        binding.progressBar.visibility = View.GONE
+                        binding.loadingOverlay.visibility = View.GONE
                         binding.btnLogin.isEnabled = true
                         handleSuccessState(state)
                     }
                     is AuthState.Error -> {
-                        binding.progressBar.visibility = View.GONE
+                        binding.loadingOverlay.visibility = View.GONE
                         binding.btnLogin.isEnabled = true
                         Toast.makeText(this@LoginActivity, state.message, Toast.LENGTH_SHORT).show()
                     }
                     else -> {
-                        binding.progressBar.visibility = View.GONE
+                        binding.loadingOverlay.visibility = View.GONE
                         binding.btnLogin.isEnabled = true
                     }
                 }
@@ -108,7 +108,7 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleSuccessState(state: AuthState.Success) {
+    private suspend fun handleSuccessState(state: AuthState.Success) {
         val message = state.message
         val data = state.data // tempToken or status code or data object
 
@@ -139,6 +139,12 @@ class LoginActivity : AppCompatActivity() {
                 val password = binding.etPassword.text.toString()
                 if (email.isNotEmpty() && password.isNotEmpty()) {
                      lifecycleScope.launch { tokenManager.saveCredentials(email, password) }
+                }
+
+                // Debug: Show saved hospitalId before navigating
+                lifecycleScope.launch {
+                    val hospitalId = tokenManager.getHospitalId()
+                    Toast.makeText(this@LoginActivity, "Saved hospitalId: $hospitalId", Toast.LENGTH_LONG).show()
                 }
 
                 val intent = Intent(this, DashboardActivity::class.java)

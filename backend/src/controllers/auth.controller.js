@@ -17,15 +17,15 @@ import PendingHospital from "../models/PendingHospital.js"; // Import PendingHos
 import { sendInvitationEmail } from "../services/email.service.js";
 import { createSession, invalidateSession, refreshAccessToken } from "../services/token.service.js";
 import {
-    checkTotpLockout,
-    generateBackupCodes,
-    generateTotpSecret,
-    getBackupCodesCount,
-    recordFailedAttempt,
-    resetFailedAttempts,
-    updateTotpLastUsed,
-    verifyBackupCode,
-    verifyTotpToken,
+  checkTotpLockout,
+  generateBackupCodes,
+  generateTotpSecret,
+  getBackupCodesCount,
+  recordFailedAttempt,
+  resetFailedAttempts,
+  updateTotpLastUsed,
+  verifyBackupCode,
+  verifyTotpToken,
 } from "../services/totp.service.js";
 import { comparePassword, hashPassword } from "../utils/hash.js";
 import { generateTempToken } from "../utils/jwt.js";
@@ -100,7 +100,6 @@ export const changePassword = async (req, res) => {
         hospital: hospital.toJSON(),
       },
     });
-
   } catch (error) {
     console.error("changePassword error:", error);
     return res.status(500).json({ success: false, message: "Password change failed" });
@@ -151,23 +150,26 @@ export const registerHospital = async (req, res) => {
       const digits = "23456789"; // Exclude 0, 1
       const special = "!@#$%^&*";
       const allChars = uppercase + lowercase + digits + special;
-      
+
       // Ensure at least one of each type
       let password = "";
       password += uppercase[crypto.randomInt(0, uppercase.length)];
       password += lowercase[crypto.randomInt(0, lowercase.length)];
       password += digits[crypto.randomInt(0, digits.length)];
       password += special[crypto.randomInt(0, special.length)];
-      
+
       // Fill remaining with random chars
       for (let i = password.length; i < length; i++) {
         password += allChars[crypto.randomInt(0, allChars.length)];
       }
-      
+
       // Shuffle to avoid predictable pattern
-      return password.split("").sort(() => Math.random() - 0.5).join("");
+      return password
+        .split("")
+        .sort(() => Math.random() - 0.5)
+        .join("");
     };
-    
+
     const tempPassword = generateSecurePassword();
     const passwordHash = await hashPassword(tempPassword);
 
@@ -218,7 +220,7 @@ export const registerHospital = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: invitationSent 
+      message: invitationSent
         ? "Hospital registered successfully. Invitation email with temporary password sent to hospital admin."
         : "Hospital registered successfully. Warning: Failed to send invitation email. Please share login credentials manually.",
       data: {
@@ -232,7 +234,6 @@ export const registerHospital = async (req, res) => {
         emailError: invitationSent ? undefined : emailError,
       },
     });
-
   } catch (error) {
     console.error("Hospital registration error:", error);
 
@@ -360,7 +361,11 @@ export const verifyRegistration = async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers["user-agent"];
     const crypto = await import("crypto");
-    const deviceId = crypto.createHash("sha256").update(userAgent || "unknown").digest("hex").substring(0, 16);
+    const deviceId = crypto
+      .createHash("sha256")
+      .update(userAgent || "unknown")
+      .digest("hex")
+      .substring(0, 16);
     const session = await createSession(hospital._id, deviceId, ipAddress, userAgent);
 
     // Audit Log
@@ -402,9 +407,8 @@ export const verifyRegistration = async (req, res) => {
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
         backupCodes: backupCodes, // Important to return these!
-      }
+      },
     });
-
   } catch (error) {
     console.error("Verify registration error:", error);
     return res.status(500).json({
@@ -531,6 +535,7 @@ export const login = async (req, res) => {
     }
 
     // Check if TOTP 2FA is enabled
+    /*
     if (hospital.totpEnabled && hospital.totpVerified) {
       // Generate purpose-scoped temp token for TOTP verification
       const tempToken = generateTempToken(hospital._id, "TOTP_LOGIN");
@@ -555,6 +560,7 @@ export const login = async (req, res) => {
         },
       });
     }
+    */
 
     // TOTP not enabled - create session directly
     const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
@@ -589,7 +595,7 @@ export const login = async (req, res) => {
       success: true,
       message: "Login successful. Please setup 2FA to continue.",
       requireTotp: false,
-      requireTotpSetup: true, // Force setup for existing users
+      requireTotpSetup: false, // Force setup for existing users
       data: {
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
@@ -1213,7 +1219,6 @@ export const disableTotp = async (req, res) => {
   }
 };
 
-
 /**
  * Reset TOTP - Disable 2FA with Password (for lost devices)
  * POST /api/auth/2fa/reset
@@ -1366,7 +1371,6 @@ export const verifyTotpReset = async (req, res) => {
         backupCodes,
       },
     });
-
   } catch (error) {
     console.error("TOTP rotation verification error:", error);
     return res.status(500).json({

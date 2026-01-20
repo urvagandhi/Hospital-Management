@@ -4,11 +4,16 @@ package com.hospital.management.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.GridLayout;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.SearchView;
+import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
 import com.google.android.material.card.MaterialCardView;
@@ -23,28 +28,55 @@ public final class ActivityDashboardBinding implements ViewBinding {
   private final ConstraintLayout rootView;
 
   @NonNull
-  public final MaterialCardView btnLogout;
+  public final MaterialCardView btnNewAdmission;
 
   @NonNull
-  public final MaterialCardView cardNewAdmission;
+  public final MaterialCardView cardSearch;
 
   @NonNull
-  public final MaterialCardView cardScanner;
+  public final MaterialCardView cardTotalPatients;
 
   @NonNull
-  public final MaterialCardView cardShowPatients;
+  public final CircleImageView ivToolbarLogo;
 
   @NonNull
-  public final GridLayout gridLayout;
+  public final LinearLayout layoutEmpty;
 
   @NonNull
-  public final CircleImageView ivHospitalLogo;
+  public final LinearLayout layoutStats;
+
+  @NonNull
+  public final TextView lblPatients;
+
+  @NonNull
+  public final ProgressBar progressBar;
+
+  @NonNull
+  public final RecyclerView rvPatients;
+
+  @NonNull
+  public final SearchView searchView;
+
+  @NonNull
+  public final SwipeRefreshLayout swipeRefresh;
+
+  @NonNull
+  public final Toolbar toolbar;
+
+  @NonNull
+  public final TextView tvEmpty;
 
   @NonNull
   public final TextView tvHospitalName;
 
   @NonNull
+  public final TextView tvPatientCount;
+
+  @NonNull
   public final TextView tvQuickActions;
+
+  @NonNull
+  public final TextView tvToolbarHospitalName;
 
   @NonNull
   public final TextView tvWelcome;
@@ -53,20 +85,33 @@ public final class ActivityDashboardBinding implements ViewBinding {
   public final View viewHeader;
 
   private ActivityDashboardBinding(@NonNull ConstraintLayout rootView,
-      @NonNull MaterialCardView btnLogout, @NonNull MaterialCardView cardNewAdmission,
-      @NonNull MaterialCardView cardScanner, @NonNull MaterialCardView cardShowPatients,
-      @NonNull GridLayout gridLayout, @NonNull CircleImageView ivHospitalLogo,
-      @NonNull TextView tvHospitalName, @NonNull TextView tvQuickActions,
+      @NonNull MaterialCardView btnNewAdmission, @NonNull MaterialCardView cardSearch,
+      @NonNull MaterialCardView cardTotalPatients, @NonNull CircleImageView ivToolbarLogo,
+      @NonNull LinearLayout layoutEmpty, @NonNull LinearLayout layoutStats,
+      @NonNull TextView lblPatients, @NonNull ProgressBar progressBar,
+      @NonNull RecyclerView rvPatients, @NonNull SearchView searchView,
+      @NonNull SwipeRefreshLayout swipeRefresh, @NonNull Toolbar toolbar, @NonNull TextView tvEmpty,
+      @NonNull TextView tvHospitalName, @NonNull TextView tvPatientCount,
+      @NonNull TextView tvQuickActions, @NonNull TextView tvToolbarHospitalName,
       @NonNull TextView tvWelcome, @NonNull View viewHeader) {
     this.rootView = rootView;
-    this.btnLogout = btnLogout;
-    this.cardNewAdmission = cardNewAdmission;
-    this.cardScanner = cardScanner;
-    this.cardShowPatients = cardShowPatients;
-    this.gridLayout = gridLayout;
-    this.ivHospitalLogo = ivHospitalLogo;
+    this.btnNewAdmission = btnNewAdmission;
+    this.cardSearch = cardSearch;
+    this.cardTotalPatients = cardTotalPatients;
+    this.ivToolbarLogo = ivToolbarLogo;
+    this.layoutEmpty = layoutEmpty;
+    this.layoutStats = layoutStats;
+    this.lblPatients = lblPatients;
+    this.progressBar = progressBar;
+    this.rvPatients = rvPatients;
+    this.searchView = searchView;
+    this.swipeRefresh = swipeRefresh;
+    this.toolbar = toolbar;
+    this.tvEmpty = tvEmpty;
     this.tvHospitalName = tvHospitalName;
+    this.tvPatientCount = tvPatientCount;
     this.tvQuickActions = tvQuickActions;
+    this.tvToolbarHospitalName = tvToolbarHospitalName;
     this.tvWelcome = tvWelcome;
     this.viewHeader = viewHeader;
   }
@@ -98,39 +143,81 @@ public final class ActivityDashboardBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
-      id = R.id.btnLogout;
-      MaterialCardView btnLogout = ViewBindings.findChildViewById(rootView, id);
-      if (btnLogout == null) {
+      id = R.id.btnNewAdmission;
+      MaterialCardView btnNewAdmission = ViewBindings.findChildViewById(rootView, id);
+      if (btnNewAdmission == null) {
         break missingId;
       }
 
-      id = R.id.cardNewAdmission;
-      MaterialCardView cardNewAdmission = ViewBindings.findChildViewById(rootView, id);
-      if (cardNewAdmission == null) {
+      id = R.id.cardSearch;
+      MaterialCardView cardSearch = ViewBindings.findChildViewById(rootView, id);
+      if (cardSearch == null) {
         break missingId;
       }
 
-      id = R.id.cardScanner;
-      MaterialCardView cardScanner = ViewBindings.findChildViewById(rootView, id);
-      if (cardScanner == null) {
+      id = R.id.cardTotalPatients;
+      MaterialCardView cardTotalPatients = ViewBindings.findChildViewById(rootView, id);
+      if (cardTotalPatients == null) {
         break missingId;
       }
 
-      id = R.id.cardShowPatients;
-      MaterialCardView cardShowPatients = ViewBindings.findChildViewById(rootView, id);
-      if (cardShowPatients == null) {
+      id = R.id.ivToolbarLogo;
+      CircleImageView ivToolbarLogo = ViewBindings.findChildViewById(rootView, id);
+      if (ivToolbarLogo == null) {
         break missingId;
       }
 
-      id = R.id.gridLayout;
-      GridLayout gridLayout = ViewBindings.findChildViewById(rootView, id);
-      if (gridLayout == null) {
+      id = R.id.layoutEmpty;
+      LinearLayout layoutEmpty = ViewBindings.findChildViewById(rootView, id);
+      if (layoutEmpty == null) {
         break missingId;
       }
 
-      id = R.id.ivHospitalLogo;
-      CircleImageView ivHospitalLogo = ViewBindings.findChildViewById(rootView, id);
-      if (ivHospitalLogo == null) {
+      id = R.id.layoutStats;
+      LinearLayout layoutStats = ViewBindings.findChildViewById(rootView, id);
+      if (layoutStats == null) {
+        break missingId;
+      }
+
+      id = R.id.lblPatients;
+      TextView lblPatients = ViewBindings.findChildViewById(rootView, id);
+      if (lblPatients == null) {
+        break missingId;
+      }
+
+      id = R.id.progressBar;
+      ProgressBar progressBar = ViewBindings.findChildViewById(rootView, id);
+      if (progressBar == null) {
+        break missingId;
+      }
+
+      id = R.id.rvPatients;
+      RecyclerView rvPatients = ViewBindings.findChildViewById(rootView, id);
+      if (rvPatients == null) {
+        break missingId;
+      }
+
+      id = R.id.searchView;
+      SearchView searchView = ViewBindings.findChildViewById(rootView, id);
+      if (searchView == null) {
+        break missingId;
+      }
+
+      id = R.id.swipeRefresh;
+      SwipeRefreshLayout swipeRefresh = ViewBindings.findChildViewById(rootView, id);
+      if (swipeRefresh == null) {
+        break missingId;
+      }
+
+      id = R.id.toolbar;
+      Toolbar toolbar = ViewBindings.findChildViewById(rootView, id);
+      if (toolbar == null) {
+        break missingId;
+      }
+
+      id = R.id.tvEmpty;
+      TextView tvEmpty = ViewBindings.findChildViewById(rootView, id);
+      if (tvEmpty == null) {
         break missingId;
       }
 
@@ -140,9 +227,21 @@ public final class ActivityDashboardBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.tvPatientCount;
+      TextView tvPatientCount = ViewBindings.findChildViewById(rootView, id);
+      if (tvPatientCount == null) {
+        break missingId;
+      }
+
       id = R.id.tvQuickActions;
       TextView tvQuickActions = ViewBindings.findChildViewById(rootView, id);
       if (tvQuickActions == null) {
+        break missingId;
+      }
+
+      id = R.id.tvToolbarHospitalName;
+      TextView tvToolbarHospitalName = ViewBindings.findChildViewById(rootView, id);
+      if (tvToolbarHospitalName == null) {
         break missingId;
       }
 
@@ -158,9 +257,10 @@ public final class ActivityDashboardBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityDashboardBinding((ConstraintLayout) rootView, btnLogout, cardNewAdmission,
-          cardScanner, cardShowPatients, gridLayout, ivHospitalLogo, tvHospitalName, tvQuickActions,
-          tvWelcome, viewHeader);
+      return new ActivityDashboardBinding((ConstraintLayout) rootView, btnNewAdmission, cardSearch,
+          cardTotalPatients, ivToolbarLogo, layoutEmpty, layoutStats, lblPatients, progressBar,
+          rvPatients, searchView, swipeRefresh, toolbar, tvEmpty, tvHospitalName, tvPatientCount,
+          tvQuickActions, tvToolbarHospitalName, tvWelcome, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));
