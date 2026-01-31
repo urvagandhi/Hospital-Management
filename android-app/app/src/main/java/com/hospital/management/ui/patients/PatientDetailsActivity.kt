@@ -47,6 +47,11 @@ class PatientDetailsActivity : AppCompatActivity() {
         loadPatientDetails()
     }
 
+    override fun onResume() {
+        super.onResume()
+        loadPatientDetails()
+    }
+
     private fun setupViewModel() {
         val apiService = RetrofitClient.getApiService(this)
         val patientRepository = PatientRepository(apiService, tokenManager)
