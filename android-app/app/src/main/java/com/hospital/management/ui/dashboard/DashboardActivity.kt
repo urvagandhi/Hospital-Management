@@ -143,6 +143,10 @@ class DashboardActivity : AppCompatActivity() {
             if (hospitalName.isEmpty()) hospitalName = "Hospital"
             
             val logoUrl = tokenManager.getHospitalLogoUrl() ?: ""
+            
+            // DEBUG: Toast cached values
+            Toast.makeText(this@DashboardActivity, "Cache: $hospitalName, Logo: ${logoUrl.take(10)}...", Toast.LENGTH_SHORT).show()
+            
             binding.tvToolbarHospitalName.text = hospitalName
             if (logoUrl.isNotEmpty()) {
                 Glide.with(this@DashboardActivity)
@@ -164,6 +168,9 @@ class DashboardActivity : AppCompatActivity() {
                 val response = apiService.getCurrentHospital()
                 if (response.isSuccessful && response.body() != null) {
                     val hospital = response.body()!!
+                    
+                    // DEBUG: Toast API success
+                    Toast.makeText(this@DashboardActivity, "API: ${hospital.hospitalName}", Toast.LENGTH_SHORT).show()
                     
                     // Get current cached values to preserve if API returns empty
                     val cachedName = tokenManager.getHospitalName()
@@ -200,10 +207,12 @@ class DashboardActivity : AppCompatActivity() {
                     // Save to cache only if we have valid values to update
                     tokenManager.saveHospitalInfo(hospital._id, name, logoUrl)
                 } else {
-                    // API failed - keep existing cached data (already displayed in setupHospitalInfo)
+                    // API failed - keep existing cached data
+                     Toast.makeText(this@DashboardActivity, "API Failed: ${response.code()}", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                // Error - keep existing cached data (already displayed in setupHospitalInfo)
+                // Error - keep existing cached data
+                 Toast.makeText(this@DashboardActivity, "API Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }

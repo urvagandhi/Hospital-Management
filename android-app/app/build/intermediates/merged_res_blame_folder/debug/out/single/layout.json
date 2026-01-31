@@ -24,6 +24,10 @@
         "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_login.xml"
     },
     {
+        "merged": "com.hospital.management.app-mergeDebugResources-86:/layout/item_file.xml",
+        "source": "com.hospital.management.app-main-89:/layout/item_file.xml"
+    },
+    {
         "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-mergeDebugResources-86:/layout/item_folder.xml",
         "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/item_folder.xml"
     },
@@ -38,10 +42,6 @@
     {
         "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-mergeDebugResources-86:/layout/activity_patient_details.xml",
         "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_patient_details.xml"
-    },
-    {
-        "merged": "com.hospital.management.app-mergeDebugResources-86:/layout/activity_dashboard.xml",
-        "source": "com.hospital.management.app-main-89:/layout/activity_dashboard.xml"
     },
     {
         "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-mergeDebugResources-86:/layout/activity_splash.xml",

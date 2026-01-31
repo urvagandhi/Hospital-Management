@@ -3131,6 +3131,7 @@ drawable ic_logout
 drawable ic_m3_chip_check
 drawable ic_m3_chip_checked_circle
 drawable ic_m3_chip_close
+drawable ic_more_vert
 drawable ic_mtrl_checked_circle
 drawable ic_mtrl_chip_checked_black
 drawable ic_mtrl_chip_checked_circle
@@ -3335,6 +3336,7 @@ id btnDelete
 id btnEdit
 id btnEditPatient
 id btnLogin
+id btnMore
 id btnNewAdmission
 id btnResend
 id btnStartScan
@@ -5664,3 +5666,4 @@ styleable ViewTransition android_id SharedValue SharedValueId clearsTag duration
 styleable include constraintSet
 xml backup_rules
 xml data_extraction_rules
+xml file_paths

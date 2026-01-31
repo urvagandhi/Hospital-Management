@@ -55,11 +55,14 @@
                 android:layout_marginTop="2dp" />
         </LinearLayout>
 
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@android:drawable/stat_sys_download_done"
-            app:tint="@color/text_hint" />
+        <ImageButton
+            android:id="@+id/btnMore"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_more_vert"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            app:tint="@color/text_secondary" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
 

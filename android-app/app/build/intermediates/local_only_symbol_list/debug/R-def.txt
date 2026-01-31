@@ -84,6 +84,7 @@ drawable ic_launcher_background_h
 drawable ic_launcher_foreground
 drawable ic_launcher_foreground_h
 drawable ic_logout
+drawable ic_more_vert
 drawable ic_patient
 drawable ic_people
 drawable ic_person_add
@@ -106,6 +107,7 @@ id btnDelete
 id btnEdit
 id btnEditPatient
 id btnLogin
+id btnMore
 id btnNewAdmission
 id btnResend
 id btnStartScan
@@ -266,3 +268,4 @@ style Widget.App.Button
 style Widget.App.TextInputLayout
 xml backup_rules
 xml data_extraction_rules
+xml file_paths

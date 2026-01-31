@@ -28,12 +28,12 @@
         "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_card_gradient_blue.xml"
     },
     {
-        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_dashboard.xml.flat",
-        "source": "com.hospital.management.app-main-89:/layout/activity_dashboard.xml"
-    },
-    {
         "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_login.xml.flat",
         "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_login.xml"
+    },
+    {
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_more_vert.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_more_vert.xml"
     },
     {
         "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_glow_circle.xml.flat",
@@ -164,6 +164,10 @@
         "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_circle_white_alpha.xml"
     },
     {
+        "merged": "com.hospital.management.app-merged_res-87:/layout_item_file.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/item_file.xml"
+    },
+    {
         "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_chevron_right.xml.flat",
         "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_chevron_right.xml"
     },
@@ -182,6 +186,10 @@
     {
         "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/menu_dashboard_menu.xml.flat",
         "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/menu/dashboard_menu.xml"
+    },
+    {
+        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/xml_file_paths.xml.flat",
+        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/xml/file_paths.xml"
     },
     {
         "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_splash_logo.xml.flat",

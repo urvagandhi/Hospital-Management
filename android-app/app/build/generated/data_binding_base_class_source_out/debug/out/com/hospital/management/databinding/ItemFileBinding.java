@@ -4,6 +4,7 @@ package com.hospital.management.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -20,14 +21,18 @@ public final class ItemFileBinding implements ViewBinding {
   private final MaterialCardView rootView;
 
   @NonNull
+  public final ImageButton btnMore;
+
+  @NonNull
   public final TextView tvFileName;
 
   @NonNull
   public final TextView tvFileSize;
 
-  private ItemFileBinding(@NonNull MaterialCardView rootView, @NonNull TextView tvFileName,
-      @NonNull TextView tvFileSize) {
+  private ItemFileBinding(@NonNull MaterialCardView rootView, @NonNull ImageButton btnMore,
+      @NonNull TextView tvFileName, @NonNull TextView tvFileSize) {
     this.rootView = rootView;
+    this.btnMore = btnMore;
     this.tvFileName = tvFileName;
     this.tvFileSize = tvFileSize;
   }
@@ -59,6 +64,12 @@ public final class ItemFileBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.btnMore;
+      ImageButton btnMore = ViewBindings.findChildViewById(rootView, id);
+      if (btnMore == null) {
+        break missingId;
+      }
+
       id = R.id.tvFileName;
       TextView tvFileName = ViewBindings.findChildViewById(rootView, id);
       if (tvFileName == null) {
@@ -71,7 +82,7 @@ public final class ItemFileBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ItemFileBinding((MaterialCardView) rootView, tvFileName, tvFileSize);
+      return new ItemFileBinding((MaterialCardView) rootView, btnMore, tvFileName, tvFileSize);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

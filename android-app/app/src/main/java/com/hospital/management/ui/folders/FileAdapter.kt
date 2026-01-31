@@ -11,12 +11,14 @@ import com.hospital.management.data.models.FileItem
 
 class FileAdapter(
     private val files: List<FileItem>,
-    private val onFileClick: (FileItem) -> Unit
+    private val onFileClick: (FileItem) -> Unit,
+    private val onOptionClick: (View, FileItem) -> Unit
 ) : RecyclerView.Adapter<FileAdapter.FileViewHolder>() {
 
     inner class FileViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvFileName: TextView = itemView.findViewById(R.id.tvFileName)
         private val tvFileSize: TextView = itemView.findViewById(R.id.tvFileSize)
+        private val btnMore: android.widget.ImageButton = itemView.findViewById(R.id.btnMore)
 
         fun bind(file: FileItem) {
             tvFileName.text = file.name
@@ -24,6 +26,10 @@ class FileAdapter(
 
             itemView.setOnClickListener {
                 onFileClick(file)
+            }
+            
+            btnMore.setOnClickListener {
+                onOptionClick(it, file)
             }
         }
 
