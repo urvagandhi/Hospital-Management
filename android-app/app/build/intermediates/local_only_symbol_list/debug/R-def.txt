@@ -124,14 +124,12 @@ id etConfirmPassword
 id etDateOfBirth
 id etDob
 id etEmail
-id etFolderName
 id etHospitalId
 id etMrn
 id etNewPassword
 id etNotes
 id etOtp
 id etPassword
-id etPatientId
 id etPatientName
 id etPhone
 id etTotpCode

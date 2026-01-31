@@ -59,23 +59,17 @@ class UploadActivity : AppCompatActivity() {
     }
 
     private var patientName: String = ""
+    private var patientId: String = ""
+    private var folderName: String = ""
 
     private fun setupFormFields() {
-        val patientIdExtra = intent.getStringExtra("PATIENT_ID")
-        val folderNameExtra = intent.getStringExtra("FOLDER_NAME")
+        patientId = intent.getStringExtra("PATIENT_ID") ?: ""
+        folderName = intent.getStringExtra("FOLDER_NAME") ?: ""
         patientName = intent.getStringExtra("PATIENT_NAME") ?: ""
 
-        if (!patientIdExtra.isNullOrEmpty()) {
-            binding.etPatientId.setText(patientIdExtra)
-            binding.etPatientId.isEnabled = false
-            binding.etPatientId.alpha = 0.7f
-        }
-        
-        if (!folderNameExtra.isNullOrEmpty()) {
-            binding.etFolderName.setText(folderNameExtra)
-            binding.etFolderName.isEnabled = false
-             binding.etFolderName.alpha = 0.7f
-        }
+        // Set dynamic title
+        val title = if (patientName.isNotEmpty()) "$patientName / $folderName" else folderName
+        binding.tvTitle.text = title
     }
 
     private fun setupViewModel() {
@@ -213,11 +207,9 @@ class UploadActivity : AppCompatActivity() {
     }
 
     private fun uploadFiles() {
-        val patientId = binding.etPatientId.text.toString()
-        val folderName = binding.etFolderName.text.toString()
-
+        // Use class properties directly
         if (patientId.isEmpty() || folderName.isEmpty() || scannedPages.isEmpty()) {
-            Toast.makeText(this, "Please fill all fields and scan documents", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Missing patient info or documents", Toast.LENGTH_SHORT).show()
             return
         }
 

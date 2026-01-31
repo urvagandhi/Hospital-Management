@@ -65,6 +65,11 @@ class FolderDetailsActivity : AppCompatActivity() {
         loadFiles()
     }
 
+    override fun onResume() {
+        super.onResume()
+        loadFiles()
+    }
+
     private fun setupViewModel() {
         val apiService = RetrofitClient.getApiService(this)
         val patientRepository = PatientRepository(apiService, tokenManager)

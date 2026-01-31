@@ -1,262 +1,258 @@
 [
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_sync.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_sync.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_item_folder.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/item_folder.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_email.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_email.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_circle_white_alpha.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_circle_white_alpha.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_launcher_background_h.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_launcher_background_h.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_calendar.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_calendar.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_calendar.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_calendar.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_totp_verification.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_totp_verification.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_arrow_back.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_arrow_back.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_folder_view.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_folder_view.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_item_file.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/item_file.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_dashboard.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_dashboard.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_blue.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_card_gradient_blue.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_circle_light.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_circle_light.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_login.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_login.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_email.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_email.xml"
     },
     {
         "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_more_vert.xml.flat",
         "source": "com.hospital.management.app-main-89:/drawable/ic_more_vert.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_glow_circle.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_glow_circle.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_phone.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_phone.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_admission.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_admission.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/xml_backup_rules.xml.flat",
+        "source": "com.hospital.management.app-main-89:/xml/backup_rules.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_rounded_surface.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_rounded_surface.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_person_add.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_person_add.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_red.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_card_gradient_red.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_red.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_card_gradient_red.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_dashboard.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_dashboard.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_rounded_surface.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_rounded_surface.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_totp_verification.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_totp_verification.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_launcher_foreground.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_amber.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_card_gradient_amber.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_upload.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_upload.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_file_document.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_file_document.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_admission.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_admission.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_scanner.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_scanner.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/xml_data_extraction_rules.xml.flat",
+        "source": "com.hospital.management.app-main-89:/xml/data_extraction_rules.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_patient.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_patient.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_file_document.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_file_document.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_phone.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_phone.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_amber.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_card_gradient_amber.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_item_folder.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/item_folder.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_item_page_thumbnail.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/item_page_thumbnail.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_splash_gradient.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_splash_gradient.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_patient_list.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_patient_list.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_folder_details.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_folder_details.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_logout.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_logout.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_edit_pencil.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_edit_pencil.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_launcher_background_h.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_launcher_background_h.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/xml_data_extraction_rules.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/xml/data_extraction_rules.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_dashboard_header.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_dashboard_header.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_folder.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_folder.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_splash_logo.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_splash_logo.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_people.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_people.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_sync.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_sync.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_dashboard_gradient.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_dashboard_gradient.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_login_gradient.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_login_gradient.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_pill_white.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_pill_white.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_dashboard_gradient.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_dashboard_gradient.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_patient_list.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_patient_list.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_blue.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_card_gradient_blue.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_folder_view.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_folder_view.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_glow_circle.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_glow_circle.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_person_add.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_person_add.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_scanner.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_scanner.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_patient_details.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_patient_details.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.hospital.management.app-main-89:/mipmap-anydpi-v26/ic_launcher.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_totp_setup.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_totp_setup.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_change_password.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_change_password.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_item_patient.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/item_patient.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_pill_white.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_pill_white.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_dashboard_header.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_dashboard_header.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_chevron_right.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_chevron_right.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_change_password.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_change_password.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_patient_details.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_patient_details.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_upload.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_upload.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/xml_file_paths.xml.flat",
+        "source": "com.hospital.management.app-main-89:/xml/file_paths.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/mipmap-anydpi-v26/ic_launcher.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_scanner.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_scanner.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_launcher_background.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_launcher_background.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_launcher_background.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_circle_white_alpha.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_circle_white_alpha.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_arrow_back.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_arrow_back.xml"
     },
     {
         "merged": "com.hospital.management.app-merged_res-87:/layout_item_file.xml.flat",
         "source": "com.hospital.management.app-main-89:/layout/item_file.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_chevron_right.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_chevron_right.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_upload.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_upload.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/anim_button_scale_up.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/anim/button_scale_up.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_folder_details.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_folder_details.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_launcher_foreground_h.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_launcher_foreground_h.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_splash_gradient.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_splash_gradient.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_upload.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_upload.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_launcher_foreground_h.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_launcher_foreground_h.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/menu_dashboard_menu.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/menu/dashboard_menu.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/anim_button_scale_up.xml.flat",
+        "source": "com.hospital.management.app-main-89:/anim/button_scale_up.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/xml_file_paths.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/xml/file_paths.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_item_patient.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/item_patient.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_splash_logo.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_splash_logo.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_otp.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_otp.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_circle_light.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_circle_light.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_logout_button_ripple.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/logout_button_ripple.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_launcher_foreground.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_launcher_foreground.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_people.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_people.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_splash.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_splash.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_folder.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_folder.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_login_gradient.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_login_gradient.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_patient.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_patient.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/xml_backup_rules.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/xml/backup_rules.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_add.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_add.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_logout_button_ripple.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/logout_button_ripple.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_delete_button.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_delete_button.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_cyan.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_card_gradient_cyan.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_cyan.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_card_gradient_cyan.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_item_page_thumbnail.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/item_page_thumbnail.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.hospital.management.app-main-89:/mipmap-anydpi-v26/ic_launcher_round.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_logout.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_logout.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_login.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_login.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_otp.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_otp.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_splash.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_splash.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_scanner.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_scanner.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/menu_dashboard_menu.xml.flat",
+        "source": "com.hospital.management.app-main-89:/menu/dashboard_menu.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/mipmap-anydpi-v26/ic_launcher_round.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_edit_pencil.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_edit_pencil.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_close.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_close.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_ic_close.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/ic_close.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_icon_circle_white.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_icon_circle_white.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/drawable_bg_icon_circle_white.xml.flat",
+        "source": "com.hospital.management.app-main-89:/drawable/bg_icon_circle_white.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_delete_button.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_delete_button.xml"
-    },
-    {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_ic_add.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/ic_add.xml"
+        "merged": "com.hospital.management.app-merged_res-87:/layout_activity_totp_setup.xml.flat",
+        "source": "com.hospital.management.app-main-89:/layout/activity_totp_setup.xml"
     }
 ]

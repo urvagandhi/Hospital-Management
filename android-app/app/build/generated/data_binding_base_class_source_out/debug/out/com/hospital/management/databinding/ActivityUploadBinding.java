@@ -15,7 +15,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.textfield.TextInputEditText;
 import com.hospital.management.R;
 import java.lang.NullPointerException;
 import java.lang.Override;
@@ -30,12 +29,6 @@ public final class ActivityUploadBinding implements ViewBinding {
 
   @NonNull
   public final MaterialButton btnUpload;
-
-  @NonNull
-  public final TextInputEditText etFolderName;
-
-  @NonNull
-  public final TextInputEditText etPatientId;
 
   @NonNull
   public final ImageView ivPreview;
@@ -62,16 +55,13 @@ public final class ActivityUploadBinding implements ViewBinding {
   public final View viewHeader;
 
   private ActivityUploadBinding(@NonNull ConstraintLayout rootView, @NonNull ImageButton btnBack,
-      @NonNull MaterialButton btnUpload, @NonNull TextInputEditText etFolderName,
-      @NonNull TextInputEditText etPatientId, @NonNull ImageView ivPreview,
+      @NonNull MaterialButton btnUpload, @NonNull ImageView ivPreview,
       @NonNull ProgressBar progressBar, @NonNull RecyclerView rvPages,
       @NonNull TextView tvPageCount, @NonNull TextView tvPagesLabel, @NonNull TextView tvTitle,
       @NonNull TextView tvUploadProgress, @NonNull View viewHeader) {
     this.rootView = rootView;
     this.btnBack = btnBack;
     this.btnUpload = btnUpload;
-    this.etFolderName = etFolderName;
-    this.etPatientId = etPatientId;
     this.ivPreview = ivPreview;
     this.progressBar = progressBar;
     this.rvPages = rvPages;
@@ -118,18 +108,6 @@ public final class ActivityUploadBinding implements ViewBinding {
       id = R.id.btnUpload;
       MaterialButton btnUpload = ViewBindings.findChildViewById(rootView, id);
       if (btnUpload == null) {
-        break missingId;
-      }
-
-      id = R.id.etFolderName;
-      TextInputEditText etFolderName = ViewBindings.findChildViewById(rootView, id);
-      if (etFolderName == null) {
-        break missingId;
-      }
-
-      id = R.id.etPatientId;
-      TextInputEditText etPatientId = ViewBindings.findChildViewById(rootView, id);
-      if (etPatientId == null) {
         break missingId;
       }
 
@@ -181,9 +159,8 @@ public final class ActivityUploadBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityUploadBinding((ConstraintLayout) rootView, btnBack, btnUpload,
-          etFolderName, etPatientId, ivPreview, progressBar, rvPages, tvPageCount, tvPagesLabel,
-          tvTitle, tvUploadProgress, viewHeader);
+      return new ActivityUploadBinding((ConstraintLayout) rootView, btnBack, btnUpload, ivPreview,
+          progressBar, rvPages, tvPageCount, tvPagesLabel, tvTitle, tvUploadProgress, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));
