@@ -55,6 +55,27 @@ class UploadActivity : AppCompatActivity() {
         loadScannedPages()
         setupRecyclerView()
         setupClickListeners()
+        setupFormFields()
+    }
+
+    private var patientName: String = ""
+
+    private fun setupFormFields() {
+        val patientIdExtra = intent.getStringExtra("PATIENT_ID")
+        val folderNameExtra = intent.getStringExtra("FOLDER_NAME")
+        patientName = intent.getStringExtra("PATIENT_NAME") ?: ""
+
+        if (!patientIdExtra.isNullOrEmpty()) {
+            binding.etPatientId.setText(patientIdExtra)
+            binding.etPatientId.isEnabled = false
+            binding.etPatientId.alpha = 0.7f
+        }
+        
+        if (!folderNameExtra.isNullOrEmpty()) {
+            binding.etFolderName.setText(folderNameExtra)
+            binding.etFolderName.isEnabled = false
+             binding.etFolderName.alpha = 0.7f
+        }
     }
 
     private fun setupViewModel() {
@@ -200,34 +221,112 @@ class UploadActivity : AppCompatActivity() {
             return
         }
 
-        // Upload all pages
+        binding.btnUpload.isEnabled = false
+        binding.progressBar.visibility = View.VISIBLE
+        binding.tvUploadProgress.visibility = View.VISIBLE
+        binding.tvUploadProgress.text = "Creating PDF..."
+
         lifecycleScope.launch {
-            var successCount = 0
-            val totalPages = scannedPages.size
+            val database = com.hospital.management.data.local.AppDatabase.getDatabase(this@UploadActivity)
+            val docRepository = com.hospital.management.data.repository.DocumentRepository(
+                RetrofitClient.getApiService(this@UploadActivity),
+                database.documentDao(),
+                this@UploadActivity
+            )
 
-            for ((index, uri) in scannedPages.withIndex()) {
-                binding.tvUploadProgress.text = "Uploading page ${index + 1} of $totalPages..."
+            try {
+                // Create a single PDF from all scanned pages
+                binding.tvUploadProgress.text = "Converting ${scannedPages.size} page(s) to PDF..."
+                
+                // Format filename: patientName_folderName_timestamp.pdf
+                val sanitizedPatientName = patientName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
+                val sanitizedFolderName = folderName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
+                val pdfFileName = "${sanitizedPatientName}_${sanitizedFolderName}_${System.currentTimeMillis()}.pdf"
+                val pdfFile = withContext(Dispatchers.IO) {
+                    com.hospital.management.utils.PdfUtils.createPdfFromImages(
+                        applicationContext,
+                        scannedPages,
+                        pdfFileName
+                    )
+                }
 
-                try {
-                    val file = getFileFromUri(uri, index)
-                    if (file != null) {
-                        val mediaType = "image/jpeg".toMediaTypeOrNull()
-                        val requestFile = file.asRequestBody(mediaType)
-                        val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
-
-                        // Upload using ViewModel (this will update the state)
-                        patientViewModel.uploadFile(patientId, folderName, body)
-                        successCount++
+                if (pdfFile == null) {
+                    withContext(Dispatchers.Main) {
+                        binding.progressBar.visibility = View.GONE
+                        binding.btnUpload.isEnabled = true
+                        binding.tvUploadProgress.visibility = View.GONE
+                        Toast.makeText(this@UploadActivity, "Failed to create PDF", Toast.LENGTH_SHORT).show()
                     }
-                } catch (e: Exception) {
-                    Toast.makeText(this@UploadActivity, "Error uploading page ${index + 1}: ${e.message}", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val isOnline = isNetworkAvailable()
+                
+                if (isOnline) {
+                    binding.tvUploadProgress.text = "Uploading PDF..."
+                    val result = docRepository.uploadDocument(patientId, folderName, pdfFile)
+                    
+                    binding.progressBar.visibility = View.GONE
+                    binding.btnUpload.isEnabled = true
+                    binding.tvUploadProgress.visibility = View.GONE
+                    
+                    if (result.isSuccess) {
+                        // Delete local PDF after successful upload
+                        pdfFile.delete()
+                        Toast.makeText(this@UploadActivity, "PDF uploaded successfully!", Toast.LENGTH_SHORT).show()
+                        finish()
+                    } else {
+                        // Upload failed, save offline
+                        docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString())
+                        Toast.makeText(this@UploadActivity, "Upload failed. Saved offline.", Toast.LENGTH_LONG).show()
+                        finish()
+                    }
+                } else {
+                    // Offline - save PDF locally
+                    docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString())
+                    
+                    binding.progressBar.visibility = View.GONE
+                    binding.btnUpload.isEnabled = true
+                    binding.tvUploadProgress.visibility = View.GONE
+                    
+                    Toast.makeText(this@UploadActivity, "Saved offline. Will sync when connected.", Toast.LENGTH_LONG).show()
+                    finish()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    binding.progressBar.visibility = View.GONE
+                    binding.btnUpload.isEnabled = true
+                    binding.tvUploadProgress.visibility = View.GONE
+                    Toast.makeText(this@UploadActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
 
-            if (successCount == totalPages) {
-                Toast.makeText(this@UploadActivity, "All $totalPages pages uploaded successfully!", Toast.LENGTH_SHORT).show()
-                finish()
-            }
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return activeNetwork.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private suspend fun saveFileForStorage(uri: Uri, index: Int): File? = withContext(Dispatchers.IO) {
+        try {
+             // Compress image first
+             val compressedFile = com.hospital.management.utils.ImageUtils.compressImage(applicationContext, uri)
+             if (compressedFile == null) return@withContext null
+
+             val fileName = "doc_${System.currentTimeMillis()}_$index.jpg"
+             // Use app's private files directory so it's safer
+             val file = File(filesDir, fileName)
+             
+             // Copy compressed file to permanent storage
+             compressedFile.copyTo(file, overwrite = true)
+             return@withContext file
+        } catch(e: Exception) {
+            e.printStackTrace()
+            return@withContext null
         }
     }
 

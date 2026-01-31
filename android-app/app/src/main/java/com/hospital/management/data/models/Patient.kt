@@ -21,11 +21,14 @@ data class Folder(
 
 data class FileItem(
     val fileName: String,
-    val url: String,
-    val size: Long,
-    val uploadedAt: String
+    val fileUrl: String? = null,
+    val url: String? = null,
+    val size: Long = 0,
+    val mimeType: String? = null,
+    val uploadedAt: String? = null
 ) {
     val name: String get() = fileName
+    val displayUrl: String get() = fileUrl ?: url ?: ""
 }
 
 data class PatientsResponse(

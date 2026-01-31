@@ -90,9 +90,11 @@ drawable ic_person_add
 drawable ic_phone
 drawable ic_scanner
 drawable ic_splash_logo
+drawable ic_sync
 drawable ic_upload
 drawable logout_button_ripple
 id action_logout
+id action_sync
 id btnBack
 id btnBackToLogin
 id btnBiometric
@@ -172,7 +174,6 @@ id tvFileCount
 id tvFileName
 id tvFileSize
 id tvFolderName
-id tvHospitalName
 id tvInitials
 id tvInstruction
 id tvLoading
@@ -192,7 +193,6 @@ id tvTagline
 id tvTitle
 id tvToolbarHospitalName
 id tvUploadProgress
-id tvWelcome
 id viewGlow
 id viewHeader
 layout activity_admission

@@ -15,8 +15,13 @@ class AuthRepository(
     private val tokenManager: TokenManager
 ) {
 
-    suspend fun login(email: String, password: String): Response<LoginResponse> {
-        return apiService.login(mapOf("email" to email, "password" to password))
+    suspend fun login(email: String, password: String, isBiometric: Boolean = false): Response<LoginResponse> {
+        val body = mapOf(
+            "email" to email,
+            "password" to password,
+            "isBiometric" to isBiometric
+        )
+        return apiService.login(body)
     }
 
     suspend fun verifyOtp(tempToken: String, otp: String): Response<Map<String, Any>> {

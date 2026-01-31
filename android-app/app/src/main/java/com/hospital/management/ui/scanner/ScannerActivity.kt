@@ -59,6 +59,10 @@ class ScannerActivity : AppCompatActivity() {
                             putExtra(EXTRA_SCANNED_PAGES, pageUris)
                             // Also pass first page for backward compatibility
                             putExtra("imageUri", pageUris.firstOrNull())
+                            // Forward patient details
+                            putExtra("PATIENT_ID", getIntent().getStringExtra("PATIENT_ID"))
+                            putExtra("FOLDER_NAME", getIntent().getStringExtra("FOLDER_NAME"))
+                            putExtra("PATIENT_NAME", getIntent().getStringExtra("PATIENT_NAME"))
                         }
                         startActivity(intent)
                         finish()

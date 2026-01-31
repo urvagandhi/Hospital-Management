@@ -32,11 +32,11 @@ class AuthViewModel(
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
-    fun login(email: String, password: String) {
+    fun login(email: String, password: String, isBiometric: Boolean = false) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                val response = loginUseCase(email, password)
+                val response = loginUseCase(email, password, isBiometric)
                 if (response.isSuccessful && response.body()?.success == true) {
                     val body = response.body()!!
                     val data = body.data
@@ -58,7 +58,8 @@ class AuthViewModel(
                             saveTokensUseCase(data.accessToken, data.refreshToken)
                             val hospitalName = data.hospitalName ?: data.hospital?.hospitalName ?: ""
                             val hospitalId = data.hospital?._id ?: ""
-                            saveHospitalInfoUseCase(hospitalId, hospitalName, data.logoUrl ?: "")
+                            val logoUrl = data.logoUrl ?: data.hospital?.logoUrl ?: ""
+                            saveHospitalInfoUseCase(hospitalId, hospitalName, logoUrl)
                              _authState.value = AuthState.Success("TOTP Setup Required", "SETUP_REQUIRED")
                         } else {
                              _authState.value = AuthState.Success("TOTP Setup Required", data?.tempToken)
@@ -71,7 +72,8 @@ class AuthViewModel(
                             saveTokensUseCase(accessToken, refreshToken)
                             val hospitalName = data.hospitalName ?: data.hospital?.hospitalName ?: ""
                             val hospitalId = data.hospital?._id ?: ""
-                            saveHospitalInfoUseCase(hospitalId, hospitalName, data.logoUrl ?: "")
+                            val logoUrl = data.logoUrl ?: data.hospital?.logoUrl ?: ""
+                            saveHospitalInfoUseCase(hospitalId, hospitalName, logoUrl)
                             _authState.value = AuthState.Success("Login successful", "LoggedIn")
                         } else if (data?.tempToken != null) {
                             // OTP Case (Legacy)
@@ -195,7 +197,10 @@ class AuthViewModel(
                      val data = response.body()?.data
                      if (data?.accessToken != null && data.refreshToken != null) {
                          saveTokensUseCase(data.accessToken, data.refreshToken)
-                         saveHospitalInfoUseCase(data.hospital?._id ?: "", data.hospitalName ?: data.hospital?.hospitalName ?: "", data.logoUrl ?: "")
+                         val hospitalName = data.hospitalName ?: data.hospital?.hospitalName ?: ""
+                         val hospitalId = data.hospital?._id ?: ""
+                         val logoUrl = data.logoUrl ?: data.hospital?.logoUrl ?: ""
+                         saveHospitalInfoUseCase(hospitalId, hospitalName, logoUrl)
                          _authState.value = AuthState.Success("Login successful", "LoggedIn")
                      } else {
                          _authState.value = AuthState.Error("Invalid token response")

@@ -4,7 +4,7 @@
             "outputFile": "com.hospital.management.app-mergeDebugResources-85:/values-land/values-land.xml",
             "map": [
                 {
-                    "source": "/home/urva/.gradle/caches/transforms-3/ab3c8dbcc57d3f9eb3b19bcbf26edef1/transformed/material-1.10.0/res/values-land/values-land.xml",
+                    "source": "/home/urva/.gradle/caches/transforms-3/530c7a47e56a43e313629eb3da1c6297/transformed/material-1.10.0/res/values-land/values-land.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,26,35,40",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -23,7 +23,7 @@
                     }
                 },
                 {
-                    "source": "/home/urva/.gradle/caches/transforms-3/1ae08651db4bbb07f10e1945a5f6d854/transformed/appcompat-1.6.1/res/values-land/values-land.xml",
+                    "source": "/home/urva/.gradle/caches/transforms-3/759eca0c36783a20cd772468506110d8/transformed/appcompat-1.6.1/res/values-land/values-land.xml",
                     "from": {
                         "startLines": "2,3,4",
                         "startColumns": "4,4,4",

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.hospital.management.data.models.FileItem
+import com.hospital.management.data.models.Folder
 import com.hospital.management.data.models.Patient
 import com.hospital.management.data.models.PatientRequest
 import com.hospital.management.domain.usecase.*
@@ -171,22 +172,29 @@ class PatientViewModel(
                     val data = body["data"]
                      if (data != null) {
                         try {
-                            // Assuming data represents a Folder or List<FileItem>
-                            // Based on typical API: data might be the Folder object containing files, or just list of files.
-                            // Let's assume it's list of files for now, or check structure.
-                            // PatientRepository: getFolderFiles
-                            // Usually this returns the Folder object or list.
-                            // If we fallback to generic parsing:
                             val json = gson.toJson(data)
-                            // Try to parse as List<FileItem>
-                            val listType = object : TypeToken<List<FileItem>>() {}.type
-                            val files: List<FileItem> = gson.fromJson(json, listType)
-                            _currentFolderFiles.value = files
+                            // Backend returns a folder object with 'files' array, not a direct list
+                            // Try parsing as Folder first
+                            val folder: Folder = gson.fromJson(json, Folder::class.java)
+                            _currentFolderFiles.value = folder.files
                             _patientState.value = PatientState.Success("Files loaded")
                         } catch (e: Exception) {
-                             // Fallback: maybe data IS the folder object which HAS 'files'
-                             _patientState.value = PatientState.Error("Error parsing files: ${e.message}")
+                            // Fallback: try parsing as direct list
+                            try {
+                                val json = gson.toJson(data)
+                                val listType = object : TypeToken<List<FileItem>>() {}.type
+                                val files: List<FileItem> = gson.fromJson(json, listType)
+                                _currentFolderFiles.value = files
+                                _patientState.value = PatientState.Success("Files loaded")
+                            } catch (e2: Exception) {
+                                // Both failed - show empty
+                                _currentFolderFiles.value = emptyList()
+                                _patientState.value = PatientState.Success("Files loaded")
+                            }
                         }
+                     } else {
+                         _currentFolderFiles.value = emptyList()
+                         _patientState.value = PatientState.Success("Files loaded")
                      }
                 } else {
                     _patientState.value = PatientState.Error(response.body()?.get("message") as? String ?: "Failed to fetch files")

@@ -67,9 +67,6 @@ public final class ActivityDashboardBinding implements ViewBinding {
   public final TextView tvEmpty;
 
   @NonNull
-  public final TextView tvHospitalName;
-
-  @NonNull
   public final TextView tvPatientCount;
 
   @NonNull
@@ -77,9 +74,6 @@ public final class ActivityDashboardBinding implements ViewBinding {
 
   @NonNull
   public final TextView tvToolbarHospitalName;
-
-  @NonNull
-  public final TextView tvWelcome;
 
   @NonNull
   public final View viewHeader;
@@ -91,9 +85,8 @@ public final class ActivityDashboardBinding implements ViewBinding {
       @NonNull TextView lblPatients, @NonNull ProgressBar progressBar,
       @NonNull RecyclerView rvPatients, @NonNull SearchView searchView,
       @NonNull SwipeRefreshLayout swipeRefresh, @NonNull Toolbar toolbar, @NonNull TextView tvEmpty,
-      @NonNull TextView tvHospitalName, @NonNull TextView tvPatientCount,
-      @NonNull TextView tvQuickActions, @NonNull TextView tvToolbarHospitalName,
-      @NonNull TextView tvWelcome, @NonNull View viewHeader) {
+      @NonNull TextView tvPatientCount, @NonNull TextView tvQuickActions,
+      @NonNull TextView tvToolbarHospitalName, @NonNull View viewHeader) {
     this.rootView = rootView;
     this.btnNewAdmission = btnNewAdmission;
     this.cardSearch = cardSearch;
@@ -108,11 +101,9 @@ public final class ActivityDashboardBinding implements ViewBinding {
     this.swipeRefresh = swipeRefresh;
     this.toolbar = toolbar;
     this.tvEmpty = tvEmpty;
-    this.tvHospitalName = tvHospitalName;
     this.tvPatientCount = tvPatientCount;
     this.tvQuickActions = tvQuickActions;
     this.tvToolbarHospitalName = tvToolbarHospitalName;
-    this.tvWelcome = tvWelcome;
     this.viewHeader = viewHeader;
   }
 
@@ -221,12 +212,6 @@ public final class ActivityDashboardBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.tvHospitalName;
-      TextView tvHospitalName = ViewBindings.findChildViewById(rootView, id);
-      if (tvHospitalName == null) {
-        break missingId;
-      }
-
       id = R.id.tvPatientCount;
       TextView tvPatientCount = ViewBindings.findChildViewById(rootView, id);
       if (tvPatientCount == null) {
@@ -245,12 +230,6 @@ public final class ActivityDashboardBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.tvWelcome;
-      TextView tvWelcome = ViewBindings.findChildViewById(rootView, id);
-      if (tvWelcome == null) {
-        break missingId;
-      }
-
       id = R.id.viewHeader;
       View viewHeader = ViewBindings.findChildViewById(rootView, id);
       if (viewHeader == null) {
@@ -259,8 +238,8 @@ public final class ActivityDashboardBinding implements ViewBinding {
 
       return new ActivityDashboardBinding((ConstraintLayout) rootView, btnNewAdmission, cardSearch,
           cardTotalPatients, ivToolbarLogo, layoutEmpty, layoutStats, lblPatients, progressBar,
-          rvPatients, searchView, swipeRefresh, toolbar, tvEmpty, tvHospitalName, tvPatientCount,
-          tvQuickActions, tvToolbarHospitalName, tvWelcome, viewHeader);
+          rvPatients, searchView, swipeRefresh, toolbar, tvEmpty, tvPatientCount, tvQuickActions,
+          tvToolbarHospitalName, viewHeader);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

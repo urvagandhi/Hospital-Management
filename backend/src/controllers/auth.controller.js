@@ -535,32 +535,40 @@ export const login = async (req, res) => {
     }
 
     // Check if TOTP 2FA is enabled
-    /*
+    // Only enforce TOTP for Mobile App Manual Login
+    // Web: Disabled (as per request)
+    // Mobile Biometric: Disabled (as per request)
+    // Strict Mobile check via custom header (prevent mobile web from triggering this)
+    const isMobile = req.headers["x-client-type"] === "Android";
+    const isBiometric = req.body.isBiometric === true;
+
     if (hospital.totpEnabled && hospital.totpVerified) {
-      // Generate purpose-scoped temp token for TOTP verification
-      const tempToken = generateTempToken(hospital._id, "TOTP_LOGIN");
+      if (isMobile && !isBiometric) {
+         // Enforce TOTP for Mobile Manual Login
+         const tempToken = generateTempToken(hospital._id, "TOTP_LOGIN");
 
-      await AuditLog.create({
-        userId: hospital._id,
-        action: "LOGIN_ATTEMPT",
-        status: "SUCCESS",
-        ipAddress,
-        userAgent,
-        details: { step: "PASSWORD_VERIFIED", requireTotp: true },
-      });
+         await AuditLog.create({
+           userId: hospital._id,
+           action: "LOGIN_ATTEMPT",
+           status: "SUCCESS",
+           ipAddress,
+           userAgent,
+           details: { step: "PASSWORD_VERIFIED", requireTotp: true },
+         });
 
-      return res.status(200).json({
-        success: true,
-        message: "Password verified. TOTP verification required.",
-        requireTotp: true,
-        data: {
-          tempToken,
-          hospitalName: hospital.hospitalName,
-          logoUrl: hospital.logoUrl,
-        },
-      });
+         return res.status(200).json({
+           success: true,
+           message: "Password verified. TOTP verification required.",
+           requireTotp: true,
+           data: {
+             tempToken,
+             hospitalName: hospital.hospitalName,
+             logoUrl: hospital.logoUrl,
+           },
+         });
+      }
+      // Else: Is Web OR Is Biometric -> Skip TOTP check
     }
-    */
 
     // TOTP not enabled - create session directly
     const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);

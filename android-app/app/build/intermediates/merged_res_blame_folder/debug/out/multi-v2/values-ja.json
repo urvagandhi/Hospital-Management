@@ -4,24 +4,7 @@
             "outputFile": "com.hospital.management.app-mergeDebugResources-85:/values-ja/values-ja.xml",
             "map": [
                 {
-                    "source": "/home/urva/.gradle/caches/transforms-3/3eb31051de5fe16a4563a335a489fce9/transformed/biometric-1.1.0/res/values-ja/values-ja.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "55,157,242,345,458,572,691,797,913,1009,1128,1247",
-                        "endColumns": "101,84,102,112,113,118,105,115,95,118,118,107",
-                        "endOffsets": "152,237,340,453,567,686,792,908,1004,1123,1242,1350"
-                    },
-                    "to": {
-                        "startLines": "73,106,113,114,115,116,117,118,119,120,121,122",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "6801,10134,10691,10794,10907,11021,11140,11246,11362,11458,11577,11696",
-                        "endColumns": "101,84,102,112,113,118,105,115,95,118,118,107",
-                        "endOffsets": "6898,10214,10789,10902,11016,11135,11241,11357,11453,11572,11691,11799"
-                    }
-                },
-                {
-                    "source": "/home/urva/.gradle/caches/transforms-3/798278f2ee7f064a1fd3c1dc5b76f14d/transformed/jetified-material3-1.1.2/res/values-ja/values-ja.xml",
+                    "source": "/home/urva/.gradle/caches/transforms-3/e810f2193d7ea2aa5535b2e222d5600b/transformed/jetified-material3-1.1.2/res/values-ja/values-ja.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -38,41 +21,7 @@
                     }
                 },
                 {
-                    "source": "/home/urva/.gradle/caches/transforms-3/9dd71152ac556dc80c9fe826812c309f/transformed/jetified-ui-release/res/values-ja/values-ja.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "105,191,269,358,455,538,616,694,779,854,918,982,1056,1132,1201,1277,1342",
-                        "endColumns": "85,77,88,96,82,77,77,84,74,63,63,73,75,68,75,64,116",
-                        "endOffsets": "186,264,353,450,533,611,689,774,849,913,977,1051,1127,1196,1272,1337,1454"
-                    },
-                    "to": {
-                        "startLines": "52,53,105,107,109,124,125,182,183,184,185,187,188,191,195,196,197",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "4603,4689,10045,10219,10387,11868,11946,15970,16055,16130,16194,16331,16405,16639,16981,17057,17122",
-                        "endColumns": "85,77,88,96,82,77,77,84,74,63,63,73,75,68,75,64,116",
-                        "endOffsets": "4684,4762,10129,10311,10465,11941,12019,16050,16125,16189,16253,16400,16476,16703,17052,17117,17234"
-                    }
-                },
-                {
-                    "source": "/home/urva/.gradle/caches/transforms-3/7706e47bec672c3c9895d93b6a299bb9/transformed/jetified-play-services-basement-18.1.0/res/values-ja/values.xml",
-                    "from": {
-                        "startLines": "4",
-                        "startColumns": "0",
-                        "startOffsets": "195",
-                        "endColumns": "117",
-                        "endOffsets": "312"
-                    },
-                    "to": {
-                        "startLines": "63",
-                        "startColumns": "4",
-                        "startOffsets": "5762",
-                        "endColumns": "121",
-                        "endOffsets": "5879"
-                    }
-                },
-                {
-                    "source": "/home/urva/.gradle/caches/transforms-3/5ede27bb7590a43712e511c5d193d097/transformed/jetified-play-services-base-18.1.0/res/values-ja/values.xml",
+                    "source": "/home/urva/.gradle/caches/transforms-3/e4a5905701000e6778f5bcb237bfd761/transformed/jetified-play-services-base-18.1.0/res/values-ja/values.xml",
                     "from": {
                         "startLines": "4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20",
                         "startColumns": "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
@@ -89,7 +38,7 @@
                     }
                 },
                 {
-                    "source": "/home/urva/.gradle/caches/transforms-3/ab3c8dbcc57d3f9eb3b19bcbf26edef1/transformed/material-1.10.0/res/values-ja/values-ja.xml",
+                    "source": "/home/urva/.gradle/caches/transforms-3/530c7a47e56a43e313629eb3da1c6297/transformed/material-1.10.0/res/values-ja/values-ja.xml",
                     "from": {
                         "startLines": "2,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -108,7 +57,41 @@
                     }
                 },
                 {
-                    "source": "/home/urva/.gradle/caches/transforms-3/1ae08651db4bbb07f10e1945a5f6d854/transformed/appcompat-1.6.1/res/values-ja/values-ja.xml",
+                    "source": "/home/urva/.gradle/caches/transforms-3/dfa847f9bebec8195c363420e636eb74/transformed/jetified-play-services-basement-18.1.0/res/values-ja/values.xml",
+                    "from": {
+                        "startLines": "4",
+                        "startColumns": "0",
+                        "startOffsets": "195",
+                        "endColumns": "117",
+                        "endOffsets": "312"
+                    },
+                    "to": {
+                        "startLines": "63",
+                        "startColumns": "4",
+                        "startOffsets": "5762",
+                        "endColumns": "121",
+                        "endOffsets": "5879"
+                    }
+                },
+                {
+                    "source": "/home/urva/.gradle/caches/transforms-3/f9db09d3312e4a1e4101d6d94e6e5b73/transformed/biometric-1.1.0/res/values-ja/values-ja.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,157,242,345,458,572,691,797,913,1009,1128,1247",
+                        "endColumns": "101,84,102,112,113,118,105,115,95,118,118,107",
+                        "endOffsets": "152,237,340,453,567,686,792,908,1004,1123,1242,1350"
+                    },
+                    "to": {
+                        "startLines": "73,106,113,114,115,116,117,118,119,120,121,122",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "6801,10134,10691,10794,10907,11021,11140,11246,11362,11458,11577,11696",
+                        "endColumns": "101,84,102,112,113,118,105,115,95,118,118,107",
+                        "endOffsets": "6898,10214,10789,10902,11016,11135,11241,11357,11453,11572,11691,11799"
+                    }
+                },
+                {
+                    "source": "/home/urva/.gradle/caches/transforms-3/759eca0c36783a20cd772468506110d8/transformed/appcompat-1.6.1/res/values-ja/values-ja.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -125,7 +108,24 @@
                     }
                 },
                 {
-                    "source": "/home/urva/.gradle/caches/transforms-3/5490b645e9d6a61333b77d70f2a2a530/transformed/core-1.12.0/res/values-ja/values-ja.xml",
+                    "source": "/home/urva/.gradle/caches/transforms-3/5c6b3a8db94ca57d64c03bdf9ea68ca1/transformed/jetified-ui-release/res/values-ja/values-ja.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "105,191,269,358,455,538,616,694,779,854,918,982,1056,1132,1201,1277,1342",
+                        "endColumns": "85,77,88,96,82,77,77,84,74,63,63,73,75,68,75,64,116",
+                        "endOffsets": "186,264,353,450,533,611,689,774,849,913,977,1051,1127,1196,1272,1337,1454"
+                    },
+                    "to": {
+                        "startLines": "52,53,105,107,109,124,125,182,183,184,185,187,188,191,195,196,197",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "4603,4689,10045,10219,10387,11868,11946,15970,16055,16130,16194,16331,16405,16639,16981,17057,17122",
+                        "endColumns": "85,77,88,96,82,77,77,84,74,63,63,73,75,68,75,64,116",
+                        "endOffsets": "4684,4762,10129,10311,10465,11941,12019,16050,16125,16189,16253,16400,16476,16703,17052,17117,17234"
+                    }
+                },
+                {
+                    "source": "/home/urva/.gradle/caches/transforms-3/49bc569e60fab80a2adb3ddf56e74042/transformed/core-1.12.0/res/values-ja/values-ja.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",

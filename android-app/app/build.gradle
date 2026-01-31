@@ -1,6 +1,20 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'kotlin-kapt'
+}
+
+kapt {
+    javacOptions {
+        option("-J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED")
+        option("-J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED")
+        option("-J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED")
+        option("-J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED")
+        option("-J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED")
+        option("-J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED")
+        option("-J--add-exports=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED")
+        option("-J--add-exports=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED")
+    }
 }
 
 android {
@@ -36,7 +50,7 @@ android {
         compose true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = '1.5.3'
+        kotlinCompilerExtensionVersion = '1.5.8'
     }
 }
 
@@ -113,4 +127,13 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    // Room Database
+    def room_version = "2.6.1"
+    implementation "androidx.room:room-runtime:$room_version"
+    implementation "androidx.room:room-ktx:$room_version"
+    kapt "androidx.room:room-compiler:$room_version"
+
+    // WorkManager
+    implementation "androidx.work:work-runtime-ktx:2.9.0"
 }

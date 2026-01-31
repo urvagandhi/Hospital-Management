@@ -141,12 +141,6 @@ class LoginActivity : AppCompatActivity() {
                      lifecycleScope.launch { tokenManager.saveCredentials(email, password) }
                 }
 
-                // Debug: Show saved hospitalId before navigating
-                lifecycleScope.launch {
-                    val hospitalId = tokenManager.getHospitalId()
-                    Toast.makeText(this@LoginActivity, "Saved hospitalId: $hospitalId", Toast.LENGTH_LONG).show()
-                }
-
                 val intent = Intent(this, DashboardActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 startActivity(intent)
@@ -172,7 +166,7 @@ class LoginActivity : AppCompatActivity() {
                     biometricHelper.showBiometricPrompt(
                         this@LoginActivity,
                         onSuccess = {
-                            authViewModel.login(email, password)
+                            authViewModel.login(email, password, isBiometric = true)
                         },
                         onError = {
                             Toast.makeText(this@LoginActivity, "Authentication failed", Toast.LENGTH_SHORT).show()

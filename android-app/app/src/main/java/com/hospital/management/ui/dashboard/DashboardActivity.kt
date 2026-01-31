@@ -16,6 +16,10 @@ import com.hospital.management.R
 import com.hospital.management.databinding.ActivityDashboardBinding
 import com.hospital.management.ui.admission.AdmissionActivity
 import com.hospital.management.ui.auth.LoginActivity
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import com.hospital.management.worker.SyncDocumentsWorker
 import com.hospital.management.ui.folders.FolderViewActivity
 import com.hospital.management.presentation.viewmodel.AuthViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
@@ -32,6 +36,13 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var authViewModel: AuthViewModel
     private lateinit var patientViewModel: com.hospital.management.presentation.viewmodel.PatientViewModel
     private lateinit var patientAdapter: com.hospital.management.ui.patients.PatientAdapter
+
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return activeNetwork.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,8 +62,11 @@ class DashboardActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         SessionManager.updateLastInteractionTime(this)
-        fetchAndDisplayHospitalInfo()
-        patientViewModel.getPatients()
+        setupHospitalInfo() // Always load cached hospital info
+        if (isNetworkAvailable()) {
+            fetchAndDisplayHospitalInfo()
+            patientViewModel.getPatients()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -66,8 +80,32 @@ class DashboardActivity : AppCompatActivity() {
                 showLogoutDialog()
                 true
             }
+            R.id.action_sync -> {
+                startSync()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun startSync() {
+        if (!isNetworkAvailable()) {
+            Toast.makeText(this, "No internet connection available", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Toast.makeText(this, "Starting sync...", Toast.LENGTH_SHORT).show()
+        val syncWorkRequest = OneTimeWorkRequestBuilder<SyncDocumentsWorker>().build()
+        WorkManager.getInstance(this).enqueue(syncWorkRequest)
+
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(syncWorkRequest.id)
+            .observe(this) { workInfo ->
+                if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
+                    Toast.makeText(this, "Sync completed successfully!", Toast.LENGTH_SHORT).show()
+                } else if (workInfo != null && workInfo.state == WorkInfo.State.FAILED) {
+                    Toast.makeText(this, "Sync failed. Retry later.", Toast.LENGTH_SHORT).show()
+                }
+            }
     }
 
     private fun showLogoutDialog() {
@@ -101,17 +139,20 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun setupHospitalInfo() {
         lifecycleScope.launch {
-            val hospitalName = tokenManager.getHospitalName() ?: ""
+            var hospitalName = tokenManager.getHospitalName() ?: "Hospital"
+            if (hospitalName.isEmpty()) hospitalName = "Hospital"
+            
             val logoUrl = tokenManager.getHospitalLogoUrl() ?: ""
-            binding.tvHospitalName.text = hospitalName
             binding.tvToolbarHospitalName.text = hospitalName
             if (logoUrl.isNotEmpty()) {
                 Glide.with(this@DashboardActivity)
                     .load(logoUrl)
                     .circleCrop()
-                    .placeholder(R.mipmap.ic_launcher)
-                    .error(R.mipmap.ic_launcher)
+                    .placeholder(R.drawable.ic_splash_logo)
+                    .error(R.drawable.ic_splash_logo)
                     .into(binding.ivToolbarLogo)
+            } else {
+                 binding.ivToolbarLogo.setImageResource(R.drawable.ic_splash_logo)
             }
         }
     }
@@ -123,24 +164,46 @@ class DashboardActivity : AppCompatActivity() {
                 val response = apiService.getCurrentHospital()
                 if (response.isSuccessful && response.body() != null) {
                     val hospital = response.body()!!
-                    binding.tvHospitalName.text = hospital.hospitalName
-                    binding.tvToolbarHospitalName.text = hospital.hospitalName
-                    if (!hospital.logoUrl.isNullOrEmpty() && !hospital.logoUrl.contains("placeholder")) {
+                    
+                    // Get current cached values to preserve if API returns empty
+                    val cachedName = tokenManager.getHospitalName()
+                    val cachedLogoUrl = tokenManager.getHospitalLogoUrl()
+                    
+                    // Use API name if valid, otherwise keep cached
+                    val name = if (!hospital.hospitalName.isNullOrEmpty()) {
+                        hospital.hospitalName
+                    } else {
+                        cachedName ?: "Hospital"
+                    }
+                    
+                    // Use API logo URL only if it's valid (not empty and not a placeholder)
+                    val logoUrl = if (!hospital.logoUrl.isNullOrEmpty() && !hospital.logoUrl.contains("placeholder")) {
+                        hospital.logoUrl
+                    } else {
+                        cachedLogoUrl ?: ""
+                    }
+                    
+                    // Update display with the resolved values
+                    binding.tvToolbarHospitalName.text = name
+                    
+                    if (logoUrl.isNotEmpty()) {
                         Glide.with(this@DashboardActivity)
-                            .load(hospital.logoUrl)
+                            .load(logoUrl)
                             .circleCrop()
-                            .placeholder(R.mipmap.ic_launcher)
-                            .error(R.mipmap.ic_launcher)
+                            .placeholder(R.drawable.ic_splash_logo)
+                            .error(R.drawable.ic_splash_logo)
                             .into(binding.ivToolbarLogo)
                     } else {
-                        binding.ivToolbarLogo.setImageResource(R.mipmap.ic_launcher)
+                        binding.ivToolbarLogo.setImageResource(R.drawable.ic_splash_logo)
                     }
-                    tokenManager.saveHospitalInfo(hospital._id, hospital.hospitalName, hospital.logoUrl ?: "")
+                    
+                    // Save to cache only if we have valid values to update
+                    tokenManager.saveHospitalInfo(hospital._id, name, logoUrl)
                 } else {
-                    Toast.makeText(this@DashboardActivity, "Failed to fetch hospital details.", Toast.LENGTH_SHORT).show()
+                    // API failed - keep existing cached data (already displayed in setupHospitalInfo)
                 }
             } catch (e: Exception) {
-                Toast.makeText(this@DashboardActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                // Error - keep existing cached data (already displayed in setupHospitalInfo)
             }
         }
     }
@@ -171,11 +234,20 @@ class DashboardActivity : AppCompatActivity() {
                     is com.hospital.management.presentation.viewmodel.PatientState.Loading -> binding.progressBar.visibility = View.VISIBLE
                     is com.hospital.management.presentation.viewmodel.PatientState.Success -> {
                         binding.progressBar.visibility = View.GONE
-                        Toast.makeText(this@DashboardActivity, state.message ?: "Success", Toast.LENGTH_SHORT).show()
+                        // Don't show toast for routine loads, only for specific actions
+                        if (state.message != null && state.message != "Patients loaded" && state.message != "Success") {
+                            Toast.makeText(this@DashboardActivity, state.message, Toast.LENGTH_SHORT).show()
+                        }
                     }
                     is com.hospital.management.presentation.viewmodel.PatientState.Error -> {
                         binding.progressBar.visibility = View.GONE
-                        Toast.makeText(this@DashboardActivity, "Patient error: ${state.message}", Toast.LENGTH_LONG).show()
+                        // Only show error if it's not a network timeout when offline
+                        if (isNetworkAvailable()) {
+                            Toast.makeText(this@DashboardActivity, "Error: ${state.message}", Toast.LENGTH_SHORT).show()
+                        } else {
+                            // Show offline indicator without annoying toast
+                            binding.layoutEmpty.visibility = View.VISIBLE
+                        }
                     }
                     else -> binding.progressBar.visibility = View.GONE
                 }

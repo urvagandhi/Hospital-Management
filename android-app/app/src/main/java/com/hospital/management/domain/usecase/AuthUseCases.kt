@@ -3,7 +3,7 @@ package com.hospital.management.domain.usecase
 import com.hospital.management.data.repository.AuthRepository
 
 class LoginUseCase(private val repository: AuthRepository) {
-    suspend operator fun invoke(email: String, password: String) = repository.login(email, password)
+    suspend operator fun invoke(email: String, password: String, isBiometric: Boolean = false) = repository.login(email, password, isBiometric)
 }
 
 class VerifyOtpUseCase(private val repository: AuthRepository) {

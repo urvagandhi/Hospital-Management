@@ -1,15 +1,18 @@
 package com.hospital.management.data.models
 
+
+import com.google.gson.annotations.SerializedName
+
 data class Hospital(
-    val _id: String,
-    val hospitalName: String,
-    val email: String,
-    val phone: String,
-    val logoUrl: String,
-    val department: String? = null,
-    val address: String? = null,
-    val city: String? = null,
-    val state: String? = null,
-    val zipCode: String? = null,
-    val isActive: Boolean = true
+    @SerializedName("_id") val _id: String,
+    @SerializedName("hospitalName") val hospitalName: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("phone") val phone: String,
+    @SerializedName("logoUrl") val logoUrl: String? = null,
+    @SerializedName("department") val department: String? = null,
+    @SerializedName("address") val address: String? = null,
+    @SerializedName("city") val city: String? = null,
+    @SerializedName("state") val state: String? = null,
+    @SerializedName("zipCode") val zipCode: String? = null,
+    @SerializedName("isActive") val isActive: Boolean = true
 )
