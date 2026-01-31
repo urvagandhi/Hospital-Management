@@ -13,12 +13,25 @@ import config from "../config/env.js";
  * @param {string} deviceId - Device identifier (fingerprint)
  * @param {string} ipAddress - Client IP address
  * @param {string} userAgent - User agent string
+ * @param {boolean} isMobile - Whether the client is a mobile device
  * @returns {Promise<object>} Session with tokens
  */
-export const createSession = async (hospitalId, deviceId, ipAddress, userAgent) => {
+export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, isMobile = false) => {
   try {
-    // Enforce single-device login: invalidate previous sessions
-    await Session.updateMany({ hospitalId, deviceId: { $ne: deviceId } }, { isActive: false });
+    // SINGLE DEVICE POLICY:
+    // If logging in from Mobile, invalidate ALL other active Mobile sessions for this hospital.
+    // If logging in from Web, we allow multiple sessions (no invalidation).
+    if (isMobile) {
+      await Session.updateMany(
+        { 
+          hospitalId, 
+          isMobile: true,
+          isActive: true
+        }, 
+        { isActive: false }
+      );
+    }
+    // Note: We removed the generic "deviceId != deviceId" invalidation to support multiple Web sessions.
 
     // Generate tokens
     const accessToken = generateAccessToken(hospitalId);
@@ -34,6 +47,7 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent) 
       deviceId,
       ipAddress,
       userAgent,
+      isMobile,
       expiresAt,
       isActive: true,
     });

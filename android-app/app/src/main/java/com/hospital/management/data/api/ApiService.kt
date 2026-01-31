@@ -16,6 +16,7 @@ interface ApiService {
         @GET("/api/hospitals/{id}")
         suspend fun getHospitalById(@Path("id") id: String): Response<com.hospital.management.data.models.HospitalResponse>
     @POST("/api/auth/login")
+    @Headers("X-Client-Type: Android")
     @JvmSuppressWildcards
     suspend fun login(@Body body: Map<String, Any>): Response<LoginResponse>
 

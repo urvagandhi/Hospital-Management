@@ -59,8 +59,9 @@ export const changePassword = async (req, res) => {
     // Create a session so user is logged in and can proceed to setup 2FA
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers["user-agent"] || "unknown";
+    const isMobile = req.headers["x-client-type"] === "Android";
     const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
-    const session = await createSession(hospital._id, deviceId, ipAddress, userAgent);
+    const session = await createSession(hospital._id, deviceId, ipAddress, userAgent, isMobile);
 
     // Audit
     try {
@@ -360,13 +361,14 @@ export const verifyRegistration = async (req, res) => {
     // Create session
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers["user-agent"];
+    const isMobile = req.headers["x-client-type"] === "Android";
     const crypto = await import("crypto");
     const deviceId = crypto
       .createHash("sha256")
       .update(userAgent || "unknown")
       .digest("hex")
       .substring(0, 16);
-    const session = await createSession(hospital._id, deviceId, ipAddress, userAgent);
+    const session = await createSession(hospital._id, deviceId, ipAddress, userAgent, isMobile);
 
     // Audit Log
     await AuditLog.create({
@@ -572,7 +574,7 @@ export const login = async (req, res) => {
 
     // TOTP not enabled - create session directly
     const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
-    const session = await createSession(hospital._id, deviceId, ipAddress, userAgent);
+    const session = await createSession(hospital._id, deviceId, ipAddress, userAgent, isMobile);
 
     await AuditLog.create({
       userId: hospital._id,
@@ -580,7 +582,7 @@ export const login = async (req, res) => {
       status: "SUCCESS",
       ipAddress,
       userAgent,
-      details: { method: "PASSWORD_ONLY", totpEnabled: false },
+      details: { method: "PASSWORD_ONLY", totpEnabled: false, isMobile },
     });
 
     // Set cookies

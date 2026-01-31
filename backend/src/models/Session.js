@@ -38,6 +38,10 @@ const sessionSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isMobile: {
+      type: Boolean,
+      default: false,
+    },
     lastAccessedAt: {
       type: Date,
       default: Date.now,
