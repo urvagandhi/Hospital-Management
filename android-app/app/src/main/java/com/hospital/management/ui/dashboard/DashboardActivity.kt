@@ -144,9 +144,6 @@ class DashboardActivity : AppCompatActivity() {
             
             val logoUrl = tokenManager.getHospitalLogoUrl() ?: ""
             
-            // DEBUG: Toast cached values
-            Toast.makeText(this@DashboardActivity, "Cache: $hospitalName, Logo: ${logoUrl.take(10)}...", Toast.LENGTH_SHORT).show()
-            
             binding.tvToolbarHospitalName.text = hospitalName
             if (logoUrl.isNotEmpty()) {
                 Glide.with(this@DashboardActivity)
@@ -171,9 +168,6 @@ class DashboardActivity : AppCompatActivity() {
                     
                     if (responseBody.data != null) {
                         val hospital = responseBody.data
-                        
-                        // DEBUG: Toast API success
-                        Toast.makeText(this@DashboardActivity, "API: ${hospital.hospitalName}", Toast.LENGTH_SHORT).show()
                         
                         // Get current cached values to preserve if API returns empty
                         val cachedName = tokenManager.getHospitalName()
@@ -212,11 +206,9 @@ class DashboardActivity : AppCompatActivity() {
                     }
                 } else {
                     // API failed - keep existing cached data
-                     Toast.makeText(this@DashboardActivity, "API Failed: ${response.code()}", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 // Error - keep existing cached data
-                 Toast.makeText(this@DashboardActivity, "API Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
