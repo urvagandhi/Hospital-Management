@@ -36,14 +36,21 @@ export const verifyAccessToken = async (req, res, next) => {
     }
 
     // CHECK SESSION VALIDITY (Enforce Single Device Logic)
-    if (decoded.sessionId) {
-      const session = await Session.findById(decoded.sessionId);
-      if (!session || !session.isActive) {
-        return res.status(401).json({
-          success: false,
-          message: "Session expired or invalid. Please login again.",
-        });
-      }
+    // 1. Enforce sessionId presence (invalidates all old tokens)
+    if (!decoded.sessionId) {
+       return res.status(401).json({
+         success: false,
+         message: "Invalid token format. Please login again.",
+       });
+    }
+
+    // 2. Check DB status
+    const session = await Session.findById(decoded.sessionId);
+    if (!session || !session.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: "Session expired or invalid. Please login again.",
+      });
     }
 
     req.hospital = { id: decoded.id };
