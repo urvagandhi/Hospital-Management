@@ -223,31 +223,28 @@ class PatientViewModel(
     }
 
     fun downloadFolderPdf(patientId: String, folderName: String) {
-        initiateDownload { downloadFolderPdfUseCase(patientId, folderName) }
+        initiateDownload("PDF") { downloadFolderPdfUseCase(patientId, folderName) }
     }
 
     fun downloadAllPdf(patientId: String) {
-        initiateDownload { downloadAllPdfUseCase(patientId) }
+        initiateDownload("PDF") { downloadAllPdfUseCase(patientId) }
     }
 
     fun downloadFolderZip(patientId: String, folderName: String) {
-        initiateDownload { downloadFolderZipUseCase(patientId, folderName) }
+        initiateDownload("ZIP") { downloadFolderZipUseCase(patientId, folderName) }
     }
 
     fun downloadAllZip(patientId: String) {
-        initiateDownload { downloadAllZipUseCase(patientId) }
+        initiateDownload("ZIP") { downloadAllZipUseCase(patientId) }
     }
 
-    private fun initiateDownload(downloadCall: suspend () -> retrofit2.Response<ResponseBody>) {
+    private fun initiateDownload(type: String, downloadCall: suspend () -> retrofit2.Response<ResponseBody>) {
         viewModelScope.launch {
             _patientState.value = PatientState.Loading
             try {
                 val response = downloadCall()
                 if (response.isSuccessful && response.body() != null) {
-                    // Start download logic (save to file)
-                    // The ViewModel should probably expose the ResponseBody or stream it.
-                    // For now, let's just say Success(data=response.body())
-                    _patientState.value = PatientState.Success("Download ready", response.body())
+                    _patientState.value = PatientState.Success("$type Ready", response.body())
                 } else {
                     _patientState.value = PatientState.Error("Download failed")
                 }

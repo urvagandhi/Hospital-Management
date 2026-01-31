@@ -10,11 +10,11 @@ interface ApiService {
 
         // Fetch current authenticated hospital info
         @GET("/api/hospitals/me")
-        suspend fun getCurrentHospital(): Response<com.hospital.management.data.models.Hospital>
+        suspend fun getCurrentHospital(): Response<com.hospital.management.data.models.HospitalResponse>
 
         // Fetch hospital info by ID
         @GET("/api/hospitals/{id}")
-        suspend fun getHospitalById(@Path("id") id: String): Response<com.hospital.management.data.models.Hospital>
+        suspend fun getHospitalById(@Path("id") id: String): Response<com.hospital.management.data.models.HospitalResponse>
     @POST("/api/auth/login")
     @JvmSuppressWildcards
     suspend fun login(@Body body: Map<String, Any>): Response<LoginResponse>

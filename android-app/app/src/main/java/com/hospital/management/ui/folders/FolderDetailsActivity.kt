@@ -23,6 +23,13 @@ import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.data.models.FileItem
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.os.Environment
 
 class FolderDetailsActivity : AppCompatActivity() {
 
@@ -103,7 +110,14 @@ class FolderDetailsActivity : AppCompatActivity() {
                     is PatientState.Loading -> progressBar.visibility = View.VISIBLE
                     is PatientState.Success -> {
                         progressBar.visibility = View.GONE
-                        if (state.message?.isNotEmpty() == true && state.message != "Files loaded") {
+                        
+                        if (state.message == "PDF Ready" && state.data is okhttp3.ResponseBody) {
+                            val fileName = "${folderName}_${System.currentTimeMillis()}.pdf"
+                            saveFileToDownloads(state.data as okhttp3.ResponseBody, fileName)
+                        } else if (state.message == "ZIP Ready" && state.data is okhttp3.ResponseBody) {
+                            val fileName = "${folderName}_${System.currentTimeMillis()}.zip"
+                            saveFileToDownloads(state.data as okhttp3.ResponseBody, fileName)
+                        } else if (state.message?.isNotEmpty() == true && state.message != "Files loaded") {
                             Toast.makeText(this@FolderDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -478,6 +492,56 @@ class FolderDetailsActivity : AppCompatActivity() {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != 
                 android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
+        }
+    }
+
+    private fun saveFileToDownloads(body: okhttp3.ResponseBody, fileName: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadsDir, fileName)
+                
+                var inputStream: InputStream? = null
+                var outputStream: OutputStream? = null
+                
+                try {
+                    val fileReader = ByteArray(4096)
+                    val fileSize = body.contentLength()
+                    var fileSizeDownloaded: Long = 0
+                    
+                    inputStream = body.byteStream()
+                    outputStream = FileOutputStream(file)
+                    
+                    while (true) {
+                        val read = inputStream.read(fileReader)
+                        if (read == -1) break
+                        
+                        outputStream.write(fileReader, 0, read)
+                        fileSizeDownloaded += read
+                    }
+                    
+                    outputStream.flush()
+                    
+                    // Notify user on Main thread
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@FolderDetailsActivity, "Saved to Downloads: $fileName", Toast.LENGTH_LONG).show()
+                        
+                        // Show system notification
+                        showDownloadNotification(file)
+                    }
+                } catch (e: IOException) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@FolderDetailsActivity, "Failed to save file", Toast.LENGTH_SHORT).show()
+                    }
+                } finally {
+                    inputStream?.close()
+                    outputStream?.close()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@FolderDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

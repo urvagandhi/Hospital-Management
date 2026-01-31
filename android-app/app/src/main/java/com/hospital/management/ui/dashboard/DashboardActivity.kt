@@ -167,21 +167,24 @@ class DashboardActivity : AppCompatActivity() {
             try {
                 val response = apiService.getCurrentHospital()
                 if (response.isSuccessful && response.body() != null) {
-                    val hospital = response.body()!!
+                    val responseBody = response.body()!!
                     
-                    // DEBUG: Toast API success
-                    Toast.makeText(this@DashboardActivity, "API: ${hospital.hospitalName}", Toast.LENGTH_SHORT).show()
-                    
-                    // Get current cached values to preserve if API returns empty
-                    val cachedName = tokenManager.getHospitalName()
-                    val cachedLogoUrl = tokenManager.getHospitalLogoUrl()
-                    
-                    // Use API name if valid, otherwise keep cached
-                    val name = if (!hospital.hospitalName.isNullOrEmpty()) {
-                        hospital.hospitalName
-                    } else {
-                        cachedName ?: "Hospital"
-                    }
+                    if (responseBody.data != null) {
+                        val hospital = responseBody.data
+                        
+                        // DEBUG: Toast API success
+                        Toast.makeText(this@DashboardActivity, "API: ${hospital.hospitalName}", Toast.LENGTH_SHORT).show()
+                        
+                        // Get current cached values to preserve if API returns empty
+                        val cachedName = tokenManager.getHospitalName()
+                        val cachedLogoUrl = tokenManager.getHospitalLogoUrl()
+                        
+                        // Use API name if valid, otherwise keep cached
+                        val name = if (!hospital.hospitalName.isNullOrEmpty()) {
+                            hospital.hospitalName
+                        } else {
+                            cachedName ?: "Hospital"
+                        }
                     
                     // Use API logo URL only if it's valid (not empty and not a placeholder)
                     val logoUrl = if (!hospital.logoUrl.isNullOrEmpty() && !hospital.logoUrl.contains("placeholder")) {
@@ -206,6 +209,7 @@ class DashboardActivity : AppCompatActivity() {
                     
                     // Save to cache only if we have valid values to update
                     tokenManager.saveHospitalInfo(hospital._id, name, logoUrl)
+                    }
                 } else {
                     // API failed - keep existing cached data
                      Toast.makeText(this@DashboardActivity, "API Failed: ${response.code()}", Toast.LENGTH_SHORT).show()

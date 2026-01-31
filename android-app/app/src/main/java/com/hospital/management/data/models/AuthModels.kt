@@ -1,54 +1,62 @@
 package com.hospital.management.data.models
 
+import com.google.gson.annotations.SerializedName
+
 data class LoginResponse(
-    val success: Boolean,
-    val message: String,
-    val requirePasswordChange: Boolean? = null,
-    val requireTotp: Boolean? = null,
-    val requireTotpSetup: Boolean? = null,
-    val data: LoginData? = null
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String,
+    @SerializedName("requirePasswordChange") val requirePasswordChange: Boolean? = null,
+    @SerializedName("requireTotp") val requireTotp: Boolean? = null,
+    @SerializedName("requireTotpSetup") val requireTotpSetup: Boolean? = null,
+    @SerializedName("data") val data: LoginData? = null
 )
 
 data class LoginData(
-    val tempToken: String? = null,
-    val accessToken: String? = null,
-    val refreshToken: String? = null,
-    val hospital: Hospital? = null,
-    val hospitalName: String? = null,
-    val logoUrl: String? = null
+    @SerializedName("tempToken") val tempToken: String? = null,
+    @SerializedName("accessToken") val accessToken: String? = null,
+    @SerializedName("refreshToken") val refreshToken: String? = null,
+    @SerializedName("hospital") val hospital: Hospital? = null,
+    @SerializedName("hospitalName") val hospitalName: String? = null,
+    @SerializedName("logoUrl") val logoUrl: String? = null
 )
 
 data class ChangePasswordResponse(
-    val success: Boolean,
-    val message: String,
-    val requireTotpSetup: Boolean? = null,
-    val data: PasswordChangeData? = null
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String,
+    @SerializedName("requireTotpSetup") val requireTotpSetup: Boolean? = null,
+    @SerializedName("data") val data: PasswordChangeData? = null
 )
 
 data class PasswordChangeData(
-    val accessToken: String,
-    val refreshToken: String,
-    val hospital: Hospital
+    @SerializedName("accessToken") val accessToken: String,
+    @SerializedName("refreshToken") val refreshToken: String,
+    @SerializedName("hospital") val hospital: Hospital
 )
 
 data class TotpSetupResponse(
-    val success: Boolean,
-    val message: String,
-    val data: TotpSetupData? = null
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String,
+    @SerializedName("data") val data: TotpSetupData? = null
 )
 
 data class TotpSetupData(
-    val qrCodeUrl: String,
-    val secret: String,
-    val issuer: String
+    @SerializedName("qrCodeUrl") val qrCodeUrl: String,
+    @SerializedName("secret") val secret: String,
+    @SerializedName("issuer") val issuer: String
 )
 
 data class TotpVerifyResponse(
-    val success: Boolean,
-    val message: String,
-    val data: TotpVerifyData? = null
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String,
+    @SerializedName("data") val data: TotpVerifyData? = null
 )
 
 data class TotpVerifyData(
-    val backupCodes: List<String>
+    @SerializedName("backupCodes") val backupCodes: List<String>
+)
+
+data class HospitalResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("data") val data: Hospital? = null
 )
