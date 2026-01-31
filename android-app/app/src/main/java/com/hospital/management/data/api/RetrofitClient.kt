@@ -10,7 +10,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    private const val BASE_URL = "https://hospital-management-ku71.onrender.com" // Production URL
+    private const val BASE_URL = "https://hospital-management-8lbf.onrender.com" // Production URL
 
     private var retrofit: Retrofit? = null
 
@@ -33,7 +33,7 @@ object RetrofitClient {
             }
 
             val certificatePinner = okhttp3.CertificatePinner.Builder()
-                .add("hospital-management-ku71.onrender.com", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") // TODO: Replace with actual hash
+                .add("hospital-management-8lbf.onrender.com", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") // TODO: Replace with actual hash
                 .build()
 
             val client = OkHttpClient.Builder()
