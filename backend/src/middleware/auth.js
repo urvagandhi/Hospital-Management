@@ -4,12 +4,13 @@
  */
 
 import Hospital from "../models/Hospital.js";
+import Session from "../models/Session.js";
 import { extractTokenFromHeader, verifyToken } from "../utils/jwt.js";
 
 /**
  * Verify JWT token middleware
  */
-export const verifyAccessToken = (req, res, next) => {
+export const verifyAccessToken = async (req, res, next) => {
   try {
     // Try to get token from cookie first, then fall back to Authorization header
     let token = req.cookies?.accessToken;
@@ -32,6 +33,17 @@ export const verifyAccessToken = (req, res, next) => {
         success: false,
         message: "Invalid token type",
       });
+    }
+
+    // CHECK SESSION VALIDITY (Enforce Single Device Logic)
+    if (decoded.sessionId) {
+      const session = await Session.findById(decoded.sessionId);
+      if (!session || !session.isActive) {
+        return res.status(401).json({
+          success: false,
+          message: "Session expired or invalid. Please login again.",
+        });
+      }
     }
 
     req.hospital = { id: decoded.id };

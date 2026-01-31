@@ -11,9 +11,9 @@ import config from "../config/env.js";
  * @param {string} hospitalId - Hospital ID
  * @returns {string} JWT token
  */
-export const generateAccessToken = (hospitalId) => {
+export const generateAccessToken = (hospitalId, sessionId) => {
   try {
-    const token = jwt.sign({ id: hospitalId, type: "access" }, config.JWT_SECRET, { expiresIn: config.JWT_EXPIRY });
+    const token = jwt.sign({ id: hospitalId, sessionId, type: "access" }, config.JWT_SECRET, { expiresIn: config.JWT_EXPIRY });
     return token;
   } catch (error) {
     throw new Error(`Token generation failed: ${error.message}`);

@@ -3,6 +3,7 @@
  * Manages session tokens and refresh token logic
  */
 
+import mongoose from "mongoose";
 import Session from "../models/Session.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
 import config from "../config/env.js";
@@ -33,8 +34,11 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
     }
     // Note: We removed the generic "deviceId != deviceId" invalidation to support multiple Web sessions.
 
+    // Generate session ID
+    const sessionId = new mongoose.Types.ObjectId();
+
     // Generate tokens
-    const accessToken = generateAccessToken(hospitalId);
+    const accessToken = generateAccessToken(hospitalId, sessionId);
     const refreshToken = generateRefreshToken(hospitalId);
 
     // Calculate expiry (7 days for refresh token)
@@ -42,6 +46,7 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
 
     // Create session
     const session = await Session.create({
+      _id: sessionId,
       hospitalId,
       refreshToken,
       deviceId,
@@ -83,7 +88,7 @@ export const refreshAccessToken = async (refreshToken) => {
     }
 
     // Generate new access token
-    const newAccessToken = generateAccessToken(session.hospitalId);
+    const newAccessToken = generateAccessToken(session.hospitalId, session._id);
 
     // Update last accessed
     session.lastAccessedAt = new Date();
