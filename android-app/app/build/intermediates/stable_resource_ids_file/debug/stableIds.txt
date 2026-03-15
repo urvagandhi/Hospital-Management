@@ -1,3 +1,4 @@
+com.hospital.management:xml/network_security_config = 0x7f140003
 com.hospital.management:styleable/include = 0x7f1300a5
 com.hospital.management:styleable/ViewStubCompat = 0x7f1300a3
 com.hospital.management:styleable/ViewBackgroundHelper = 0x7f1300a1

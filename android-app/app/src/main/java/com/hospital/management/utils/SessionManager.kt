@@ -2,12 +2,12 @@ package com.hospital.management.utils
 
 import android.content.Context
 import android.content.Intent
+import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.ui.auth.LoginActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 object SessionManager {
     private const val SESSION_TIMEOUT_MS = 15 * 60 * 1000L // 15 minutes
@@ -15,8 +15,18 @@ object SessionManager {
     @Volatile
     private var _isSessionActive = false
 
+    // Cached TokenManager per-context to avoid repeated crypto init
+    @Volatile
+    private var cachedTokenManager: TokenManager? = null
+
     val isSessionActive: Boolean
         get() = _isSessionActive
+
+    private fun getTokenManager(context: Context): TokenManager {
+        return cachedTokenManager ?: TokenManager(context.applicationContext).also {
+            cachedTokenManager = it
+        }
+    }
 
     /**
      * Start a new session and persist the timestamp
@@ -24,8 +34,7 @@ object SessionManager {
     suspend fun startSession(context: Context) {
         _isSessionActive = true
         kotlinx.coroutines.withContext(Dispatchers.IO) {
-            val tokenManager = TokenManager(context)
-            tokenManager.saveSessionTimestamp(System.currentTimeMillis())
+            getTokenManager(context).saveSessionTimestamp(System.currentTimeMillis())
         }
     }
 
@@ -34,8 +43,7 @@ object SessionManager {
      */
     fun updateLastInteractionTime(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
-            val tokenManager = TokenManager(context)
-            tokenManager.saveSessionTimestamp(System.currentTimeMillis())
+            getTokenManager(context).saveSessionTimestamp(System.currentTimeMillis())
         }
     }
 
@@ -43,7 +51,7 @@ object SessionManager {
      * Check if session is valid based on persisted timestamp
      */
     suspend fun isSessionValid(context: Context): Boolean {
-        val tokenManager = TokenManager(context)
+        val tokenManager = getTokenManager(context)
         val accessToken = tokenManager.getAccessToken()
 
         if (accessToken.isNullOrEmpty()) {
@@ -77,9 +85,11 @@ object SessionManager {
     fun logoutUser(context: Context) {
         _isSessionActive = false
         CoroutineScope(Dispatchers.IO).launch {
-            val tokenManager = TokenManager(context)
-            tokenManager.clearAll()
+            getTokenManager(context).clearAll()
         }
+        // Reset Retrofit client to clear cookies and stale auth state
+        RetrofitClient.reset()
+        cachedTokenManager = null
 
         val intent = Intent(context, LoginActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)

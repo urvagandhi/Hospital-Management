@@ -19,8 +19,7 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Check if user is admin
-  const isAdmin = state.hospital?.email === "admin@citymedical.com";
+  const isAdmin = state.hospital?.role === "admin";
 
   if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;

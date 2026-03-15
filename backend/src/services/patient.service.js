@@ -53,8 +53,9 @@ export const getPatients = async (hospitalId, options = {}) => {
     if (status) query.status = status;
 
     if (search && search.trim()) {
-      console.log("[Patient Service] Applying search filter for:", search);
-      query.$or = [{ patientName: { $regex: search, $options: "i" } }, { medicalRecordNumber: { $regex: search, $options: "i" } }, { phone: { $regex: search, $options: "i" } }];
+      // Escape regex special characters to prevent ReDoS attacks
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      query.$or = [{ patientName: { $regex: escapedSearch, $options: "i" } }, { medicalRecordNumber: { $regex: escapedSearch, $options: "i" } }, { phone: { $regex: escapedSearch, $options: "i" } }];
     }
 
     const patients = await Patient.find(query)

@@ -5,12 +5,31 @@
 
 import express from "express";
 import multer from "multer";
+import path from "path";
 import * as patientController from "../controllers/patient.controller.js";
 import { verifyAccessToken } from "../middleware/auth.js";
 import { patientLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+
+// Allowed file types for patient documents
+const patientFileFilter = (req, file, cb) => {
+  const allowedTypes = /jpeg|jpg|png|gif|webp|pdf|doc|docx|xls|xlsx|csv|txt|dicom|dcm/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const allowedMimes = /image\/|application\/pdf|application\/msword|application\/vnd\.|text\/|application\/dicom/;
+  const mimetype = allowedMimes.test(file.mimetype);
+
+  if (mimetype || extname) {
+    return cb(null, true);
+  }
+  cb(new Error("File type not allowed. Allowed: images, PDF, DOC, XLSX, CSV, TXT, DICOM"));
+};
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB max
+  fileFilter: patientFileFilter,
+});
 
 // Apply auth middleware to all routes
 router.use(verifyAccessToken);
@@ -81,11 +100,7 @@ router.get("/:patientId/download/zip", patientLimiter, patientController.downloa
  */
 router.get("/:patientId/folders/:folderName/zip", patientLimiter, patientController.downloadFolderZip);
 
-/**
- * DELETE /api/patients/autodelete
- * Auto-delete patients older than 90 days (cron job)
- * Note: This should only be called by cron job, not exposed to API
- */
-router.delete("/autodelete", patientController.autoDelete);
+// Auto-delete is handled by the internal cron job (jobs/autoDelete.job.js),
+// not exposed as an API endpoint to prevent unauthorized mass deletion.
 
 export default router;

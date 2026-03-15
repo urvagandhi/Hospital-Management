@@ -9,9 +9,7 @@ import { Button } from "../components/Button";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { LogoHeader } from "../components/LogoHeader";
 import { TextInput } from "../components/TextInput";
-import { API_URL } from "../config/constants";
 import { useAuth } from "../hooks/useAuth";
-import { persistentLogger } from "../utils/persistentLogger";
 import { getEmailError, getPasswordError } from "../utils/validator";
 
 export const Login: React.FC = () => {
@@ -21,11 +19,6 @@ export const Login: React.FC = () => {
   useEffect(() => {
     document.title = "Login - Hospital Management";
   }, []);
-
-  persistentLogger.log("Login", "Component rendered");
-  console.log("[Login Page] Component rendered");
-  console.log("[Login Page] login function type:", typeof login);
-  console.log("[Login Page] state:", state);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -40,11 +33,9 @@ export const Login: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [displayError, setDisplayError] = useState<string | null>(null);
 
-  // Show error from auth state
   useEffect(() => {
     if (state.error) {
       setDisplayError(state.error);
-      console.log("[Login] Error from state:", state.error);
     }
   }, [state.error]);
 
@@ -84,25 +75,6 @@ export const Login: React.FC = () => {
   }
   */
 
-  // Add window-level error logging
-  React.useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      console.error("[Global Error]", event.error);
-    };
-    window.addEventListener("error", handleError);
-
-    // Test backend connectivity on component mount
-    console.log("[Login Page] Testing backend connectivity...");
-    fetch(`${API_URL}/health`)
-      .then((res) => {
-        console.log("[Login Page] Backend health check status:", res.status);
-        return res.json();
-      })
-      .then((data) => console.log("[Login Page] Backend health response:", data))
-      .catch((err) => console.error("[Login Page] Backend health check failed:", err));
-
-    return () => window.removeEventListener("error", handleError);
-  }, []);
 
   const validateForm = (): boolean => {
     const newErrors = {
@@ -129,77 +101,33 @@ export const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    setDisplayError(null); // Clear previous errors
-
-    persistentLogger.log("Login", "Form submitted", { email: formData.email });
-    console.log("[Login] Form submitted", { email: formData.email, password: "***" });
-    console.log("[Login] Login function exists:", typeof login);
+    setDisplayError(null);
 
     const isValid = validateForm();
-    persistentLogger.log("Login", "Form validation result:", { isValid, errors });
-    console.log("[Login] Form validation result:", isValid);
-    console.log("[Login] Validation errors:", errors);
-
-    if (!isValid) {
-      persistentLogger.log("Login", "Form validation failed, returning early");
-      console.log("[Login] Form validation failed, returning early");
-      return;
-    }
+    if (!isValid) return;
 
     try {
-      persistentLogger.log("Login", "Calling login() with:", { email: formData.email });
-      console.log("[Login] Calling login() with:", { email: formData.email });
-
-      // Login returns true if completed (TOTP not enabled), false if TOTP needed
       const loginComplete = await login(formData.email, formData.password);
 
-      console.log("[Login] loginComplete result:", loginComplete);
-
-      // FORCE OVERRIDE: If the backend logic is bypassed but somehow returns false/undefined
-      // or if loginComplete comes back as anything other than explicit "SETUP_NEEDED" or "PASSWORD_CHANGE"
-      if (loginComplete === true || (loginComplete !== "SETUP_NEEDED" && loginComplete !== "PASSWORD_CHANGE" && loginComplete !== false)) {
-        // Direct login success - TOTP not enabled, go to dashboard
-        persistentLogger.log("Login", "Login complete, navigating to /dashboard");
-        console.log("[Login] Login complete (no TOTP), navigating to /dashboard");
+      if (loginComplete === true) {
         navigate("/dashboard");
       } else if (loginComplete === "SETUP_NEEDED") {
-        // Mandatory TOTP Setup Required
-        // FORCE BYPASS: Do NOT navigate to setup-2fa, go to dashboard instead
-        persistentLogger.log("Login", "FORCE BYPASS: setup-2fa intercepted, navigating to /dashboard");
-        console.log("[Login] FORCE BYPASS: setup-2fa intercepted, navigating to /dashboard");
-        navigate("/dashboard");
+        navigate("/setup-2fa");
       } else if (loginComplete === "PASSWORD_CHANGE") {
-        // Force user to change password before proceeding
-        persistentLogger.log("Login", "Password change required, navigating to /change-password");
         navigate("/change-password");
       } else if (loginComplete === false) {
-        // TOTP required - navigate to OTP verification page
-        // BUT we want to double check if we can skip this?
-        // If backend says requireTotp: true, we are stuck.
-        // But we edited backend to say false.
-        // If we get here, it means backend returned false for requireTotp?
-        // Wait: login() returns true if requireTotp is false.
-        // login() returns false if requireTotp is true.
-        // So if loginComplete is false, then requireTotp was true.
-
-        // If we are here, backend actually asked for TOTP.
-        // This implies the backend file edit didn't take, or user didn't restart server.
-
-        // However, let's log it clearly.
-        persistentLogger.log("Login", "TOTP required (unexpectedly?), navigating to /verify-otp");
-        console.log("[Login] TOTP required, navigating to /verify-otp");
+        // TOTP required
         navigate("/verify-otp");
-      }
-    } catch (error: any) {
-      persistentLogger.error("Login", "Login error:", error);
-      console.error("[Login] Login error:", error);
-
-      if (error.response?.status === 423) {
-        const lockUntil = new Date(error.response.data.lockUntil);
-        const timeStr = lockUntil.toLocaleTimeString();
-        setDisplayError(`Account locked until ${timeStr}. Please try again later.`);
       } else {
-        setDisplayError(error.message || "Login failed");
+        navigate("/dashboard");
+      }
+    } catch (error: unknown) {
+      const err = error as Error & { response?: { status?: number; data?: { lockUntil?: string } } };
+      if (err.response?.status === 423 && err.response.data?.lockUntil) {
+        const lockUntil = new Date(err.response.data.lockUntil);
+        setDisplayError(`Account locked until ${lockUntil.toLocaleTimeString()}. Please try again later.`);
+      } else {
+        setDisplayError(err.message || "Login failed");
       }
     }
   };
@@ -220,19 +148,7 @@ export const Login: React.FC = () => {
 
         {displayError && <ErrorMessage message={displayError} type="error" onClose={() => setDisplayError(null)} />}
 
-        <form
-          onSubmit={(e) => {
-            console.log("[DEBUG] Form onSubmit event fired!");
-            handleSubmit(e);
-          }}
-          className="space-y-5 mt-6"
-          onSubmitCapture={(e) => {
-            console.log("[Form] onSubmitCapture fired (capture phase)");
-          }}
-          onClick={() => {
-            console.log("[Form] Form area clicked");
-          }}
-        >
+        <form onSubmit={handleSubmit} className="space-y-5 mt-6">
           <TextInput
             label="Email Address"
             type="email"
@@ -270,16 +186,6 @@ export const Login: React.FC = () => {
           <Button label={state.loading ? "Signing in..." : "Sign In"} type="submit" variant="primary" size="lg" fullWidth disabled={state.loading} loading={state.loading} />
         </form>
 
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>
-            Demo credentials: <br />
-            <code className="bg-gray-100 px-2 py-1 rounded">admin@citymedical.com</code>
-            <br />
-            <code className="bg-gray-100 px-2 py-1 rounded">Password123</code>
-          </p>
-        </div>
-
-        {/* Registration is admin-only; remove public register link */}
       </div>
     </div>
   );

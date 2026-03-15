@@ -16,8 +16,11 @@ data class Patient(
 data class Folder(
     val name: String,
     val files: List<FileItem>,
+    private val _fileCount: Int? = null
+) {
     val fileCount: Int
-)
+        get() = _fileCount ?: files.size
+}
 
 data class FileItem(
     val fileName: String,

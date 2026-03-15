@@ -43,8 +43,8 @@ export const changePassword = async (req, res) => {
     if (!hospitalId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: "New password must be at least 6 characters" });
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: "New password must be at least 8 characters" });
     }
 
     const hospital = await Hospital.findById(hospitalId);

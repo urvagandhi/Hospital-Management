@@ -37,7 +37,7 @@ export const createPatient = async (req, res) => {
     console.error("[Patient Controller] Create error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to create patient",
     });
   }
 };
@@ -50,30 +50,6 @@ export const getPatients = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
     const { limit = 20, skip = 0, search } = req.query;
-
-    console.log("[Patient Controller] ===== GET PATIENTS DEBUG =====");
-    console.log("[Patient Controller] Hospital ID from token:", hospitalId);
-    console.log("[Patient Controller] Hospital ID type:", typeof hospitalId);
-    console.log("[Patient Controller] Query params - limit:", limit, "skip:", skip, "search:", search);
-
-    // Query database to check patients count
-    const Patient = (await import("../models/Patient.js")).default;
-    const mongoose = (await import("mongoose")).default;
-    const allPatientsCount = await Patient.countDocuments({});
-
-    // Try both string and ObjectId comparison
-    const patientsForHospitalString = await Patient.countDocuments({ hospitalId: hospitalId });
-    const patientsForHospitalObjectId = await Patient.countDocuments({ hospitalId: new mongoose.Types.ObjectId(hospitalId) });
-    const allPatients = await Patient.find({}).limit(5);
-
-    console.log("[Patient Controller] Total patients in DB:", allPatientsCount);
-    console.log("[Patient Controller] Patients matching hospitalId (string):", patientsForHospitalString);
-    console.log("[Patient Controller] Patients matching hospitalId (ObjectId):", patientsForHospitalObjectId);
-    console.log(
-      "[Patient Controller] Sample patient hospitalIds:",
-      allPatients.map((p) => ({ id: String(p.hospitalId), type: typeof p.hospitalId, name: p.patientName })),
-    );
-    console.log("[Patient Controller] ===========================");
 
     const { patients, total } = await patientService.getPatients(hospitalId, {
       limit: parseInt(limit),
@@ -94,7 +70,7 @@ export const getPatients = async (req, res) => {
     console.error("[Patient Controller] Error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to fetch patients",
     });
   }
 };
@@ -120,7 +96,7 @@ export const getPatientById = async (req, res) => {
     console.error("[Patient Controller] Error:", error);
     return res.status(error.message === "Patient not found" ? 404 : 500).json({
       success: false,
-      message: error.message,
+      message: error.message === "Patient not found" ? error.message : "Failed to fetch patient",
     });
   }
 };
@@ -155,7 +131,7 @@ export const updatePatient = async (req, res) => {
     console.error("[Patient Controller] Update error:", error);
     return res.status(error.message === "Patient not found" ? 404 : 500).json({
       success: false,
-      message: error.message,
+      message: error.message === "Patient not found" ? error.message : "Failed to update patient",
     });
   }
 };
@@ -214,9 +190,10 @@ export const getFolderFiles = async (req, res) => {
     });
   } catch (error) {
     console.error("[Patient Controller] Error:", error);
-    return res.status(error.message.includes("not found") ? 404 : 500).json({
+    const isNotFound = error.message.includes("not found");
+    return res.status(isNotFound ? 404 : 500).json({
       success: false,
-      message: error.message,
+      message: isNotFound ? error.message : "Failed to fetch folder files",
     });
   }
 };
@@ -238,10 +215,19 @@ export const uploadFile = async (req, res) => {
       });
     }
 
-    console.log("[Patient Controller] Uploading file to folder:", folderName);
+    // Sanitize folderName — allow only alphanumeric, hyphens, underscores, spaces, dots
+    if (!/^[a-zA-Z0-9_\-\.\s]+$/.test(folderName)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid folder name. Use only letters, numbers, hyphens, underscores, and dots.",
+      });
+    }
+
+    // Sanitize file name — strip path components to prevent traversal
+    const safeFileName = file.originalname.replace(/[^a-zA-Z0-9_\-\.]/g, "_");
 
     // Generate file key/path: hospitalId/patientId/folderName/filename
-    const key = `${hospitalId}/${patientId}/${folderName}/${Date.now()}_${file.originalname}`;
+    const key = `${hospitalId}/${patientId}/${folderName}/${Date.now()}_${safeFileName}`;
 
     let uploadResult;
     const config = (await import("../config/env.js")).default;
@@ -257,7 +243,7 @@ export const uploadFile = async (req, res) => {
       await fs.mkdir(dirPath, { recursive: true });
 
       // Save file locally
-      const fileName = `${Date.now()}_${file.originalname}`;
+      const fileName = `${Date.now()}_${safeFileName}`;
       const filePath = path.join(dirPath, fileName);
       await fs.writeFile(filePath, file.buffer);
 
@@ -288,9 +274,9 @@ export const uploadFile = async (req, res) => {
     });
   } catch (error) {
     console.error("[Patient Controller] Upload error:", error);
-    return res.status(500).json({
+    return res.status(error.message === "Patient not found" || error.message === "Folder not found" ? 404 : 500).json({
       success: false,
-      message: error.message,
+      message: error.message === "Patient not found" || error.message === "Folder not found" ? error.message : "Failed to upload file",
     });
   }
 };
@@ -313,7 +299,7 @@ export const downloadAllPdf = async (req, res) => {
     if (!res.headersSent) {
       return res.status(error.message === "Patient not found" ? 404 : 500).json({
         success: false,
-        message: error.message,
+        message: error.message === "Patient not found" ? error.message : "Failed to generate PDF",
       });
     }
   }
@@ -335,9 +321,10 @@ export const downloadFolderPdf = async (req, res) => {
   } catch (error) {
     console.error("[Patient Controller] Folder PDF error:", error);
     if (!res.headersSent) {
-      return res.status(error.message.includes("not found") ? 404 : 500).json({
+      const isNotFound = error.message.includes("not found");
+      return res.status(isNotFound ? 404 : 500).json({
         success: false,
-        message: error.message,
+        message: isNotFound ? error.message : "Failed to generate folder PDF",
       });
     }
   }
@@ -361,7 +348,7 @@ export const downloadAllZip = async (req, res) => {
     if (!res.headersSent) {
       return res.status(error.message === "Patient not found" ? 404 : 500).json({
         success: false,
-        message: error.message,
+        message: error.message === "Patient not found" ? error.message : "Failed to generate ZIP",
       });
     }
   }
@@ -383,9 +370,10 @@ export const downloadFolderZip = async (req, res) => {
   } catch (error) {
     console.error("[Patient Controller] Folder ZIP error:", error);
     if (!res.headersSent) {
-      return res.status(error.message.includes("not found") ? 404 : 500).json({
+      const isNotFound = error.message.includes("not found");
+      return res.status(isNotFound ? 404 : 500).json({
         success: false,
-        message: error.message,
+        message: isNotFound ? error.message : "Failed to generate folder ZIP",
       });
     }
   }
@@ -410,7 +398,7 @@ export const autoDelete = async (req, res) => {
     console.error("[Patient Controller] Auto-delete error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Auto-delete operation failed",
     });
   }
 };

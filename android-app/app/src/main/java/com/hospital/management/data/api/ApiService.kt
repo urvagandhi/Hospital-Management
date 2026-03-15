@@ -68,8 +68,9 @@ interface ApiService {
     @GET("/api/patients")
     suspend fun getPatients(
         @Query("limit") limit: Int,
-        @Query("skip") skip: Int
-    ): Response<Map<String, Any>>
+        @Query("skip") skip: Int,
+        @Query("search") search: String? = null
+    ): Response<PatientsResponse>
 
     @GET("/api/patients/{patientId}")
     suspend fun getPatientById(

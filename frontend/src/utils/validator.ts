@@ -8,9 +8,11 @@ export const validateEmail = (email: string): boolean => {
 };
 
 export const validatePassword = (password: string): string | null => {
-  if (password.length < 6) {
-    return "Password must be at least 6 characters";
-  }
+  if (password.length < 8) return "Password must be at least 8 characters";
+  if (!/[A-Z]/.test(password)) return "Must contain an uppercase letter";
+  if (!/[a-z]/.test(password)) return "Must contain a lowercase letter";
+  if (!/[0-9]/.test(password)) return "Must contain a number";
+  if (!/[\W_]/.test(password)) return "Must contain a special character";
   return null;
 };
 
@@ -20,8 +22,7 @@ export const validateOtp = (otp: string, length: number = 6): boolean => {
 
 export const getPasswordError = (password: string): string | null => {
   if (!password) return "Password is required";
-  if (password.length < 6) return "Password must be at least 6 characters";
-  return null;
+  return validatePassword(password);
 };
 
 export const getEmailError = (email: string): string | null => {

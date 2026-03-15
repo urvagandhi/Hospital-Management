@@ -8,6 +8,7 @@ export interface Hospital {
   email: string;
   phone: string;
   logoUrl: string;
+  role?: "admin" | "hospital";
   department?: string;
   address?: string;
   city?: string;

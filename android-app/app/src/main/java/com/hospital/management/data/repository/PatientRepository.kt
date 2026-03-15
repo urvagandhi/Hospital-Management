@@ -15,8 +15,8 @@ class PatientRepository(
         return apiService.createPatient(patientRequest)
     }
     
-    suspend fun getPatients(limit: Int = 20, skip: Int = 0): Response<Map<String, Any>> {
-        return apiService.getPatients(limit, skip)
+    suspend fun getPatients(limit: Int = 20, skip: Int = 0, search: String? = null): Response<com.hospital.management.data.models.PatientsResponse> {
+        return apiService.getPatients(limit, skip, search)
     }
     
     suspend fun getPatientById(patientId: String): Response<Map<String, Any>> {

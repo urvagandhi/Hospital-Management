@@ -13,29 +13,28 @@ export const Navbar: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
-  // Fetch hospital info on mount and when authenticated
   useEffect(() => {
+    let cancelled = false;
+
     const fetchHospitalInfo = async () => {
       if (state.isAuthenticated) {
         try {
           const data = await getCurrentHospital();
-          setHospitalInfo(data);
-        } catch (error) {
-          console.error("Failed to fetch hospital info:", error);
-          // Fallback to auth state hospital
-          setHospitalInfo(authHospital);
+          if (!cancelled) setHospitalInfo(data);
+        } catch {
+          if (!cancelled) setHospitalInfo(authHospital);
         }
       }
     };
 
     fetchHospitalInfo();
+    return () => { cancelled = true; };
   }, [state.isAuthenticated, authHospital]);
 
   // Use fetched hospital info if available, otherwise use auth state
   const hospital = hospitalInfo || authHospital;
 
-  // Temporary admin check until role field is added
-  const isAdmin = hospital?.email === "admin@citymedical.com";
+  const isAdmin = hospital?.role === "admin";
 
   const handleLogoutClick = () => {
     setIsLogoutConfirmOpen(true);

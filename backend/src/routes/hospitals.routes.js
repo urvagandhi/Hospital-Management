@@ -5,7 +5,7 @@
 
 import express from "express";
 import { getAllHospitals, getCurrentHospital, getHospitalById, updateHospital } from "../controllers/hospitals.controller.js";
-import { verifyAccessToken } from "../middleware/auth.js";
+import { verifyAccessToken, verifyAdmin, verifyAdminOrSelf } from "../middleware/auth.js";
 import { uploadSingle } from "../middleware/upload.js";
 
 const router = express.Router();
@@ -14,27 +14,27 @@ const router = express.Router();
 router.use(verifyAccessToken);
 
 /**
- * GET /api/hospitals
- * Get all hospitals
- */
-router.get("/", getAllHospitals);
-
-/**
  * GET /api/hospitals/me
- * Get current authenticated hospital
+ * Get current authenticated hospital (must be before /:id)
  */
 router.get("/me", getCurrentHospital);
 
 /**
- * GET /api/hospitals/:id
- * Get hospital by ID
+ * GET /api/hospitals
+ * Get all hospitals (admin only)
  */
-router.get("/:id", getHospitalById);
+router.get("/", verifyAdmin, getAllHospitals);
+
+/**
+ * GET /api/hospitals/:id
+ * Get hospital by ID (admin or own hospital)
+ */
+router.get("/:id", verifyAdminOrSelf, getHospitalById);
 
 /**
  * PUT /api/hospitals/:id
- * Update hospital details (with optional logo upload)
+ * Update hospital details (admin or own hospital; only admin can change isActive)
  */
-router.put("/:id", uploadSingle("logo"), updateHospital);
+router.put("/:id", verifyAdminOrSelf, uploadSingle("logo"), updateHospital);
 
 export default router;

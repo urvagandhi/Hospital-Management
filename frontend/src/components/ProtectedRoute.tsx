@@ -22,29 +22,23 @@ const getTempTokenPurpose = (token: string | null): string | null => {
     const json = JSON.parse(window.atob(b64));
     return json.purpose || null;
   } catch (e) {
-    console.warn("[ProtectedRoute] Failed to parse temp token", e);
+    // Failed to parse temp token
     return null;
   }
 };
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, state } = useAuth();
 
-  console.log("[ProtectedRoute] Rendering", { isAuthenticated, loading: state.loading });
-
-  const tempToken = localStorage.getItem("tempToken");
+  const tempToken = sessionStorage.getItem("tempToken");
   if (tempToken && !isAuthenticated) {
     const purpose = getTempTokenPurpose(tempToken);
-    console.log("[ProtectedRoute] TempToken present, purpose:", purpose);
     if (purpose === "PASSWORD_CHANGE") {
-      console.log("[ProtectedRoute] Redirecting to change-password");
       return <Navigate to="/change-password" replace />;
     }
-    console.log("[ProtectedRoute] TempToken present, redirecting to OTP");
     return <Navigate to="/verify-otp" replace />;
   }
 
   if (state.loading) {
-    console.log("[ProtectedRoute] Loading state, showing spinner");
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin">
@@ -67,11 +61,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     }
     */
 
-    console.log("[ProtectedRoute] Authenticated, rendering children");
     return <>{children}</>;
   }
 
-  console.log("[ProtectedRoute] Not authenticated, redirecting to login");
   return <Navigate to="/login" replace />;
 };
 

@@ -151,8 +151,70 @@ export const attachHospitalData = async (req, res, next) => {
   }
 };
 
+/**
+ * Admin-only middleware (must follow verifyAccessToken)
+ * Checks that the authenticated hospital has role === "admin"
+ */
+export const verifyAdmin = async (req, res, next) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    if (!hospitalId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const hospital = await Hospital.findById(hospitalId).select("role");
+    if (!hospital || hospital.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden. Admin access required.",
+      });
+    }
+
+    next();
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Authorization check failed" });
+  }
+};
+
+/**
+ * Admin-or-self middleware (must follow verifyAccessToken)
+ * Allows access if user is admin OR if the :id param matches the authenticated hospital
+ */
+export const verifyAdminOrSelf = async (req, res, next) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    const targetId = req.params.id;
+
+    if (!hospitalId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    // Allow if updating own record
+    if (hospitalId.toString() === targetId) {
+      req.isSelf = true;
+      return next();
+    }
+
+    // Otherwise, must be admin
+    const hospital = await Hospital.findById(hospitalId).select("role");
+    if (!hospital || hospital.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden. You can only access your own data.",
+      });
+    }
+
+    req.isSelf = false;
+    next();
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Authorization check failed" });
+  }
+};
+
 export default {
   verifyAccessToken,
   verifyTempToken,
   attachHospitalData,
+  verifyAdmin,
+  verifyAdminOrSelf,
 };

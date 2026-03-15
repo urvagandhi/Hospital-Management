@@ -9,7 +9,7 @@ import { AuthState } from "../types/auth";
 
 interface AuthContextType {
   state: AuthState;
-  login: (email: string, password: string) => Promise<boolean | "SETUP_NEEDED">; // boolean for legacy, string for special states
+  login: (email: string, password: string) => Promise<boolean | "SETUP_NEEDED" | "PASSWORD_CHANGE">;
   verifyOtp: (otp: string) => Promise<void>;
   verifyTotpLogin: (token: string) => Promise<void>;
   verifyRecoveryLogin: (code: string) => Promise<any>;
@@ -34,15 +34,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load stored data on mount
   useEffect(() => {
     const checkAuth = async () => {
-      console.log("[useAuth] ===== checkAuth started =====");
 
       try {
-        const tempToken = localStorage.getItem("tempToken");
+        const tempToken = sessionStorage.getItem("tempToken");
         const hospitalData = localStorage.getItem("hospital");
 
         // 1. If in OTP phase, don't refresh
         if (tempToken) {
-          console.log("[useAuth] TempToken found, user in OTP phase");
           setState((prev) => ({ ...prev, isAuthenticated: false, loading: false }));
           return;
         }
@@ -53,16 +51,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // OR: We try refresh ONCE.
 
         if (!hospitalData) {
-          console.log("[useAuth] No hospital data found, assuming not authenticated");
           setState((prev) => ({ ...prev, isAuthenticated: false, loading: false }));
           return;
         }
 
-        console.log("[useAuth] Hospital data found, verifying session with refreshToken()...");
         const response = await authService.refreshToken();
         const hospital = hospitalData ? JSON.parse(hospitalData) : null;
 
-        console.log("[useAuth] Session valid");
 
         // Store tokens if returned (Hybrid Auth)
         if (response.data.accessToken) {
@@ -77,10 +72,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           loading: false,
         }));
       } catch (error) {
-        console.log("[useAuth] Session check failed / No active session");
         // Clear stale data
         localStorage.removeItem("hospital");
-        localStorage.removeItem("tempToken");
+        sessionStorage.removeItem("tempToken");
 
         setState((prev) => ({
           ...prev,
@@ -104,14 +98,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // If logoUrl is a data URI (base64) and very long, remove it from storage
     // It will still be in memory (state.hospital) for the current session
     if (hospitalCopy.logoUrl && hospitalCopy.logoUrl.startsWith("data:") && hospitalCopy.logoUrl.length > 1000) {
-      console.warn("[useAuth] Large Base64 logo detected, removing from localStorage to prevent quota error");
       hospitalCopy.logoUrl = null;
     }
 
     try {
       localStorage.setItem("hospital", JSON.stringify(hospitalCopy));
     } catch (e) {
-      console.error("[useAuth] Failed to save hospital to localStorage:", e);
     }
   };
 
@@ -119,21 +111,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Login with email and password
    * Returns: true if login completed, false if TOTP verification needed, "SETUP_NEEDED" if mandatory setup
    */
-  const login = async (email: string, password: string): Promise<boolean | "SETUP_NEEDED"> => {
+  const login = async (email: string, password: string): Promise<boolean | "SETUP_NEEDED" | "PASSWORD_CHANGE"> => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const response = await authService.login(email, password);
 
       // Check if TOTP is required
       const requireTotp = response.requireTotp;
-      console.log("[useAuth] Login response requireTotp:", requireTotp);
 
       // Check if password change is required first
       if ((response as any).requirePasswordChange) {
         const tempToken = response.data?.tempToken || response.tempToken || response.data?.data?.tempToken || "";
         if (tempToken) authService.storeTempToken(tempToken);
         setState((prev) => ({ ...prev, tempToken: tempToken, loading: false }));
-        return "PASSWORD_CHANGE" as any;
+        return "PASSWORD_CHANGE";
       }
 
       if (requireTotp === false) {
@@ -164,11 +155,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }));
 
         if (requireTotpSetup) {
-          console.log("[useAuth] Mandatory TOTP setup required");
           return "SETUP_NEEDED";
         }
 
-        console.log("[useAuth] Direct login successful, TOTP not enabled");
         return true; // Login complete, go to dashboard
       } else {
         // TOTP required - store temp token and proceed to TOTP verification
@@ -186,12 +175,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           error: null,
         }));
 
-        console.log("[useAuth] TOTP required, temp token stored");
         return false; // Need TOTP verification
       }
     } catch (error: any) {
       const errorMessage = error.message || error.response?.message || "Login failed";
-      console.error("[useAuth] Login failed:", errorMessage);
       setState((prev) => ({
         ...prev,
         error: errorMessage,
@@ -206,15 +193,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await authService.verifyOtp(otp);
 
-      console.log("[useAuth] verifyOtp response:", response);
 
       // Handle potential double nesting from backend (response.data.data)
       const responseData = (response.data as any).data || response.data;
 
       if (!responseData.accessToken) {
-        console.warn("[useAuth] Warning: No accessToken in response!", response);
       } else {
-        console.log("[useAuth] AccessToken received, length:", responseData.accessToken.length);
       }
 
       // Store tokens for Hybrid Auth (Cookies + LocalStorage)
@@ -222,7 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       saveHospitalToStorage(responseData.hospital);
 
       // CRITICAL: Remove tempToken so it doesn't interfere with cookie-based auth
-      localStorage.removeItem("tempToken");
+      sessionStorage.removeItem("tempToken");
 
       setState((prev) => ({
         ...prev,
@@ -234,9 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading: false,
       }));
     } catch (error: any) {
-      console.error("[useAuth] verifyOtp error:", error);
       const errorMessage = error.message || error.response?.message || "OTP verification failed";
-      console.error("[useAuth] OTP verification failed:", errorMessage);
       setState((prev) => ({
         ...prev,
         error: errorMessage,
@@ -259,7 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Store tokens
       authService.storeTokens(responseData.accessToken, responseData.refreshToken);
       localStorage.setItem("hospital", JSON.stringify(responseData.hospital));
-      localStorage.removeItem("tempToken");
+      sessionStorage.removeItem("tempToken");
 
       setState((prev) => ({
         ...prev,
@@ -271,7 +253,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading: false,
       }));
     } catch (error: any) {
-      console.error("[useAuth] verifyTotpLogin error:", error);
       // Pass through the full error object so the component can read attemptsRemaining
       setState((prev) => ({
         ...prev,
@@ -294,7 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Store tokens
       authService.storeTokens(responseData.accessToken, responseData.refreshToken);
       localStorage.setItem("hospital", JSON.stringify(responseData.hospital));
-      localStorage.removeItem("tempToken");
+      sessionStorage.removeItem("tempToken");
 
       setState((prev) => ({
         ...prev,
@@ -308,7 +289,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return responseData; // Return data for warning message
     } catch (error: any) {
-      console.error("[useAuth] verifyRecoveryLogin error:", error);
       setState((prev) => ({
         ...prev,
         error: error.message || "Recovery login failed",
@@ -322,7 +302,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await authService.logout();
     } catch (error) {
-      console.error("Logout error:", error);
     } finally {
       authService.clearTokens();
       setState({
@@ -339,7 +318,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     try {
-      console.log("[useAuth] Refreshing user session...");
       const response = await authService.refreshToken();
       const responseData = (response.data as any).data || response.data;
 
@@ -361,9 +339,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: true,
         loading: false,
       }));
-      console.log("[useAuth] User session refreshed, TOTP status:", hospital?.totpEnabled);
     } catch (error) {
-      console.error("[useAuth] Failed to refresh user:", error);
       throw error;
     }
   };

@@ -11,6 +11,7 @@ export interface Hospital {
     email: string;
     phone: string;
     logoUrl?: string;
+    role?: "admin" | "hospital";
     address?: string;
     city?: string;
     state?: string;

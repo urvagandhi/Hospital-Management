@@ -81,10 +81,10 @@ com.hospital.management.app-jetified-security-crypto-1.1.0-alpha06-79 /home/urva
 com.hospital.management.app-room-runtime-2.6.1-80 /home/urva/.gradle/caches/transforms-3/fa534cadff17e24ee7cb3650f87846b8/transformed/room-runtime-2.6.1/res
 com.hospital.management.app-jetified-activity-ktx-1.8.1-81 /home/urva/.gradle/caches/transforms-3/fa60491918b158c694e5760518f6bedf/transformed/jetified-activity-ktx-1.8.1/res
 com.hospital.management.app-work-runtime-ktx-2.9.0-82 /home/urva/.gradle/caches/transforms-3/fb3350cb22553623f886894d5123f175/transformed/work-runtime-ktx-2.9.0/res
-com.hospital.management.app-pngs-83 /media/urva/Personal/Project/Hospital-Management/android-app/app/build/generated/res/pngs/debug
-com.hospital.management.app-resValues-84 /media/urva/Personal/Project/Hospital-Management/android-app/app/build/generated/res/resValues/debug
-com.hospital.management.app-packageDebugResources-85 /media/urva/Personal/Project/Hospital-Management/android-app/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
-com.hospital.management.app-packageDebugResources-86 /media/urva/Personal/Project/Hospital-Management/android-app/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
-com.hospital.management.app-merged_res-87 /media/urva/Personal/Project/Hospital-Management/android-app/app/build/intermediates/merged_res/debug
-com.hospital.management.app-debug-88 /media/urva/Personal/Project/Hospital-Management/android-app/app/src/debug/res
-com.hospital.management.app-main-89 /media/urva/Personal/Project/Hospital-Management/android-app/app/src/main/res
+com.hospital.management.app-pngs-83 /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/build/generated/res/pngs/debug
+com.hospital.management.app-resValues-84 /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/build/generated/res/resValues/debug
+com.hospital.management.app-packageDebugResources-85 /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.hospital.management.app-packageDebugResources-86 /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.hospital.management.app-merged_res-87 /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/build/intermediates/merged_res/debug
+com.hospital.management.app-debug-88 /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/debug/res
+com.hospital.management.app-main-89 /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/res

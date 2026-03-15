@@ -134,11 +134,11 @@ class LoginActivity : AppCompatActivity() {
             "Login successful" -> {
                 SessionManager.startSession(this)
 
-                // Save credentials for future biometric login if successful
-                val email = binding.etHospitalId.text.toString()
-                val password = binding.etPassword.text.toString()
-                if (email.isNotEmpty() && password.isNotEmpty()) {
-                     lifecycleScope.launch { tokenManager.saveCredentials(email, password) }
+                // Enable biometric for future logins (tokens already saved by ViewModel)
+                lifecycleScope.launch {
+                    tokenManager.setBiometricEnabled(true)
+                    val email = binding.etHospitalId.text.toString()
+                    if (email.isNotEmpty()) tokenManager.saveEmail(email)
                 }
 
                 val intent = Intent(this, DashboardActivity::class.java)
@@ -157,16 +157,27 @@ class LoginActivity : AppCompatActivity() {
 
     private fun setupBiometricLogin() {
         lifecycleScope.launch {
-            val email = withContext(Dispatchers.IO) { tokenManager.getEmail() }
-            val password = withContext(Dispatchers.IO) { tokenManager.getPassword() }
+            val biometricEnabled = withContext(Dispatchers.IO) { tokenManager.isBiometricEnabled() }
+            val hasToken = withContext(Dispatchers.IO) { tokenManager.hasValidToken() }
 
-            if (!email.isNullOrEmpty() && !password.isNullOrEmpty() && biometricHelper.isBiometricAvailable()) {
+            if (biometricEnabled && hasToken && biometricHelper.isBiometricAvailable()) {
+                val email = withContext(Dispatchers.IO) { tokenManager.getEmail() }
+                if (!email.isNullOrEmpty()) {
+                    binding.etHospitalId.setText(email)
+                }
                 binding.btnBiometric.visibility = View.VISIBLE
                 binding.btnBiometric.setOnClickListener {
                     biometricHelper.showBiometricPrompt(
                         this@LoginActivity,
                         onSuccess = {
-                            authViewModel.login(email, password, isBiometric = true)
+                            // Use existing refresh token to get new session
+                            lifecycleScope.launch {
+                                SessionManager.startSession(this@LoginActivity)
+                                val intent = Intent(this@LoginActivity, DashboardActivity::class.java)
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                startActivity(intent)
+                                finish()
+                            }
                         },
                         onError = {
                             Toast.makeText(this@LoginActivity, "Authentication failed", Toast.LENGTH_SHORT).show()

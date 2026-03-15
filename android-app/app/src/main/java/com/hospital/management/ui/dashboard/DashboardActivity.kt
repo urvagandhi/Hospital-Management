@@ -121,10 +121,16 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun logout() {
         authViewModel.logout()
+        RetrofitClient.reset()
         val intent = Intent(this@DashboardActivity, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
-        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, android.R.anim.fade_in, android.R.anim.fade_out)
+        } else {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        }
         finish()
     }
 
@@ -271,11 +277,18 @@ class DashboardActivity : AppCompatActivity() {
         }
         binding.searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
-                patientAdapter.filter.filter(query)
+                val search = query?.trim()
+                if (!search.isNullOrEmpty()) {
+                    patientViewModel.getPatients(search = search)
+                } else {
+                    patientViewModel.getPatients()
+                }
                 return false
             }
             override fun onQueryTextChange(newText: String?): Boolean {
-                patientAdapter.filter.filter(newText)
+                if (newText.isNullOrEmpty()) {
+                    patientViewModel.getPatients()
+                }
                 return false
             }
         })

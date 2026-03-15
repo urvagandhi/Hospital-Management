@@ -35,6 +35,11 @@ const hospitalSchema = new mongoose.Schema(
       type: String,
       default: "https://via.placeholder.com/150?text=Hospital",
     },
+    role: {
+      type: String,
+      enum: ["admin", "hospital"],
+      default: "hospital",
+    },
     isActive: {
       type: Boolean,
       default: true,

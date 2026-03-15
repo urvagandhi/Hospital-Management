@@ -10,8 +10,8 @@ class CreatePatientUseCase(private val repository: PatientRepository) {
 }
 
 class GetPatientsUseCase(private val repository: PatientRepository) {
-    suspend operator fun invoke(limit: Int = 20, skip: Int = 0) =
-        repository.getPatients(limit, skip)
+    suspend operator fun invoke(limit: Int = 20, skip: Int = 0, search: String? = null) =
+        repository.getPatients(limit, skip, search)
 }
 
 class GetPatientByIdUseCase(private val repository: PatientRepository) {

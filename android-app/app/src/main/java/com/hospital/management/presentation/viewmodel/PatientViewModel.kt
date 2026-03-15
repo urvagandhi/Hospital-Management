@@ -51,30 +51,21 @@ class PatientViewModel(
 
     private val gson = Gson()
 
-    fun getPatients(limit: Int = 20, skip: Int = 0) {
+    fun getPatients(limit: Int = 20, skip: Int = 0, search: String? = null) {
         viewModelScope.launch {
             _patientState.value = PatientState.Loading
             try {
-                val response = getPatientsUseCase(limit, skip)
+                val response = getPatientsUseCase(limit, skip, search)
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
-                    val data = body["data"]
-
-                    if (data != null) {
-                        try {
-                            val json = gson.toJson(data)
-                            val patientsData = gson.fromJson(json, com.hospital.management.data.models.PatientsData::class.java)
-                            _patients.value = patientsData.patients
-                            _patientState.value = PatientState.Success("Patients loaded")
-                        } catch (e: Exception) {
-                             _patientState.value = PatientState.Error("Error parsing patient data: ${e.message}")
-                        }
+                    if (body.success) {
+                        _patients.value = body.data.patients
+                        _patientState.value = PatientState.Success("Patients loaded")
                     } else {
-                         _patientState.value = PatientState.Error("No data received")
+                        _patientState.value = PatientState.Error(body.message ?: "Failed to fetch patients")
                     }
                 } else {
-                    val errorMsg = response.body()?.get("message") as? String ?: "Failed to fetch patients"
-                    _patientState.value = PatientState.Error(errorMsg)
+                    _patientState.value = PatientState.Error("Failed to fetch patients")
                 }
             } catch (e: Exception) {
                 _patientState.value = PatientState.Error(e.message ?: "Network error")
@@ -85,6 +76,9 @@ class PatientViewModel(
     fun getPatientById(id: String) {
         viewModelScope.launch {
             _patientState.value = PatientState.Loading
+            // Reset current patient to force re-emission of StateFlow
+            // This ensures observers always get notified when data is refreshed
+            _currentPatient.value = null
             try {
                 val response = getPatientByIdUseCase(id)
                 if (response.isSuccessful && response.body() != null) {

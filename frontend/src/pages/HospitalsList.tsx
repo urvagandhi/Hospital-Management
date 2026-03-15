@@ -26,8 +26,7 @@ export const HospitalsList: React.FC = () => {
   const { state } = useAuth();
   const { hospital } = state;
 
-  // Temporary admin check until role field is added
-  const isAdmin = hospital?.email === "admin@citymedical.com";
+  const isAdmin = hospital?.role === "admin";
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

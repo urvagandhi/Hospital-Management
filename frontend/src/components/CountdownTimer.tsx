@@ -16,17 +16,16 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({ initialSeconds =
   const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-
-    if (isActive && seconds > 0) {
-      interval = setInterval(() => {
-        setSeconds((prev) => prev - 1);
-      }, 1000);
-    } else if (seconds === 0) {
-      setIsActive(false);
+    if (!isActive || seconds <= 0) {
+      if (seconds <= 0) setIsActive(false);
+      return;
     }
 
-    return () => clearInterval(interval);
+    const timeout = setTimeout(() => {
+      setSeconds((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearTimeout(timeout);
   }, [isActive, seconds]);
 
   const handleResend = async () => {
@@ -34,8 +33,8 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({ initialSeconds =
       await onResendClick();
       setSeconds(initialSeconds);
       setIsActive(true);
-    } catch (error) {
-      console.error("Resend failed:", error);
+    } catch {
+      // Error is handled by the caller
     }
   };
 

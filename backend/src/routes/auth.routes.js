@@ -72,7 +72,6 @@ router.post(
     body("address").notEmpty().trim().withMessage("Address is required"),
   ],
   handleValidationErrors,
-  handleValidationErrors,
   registerHospital,
 );
 

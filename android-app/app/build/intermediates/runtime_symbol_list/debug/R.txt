@@ -7629,3 +7629,4 @@ int styleable include_constraintSet 0
 int xml backup_rules 0x7f140000
 int xml data_extraction_rules 0x7f140001
 int xml file_paths 0x7f140002
+int xml network_security_config 0x7f140003

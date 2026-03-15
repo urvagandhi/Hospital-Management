@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Disable cleartext traffic globally -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Pin certificates for the production API domain -->
+    <domain-config>
+        <domain includeSubdomains="true">hospital-management-8lbf.onrender.com</domain>
+        <pin-set expiration="2027-01-01">
+            <!-- Leaf certificate pin for hospital-management-8lbf.onrender.com (generated 2026-03-15) -->
+            <!-- Re-generate if cert rotates: python3 -c "import ssl,socket,hashlib,base64; ... " or use openssl -->
+            <pin digest="SHA-256">IX2/a47sFHkF9jewioc5OzEDzS0dNQjNMCX8PCQ26Pg=</pin>
+        </pin-set>
+    </domain-config>
+
+    <!-- Allow localhost cleartext for development only -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

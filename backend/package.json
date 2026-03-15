@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
+    "build": "npm install --production",
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "jest --coverage"

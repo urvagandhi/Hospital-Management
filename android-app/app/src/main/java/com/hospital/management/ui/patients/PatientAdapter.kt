@@ -2,6 +2,7 @@ package com.hospital.management.ui.patients
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.hospital.management.data.models.Patient
 import com.hospital.management.databinding.ItemPatientBinding
@@ -16,9 +17,11 @@ class PatientAdapter(
     private var patientsFiltered: List<Patient> = patients
 
     fun updateList(newPatients: List<Patient>) {
+        val diffCallback = PatientDiffCallback(patientsFiltered, newPatients)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
         patients = newPatients
         patientsFiltered = newPatients
-        notifyDataSetChanged()
+        diffResult.dispatchUpdatesTo(this)
     }
 
     override fun getFilter(): android.widget.Filter {
@@ -28,14 +31,10 @@ class PatientAdapter(
                 patientsFiltered = if (charString.isEmpty()) {
                     patients
                 } else {
-                    val filteredList = ArrayList<Patient>()
-                    for (row in patients) {
-                        if (row.patientName.lowercase().contains(charString.lowercase()) ||
-                            row.medicalRecordNumber.contains(charString)) {
-                            filteredList.add(row)
-                        }
+                    patients.filter { row ->
+                        row.patientName.lowercase().contains(charString.lowercase()) ||
+                            row.medicalRecordNumber.contains(charString)
                     }
-                    filteredList
                 }
                 val filterResults = FilterResults()
                 filterResults.values = patientsFiltered
@@ -43,8 +42,11 @@ class PatientAdapter(
             }
 
             override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
-                patientsFiltered = results?.values as? List<Patient> ?: emptyList()
-                notifyDataSetChanged()
+                val old = patientsFiltered
+                val new = results?.values as? List<Patient> ?: emptyList()
+                val diffResult = DiffUtil.calculateDiff(PatientDiffCallback(old, new))
+                patientsFiltered = new
+                diffResult.dispatchUpdatesTo(this@PatientAdapter)
             }
         }
     }
@@ -56,8 +58,7 @@ class PatientAdapter(
             binding.tvPatientName.text = patient.patientName
             binding.tvMrn.text = "MRN: ${patient.medicalRecordNumber}"
             binding.tvPhone.text = patient.phone
-            
-            // Set first character of name
+
             binding.tvInitials.text = if (patient.patientName.isNotEmpty()) {
                 patient.patientName.first().toString().uppercase()
             } else {
@@ -66,17 +67,6 @@ class PatientAdapter(
 
             binding.root.setOnClickListener {
                 onPatientClick(patient)
-            }
-        }
-
-        private fun formatDate(dateString: String): String {
-            return try {
-                val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-                val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-                val date = inputFormat.parse(dateString)
-                date?.let { outputFormat.format(it) } ?: dateString.substringBefore("T")
-            } catch (e: Exception) {
-                dateString.substringBefore("T")
             }
         }
     }
@@ -95,4 +85,16 @@ class PatientAdapter(
     }
 
     override fun getItemCount() = patientsFiltered.size
+
+    private class PatientDiffCallback(
+        private val oldList: List<Patient>,
+        private val newList: List<Patient>
+    ) : DiffUtil.Callback() {
+        override fun getOldListSize() = oldList.size
+        override fun getNewListSize() = newList.size
+        override fun areItemsTheSame(oldPos: Int, newPos: Int) =
+            oldList[oldPos]._id == newList[newPos]._id
+        override fun areContentsTheSame(oldPos: Int, newPos: Int) =
+            oldList[oldPos] == newList[newPos]
+    }
 }

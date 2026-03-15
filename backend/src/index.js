@@ -24,16 +24,17 @@ app.set("trust proxy", 1);
 // ============ REQUEST LOGGING MIDDLEWARE ============
 app.use((req, res, next) => {
   console.log(`\n[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  console.log("[Request] Headers:", req.headers);
-  console.log("[Request] Body:", req.body);
 
-  // Log response
-  const originalJson = res.json;
-  res.json = function (data) {
-    console.log("[Response] Status:", res.statusCode);
-    console.log("[Response] Data:", data);
-    return originalJson.call(this, data);
-  };
+  if (config.NODE_ENV === "development") {
+    // Strip sensitive headers and body fields from logs
+    const { authorization, cookie, ...safeHeaders } = req.headers;
+    console.log("[Request] Headers:", safeHeaders);
+
+    if (req.body && typeof req.body === "object") {
+      const { password, newPassword, token, code, ...safeBody } = req.body;
+      console.log("[Request] Body:", safeBody);
+    }
+  }
 
   next();
 });
@@ -59,10 +60,12 @@ app.use(
         "http://localhost:3000",
         "http://localhost:5173",
       ];
-      // Allow requests with no origin (like mobile apps or curl requests)
+
+      // Allow requests with no origin (mobile apps, server-to-server)
+      // These are still protected by JWT authentication
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         console.log("Blocked by CORS:", origin);

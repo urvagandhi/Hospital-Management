@@ -97,6 +97,7 @@ export const getHospitalById = async (req, res) => {
 /**
  * Update hospital details
  * PUT /api/hospitals/:id
+ * Authorization: verifyAdminOrSelf middleware ensures only admin or the hospital itself can update
  */
 export const updateHospital = async (req, res) => {
   try {
@@ -153,7 +154,11 @@ export const updateHospital = async (req, res) => {
     hospital.email = email.toLowerCase();
     hospital.phone = phone;
     hospital.address = address;
-    hospital.isActive = isActive !== undefined ? isActive : hospital.isActive;
+
+    // Only admins can change isActive status
+    if (!req.isSelf && isActive !== undefined) {
+      hospital.isActive = isActive;
+    }
 
     // Handle logo upload if provided
     if (req.file) {

@@ -20,6 +20,14 @@ object RetrofitClient {
         cookieStore.clear()
     }
 
+    /**
+     * Reset the Retrofit client entirely (call on logout to clear all state)
+     */
+    fun reset() {
+        cookieStore.clear()
+        retrofit = null
+    }
+
     fun getClient(context: Context): Retrofit {
         if (retrofit == null) {
             val cookieJar = object : CookieJar {
@@ -33,12 +41,12 @@ object RetrofitClient {
             }
 
             val certificatePinner = okhttp3.CertificatePinner.Builder()
-                .add("hospital-management-8lbf.onrender.com", "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=") // TODO: Replace with actual hash
+                .add("hospital-management-8lbf.onrender.com", "sha256/IX2/a47sFHkF9jewioc5OzEDzS0dNQjNMCX8PCQ26Pg=")
                 .build()
 
             val client = OkHttpClient.Builder()
                 .cookieJar(cookieJar)
-                // .certificatePinner(certificatePinner) // TODO: Uncomment after adding correct hash
+                .certificatePinner(certificatePinner)
                 .addInterceptor(AuthInterceptor(context))
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)

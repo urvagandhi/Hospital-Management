@@ -26,7 +26,7 @@ class TokenManager(private val context: Context) {
         private const val HOSPITAL_LOGO_URL = "hospital_logo_url"
         private const val DEVICE_ID = "device_id"
         private const val USER_EMAIL = "user_email"
-        private const val USER_PASSWORD = "user_password"
+        private const val BIOMETRIC_ENABLED = "biometric_enabled"
         private const val SESSION_TIMESTAMP = "session_timestamp"
     }
 
@@ -119,16 +119,23 @@ class TokenManager(private val context: Context) {
         return prefs.getString(HOSPITAL_LOGO_URL, null)
     }
 
-    suspend fun saveCredentials(email: String, password: String) {
+    suspend fun setBiometricEnabled(enabled: Boolean) {
         prefs.edit().apply {
-            putString(USER_EMAIL, email)
-            putString(USER_PASSWORD, password)
+            putBoolean(BIOMETRIC_ENABLED, enabled)
             apply()
         }
     }
 
+    suspend fun isBiometricEnabled(): Boolean = prefs.getBoolean(BIOMETRIC_ENABLED, false)
+
     suspend fun getEmail(): String? = prefs.getString(USER_EMAIL, null)
-    suspend fun getPassword(): String? = prefs.getString(USER_PASSWORD, null)
+
+    suspend fun saveEmail(email: String) {
+        prefs.edit().apply {
+            putString(USER_EMAIL, email)
+            apply()
+        }
+    }
 
     // Session timestamp methods for persistent session state
     suspend fun saveSessionTimestamp(timestamp: Long) {
