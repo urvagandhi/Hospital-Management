@@ -38,22 +38,21 @@ export const SecuritySettings: React.FC = () => {
     const handleResetPasswordConfirmed = async (password: string) => {
         setResetLoading(true);
         try {
-            // resetTotp returns { success, message, data: { qrCode, secret, ... } }
-            const response = await authService.resetTotp(password);
+            const response = await authService.resetTotp(password) as { data?: { qrCode?: string; secret?: string } };
 
-            if (response.data && response.data.qrCode) {
+            if (response.data?.qrCode) {
                 setRotationData({
                     qrCode: response.data.qrCode,
-                    secret: response.data.secret
+                    secret: response.data.secret || ""
                 });
-                setShowResetModal(false);     // Close Password Modal
-                setShowRotationModal(true);   // Open Rotation Modal
+                setShowResetModal(false);
+                setShowRotationModal(true);
             } else {
                 alert("Unexpected response from server: No QR code returned.");
             }
 
-        } catch (error: any) {
-            alert(error.message || "Failed to initiate rotation");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "Failed to initiate rotation");
         } finally {
             setResetLoading(false);
         }

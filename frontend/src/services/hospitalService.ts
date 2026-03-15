@@ -10,7 +10,7 @@ export interface Hospital {
     hospitalName: string;
     email: string;
     phone: string;
-    logoUrl?: string;
+    logoUrl: string;
     role?: "admin" | "hospital";
     address?: string;
     city?: string;

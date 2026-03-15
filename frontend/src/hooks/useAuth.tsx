@@ -121,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Check if password change is required first
       if ((response as any).requirePasswordChange) {
-        const tempToken = response.data?.tempToken || response.tempToken || response.data?.data?.tempToken || "";
+        const tempToken = response.data?.tempToken || (response as any).tempToken || "";
         if (tempToken) authService.storeTempToken(tempToken);
         setState((prev) => ({ ...prev, tempToken: tempToken, loading: false }));
         return "PASSWORD_CHANGE";

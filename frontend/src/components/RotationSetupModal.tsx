@@ -30,10 +30,10 @@ export const RotationSetupModal: React.FC<RotationSetupModalProps> = ({
         setLoading(true);
         setError("");
         try {
-            const response = await authService.verifyTotpReset(token);
-            onSuccess(response.data.backupCodes);
-        } catch (err: any) {
-            setError(err.message || "Verification failed");
+            const response = await authService.verifyTotpReset(token) as { data?: { backupCodes?: string[] } };
+            onSuccess(response.data?.backupCodes || []);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Verification failed");
         } finally {
             setLoading(false);
         }

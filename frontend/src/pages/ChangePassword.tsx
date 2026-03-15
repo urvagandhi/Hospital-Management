@@ -3,6 +3,23 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../components/Button";
 import { TextInput } from "../components/TextInput";
 import api from "../services/api";
+import authService from "../services/authService";
+
+interface ChangePasswordResponse {
+  success: boolean;
+  message: string;
+  requireTotpSetup?: boolean;
+  data?: {
+    accessToken?: string;
+    refreshToken?: string;
+    hospital?: {
+      _id: string;
+      hospitalName: string;
+      email: string;
+      logoUrl?: string;
+    };
+  };
+}
 
 const ChangePassword: React.FC = () => {
   const navigate = useNavigate();
@@ -14,37 +31,42 @@ const ChangePassword: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (newPassword.length < 6) return setError("Password must be at least 6 characters");
+    if (newPassword.length < 8) return setError("Password must be at least 8 characters");
+    if (!/[A-Z]/.test(newPassword)) return setError("Must contain an uppercase letter");
+    if (!/[a-z]/.test(newPassword)) return setError("Must contain a lowercase letter");
+    if (!/[0-9]/.test(newPassword)) return setError("Must contain a number");
+    if (!/[\W_]/.test(newPassword)) return setError("Must contain a special character");
     if (newPassword !== confirm) return setError("Passwords do not match");
 
     setLoading(true);
     try {
-      const tempToken = localStorage.getItem("tempToken");
+      const tempToken = sessionStorage.getItem("tempToken");
       const config = tempToken ? { headers: { Authorization: `Bearer ${tempToken}` } } : {};
-      const response = await api.post("/auth/change-password", { newPassword }, config);
-      // Save hospital data returned from server
-      const hospital = response.data?.data?.hospital;
-      if (hospital) localStorage.setItem("hospital", JSON.stringify(hospital));
+      const response = await api.post<ChangePasswordResponse>("/auth/change-password", { newPassword }, config);
+      const body = response.data;
 
-      // Store tokens if returned (access/refresh)
-      const accessToken = response.data?.data?.accessToken;
-      const refreshToken = response.data?.data?.refreshToken;
-      if (accessToken || refreshToken) {
-        localStorage.setItem("accessToken", accessToken || "");
-        localStorage.setItem("refreshToken", refreshToken || "");
+      // Save hospital data returned from server
+      if (body.data?.hospital) {
+        localStorage.setItem("hospital", JSON.stringify(body.data.hospital));
+      }
+
+      // Store tokens if returned
+      if (body.data?.accessToken) {
+        authService.storeTokens(body.data.accessToken, body.data.refreshToken || "");
       }
 
       // Clear temp token
-      localStorage.removeItem("tempToken");
+      sessionStorage.removeItem("tempToken");
 
       // If backend requires TOTP setup, navigate there; otherwise dashboard
-      if (response.data?.requireTotpSetup) {
-        navigate(`/setup-2fa?email=${encodeURIComponent(hospital?.email || "")}`);
+      if (body.requireTotpSetup) {
+        navigate(`/setup-2fa?email=${encodeURIComponent(body.data?.hospital?.email || "")}`);
       } else {
         navigate("/dashboard");
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to change password");
+    } catch (err: unknown) {
+      const error = err as Error & { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || error.message || "Failed to change password");
     } finally {
       setLoading(false);
     }
