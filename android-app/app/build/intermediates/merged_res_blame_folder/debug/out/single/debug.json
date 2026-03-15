@@ -36,12 +36,12 @@
         "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_glow_circle.xml"
     },
     {
-        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_admission.xml.flat",
-        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_admission.xml"
-    },
-    {
         "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_rounded_surface.xml.flat",
         "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/drawable/bg_rounded_surface.xml"
+    },
+    {
+        "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/layout_activity_admission.xml.flat",
+        "source": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-main-89:/layout/activity_admission.xml"
     },
     {
         "merged": "/home/urva/.gradle/daemon/8.5/com.hospital.management.app-merged_res-87:/drawable_bg_card_gradient_red.xml.flat",

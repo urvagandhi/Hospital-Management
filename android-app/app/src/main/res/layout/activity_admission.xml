@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -20,71 +21,70 @@
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Patient Name">
+            android:hint="Patient Name"
+            app:placeholderText="e.g. Rahul Sharma">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etPatientName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textPersonName"
-                android:text=""
-                android:hint="e.g. Rahul Sharma" />
+                android:inputType="textPersonName" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:hint="Date of Birth (YYYY-MM-DD)">
+            android:hint="Date of Birth (YYYY-MM-DD)"
+            app:placeholderText="e.g. 1990-05-15">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etDob"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="date"
-                android:hint="e.g. 1990-05-15" />
+                android:inputType="date" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:hint="Phone Number">
+            android:hint="Phone Number"
+            app:placeholderText="e.g. 8888888888">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etPhone"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="phone"
-                android:hint="e.g. 8888888888" />
+                android:inputType="phone" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:hint="Email (Optional)">
+            android:hint="Email (Optional)"
+            app:placeholderText="e.g. rahul@example.com">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etEmail"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textEmailAddress"
-                android:hint="e.g. rahul@example.com" />
+                android:inputType="textEmailAddress" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:hint="Medical Record Number (MRN)">
+            android:hint="Medical Record Number (MRN)"
+            app:placeholderText="e.g. MRN-2024-001">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etMrn"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="text"
-                android:hint="e.g. MRN-2024-001" />
+                android:inputType="text" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <Button
