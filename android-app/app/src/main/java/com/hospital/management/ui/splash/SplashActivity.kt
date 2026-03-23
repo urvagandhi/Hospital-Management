@@ -92,12 +92,11 @@ class SplashActivity : AppCompatActivity() {
                 delay(500)
                 navigateToDashboard()
             } else {
-                // Token exists but session expired, still go to dashboard
-                // The session will be treated as new
-                SessionManager.startSession(this@SplashActivity)
-                binding.tvLoading.text = "Welcome back!"
+                // Token exists but session expired — require re-login (enforces TOTP)
+                tokenManager.clearAll()
+                binding.tvLoading.text = "Session expired. Please sign in"
                 delay(500)
-                navigateToDashboard()
+                navigateToLogin()
             }
         } else {
             // No token, go to login

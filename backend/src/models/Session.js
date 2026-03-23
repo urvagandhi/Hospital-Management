@@ -55,8 +55,7 @@ const sessionSchema = new mongoose.Schema(
 // Compound index for enforcing single device login per hospital
 sessionSchema.index({ hospitalId: 1, deviceId: 1 });
 
-// TTL index for automatic session cleanup
-sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+// TTL index is already defined inline on the expiresAt field
 
 // Update last accessed timestamp on each access
 sessionSchema.methods.updateLastAccess = async function () {

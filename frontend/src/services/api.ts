@@ -10,6 +10,17 @@ const isDev = import.meta.env.DEV;
 
 class ApiService {
   private api: AxiosInstance;
+  private isRefreshing = false;
+  private refreshSubscribers: Array<(token: string) => void> = [];
+
+  private onRefreshed(token: string) {
+    this.refreshSubscribers.forEach((cb) => cb(token));
+    this.refreshSubscribers = [];
+  }
+
+  private addRefreshSubscriber(cb: (token: string) => void) {
+    this.refreshSubscribers.push(cb);
+  }
 
   constructor() {
     this.api = axios.create({
@@ -32,10 +43,16 @@ class ApiService {
           console.log(`[Axios] ${config.method?.toUpperCase()} ${config.url}`);
         }
 
-        // Attach tempToken for OTP/TOTP flows only if no Authorization header is already set
+        // Attach token if no Authorization header is already set
+        const accessToken = localStorage.getItem("accessToken");
         const tempToken = sessionStorage.getItem("tempToken");
-        if (tempToken && !config.headers.Authorization) {
-          config.headers.Authorization = `Bearer ${tempToken}`;
+        
+        if (!config.headers.Authorization) {
+          if (accessToken) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
+          } else if (tempToken) {
+            config.headers.Authorization = `Bearer ${tempToken}`;
+          }
         }
 
         return config;
@@ -69,15 +86,38 @@ class ApiService {
             return Promise.reject(error);
           }
 
+          // Use mutex to prevent multiple concurrent refresh requests
+          if (this.isRefreshing) {
+            return new Promise((resolve) => {
+              this.addRefreshSubscriber((newToken: string) => {
+                if (originalRequest.headers) {
+                  originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                }
+                resolve(this.api(originalRequest));
+              });
+            });
+          }
+
+          this.isRefreshing = true;
           try {
-            // The refresh endpoint reads the refreshToken cookie and sets new cookies
-            await this.post("/auth/refresh-token", {});
+            const refreshResponse = await this.post<any>("/auth/refresh-token", {});
+            const newAccessToken = refreshResponse.data?.data?.accessToken;
+            if (newAccessToken) {
+              localStorage.setItem("accessToken", newAccessToken);
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+              }
+              this.onRefreshed(newAccessToken);
+            }
             return this.api(originalRequest);
           } catch (refreshError) {
+            this.refreshSubscribers = [];
             sessionStorage.removeItem("tempToken");
             localStorage.removeItem("hospital");
             window.location.href = "/login";
             return Promise.reject(refreshError);
+          } finally {
+            this.isRefreshing = false;
           }
         }
 

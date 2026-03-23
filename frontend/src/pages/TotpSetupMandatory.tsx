@@ -50,7 +50,7 @@ export const TotpSetupMandatory: React.FC = () => {
     };
 
     // Check if user has a temp token (just registered) or access token (logged in)
-    const tempToken = localStorage.getItem("tempToken");
+    const tempToken = sessionStorage.getItem("tempToken");
     const accessToken = localStorage.getItem("accessToken");
 
     if (!tempToken && !accessToken) {
@@ -96,7 +96,7 @@ export const TotpSetupMandatory: React.FC = () => {
     try {
       setLoading(true);
       // 1. Clear temp token (setup is done)
-      localStorage.removeItem("tempToken");
+      sessionStorage.removeItem("tempToken");
 
       // 2. Refresh session to get updated hospital object (with totpEnabled: true)
       await refreshUser();

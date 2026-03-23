@@ -36,6 +36,7 @@ const auditLogSchema = new mongoose.Schema(
         "HOSPITAL_REGISTRATION_VERIFIED",
         "TOTP_ROTATION_INITIATED",
         "TOTP_ROTATION_COMPLETED",
+        "AUTO_DELETE",
       ],
     },
     status: {

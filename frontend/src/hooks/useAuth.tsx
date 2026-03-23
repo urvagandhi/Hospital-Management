@@ -128,10 +128,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (requireTotp === false) {
-        // Check if mandatory setup is required (for existing users with no TOTP)
-        // Backend returns requireTotpSetup: true in this case
-        // FORCE DISABLE 2FA SETUP: Ignore backend flag
-        const requireTotpSetup = false; // response.requireTotpSetup;
+        // Web platform skips mandatory TOTP setup (mobile enforces it)
+        const requireTotpSetup = false;
 
         const responseData = response.data;
         const accessToken = responseData.accessToken || "";
@@ -161,10 +159,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true; // Login complete, go to dashboard
       } else {
         // TOTP required - store temp token and proceed to TOTP verification
-        // FORCE BYPASS: If backend says TOTP needed, we can't easily bypass without tokens
-        // BUT invalidating the flow here might help debugging.
-        // Assuming backend was patched to return requireTotp:false.
-
         const tempToken = response.data.tempToken || "";
         authService.storeTempToken(tempToken);
 
@@ -196,10 +190,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Handle potential double nesting from backend (response.data.data)
       const responseData = (response.data as any).data || response.data;
-
-      if (!responseData.accessToken) {
-      } else {
-      }
 
       // Store tokens for Hybrid Auth (Cookies + LocalStorage)
       authService.storeTokens(responseData.accessToken, responseData.refreshToken);
@@ -240,7 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Store tokens
       authService.storeTokens(responseData.accessToken, responseData.refreshToken);
-      localStorage.setItem("hospital", JSON.stringify(responseData.hospital));
+      saveHospitalToStorage(responseData.hospital);
       sessionStorage.removeItem("tempToken");
 
       setState((prev) => ({
@@ -274,7 +264,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Store tokens
       authService.storeTokens(responseData.accessToken, responseData.refreshToken);
-      localStorage.setItem("hospital", JSON.stringify(responseData.hospital));
+      saveHospitalToStorage(responseData.hospital);
       sessionStorage.removeItem("tempToken");
 
       setState((prev) => ({

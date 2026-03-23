@@ -4,4 +4,5 @@
     <files-path name="documents" path="documents/" />
     <cache-path name="image_cache" path="image_cache/" />
     <cache-path name="pdf_cache" path="pdf_cache/" />
+    <cache-path name="viewed_files" path="viewed_files/" />
 </paths>

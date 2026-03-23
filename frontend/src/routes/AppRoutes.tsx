@@ -5,10 +5,12 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import { MainLayout } from "../layouts/MainLayout";
 import ChangePassword from "../pages/ChangePassword";
 import Dashboard from "../pages/Dashboard";
+import FolderView from "../pages/FolderView";
 import HospitalRegistration from "../pages/HospitalRegistration";
 import HospitalsList from "../pages/HospitalsList";
 import LandingPage from "../pages/LandingPage";
 import Login from "../pages/Login";
+import PatientDetails from "../pages/PatientDetails";
 import SecuritySettings from "../pages/SecuritySettings";
 import TotpSetupMandatory from "../pages/TotpSetupMandatory";
 import TotpVerification from "../pages/TotpVerification";
@@ -67,8 +69,8 @@ export const AppRoutes: React.FC = () => {
           }
         />
         <Route path="/security" element={<SecuritySettings />} />
-
-        {/* Add other protected routes here */}
+        <Route path="/patients/:patientId" element={<PatientDetails />} />
+        <Route path="/patients/:patientId/folders/:folderName" element={<FolderView />} />
       </Route>
 
       {/* Catch all - redirect to dashboard (which will redirect to login if needed) */}

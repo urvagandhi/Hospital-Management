@@ -49,16 +49,21 @@ const PatientDetails: React.FC = () => {
     }
   };
 
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleDownloadAllPdf = async () => {
     try {
       const response = await api.getBlob(`/patients/${patientId}/download/pdf`);
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `${patient?.patientName}_records.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      downloadBlob(response.data as Blob, `${patient?.patientName}_records.pdf`);
     } catch (error) {
       console.error("Download failed:", error);
     }
@@ -67,13 +72,7 @@ const PatientDetails: React.FC = () => {
   const handleDownloadAllZip = async () => {
     try {
       const response = await api.getBlob(`/patients/${patientId}/download/zip`);
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `${patient?.patientName}_records.zip`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      downloadBlob(response.data as Blob, `${patient?.patientName}_records.zip`);
     } catch (error) {
       console.error("Download failed:", error);
     }

@@ -5,7 +5,7 @@
 
 import mongoose from "mongoose";
 import Session from "../models/Session.js";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 import config from "../config/env.js";
 
 /**
@@ -76,6 +76,12 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
  */
 export const refreshAccessToken = async (refreshToken) => {
   try {
+    // Verify JWT signature before DB lookup
+    const decoded = verifyRefreshToken(refreshToken);
+    if (decoded.type !== "refresh") {
+      throw new Error("Invalid token type");
+    }
+
     // Find session with refresh token
     const session = await Session.findOne({
       refreshToken,

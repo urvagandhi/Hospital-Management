@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { persistentLogger } from "../utils/persistentLogger";
@@ -17,20 +17,26 @@ const Dashboard: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [limit] = useState(10);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     document.title = "Dashboard - Hospital Management";
-    fetchPatients();
-  }, [page, search]);
+  }, []);
 
+  useEffect(() => {
+    fetchPatients();
+  }, [page, debouncedSearch]);
 
   const fetchPatients = async () => {
     try {
       setLoading(true);
-      const response = await api.get<{ success: boolean; data: { patients: Patient[]; total: number } }>(`/patients?limit=${limit}&skip=${page * limit}&search=${search}`);
+      const response = await api.get<{ success: boolean; data: { patients: Patient[]; total: number } }>("/patients", {
+        params: { limit, skip: page * limit, search: debouncedSearch },
+      });
       setPatients(response.data.data.patients);
       setTotal(response.data.data.total);
     } catch (error) {
@@ -42,8 +48,13 @@ const Dashboard: React.FC = () => {
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-    setPage(0); // Reset to first page on search
+    const value = e.target.value;
+    setSearch(value);
+    setPage(0);
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(value);
+    }, 350);
   };
 
   const handleRowClick = (patientId: string) => {

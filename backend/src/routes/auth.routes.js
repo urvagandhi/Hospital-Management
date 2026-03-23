@@ -19,7 +19,7 @@ import {
   verifyTotpReset,
   verifyTotpSetup,
 } from "../controllers/auth.controller.js";
-import { verifyAccessToken, verifyTempToken } from "../middleware/auth.js";
+import { verifyAccessToken, verifyAdmin, verifyTempToken } from "../middleware/auth.js";
 import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
 import { uploadSingle } from "../middleware/upload.js";
 import { handleValidationErrors, sanitizeRequest } from "../middleware/validateRequest.js";
@@ -40,6 +40,8 @@ router.use(sanitizeRequest);
 router.post(
   "/register-hospital",
   authLimiter,
+  verifyAccessToken,
+  verifyAdmin,
   (req, res, next) => {
     uploadSingle("logo")(req, res, (err) => {
       if (err) {
@@ -247,41 +249,6 @@ router.post(
   handleValidationErrors,
   recoveryLogin,
 );
-
-// ========================================
-// LEGACY SMS OTP (DISABLED – replaced by TOTP)
-// ========================================
-/*
-/**
- * POST /api/auth/verify-otp
- * Verify OTP and create session
- */
-/*
-router.post(
-  "/verify-otp",
-  otpLimiter,
-  verifyTempToken,
-  [
-    body("otp")
-      .matches(/^\d{6}$/)
-      .withMessage("OTP must be 6 digits"),
-  ],
-  handleValidationErrors,
-  verifyOtp,
-);
-*/
-
-/*
-/**
- * POST /api/auth/resend-otp
- * Resend OTP to phone
- */
-/*
-router.post("/resend-otp", otpLimiter, verifyTempToken, resendOtp);
-*/
-// ========================================
-// END LEGACY SMS OTP
-// ========================================
 
 /**
  * POST /api/auth/refresh-token

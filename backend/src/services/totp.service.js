@@ -146,10 +146,14 @@ export const verifyBackupCode = async (hospitalId, code) => {
         const isMatch = await compareOtp(normalizedCode, backupCode.codeHash);
 
         if (isMatch) {
-            // Mark code as used
-            backupCode.isUsed = true;
-            backupCode.usedAt = new Date();
-            await backupCode.save();
+            // Atomically mark code as used to prevent race conditions
+            const result = await BackupCode.findOneAndUpdate(
+                { _id: backupCode._id, isUsed: false },
+                { isUsed: true, usedAt: new Date() },
+                { new: true },
+            );
+            // If result is null, another request already consumed this code
+            if (!result) continue;
 
             return true;
         }

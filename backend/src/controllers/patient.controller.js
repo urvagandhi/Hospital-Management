@@ -49,11 +49,17 @@ export const createPatient = async (req, res) => {
 export const getPatients = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
-    const { limit = 20, skip = 0, search } = req.query;
+    const { limit: rawLimit = 20, skip: rawSkip = 0, search } = req.query;
+
+    // Clamp limit to 1-100 and skip to >= 0, default on NaN
+    const parsedLimit = parseInt(rawLimit);
+    const parsedSkip = parseInt(rawSkip);
+    const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 100);
+    const skip = Number.isNaN(parsedSkip) ? 0 : Math.max(parsedSkip, 0);
 
     const { patients, total } = await patientService.getPatients(hospitalId, {
-      limit: parseInt(limit),
-      skip: parseInt(skip),
+      limit,
+      skip,
       search,
     });
 
@@ -62,8 +68,8 @@ export const getPatients = async (req, res) => {
       data: {
         patients,
         total,
-        limit: parseInt(limit),
-        skip: parseInt(skip),
+        limit,
+        skip,
       },
     });
   } catch (error) {

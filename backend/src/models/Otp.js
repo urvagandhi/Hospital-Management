@@ -45,8 +45,7 @@ const otpSchema = new mongoose.Schema(
 // Compound index for hospital and expiry
 otpSchema.index({ hospitalId: 1, expiresAt: 1 });
 
-// Auto-delete expired OTP documents
-otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+// TTL index is already defined inline on the expiresAt field
 
 const Otp = mongoose.model("Otp", otpSchema);
 

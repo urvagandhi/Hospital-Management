@@ -8,12 +8,9 @@
 import AuditLog from "../models/AuditLog.js";
 import Hospital from "../models/Hospital.js";
 import Session from "../models/Session.js";
-// LEGACY SMS OTP (DISABLED – replaced by TOTP)
-// import { createOtp, verifyOtp as verifyOtpService } from "../services/otp.service.js";
-// import { sendOtpSms } from "../services/sms.service.js";
 import crypto from "crypto";
-import jwt from "jsonwebtoken"; // Import jwt for registration token
-import PendingHospital from "../models/PendingHospital.js"; // Import PendingHospital
+import jwt from "jsonwebtoken";
+import PendingHospital from "../models/PendingHospital.js";
 import { sendInvitationEmail } from "../services/email.service.js";
 import { createSession, invalidateSession, refreshAccessToken } from "../services/token.service.js";
 import {
@@ -59,7 +56,7 @@ export const changePassword = async (req, res) => {
     // Create a session so user is logged in and can proceed to setup 2FA
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers["user-agent"] || "unknown";
-    const isMobile = req.headers["x-client-type"] === "Android";
+    const isMobile = (req.headers["x-client-type"] || "").includes("Android");
     const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
     const session = await createSession(hospital._id, deviceId, ipAddress, userAgent, isMobile);
 
@@ -164,11 +161,13 @@ export const registerHospital = async (req, res) => {
         password += allChars[crypto.randomInt(0, allChars.length)];
       }
 
-      // Shuffle to avoid predictable pattern
-      return password
-        .split("")
-        .sort(() => Math.random() - 0.5)
-        .join("");
+      // Fisher-Yates shuffle with crypto.randomInt for uniform distribution
+      const arr = password.split("");
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = crypto.randomInt(0, i + 1);
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr.join("");
     };
 
     const tempPassword = generateSecurePassword();
@@ -361,7 +360,7 @@ export const verifyRegistration = async (req, res) => {
     // Create session
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers["user-agent"];
-    const isMobile = req.headers["x-client-type"] === "Android";
+    const isMobile = (req.headers["x-client-type"] || "").includes("Android");
     const crypto = await import("crypto");
     const deviceId = crypto
       .createHash("sha256")
@@ -541,7 +540,7 @@ export const login = async (req, res) => {
     // Web: Disabled (as per request)
     // Mobile Biometric: Disabled (as per request)
     // Strict Mobile check via custom header (prevent mobile web from triggering this)
-    const isMobile = req.headers["x-client-type"] === "Android";
+    const isMobile = (req.headers["x-client-type"] || "").includes("Android");
     const isBiometric = req.body.isBiometric === true;
 
     if (hospital.totpEnabled && hospital.totpVerified) {
@@ -614,222 +613,14 @@ export const login = async (req, res) => {
         hospital: hospital.toJSON(),
       },
     });
-
-    // ========================================
-    // LEGACY SMS OTP (DISABLED – replaced by TOTP)
-    // ========================================
-    /*
-    let otpData;
-    try {
-      otpData = await createOtp(hospital._id, ipAddress, userAgent);
-    } catch (e) {
-      throw new Error(`CREATE_OTP_ERROR: ${e.message}`);
-    }
-
-    try {
-      await sendOtpSms(hospital.phone, otpData.plainOtp);
-    } catch (smsError) {
-      console.error("SMS error:", smsError);
-    }
-
-    let tempToken;
-    try {
-      tempToken = generateTempToken(hospital._id);
-    } catch (e) {
-      throw new Error(`GENERATE_TOKEN_ERROR: ${e.message}`);
-    }
-
-    try {
-      await AuditLog.create({
-        userId: hospital._id,
-        action: "LOGIN_ATTEMPT",
-        status: "SUCCESS",
-        ipAddress,
-        userAgent,
-        details: { step: "PASSWORD_VERIFIED" },
-      });
-    } catch (e) {
-      console.error("AuditLog success error:", e);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "OTP sent successfully",
-      data: {
-        tempToken,
-        phone: maskPhoneNumber(hospital.phone),
-        expiresAt: otpData.expiresAt,
-        hospitalName: hospital.hospitalName,
-        logoUrl: hospital.logoUrl,
-      },
-    });
-    */
-    // ========================================
-    // END LEGACY SMS OTP
-    // ========================================
   } catch (error) {
+    console.error("Login error:", error);
     return res.status(500).json({
       success: false,
-      message: `Login failed: ${error.message}`,
-      stack: error.stack,
+      message: "Login failed. Please try again later.",
     });
   }
 };
-
-// ========================================
-// LEGACY SMS OTP (DISABLED – replaced by TOTP)
-// ========================================
-/*
-/**
- * Verify OTP - Step 2: Verify OTP and create session
- * POST /api/auth/verify-otp
- */
-/*
-export const verifyOtp = async (req, res) => {
-  try {
-    const { otp } = req.body;
-    const hospitalId = req.hospital?.id;
-
-    if (!otp) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP is required",
-      });
-    }
-
-    if (!hospitalId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized. Please login first.",
-      });
-    }
-
-    // Verify OTP
-    try {
-      await verifyOtpService(hospitalId, otp);
-    } catch (otpError) {
-      return res.status(400).json({
-        success: false,
-        message: otpError.message,
-      });
-    }
-
-    // Get client IP and user agent
-    const ipAddress = req.ip || req.connection.remoteAddress;
-    const userAgent = req.headers["user-agent"];
-
-    // Generate device ID (simplified: using user agent hash)
-    const crypto = await import("crypto");
-    const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
-
-    // Create session
-    const session = await createSession(hospitalId, deviceId, ipAddress, userAgent);
-
-    // Get hospital data
-    const hospital = await Hospital.findById(hospitalId);
-
-    await AuditLog.create({
-      userId: hospitalId,
-      action: "LOGIN_SUCCESS",
-      status: "SUCCESS",
-      ipAddress,
-      userAgent,
-      details: { method: "OTP" },
-    });
-
-    // Set cookies
-    const isProduction = process.env.NODE_ENV === "production";
-
-    res.cookie("accessToken", session.accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.cookie("refreshToken", session.refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "OTP verified successfully",
-      data: {
-        data: {
-          accessToken: session.accessToken,
-          refreshToken: session.refreshToken,
-          tokenType: session.tokenType,
-          expiresIn: session.expiresIn,
-          hospital: hospital.toJSON(),
-        },
-      },
-    });
-  } catch (error) {
-    console.error("OTP verification error:", error);
-    return res.status(500).json({
-      success: false,
-      message: `OTP verification failed: ${error.message}`,
-    });
-  }
-};
-*/
-
-/*
-/**
- * Resend OTP
- * POST /api/auth/resend-otp
- */
-/*
-export const resendOtp = async (req, res) => {
-  try {
-    const hospitalId = req.hospital?.id;
-
-    if (!hospitalId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const ipAddress = req.ip || req.connection.remoteAddress;
-    const userAgent = req.headers["user-agent"];
-
-    const { resendOtp: resendOtpService } = await import("../services/otp.service.js");
-    const otpData = await resendOtpService(hospitalId, ipAddress, userAgent);
-
-    // Send OTP via SMS
-    try {
-      const hospital = await Hospital.findById(hospitalId);
-      await sendOtpSms(hospital.phone, otpData.plainOtp);
-    } catch (smsError) {
-      console.error("SMS sending failed:", smsError);
-    }
-
-    const hospital = await Hospital.findById(hospitalId);
-
-    return res.status(200).json({
-      success: true,
-      message: "OTP resent successfully",
-      data: {
-        phone: maskPhoneNumber(hospital.phone),
-        expiresAt: otpData.expiresAt,
-      },
-    });
-  } catch (error) {
-    console.error("Resend OTP error:", error);
-    return res.status(500).json({
-      success: false,
-      message: `Failed to resend OTP: ${error.message}`,
-    });
-  }
-};
-*/
-// ========================================
-// END LEGACY SMS OTP
-// ========================================
 
 /**
  * Setup TOTP - Generate secret and QR code
@@ -884,12 +675,14 @@ export const setupTotp = async (req, res) => {
       userAgent,
     });
 
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.set("Pragma", "no-cache");
     return res.status(200).json({
       success: true,
       message: "Scan the QR code with your authenticator app",
       data: {
         qrCode: totpData.qrCode,
-        secret: totpData.secret, // Unmasked for manual entry
+        secret: totpData.secret, // Unmasked for manual entry (shown once)
         otpauthUrl: totpData.otpauthUrl,
       },
     });
@@ -897,7 +690,7 @@ export const setupTotp = async (req, res) => {
     console.error("TOTP setup error:", error);
     return res.status(500).json({
       success: false,
-      message: `Failed to setup 2FA: ${error.message}`,
+      message: "Failed to setup 2FA",
     });
   }
 };
@@ -996,7 +789,7 @@ export const verifyTotpSetup = async (req, res) => {
     console.error("TOTP verify setup error:", error);
     return res.status(500).json({
       success: false,
-      message: `Failed to verify 2FA: ${error.message}`,
+      message: "Failed to verify 2FA",
     });
   }
 };
@@ -1136,7 +929,7 @@ export const verifyTotpLogin = async (req, res) => {
     console.error("TOTP login verification error:", error);
     return res.status(500).json({
       success: false,
-      message: `TOTP verification failed: ${error.message}`,
+      message: "TOTP verification failed",
     });
   }
 };
@@ -1224,7 +1017,7 @@ export const disableTotp = async (req, res) => {
     console.error("TOTP disable error:", error);
     return res.status(500).json({
       success: false,
-      message: `Failed to disable 2FA: ${error.message}`,
+      message: "Failed to disable 2FA",
     });
   }
 };
@@ -1289,6 +1082,8 @@ export const resetTotp = async (req, res) => {
       userAgent,
     });
 
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.set("Pragma", "no-cache");
     return res.status(200).json({
       success: true,
       message: "Password verified. Please scan the new QR code to complete rotation.",
@@ -1302,7 +1097,7 @@ export const resetTotp = async (req, res) => {
     console.error("TOTP reset error:", error);
     return res.status(500).json({
       success: false,
-      message: `Failed to reset 2FA: ${error.message}`,
+      message: "Failed to reset 2FA",
     });
   }
 };
@@ -1385,7 +1180,7 @@ export const verifyTotpReset = async (req, res) => {
     console.error("TOTP rotation verification error:", error);
     return res.status(500).json({
       success: false,
-      message: `Failed to verify rotation: ${error.message}`,
+      message: "Failed to verify rotation",
     });
   }
 };
@@ -1496,7 +1291,7 @@ export const recoveryLogin = async (req, res) => {
     console.error("Recovery login error:", error);
     return res.status(500).json({
       success: false,
-      message: `Recovery login failed: ${error.message}`,
+      message: "Recovery login failed",
     });
   }
 };
@@ -1535,11 +1330,9 @@ export const refreshToken = async (req, res) => {
       success: true,
       message: "Token refreshed successfully",
       data: {
-        data: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          hospital: hospital ? hospital.toJSON() : null,
-        },
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        hospital: hospital ? hospital.toJSON() : null,
       },
     });
   } catch (error) {
@@ -1597,7 +1390,4 @@ export default {
   recoveryLogin,
   refreshToken,
   logout,
-  // LEGACY SMS OTP (DISABLED – replaced by TOTP)
-  // verifyOtp,
-  // resendOtp,
 };

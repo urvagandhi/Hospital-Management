@@ -216,10 +216,10 @@ class FolderDetailsActivity : AppCompatActivity() {
                 intent.setDataAndType(Uri.parse(fileUrl), "application/pdf")
             }
             
-            if (intent.resolveActivity(packageManager) != null) {
+            try {
                 startActivity(intent)
-            } else {
-                Toast.makeText(this, "Google Drive Drive PDF Viewer not found, opening with default viewer", Toast.LENGTH_SHORT).show()
+            } catch (e: android.content.ActivityNotFoundException) {
+                Toast.makeText(this, "Google Drive PDF Viewer not found, opening with default viewer", Toast.LENGTH_SHORT).show()
                 openFile(file)
             }
         } catch (e: Exception) {
@@ -656,6 +656,28 @@ class FolderDetailsActivity : AppCompatActivity() {
         }
     }
     
+    private fun getMimeType(fileName: String): String {
+        return when {
+            fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+            fileName.endsWith(".jpg", ignoreCase = true) || fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+            fileName.endsWith(".png", ignoreCase = true) -> "image/png"
+            fileName.endsWith(".webp", ignoreCase = true) -> "image/webp"
+            else -> "*/*"
+        }
+    }
+
+    private fun openFileWithUri(uri: Uri, mimeType: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mimeType)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(intent)
+        } catch (e: android.content.ActivityNotFoundException) {
+            Toast.makeText(this, "No app found to open this file type", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     // Restored helper methods
     private fun openFile(file: FileItem) {
         val fileUrl = file.displayUrl
@@ -671,31 +693,60 @@ class FolderDetailsActivity : AppCompatActivity() {
                     File(fileUrl)
                 }
                 if (localFile.exists()) {
-                    val uri = androidx.core.content.FileProvider.getUriForFile(
-                        this, "${packageName}.provider", localFile
-                    )
-                    val mimeType = when {
-                        file.name.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
-                        file.name.endsWith(".jpg", ignoreCase = true) || file.name.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
-                        file.name.endsWith(".png", ignoreCase = true) -> "image/png"
-                        else -> "*/*"
-                    }
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, mimeType)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    if (intent.resolveActivity(packageManager) != null) startActivity(intent)
-                    else Toast.makeText(this, "No app found to open this file", Toast.LENGTH_SHORT).show()
+                    val uri = FileProvider.getUriForFile(this, "${packageName}.provider", localFile)
+                    openFileWithUri(uri, getMimeType(file.name))
                 } else {
                     Toast.makeText(this, "File not found locally", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(fileUrl))
-                startActivity(intent)
+                // Remote URL — download to cache first, then open via FileProvider
+                downloadAndOpenFile(file)
             }
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Error opening file: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun downloadAndOpenFile(file: FileItem) {
+        val fileUrl = file.displayUrl
+        Toast.makeText(this, "Loading file...", Toast.LENGTH_SHORT).show()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val url = java.net.URL(fileUrl)
+                val connection = url.openConnection() as java.net.HttpURLConnection
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+                connection.connect()
+
+                val cacheDir = File(cacheDir, "viewed_files")
+                if (!cacheDir.exists()) cacheDir.mkdirs()
+
+                val cachedFile = File(cacheDir, file.name)
+                connection.inputStream.use { input ->
+                    cachedFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    val uri = FileProvider.getUriForFile(
+                        this@FolderDetailsActivity,
+                        "${packageName}.provider",
+                        cachedFile
+                    )
+                    openFileWithUri(uri, getMimeType(file.name))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@FolderDetailsActivity,
+                        "Failed to load file: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
         }
     }
 

@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /media/urva/Personal/Technical/Project/Urva/Hospital-Management/backend/src/**/*.js)",
+      "Bash(node scripts/migrate-add-roles.js)",
+      "Bash(openssl s_client -connect hospital-management-8lbf.onrender.com:443 -servername hospital-management-8lbf.onrender.com)",
+      "Bash(openssl x509:*)",
+      "Bash(openssl pkey:*)",
+      "Bash(openssl dgst:*)",
+      "Bash(openssl enc:*)",
+      "Bash(curl -sI --max-time 10 https://hospital-management-8lbf.onrender.com/api/health)",
+      "Read(//tmp/**)",
+      "Bash(python3 -c \":*)",
+      "Bash(chmod +x /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/gradlew)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(./gradlew clean:*)",
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/frontend -not -path */node_modules/* -not -path */.git/* -type d)",
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(rm -rf node_modules)",
+      "Bash(npm install:*)",
+      "Bash(npx -p typescript tsc --noEmit)",
+      "Bash(node --check src/controllers/auth.controller.js)",
+      "Bash(node --check src/routes/auth.routes.js)",
+      "Bash(node --check src/routes/patient.routes.js)",
+      "Bash(node --check src/services/token.service.js)",
+      "Bash(node --check src/services/totp.service.js)",
+      "Bash(node --check src/config/db.js)",
+      "Bash(node --check src/models/AuditLog.js)",
+      "Bash(node --check src/controllers/patient.controller.js)"
+    ]
+  }
+}

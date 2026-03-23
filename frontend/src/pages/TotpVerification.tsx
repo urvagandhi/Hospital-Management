@@ -24,7 +24,7 @@ export const TotpVerification: React.FC = () => {
 
   // Redirect if no tempToken (not coming from login)
   useEffect(() => {
-    const tempToken = localStorage.getItem("tempToken");
+    const tempToken = sessionStorage.getItem("tempToken");
     if (!tempToken) {
       navigate("/login");
     }
@@ -91,7 +91,7 @@ export const TotpVerification: React.FC = () => {
   };
 
   const handleBackToLogin = () => {
-    localStorage.removeItem("tempToken");
+    sessionStorage.removeItem("tempToken");
     navigate("/login");
   };
 

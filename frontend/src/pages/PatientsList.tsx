@@ -3,7 +3,7 @@
  * Displays paginated list of patients
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { fetchPatients } from "../services/patientApi";
@@ -23,6 +23,8 @@ export const PatientsList: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
@@ -30,13 +32,13 @@ export const PatientsList: React.FC = () => {
 
   useEffect(() => {
     loadPatients();
-  }, [currentPage, searchTerm]);
+  }, [currentPage, debouncedSearch]);
 
   const loadPatients = async () => {
     try {
       setLoading(true);
       const skip = (currentPage - 1) * ITEMS_PER_PAGE;
-      const data = (await fetchPatients(ITEMS_PER_PAGE, skip, searchTerm)) as any;
+      const data = (await fetchPatients(ITEMS_PER_PAGE, skip, debouncedSearch)) as any;
       setPatients(data.patients || []);
       setTotalCount(data.total || 0);
     } catch (error: any) {
@@ -84,7 +86,15 @@ export const PatientsList: React.FC = () => {
                 type="text"
                 placeholder="Search by name or medical record number..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearchTerm(value);
+                  clearTimeout(debounceTimer.current);
+                  debounceTimer.current = setTimeout(() => {
+                    setDebouncedSearch(value);
+                    setCurrentPage(1);
+                  }, 350);
+                }}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

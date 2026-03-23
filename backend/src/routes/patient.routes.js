@@ -4,10 +4,13 @@
  */
 
 import express from "express";
+import { body, param, query } from "express-validator";
 import multer from "multer";
 import path from "path";
 import * as patientController from "../controllers/patient.controller.js";
 import { verifyAccessToken } from "../middleware/auth.js";
+import { handleValidationErrors } from "../middleware/validateRequest.js";
+import Hospital from "../models/Hospital.js";
 import { patientLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
@@ -31,14 +34,40 @@ const upload = multer({
   fileFilter: patientFileFilter,
 });
 
+// Lightweight middleware to reject deactivated hospitals
+const verifyHospitalActive = async (req, res, next) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const hospital = await Hospital.findById(hospitalId).select("isActive").lean();
+    if (!hospital || !hospital.isActive) {
+      return res.status(403).json({ success: false, message: "Hospital account is inactive" });
+    }
+    next();
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Authorization check failed" });
+  }
+};
+
 // Apply auth middleware to all routes
 router.use(verifyAccessToken);
+router.use(verifyHospitalActive);
 
 /**
  * POST /api/patients
  * Create new patient
  */
-router.post("/", patientController.createPatient);
+router.post(
+  "/",
+  [
+    body("patientName").notEmpty().trim().withMessage("Patient name is required"),
+    body("email").optional({ values: "falsy" }).isEmail().withMessage("Invalid email format"),
+    body("phone").optional({ values: "falsy" }).trim(),
+    body("medicalRecordNumber").optional({ values: "falsy" }).trim(),
+  ],
+  handleValidationErrors,
+  patientController.createPatient,
+);
 
 /**
  * GET /api/patients
@@ -50,13 +79,29 @@ router.get("/", patientController.getPatients);
  * GET /api/patients/:patientId
  * Get patient details with folder structure
  */
-router.get("/:patientId", patientController.getPatientById);
+router.get(
+  "/:patientId",
+  [param("patientId").isMongoId().withMessage("Invalid patient ID")],
+  handleValidationErrors,
+  patientController.getPatientById,
+);
 
 /**
  * PUT /api/patients/:patientId
  * Update patient details
  */
-router.put("/:patientId", patientController.updatePatient);
+router.put(
+  "/:patientId",
+  [
+    param("patientId").isMongoId().withMessage("Invalid patient ID"),
+    body("patientName").optional().notEmpty().trim().withMessage("Patient name cannot be empty"),
+    body("email").optional({ values: "falsy" }).isEmail().withMessage("Invalid email format"),
+    body("phone").optional({ values: "falsy" }).trim(),
+    body("medicalRecordNumber").optional({ values: "falsy" }).trim(),
+  ],
+  handleValidationErrors,
+  patientController.updatePatient,
+);
 
 /**
  * POST /api/patients/:patientId/folders
