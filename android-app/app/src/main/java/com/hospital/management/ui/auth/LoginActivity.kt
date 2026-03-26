@@ -273,7 +273,9 @@ class LoginActivity : AppCompatActivity() {
                         lifecycleScope.launch {
                             try {
                                 // Register biometric with server
-                                val deviceId = withContext(Dispatchers.IO) { tokenManager.getDeviceId() } ?: "unknown"
+                                val deviceId = android.provider.Settings.Secure.getString(
+                                    contentResolver, android.provider.Settings.Secure.ANDROID_ID
+                                ) ?: "unknown"
                                 val apiService = RetrofitClient.getApiService(this@LoginActivity)
                                 withContext(Dispatchers.IO) {
                                     apiService.registerBiometric(
