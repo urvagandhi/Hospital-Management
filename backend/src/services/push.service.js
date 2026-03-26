@@ -1,15 +1,31 @@
 import admin from "firebase-admin";
 import Hospital from "../models/Hospital.js";
 
-// Singleton Firebase initialization
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    }),
-  });
+// Singleton Firebase initialization — skip if credentials missing
+let firebaseEnabled = false;
+
+if (
+  process.env.FIREBASE_PROJECT_ID &&
+  process.env.FIREBASE_PRIVATE_KEY &&
+  process.env.FIREBASE_CLIENT_EMAIL
+) {
+  try {
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        }),
+      });
+    }
+    firebaseEnabled = true;
+    console.log("[push.service] Firebase Admin SDK initialized");
+  } catch (error) {
+    console.warn("[push.service] Firebase init failed:", error.message);
+  }
+} else {
+  console.warn("[push.service] Firebase credentials not set — push notifications disabled");
 }
 
 /**
@@ -21,6 +37,7 @@ if (!admin.apps.length) {
  * @returns {Promise<{success: boolean, invalidToken?: boolean, error?: string}>}
  */
 export async function sendPushToDevice(fcmToken, title, body, data = {}) {
+  if (!firebaseEnabled) return { success: false, reason: "firebase_disabled" };
   try {
     // Ensure all data values are flat string pairs
     const stringData = Object.fromEntries(
