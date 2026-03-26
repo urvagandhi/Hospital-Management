@@ -75,9 +75,11 @@ class TotpSetupActivity : AppCompatActivity() {
                 }
 
                 val apiService = RetrofitClient.getApiService(this@TotpSetupActivity)
+                android.util.Log.d("TotpSetup", "Calling POST /2fa/setup with token: ${accessToken?.take(20)}...")
                 val response: Response<TotpSetupResponse> = withContext(Dispatchers.IO) {
                     apiService.setupTotp("Bearer $accessToken")
                 }
+                android.util.Log.d("TotpSetup", "Response: code=${response.code()} success=${response.body()?.success}")
 
                 binding.progressBar.visibility = View.GONE
                 binding.btnVerify.isEnabled = true
@@ -87,12 +89,19 @@ class TotpSetupActivity : AppCompatActivity() {
                     if (data != null) {
                         displayQrCode(data.qrCodeUrl)
                         binding.tvManualKey.text = data.secret
+                        binding.tvManualKey.visibility = View.VISIBLE
+                        binding.tvManualKeyLabel.visibility = View.VISIBLE
+                        binding.ivQrCode.visibility = View.VISIBLE
+                    } else {
+                        Toast.makeText(this@TotpSetupActivity, "No setup data received", Toast.LENGTH_SHORT).show()
                     }
                 } else {
+                    val errorBody = response.errorBody()?.string() ?: response.message()
+                    android.util.Log.e("TotpSetup", "Setup failed: code=${response.code()} body=$errorBody")
                     Toast.makeText(
                         this@TotpSetupActivity,
-                        "Failed to load setup: ${response.message()}",
-                        Toast.LENGTH_SHORT
+                        "Failed to load setup (${response.code()}): $errorBody",
+                        Toast.LENGTH_LONG
                     ).show()
                 }
             } catch (e: Exception) {

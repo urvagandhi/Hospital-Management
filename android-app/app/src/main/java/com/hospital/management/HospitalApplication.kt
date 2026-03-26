@@ -60,7 +60,12 @@ class HospitalApplication : Application() {
                 // Check for session timeout
                 // We only force logout if the session was explicitly marked active (user logged in)
                 // and the time has expired.
-                if (SessionManager.isSessionActive && activity !is LoginActivity) {
+                val isAuthScreen = activity is LoginActivity
+                    || activity is com.hospital.management.ui.auth.TotpSetupActivity
+                    || activity is com.hospital.management.ui.auth.TotpVerificationActivity
+                    || activity is com.hospital.management.ui.auth.ChangePasswordActivity
+                    || activity is com.hospital.management.ui.auth.OtpActivity
+                if (SessionManager.isSessionActive && !isAuthScreen) {
                     applicationScope.launch {
                         if (!SessionManager.isSessionValid(activity)) {
                             Toast.makeText(activity, "Session expired due to inactivity", Toast.LENGTH_LONG).show()
