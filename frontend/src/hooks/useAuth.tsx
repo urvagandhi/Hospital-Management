@@ -128,8 +128,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (requireTotp === false) {
-        // Web platform skips mandatory TOTP setup (mobile enforces it)
-        const requireTotpSetup = false;
+        // Check if backend requires TOTP setup
+        const requireTotpSetup = response.requireTotpSetup === true;
 
         const responseData = response.data;
         const accessToken = responseData.accessToken || "";
