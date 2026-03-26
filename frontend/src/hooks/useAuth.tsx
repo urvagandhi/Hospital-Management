@@ -3,9 +3,10 @@
  * Manages authentication state globally
  */
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import authService from "../services/authService";
 import { AuthState } from "../types/auth";
+import { useInactivityTimeout } from "./useInactivityTimeout";
 
 interface AuthContextType {
   state: AuthState;
@@ -333,6 +334,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
   };
+
+  // Auto-logout after 15 minutes of inactivity
+  const handleInactivityTimeout = useCallback(() => {
+    if (state.isAuthenticated) {
+      logout();
+    }
+  }, [state.isAuthenticated]);
+
+  useInactivityTimeout(handleInactivityTimeout, state.isAuthenticated);
 
   return (
     <AuthContext.Provider

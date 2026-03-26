@@ -125,9 +125,9 @@ dependencies {
     // Accompanist (Compose utilities)
     implementation "com.google.accompanist:accompanist-permissions:0.32.0"
 
-    // Firebase BoM
-    implementation platform('com.google.firebase:firebase-bom:34.11.0')
-    implementation 'com.google.firebase:firebase-analytics'
+    // Firebase BoM (32.x — last version compatible with Kotlin 1.9)
+    implementation platform('com.google.firebase:firebase-bom:32.8.1')
+    implementation 'com.google.firebase:firebase-analytics-ktx'
     implementation 'com.google.firebase:firebase-messaging-ktx'
 
     testImplementation 'junit:junit:4.13.2'

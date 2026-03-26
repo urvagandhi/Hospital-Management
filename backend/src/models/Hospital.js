@@ -159,9 +159,20 @@ hospitalSchema.virtual("fullAddress").get(function () {
   return `${this.address}, ${this.city}, ${this.state} ${this.zipCode}`;
 });
 
-// Remove password from JSON responses
+// Remove sensitive fields from JSON responses
 hospitalSchema.methods.toJSON = function () {
-  const { passwordHash, ...rest } = this.toObject();
+  const {
+    passwordHash,
+    totpSecretEncrypted,
+    totpPendingSecret,
+    fcmToken,
+    biometricKeys,
+    totpFailedAttempts,
+    totpLockedUntil,
+    failedLoginAttempts,
+    lockUntil,
+    ...rest
+  } = this.toObject();
   return rest;
 };
 

@@ -44,7 +44,7 @@ class ApiService {
         }
 
         // Attach token if no Authorization header is already set
-        const accessToken = localStorage.getItem("accessToken");
+        const accessToken = sessionStorage.getItem("accessToken");
         const tempToken = sessionStorage.getItem("tempToken");
         
         if (!config.headers.Authorization) {
@@ -103,7 +103,7 @@ class ApiService {
             const refreshResponse = await this.post<any>("/auth/refresh-token", {});
             const newAccessToken = refreshResponse.data?.data?.accessToken;
             if (newAccessToken) {
-              localStorage.setItem("accessToken", newAccessToken);
+              sessionStorage.setItem("accessToken", newAccessToken);
               if (originalRequest.headers) {
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
               }

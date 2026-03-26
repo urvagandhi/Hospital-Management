@@ -1,0 +1,29 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Build outputs
+dist/
+build/
+*.apk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Gradle
+.gradle/
+local.properties

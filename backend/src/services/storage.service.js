@@ -1,6 +1,8 @@
-import { v2 as cloudinary } from 'cloudinary';
+import cloudinaryModule from 'cloudinary';
 import multer from 'multer';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import CloudinaryStorage from 'multer-storage-cloudinary';
+
+const cloudinary = cloudinaryModule.v2;
 
 // ---------------------------------------------------------------------------
 // Cloudinary configuration
@@ -46,7 +48,7 @@ const documentFileFilter = (_req, file, cb) => {
 // Cloudinary storage instances
 // ---------------------------------------------------------------------------
 const imageStorage = new CloudinaryStorage({
-  cloudinary,
+  cloudinary: cloudinaryModule,
   params: {
     folder: 'hospital/images',
     resource_type: 'auto',
@@ -55,7 +57,7 @@ const imageStorage = new CloudinaryStorage({
 });
 
 const documentStorage = new CloudinaryStorage({
-  cloudinary,
+  cloudinary: cloudinaryModule,
   params: {
     folder: 'hospital/documents',
     resource_type: 'auto',

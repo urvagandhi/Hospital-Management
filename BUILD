@@ -67,12 +67,11 @@ build_frontend() {
 build_android() {
     echo "-- Building Android APK --"
     cd "$ROOT_DIR/android-app"
-    if [ -f "./gradlew" ]; then
-        chmod +x gradlew
-        ./gradlew assembleRelease
-        echo -e "${GREEN}Android build complete.${NC}"
+    if [ -f "./build-apk.sh" ]; then
+        chmod +x build-apk.sh
+        ./build-apk.sh "${2:-debug}"
     else
-        echo -e "${RED}gradlew not found in android-app/${NC}"
+        echo -e "${RED}build-apk.sh not found in android-app/${NC}"
         exit 1
     fi
 }

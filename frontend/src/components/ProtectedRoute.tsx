@@ -52,14 +52,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (isAuthenticated) {
-    // Security Check: Enforce Mandatory TOTP
-    // existing users or new registrations MUST have TOTP enabled
-    /*
+    // Enforce Mandatory TOTP: redirect to setup if not enabled
     if (state.hospital && !state.hospital.totpEnabled) {
-      console.log("[ProtectedRoute] Authenticated but TOTP not enabled, redirecting to /setup-2fa");
       return <Navigate to={`/setup-2fa?email=${encodeURIComponent(state.hospital.email || "")}`} replace />;
     }
-    */
 
     return <>{children}</>;
   }

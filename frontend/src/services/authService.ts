@@ -86,8 +86,8 @@ export const authService = {
   }),
 
   storeTokens: (accessToken: string, _refreshToken: string) => {
-    // accessToken stored only if backend returns it for hybrid auth
-    if (accessToken) localStorage.setItem("accessToken", accessToken);
+    // Store in sessionStorage (cleared on browser close, not accessible to XSS across tabs)
+    if (accessToken) sessionStorage.setItem("accessToken", accessToken);
     sessionStorage.removeItem("tempToken");
   },
 
@@ -96,7 +96,7 @@ export const authService = {
   },
 
   clearTokens: () => {
-    localStorage.removeItem("accessToken");
+    sessionStorage.removeItem("accessToken");
     sessionStorage.removeItem("tempToken");
     localStorage.removeItem("hospital");
   },

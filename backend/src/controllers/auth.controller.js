@@ -459,7 +459,8 @@ export const login = async (req, res) => {
     try {
       hospital = await Hospital.findOne(query);
     } catch (e) {
-      throw new Error(`DB_FIND_ERROR: ${e.message}`);
+      console.error("[auth] DB find error:", e.message);
+      throw new Error("Login failed. Please try again later.");
     }
 
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -503,7 +504,8 @@ export const login = async (req, res) => {
     try {
       isPasswordValid = await comparePassword(password, hospital.passwordHash);
     } catch (e) {
-      throw new Error(`PASSWORD_COMPARE_ERROR: ${e.message}`);
+      console.error("[auth] Password compare error:", e.message);
+      throw new Error("Login failed. Please try again later.");
     }
 
     if (!isPasswordValid) {
@@ -1384,16 +1386,30 @@ export const refreshToken = async (req, res) => {
  */
 export const logout = async (req, res) => {
   try {
-    const token = req.cookies.refreshToken || req.body.refreshToken;
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
 
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: "Refresh token is required",
-      });
+    let invalidated = false;
+
+    // Try to invalidate by refresh token first
+    if (refreshToken) {
+      invalidated = await invalidateSession(refreshToken);
     }
 
-    await invalidateSession(token);
+    // Fallback: invalidate by session ID from the access token
+    if (!invalidated) {
+      const accessToken = req.cookies?.accessToken ||
+        (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
+      if (accessToken) {
+        try {
+          const { verifyToken } = await import("../utils/jwt.js");
+          const decoded = verifyToken(accessToken);
+          if (decoded.sessionId) {
+            await Session.updateOne({ _id: decoded.sessionId }, { isActive: false });
+            invalidated = true;
+          }
+        } catch (_) { /* token may be expired, ignore */ }
+      }
+    }
 
     // Clear cookies
     res.clearCookie("accessToken");
@@ -1407,7 +1423,7 @@ export const logout = async (req, res) => {
     console.error("Logout error:", error);
     return res.status(500).json({
       success: false,
-      message: `Logout failed: ${error.message}`,
+      message: "Logout failed",
     });
   }
 };

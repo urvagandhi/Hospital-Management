@@ -7,15 +7,14 @@ import rateLimit from "express-rate-limit";
 import config from "../config/env.js";
 
 /**
- * General API rate limiter
+ * General API rate limiter (relaxed in dev)
  */
 export const generalLimiter = rateLimit({
   windowMs: config.RATE_LIMIT_WINDOW_MS,
-  max: config.RATE_LIMIT_MAX_REQUESTS,
+  max: config.NODE_ENV === "development" ? 200 : config.RATE_LIMIT_MAX_REQUESTS,
   message: "Too many requests from this IP, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => config.NODE_ENV === "development",
 });
 
 /**
@@ -23,23 +22,21 @@ export const generalLimiter = rateLimit({
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
+  max: config.NODE_ENV === "development" ? 50 : 5,
   message: "Too many login attempts, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => config.NODE_ENV === "development",
 });
 
 /**
- * Rate limiter for OTP endpoints
+ * Rate limiter for OTP/TOTP endpoints
  */
 export const otpLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 3, // Limit each IP to 3 OTP requests per minute
+  max: config.NODE_ENV === "development" ? 20 : 3,
   message: "Too many OTP requests, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => config.NODE_ENV === "development",
 });
 
 /**
@@ -47,11 +44,10 @@ export const otpLimiter = rateLimit({
  */
 export const patientLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10, // Limit each IP to 10 download requests per minute
+  max: config.NODE_ENV === "development" ? 50 : 10,
   message: "Too many download requests, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => config.NODE_ENV === "development",
 });
 
 export default {
