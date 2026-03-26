@@ -1,424 +1,432 @@
-# Hospital Management Backend API
+# Backend - Hospital Management API
 
-## Overview
+Node.js + Express REST API with MongoDB, Redis, TOTP 2FA, and Cloudflare R2 file storage.
 
-Production-ready backend for Hospital Management System with Login + 2FA OTP Verification.
+---
 
-## Tech Stack
+## Architecture
 
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: MongoDB + Mongoose
-- **Authentication**: JWT + OTP
-- **Security**: bcryptjs, helmet, CORS, rate-limiting
+```mermaid
+graph TB
+    subgraph Middleware
+        RL[Rate Limiter] --> AUTH[JWT Auth]
+        AUTH --> VAL[Request Validator]
+        VAL --> SAN[Sanitizer]
+    end
 
-## Project Structure
+    subgraph Routes
+        AR[/api/auth] --> AC[Auth Controller]
+        PR[/api/patients] --> PC[Patient Controller]
+        HR[/api/hospitals] --> HC[Hospital Controller]
+        ER[/api/export] --> EC[Export Controller]
+    end
+
+    subgraph Services
+        AC --> TS[Token Service]
+        AC --> TOTP[TOTP Service]
+        AC --> ES[Email Service]
+        PC --> PS[Patient Service]
+        PC --> R2S[R2 Storage]
+        PC --> PDFS[PDF Service]
+        PC --> ZIPS[ZIP Service]
+        EC --> PDFS
+        EC --> ZIPS
+    end
+
+    subgraph Data
+        TS --> MONGO[(MongoDB)]
+        TS --> REDIS[(Redis)]
+        TOTP --> MONGO
+        PS --> MONGO
+        R2S --> R2[(Cloudflare R2)]
+        ES --> SMTP[SMTP Server]
+    end
+
+    CLIENT[Client Request] --> RL
+```
+
+---
+
+## Request Lifecycle
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant RL as Rate Limiter
+    participant MW as Auth Middleware
+    participant CT as Controller
+    participant SV as Service
+    participant DB as MongoDB
+
+    C->>RL: HTTP Request
+    RL->>RL: Check request count
+    alt Rate limit exceeded
+        RL-->>C: 429 Too Many Requests
+    end
+    RL->>MW: Pass through
+    MW->>MW: Verify JWT + Session
+    alt Invalid token
+        MW-->>C: 401 Unauthorized
+    end
+    MW->>CT: Authenticated request
+    CT->>SV: Business logic
+    SV->>DB: Data operation
+    DB-->>SV: Result
+    SV-->>CT: Processed data
+    CT-->>C: JSON Response
+```
+
+---
+
+## Directory Structure
 
 ```
 backend/
 ├── src/
-│   ├── config/          # Configuration files
-│   │   ├── db.js        # MongoDB connection
-│   │   └── env.js       # Environment variables
-│   ├── models/          # Mongoose schemas
-│   │   ├── Hospital.js
-│   │   ├── Otp.js
-│   │   └── Session.js
-│   ├── controllers/     # Request handlers
-│   │   └── auth.controller.js
-│   ├── routes/          # API routes
-│   │   └── auth.routes.js
-│   ├── services/        # Business logic
-│   │   ├── otp.service.js
-│   │   ├── sms.service.js
-│   │   └── token.service.js
-│   ├── middleware/      # Express middleware
-│   │   ├── auth.js      # JWT verification
-│   │   ├── validateRequest.js
-│   │   ├── rateLimiter.js
-│   │   └── errorHandler.js
-│   ├── utils/           # Utility functions
-│   │   ├── generateOtp.js
-│   │   ├── hash.js      # bcrypt functions
-│   │   └── jwt.js       # JWT utilities
-│   ├── __tests__/       # Test files
-│   └── index.js         # Entry point
+│   ├── config/
+│   │   ├── db.js              # MongoDB connection
+│   │   ├── env.js             # Environment validation
+│   │   └── redis.js           # Redis client + in-memory fallback
+│   ├── controllers/
+│   │   ├── auth.controller.js # Login, TOTP, sessions, password
+│   │   ├── patient.controller.js
+│   │   ├── hospital.controller.js
+│   │   └── export.controller.js
+│   ├── middleware/
+│   │   ├── auth.js            # JWT verify, session check, admin guard
+│   │   ├── errorHandler.js    # Centralized error handling
+│   │   ├── rateLimiter.js     # Per-endpoint rate limits
+│   │   └── validateRequest.js # Input validation + sanitization
+│   ├── models/
+│   │   ├── Hospital.js        # Hospital account + TOTP fields
+│   │   ├── Session.js         # DB-backed sessions (TTL: 7d)
+│   │   ├── Patient.js         # Patient + nested folders/files
+│   │   ├── AuditLog.js        # Security event logging
+│   │   ├── BackupCode.js      # 2FA recovery codes
+│   │   ├── OTP.js             # Legacy SMS OTP (disabled)
+│   │   └── PendingHospital.js # Temp registration (TTL: 15min)
+│   ├── routes/
+│   │   ├── auth.routes.js     # 15+ auth endpoints
+│   │   ├── patient.routes.js  # CRUD + file upload/download
+│   │   ├── hospitals.routes.js
+│   │   └── export.routes.js
+│   ├── services/
+│   │   ├── token.service.js   # Session creation, refresh, invalidation
+│   │   ├── totp.service.js    # TOTP generate, verify, backup codes
+│   │   ├── email.service.js   # HTML templates (invite, lock, revoke)
+│   │   ├── patient.service.js # Patient CRUD with pagination
+│   │   ├── r2.service.js      # Cloudflare R2 file operations
+│   │   ├── pdf.service.js     # PDF generation
+│   │   └── zip.service.js     # ZIP archive creation
+│   ├── jobs/
+│   │   └── autoDelete.job.js  # Cron: cleanup old patient data
+│   └── index.js               # App entry point
+├── Dockerfile
 ├── package.json
-├── .env.example
-└── README.md
+└── seed.js
 ```
 
-## Installation
-
-### Prerequisites
-
-- Node.js v16+
-- MongoDB v4.4+
-- npm or yarn
-
-### Steps
-
-1. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-2. **Setup environment variables**
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   Edit `.env` with your configuration:
-
-   ```
-   MONGODB_URI=mongodb://localhost:27017/hospital-management
-   PORT=5000
-   JWT_SECRET=your_secret_key
-   REFRESH_TOKEN_SECRET=your_refresh_secret
-   FRONTEND_URL=http://localhost:3000
-   ```
-
-3. **Start MongoDB**
-
-   ```bash
-   mongod
-   ```
-
-4. **Run development server**
-
-   ```bash
-   npm run dev
-   ```
-
-5. **Run tests**
-   ```bash
-   npm test
-   ```
+---
 
 ## API Endpoints
 
-### Authentication
+### Authentication (`/api/auth`)
 
-#### 1. Login
+```mermaid
+flowchart TD
+    LOGIN["POST /login"] -->|requireTotp: true| TOTP_LOGIN["POST /login/totp"]
+    LOGIN -->|requirePasswordChange| CHANGE_PW["POST /change-password"]
+    LOGIN -->|requireTotpSetup| SETUP_2FA["POST /2fa/setup"]
+    LOGIN -->|Direct success| DASHBOARD[Access Granted]
 
-**POST** `/api/auth/login`
+    TOTP_LOGIN -->|Lost device?| RECOVERY["POST /login/recovery"]
+    TOTP_LOGIN -->|Valid code| DASHBOARD
+    RECOVERY -->|Valid backup code| DASHBOARD
 
-Request body:
+    SETUP_2FA -->|QR displayed| VERIFY_2FA["POST /2fa/verify"]
+    VERIFY_2FA -->|Returns 10 backup codes| DASHBOARD
 
-```json
-{
-  "email": "hospital@example.com",
-  "password": "password123"
-}
+    CHANGE_PW --> SETUP_2FA
+
+    REFRESH["POST /refresh-token"] --> DASHBOARD
+    LOGOUT["POST /logout"] --> LOGIN
+
+    style DASHBOARD fill:#86efac
+    style LOGIN fill:#93c5fd
 ```
 
-Response:
+| Method | Endpoint | Auth | Rate Limit | Description |
+|--------|----------|------|------------|-------------|
+| `POST` | `/login` | None | 5/15min | Login with identifier + password |
+| `POST` | `/login/totp` | Temp Token | 3/1min | Verify TOTP code |
+| `POST` | `/login/recovery` | Temp Token | 3/1min | Login with backup code |
+| `POST` | `/refresh-token` | Cookie | - | Refresh access token |
+| `POST` | `/logout` | Cookie | - | End session |
+| `POST` | `/change-password` | Temp Token | 5/15min | Reset password (first login) |
+| `POST` | `/register-hospital` | Admin | 5/15min | Create hospital account |
+| `POST` | `/2fa/setup` | Access Token | - | Generate TOTP QR code |
+| `POST` | `/2fa/verify` | Access Token | 3/1min | Complete TOTP setup |
+| `POST` | `/2fa/disable` | Access Token | - | Disable 2FA |
+| `POST` | `/2fa/reset` | Access Token | - | Rotate 2FA key (lost device) |
+| `POST` | `/2fa/reset/verify` | Access Token | - | Confirm 2FA rotation |
+| `POST` | `/session/check-conflict` | None | 5/15min | Check for session conflicts |
+| `GET`  | `/session/validate` | Access Token | - | Validate current session |
+| `POST` | `/session/force-logout` | Access Token | - | Force logout other sessions |
 
-```json
-{
-  "success": true,
-  "message": "OTP sent successfully",
-  "data": {
-    "tempToken": "jwt_token_here",
-    "phone": "+91XXXXX1234",
-    "expiresAt": "2025-11-15T10:30:00Z",
-    "hospitalName": "City Hospital",
-    "logoUrl": "https://..."
-  }
-}
-```
+### Patients (`/api/patients`)
 
-#### 2. Verify OTP
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET`  | `/` | List patients (paginated, searchable) |
+| `POST` | `/` | Create patient |
+| `GET`  | `/:id` | Get patient with folder structure |
+| `PUT`  | `/:id` | Update patient details |
+| `POST` | `/:id/folders` | Create folder |
+| `GET`  | `/:id/files/:folder` | List files in folder |
+| `POST` | `/:id/files/:folder` | Upload file (max 20MB) |
+| `GET`  | `/:id/download/pdf` | Download all files as PDF |
+| `GET`  | `/:id/download/zip` | Download all files as ZIP |
+| `GET`  | `/:id/folders/:folder/pdf` | Download folder as PDF |
+| `GET`  | `/:id/folders/:folder/zip` | Download folder as ZIP |
 
-**POST** `/api/auth/verify-otp`
+**Supported file types:** JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, XLS, XLSX, CSV, TXT, DICOM
 
-Headers:
+### Hospitals (`/api/hospitals`)
 
-```
-Authorization: Bearer <tempToken>
-```
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET`  | `/me` | Access Token | Get current hospital profile |
+| `GET`  | `/` | Admin | List all hospitals |
+| `GET`  | `/:id` | Admin/Self | Get hospital by ID |
+| `PUT`  | `/:id` | Admin/Self | Update hospital |
 
-Request body:
+### Export (`/api/export`)
 
-```json
-{
-  "otp": "123456"
-}
-```
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|------------|-------------|
+| `POST` | `/archive` | 3/hour | Export modules as ZIP archive |
 
-Response:
+### Health
 
-```json
-{
-  "success": true,
-  "message": "OTP verified successfully",
-  "data": {
-    "accessToken": "jwt_token",
-    "refreshToken": "refresh_token",
-    "tokenType": "Bearer",
-    "expiresIn": "24h",
-    "hospital": {
-      "_id": "...",
-      "hospitalName": "...",
-      "email": "...",
-      "phone": "..."
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET`  | `/api/health` | Basic health check |
+| `GET`  | `/api/health/deep` | DB + Redis connectivity check |
+
+---
+
+## Data Models
+
+```mermaid
+erDiagram
+    Hospital ||--o{ Session : "sessions"
+    Hospital ||--o{ Patient : "patients"
+    Hospital ||--o{ BackupCode : "backup codes"
+    Hospital ||--o{ AuditLog : "audit trail"
+    Patient ||--o{ Folder : "folders"
+    Folder ||--o{ File : "files"
+
+    Hospital {
+        String hospitalName
+        String email UK
+        String phone UK
+        String username UK
+        String passwordHash "bcrypt"
+        String role "admin | hospital"
+        Boolean totpEnabled
+        String totpSecretEncrypted "AES-256-GCM"
+        Boolean totpVerified
+        Number totpFailedAttempts "max 5"
+        Date totpLockedUntil "5-min lock"
+        Boolean mustChangePassword
+        Number failedLoginAttempts
+        Date lockUntil
     }
-  }
-}
+
+    Session {
+        ObjectId hospitalId FK
+        String refreshToken UK
+        String deviceId
+        String platform "web | android | ios"
+        Boolean isMobile
+        Date expiresAt "TTL index 7d"
+        Boolean isActive
+        String revokedReason
+    }
+
+    Patient {
+        ObjectId hospitalId FK
+        String patientName
+        String medicalRecordNumber "sparse unique"
+        String status "active | inactive | archived"
+    }
+
+    BackupCode {
+        ObjectId hospitalId FK
+        String codeHash "bcrypt"
+        Boolean isUsed
+        Date usedAt
+    }
+
+    AuditLog {
+        ObjectId userId FK
+        String action "LOGIN_SUCCESS etc"
+        String status "SUCCESS | FAILURE"
+        String ipAddress
+    }
 ```
 
-#### 3. Refresh Token
+---
 
-**POST** `/api/auth/refresh-token`
+## TOTP 2FA Lifecycle
 
-Request body:
+```mermaid
+stateDiagram-v2
+    [*] --> NotSetUp: Hospital created
 
-```json
-{
-  "refreshToken": "refresh_token_here"
-}
+    NotSetUp --> SetupInitiated: POST /2fa/setup
+    SetupInitiated --> SetupInitiated: Display QR code
+
+    SetupInitiated --> Enabled: POST /2fa/verify (valid code)
+    Enabled --> Enabled: Login requires TOTP
+
+    Enabled --> RotationPending: POST /2fa/reset (password verified)
+    RotationPending --> Enabled: POST /2fa/reset/verify (new code)
+
+    Enabled --> Locked: 5 failed attempts
+    Locked --> Enabled: After 5 minutes
+
+    note right of Enabled
+        10 backup codes generated
+        on setup completion
+    end note
 ```
 
-Response:
+---
 
-```json
-{
-  "success": true,
-  "message": "Token refreshed successfully",
-  "data": {
-    "accessToken": "new_jwt_token",
-    "refreshToken": "refresh_token",
-    "tokenType": "Bearer",
-    "expiresIn": "24h"
-  }
-}
+## Session Management
+
+```mermaid
+flowchart TD
+    LOGIN[Login Request] --> PLATFORM{Platform?}
+
+    PLATFORM -->|Mobile| CHECK{Existing<br/>mobile session?}
+    CHECK -->|Yes| REVOKE[Revoke old session<br/>Set reason: SESSION_CONFLICT<br/>Send email notification]
+    CHECK -->|No| CREATE
+    REVOKE --> CREATE[Create new session<br/>TTL: 7 days]
+
+    PLATFORM -->|Web| CREATE
+
+    CREATE --> TOKENS[Generate tokens<br/>accessToken + refreshToken]
+    TOKENS --> COOKIE[Set httpOnly cookies]
+    COOKIE --> RESPONSE[Return to client]
+
+    subgraph Cleanup
+        CRON[TTL Index] -->|Auto-delete| EXPIRED[Expired sessions]
+        ADMIN[Admin action] -->|Force revoke| ACTIVE[Active sessions]
+    end
 ```
 
-#### 4. Logout
+---
 
-**POST** `/api/auth/logout`
+## Rate Limiting
 
-Request body:
+| Limiter | Window | Max Requests | Applied To |
+|---------|--------|--------------|------------|
+| `generalLimiter` | 15 sec | 10 | All routes (disabled in dev) |
+| `authLimiter` | 15 min | 5 | Login, register, password change |
+| `otpLimiter` | 1 min | 3 | TOTP verification |
+| `patientLimiter` | 1 min | 10 | File downloads |
 
-```json
-{
-  "refreshToken": "refresh_token_here"
-}
+---
+
+## Setup
+
+### Development
+
+```bash
+cd backend
+npm install
+npm run dev       # Starts with nodemon on port 5000
 ```
 
-Response:
+### Seed Database
 
-```json
-{
-  "success": true,
-  "message": "Logged out successfully"
-}
+```bash
+node src/seed.js
 ```
 
-#### 5. Resend OTP
+Creates:
+- **5 hospitals** (1 admin + 4 regular) - Password: `Test@1234`
+- **54 patients** distributed across hospitals
+- Clears existing data before seeding
 
-**POST** `/api/auth/resend-otp`
+### Production (Docker)
 
-Headers:
-
-```
-Authorization: Bearer <tempToken>
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "message": "OTP resent successfully",
-  "data": {
-    "phone": "+91XXXXX1234",
-    "expiresAt": "2025-11-15T10:35:00Z"
-  }
-}
+```bash
+docker-compose up --build backend
 ```
 
-## Security Features
+### Environment Variables
 
-✅ **Password Hashing**: bcryptjs with 10 salt rounds
-✅ **JWT Tokens**: Separate access and refresh tokens
-✅ **OTP Hashing**: Secure OTP storage with TTL expiry
-✅ **Rate Limiting**: Brute force attack prevention
-✅ **CORS**: Configured for frontend URL
-✅ **Helmet**: Security headers
-✅ **Input Validation**: express-validator
-✅ **Single Device Login**: Device fingerprinting
-✅ **Error Handling**: Centralized error middleware
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | 5000 | Server port |
+| `NODE_ENV` | development | Environment mode |
+| `MONGODB_URI` | - | MongoDB connection string |
+| `JWT_SECRET` | - | Access token secret (64+ chars, no `dev-` prefix in prod) |
+| `REFRESH_TOKEN_SECRET` | - | Refresh token secret (64+ chars) |
+| `JWT_EXPIRY` | 24h | Access token lifetime |
+| `REFRESH_TOKEN_EXPIRY` | 7d | Refresh token lifetime |
+| `TOTP_ENCRYPTION_KEY` | - | 64-char hex for AES-256-GCM |
+| `TOTP_WINDOW` | 1 | Clock drift tolerance (login: ±30s, setup: exact) |
+| `TOTP_MAX_ATTEMPTS` | 5 | Failed attempts before 5-min lockout |
+| `SMTP_HOST` | - | SMTP server host |
+| `SMTP_PORT` | 587 | SMTP port |
+| `SMTP_USER` | - | SMTP username |
+| `SMTP_PASS` | - | SMTP password |
+| `SMTP_FROM` | - | Sender email address |
+| `FRONTEND_URL` | http://localhost:3000 | CORS allowed origin |
+| `R2_ENDPOINT` | - | Cloudflare R2 endpoint |
+| `R2_ACCESS_KEY_ID` | - | R2 access key |
+| `R2_SECRET_ACCESS_KEY` | - | R2 secret key |
+| `R2_BUCKET_NAME` | - | R2 bucket name |
+| `REDIS_URL` | - | Redis connection (falls back to in-memory Map) |
 
-## Database Models
-
-### Hospital
-
-```javascript
-{
-  hospitalName: String,
-  email: String (unique),
-  phone: String (unique),
-  passwordHash: String,
-  logoUrl: String,
-  isActive: Boolean,
-  department: String,
-  address: String,
-  city: String,
-  state: String,
-  zipCode: String,
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### OTP
-
-```javascript
-{
-  hospitalId: ObjectId (ref: Hospital),
-  otpHash: String,
-  expiresAt: Date (TTL: 5 min),
-  attemptsCount: Number (max: 3),
-  isUsed: Boolean,
-  ipAddress: String,
-  userAgent: String,
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### Session
-
-```javascript
-{
-  hospitalId: ObjectId (ref: Hospital),
-  refreshToken: String (unique),
-  deviceId: String,
-  ipAddress: String,
-  userAgent: String,
-  expiresAt: Date (TTL: 7 days),
-  isActive: Boolean,
-  lastAccessedAt: Date,
-  createdAt: Date,
-  updatedAt: Date
-}
-```
+---
 
 ## Error Codes
 
-| Code | Message                          |
-| ---- | -------------------------------- |
-| 400  | Validation Error                 |
-| 401  | Unauthorized / Invalid Token     |
-| 403  | Forbidden / Inactive Account     |
-| 404  | Not Found                        |
-| 429  | Too Many Requests (Rate Limited) |
-| 500  | Internal Server Error            |
+| Code | Meaning |
+|------|---------|
+| 400 | Validation error / Bad request |
+| 401 | Invalid or expired token |
+| 403 | Forbidden / Inactive account |
+| 404 | Resource not found |
+| 423 | Account locked (too many failed attempts) |
+| 429 | Rate limit exceeded |
+| 500 | Internal server error |
 
-## Development
+---
 
-### Running in Development Mode
+## Dependencies
 
-```bash
-npm run dev
-```
-
-Uses nodemon for auto-reload on file changes.
-
-### Running in Production
-
-```bash
-NODE_ENV=production npm start
-```
-
-### Running Tests
-
-```bash
-npm test
-```
-
-## Configuration
-
-### Rate Limiting
-
-- **General API**: 10 requests per 15 seconds
-- **Login Endpoint**: 5 attempts per 15 minutes
-- **OTP Endpoint**: 3 attempts per 60 seconds
-
-### OTP Settings
-
-- **Length**: 6 digits
-- **Expiry**: 5 minutes
-- **Max Attempts**: 3
-- **Auto-cleanup**: MongoDB TTL index
-
-### JWT Expiry
-
-- **Access Token**: 24 hours
-- **Refresh Token**: 7 days
-- **Temp Token**: 10 minutes
-
-## Testing
-
-### API Testing Tools
-
-- **Postman**: Import API collection from `postman.json`
-- **cURL**: See examples below
-- **Jest**: Run `npm test`
-
-### Sample cURL Requests
-
-**Login:**
-
-```bash
-curl -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "hospital@example.com",
-    "password": "password123"
-  }'
-```
-
-**Verify OTP:**
-
-```bash
-curl -X POST http://localhost:5000/api/auth/verify-otp \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <tempToken>" \
-  -d '{
-    "otp": "123456"
-  }'
-```
-
-## Troubleshooting
-
-### MongoDB Connection Failed
-
-- Ensure MongoDB is running
-- Check `MONGODB_URI` in `.env`
-- Verify network connectivity
-
-### OTP Not Received
-
-- Check SMS gateway configuration
-- In development, OTP is logged to console
-- Check `SMS_GATEWAY_API_KEY` in `.env`
-
-### Token Expired
-
-- Use refresh token to get new access token
-- Refresh tokens expire after 7 days
-
-## Contributing
-
-1. Create feature branch: `git checkout -b feature/your-feature`
-2. Commit changes: `git commit -m "Add feature"`
-3. Push to branch: `git push origin feature/your-feature`
-4. Open pull request
-
-## License
-
-MIT License - See LICENSE file
+| Package | Version | Purpose |
+|---------|---------|---------|
+| express | 4.18.2 | Web framework |
+| mongoose | 7.5.0 | MongoDB ODM |
+| jsonwebtoken | 9.0.2 | JWT tokens |
+| bcryptjs | 2.4.3 | Password hashing |
+| speakeasy | 2.0.0 | TOTP 2FA generation |
+| ioredis | 5.10.1 | Redis client |
+| @aws-sdk/client-s3 | 3.932.0 | Cloudflare R2 storage |
+| nodemailer | 7.0.12 | Email delivery |
+| pdfkit | 0.17.2 | PDF generation |
+| archiver | 7.0.1 | ZIP creation |
+| multer | 2.0.2 | File uploads (20MB limit) |
+| helmet | - | Security headers |
+| express-rate-limit | 6.10.0 | Rate limiting |
+| express-validator | 7.0.0 | Input validation |
+| node-cron | 4.2.1 | Scheduled jobs |
+| qrcode | 1.5.4 | QR code for TOTP setup |
+| cookie-parser | - | Parse httpOnly cookies |

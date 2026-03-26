@@ -1,322 +1,329 @@
-# Hospital Management Frontend
+# Frontend - Hospital Management Web App
 
-## Overview
+React 18 + TypeScript single-page application with Tailwind CSS, Vite, and enterprise-grade TOTP authentication.
 
-Production-ready React + TypeScript frontend for Hospital Management System with Login + 2FA OTP Verification.
+---
 
-## Tech Stack
+## Architecture
 
-- **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: TailwindCSS
-- **Routing**: React Router v6
-- **HTTP Client**: Axios
-- **State Management**: React Context + Hooks
+```mermaid
+graph TB
+    subgraph Browser
+        APP[App.tsx] --> ROUTER[React Router v6]
+        ROUTER --> PUBLIC[Public Routes]
+        ROUTER --> PROTECTED[Protected Routes]
+        ROUTER --> ADMIN[Admin Routes]
+    end
 
-## Project Structure
+    subgraph State
+        AUTH_CTX[AuthContext<br/>useAuth Hook] --> LOCAL[localStorage<br/>hospital data]
+        AUTH_CTX --> SESSION[sessionStorage<br/>tempToken]
+        AUTH_CTX --> COOKIES[httpOnly Cookies<br/>access + refresh tokens]
+    end
+
+    subgraph Services
+        API[Axios Instance<br/>api.ts] --> INTERCEPT[Request Interceptor<br/>Attach tokens]
+        INTERCEPT --> REFRESH[Response Interceptor<br/>Auto-refresh on 401]
+        AUTH_SVC[authService.ts]
+        PAT_SVC[patientApi.ts]
+        HOSP_SVC[hospitalService.ts]
+    end
+
+    PROTECTED --> AUTH_CTX
+    AUTH_SVC --> API
+    PAT_SVC --> API
+    HOSP_SVC --> API
+    API -->|HTTPS| BACKEND[Backend API<br/>via Nginx proxy]
+```
+
+---
+
+## Page Flow
+
+```mermaid
+flowchart TD
+    LANDING["/ Landing Page"] --> LOGIN
+
+    LOGIN["/login"] -->|requireTotp| TOTP["/verify-totp"]
+    LOGIN -->|requirePasswordChange| CHPW["/change-password"]
+    LOGIN -->|direct success| DASH
+
+    TOTP -->|valid code| DASH
+    TOTP -->|backup code| DASH
+
+    CHPW -->|requireTotpSetup| SETUP["/setup-2fa"]
+    CHPW -->|totpEnabled| DASH
+
+    SETUP -->|QR + verify + backup codes| DASH
+
+    DASH["/dashboard"] --> PATIENT["/patients/:id"]
+    PATIENT --> FOLDER["/patients/:id/folders/:name"]
+
+    DASH --> SECURITY["/security"]
+    DASH --> HOSPITALS["/hospitals (admin)"]
+    DASH --> REGISTER["/register (admin)"]
+
+    style DASH fill:#86efac
+    style LOGIN fill:#93c5fd
+    style LANDING fill:#fef08a
+```
+
+---
+
+## Component Tree
+
+```mermaid
+graph TD
+    APP[App] --> EB[ErrorBoundary]
+    EB --> NSP[NetworkStatusProvider]
+    NSP --> AUTHP[AuthProvider]
+    AUTHP --> ROUTER[BrowserRouter]
+
+    ROUTER --> ROUTES[AppRoutes]
+    ROUTES --> ML[MainLayout]
+    ML --> NAV[Navbar]
+    ML --> NSB[NetworkStatusBanner]
+    ML --> OUTLET[Page Content]
+
+    NAV --> LOGO[Hospital Logo + Name]
+    NAV --> LINKS[Nav Links]
+    NAV --> DROPDOWN[User Dropdown]
+    NAV --> PILL[NetworkStatusPill]
+
+    ROUTES --> LOGIN_P[Login]
+    ROUTES --> DASH_P[Dashboard]
+    ROUTES --> TOTP_P[TOTP Verification]
+    ROUTES --> SETUP_P[TOTP Setup]
+    ROUTES --> CHPW_P[Change Password]
+    ROUTES --> PATIENT_P[Patient Details]
+    ROUTES --> FOLDER_P[Folder View]
+    ROUTES --> SEC_P[Security Settings]
+    ROUTES --> REG_P[Hospital Registration]
+
+    style APP fill:#c4b5fd
+    style ML fill:#a5b4fc
+```
+
+---
+
+## Directory Structure
 
 ```
 frontend/
 ├── src/
-│   ├── components/        # Reusable UI components
-│   │   ├── TextInput.tsx
-│   │   ├── OtpInput.tsx
-│   │   ├── Button.tsx
-│   │   ├── LogoHeader.tsx
-│   │   ├── ErrorMessage.tsx
-│   │   ├── CountdownTimer.tsx
-│   │   └── ProtectedRoute.tsx
-│   ├── pages/             # Page components
-│   │   ├── Login.tsx
-│   │   ├── OtpVerification.tsx
-│   │   └── Dashboard.tsx
-│   ├── services/          # API communication
-│   │   ├── api.ts         # Axios instance
-│   │   └── authService.ts # Auth API calls
-│   ├── hooks/             # Custom React hooks
-│   │   └── useAuth.ts     # Auth context & hook
-│   ├── utils/             # Utility functions
-│   │   └── validator.ts   # Form validation
-│   ├── config/            # Configuration
-│   │   └── constants.ts   # App constants
-│   ├── types/             # TypeScript definitions
-│   │   └── auth.ts        # Auth types
-│   ├── routes/            # Route definitions
-│   │   └── AppRoutes.tsx
-│   ├── globals.css        # Global styles
-│   ├── App.tsx            # Main App component
-│   └── main.tsx           # Entry point
-├── index.html
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
+│   ├── components/
+│   │   ├── Navbar.tsx              # Top navigation + user menu
+│   │   ├── Button.tsx              # primary | secondary | danger | ghost
+│   │   ├── TextInput.tsx           # Input with icons and error state
+│   │   ├── OtpInput.tsx            # 6-digit TOTP input, auto-submit
+│   │   ├── ErrorMessage.tsx        # Dismissible alert banners
+│   │   ├── ErrorBoundary.tsx       # React error boundary
+│   │   ├── LogoHeader.tsx          # Branded header
+│   │   ├── ProtectedRoute.tsx      # Auth guard
+│   │   ├── AdminRoute.tsx          # Admin role guard
+│   │   ├── NetworkStatus.tsx       # Provider + pill + banner
+│   │   ├── TwoFactorSettings.tsx   # 2FA setup flow
+│   │   ├── RotationSetupModal.tsx  # 2FA key rotation
+│   │   ├── BackupCodesModal.tsx    # Display recovery codes
+│   │   ├── PasswordConfirmModal.tsx
+│   │   ├── HospitalProfileModal.tsx
+│   │   ├── SkeletonLoader.tsx      # Loading placeholders
+│   │   └── CountdownTimer.tsx
+│   ├── pages/
+│   │   ├── LandingPage.tsx         # Marketing homepage
+│   │   ├── Login.tsx               # Email/phone/username login
+│   │   ├── Dashboard.tsx           # Patient list + search + export
+│   │   ├── TotpVerification.tsx    # 6-digit TOTP during login
+│   │   ├── TotpSetupMandatory.tsx  # QR -> verify -> backup codes
+│   │   ├── ChangePassword.tsx      # First-login password reset
+│   │   ├── PatientDetails.tsx      # Patient info + folder grid
+│   │   ├── FolderView.tsx          # Files in folder + download
+│   │   ├── SecuritySettings.tsx    # 2FA management + rotation
+│   │   ├── HospitalRegistration.tsx # Admin: create hospital
+│   │   └── HospitalsList.tsx       # Admin: view all hospitals
+│   ├── hooks/
+│   │   └── useAuth.tsx             # AuthContext with full auth flow
+│   ├── services/
+│   │   ├── api.ts                  # Axios instance + interceptors
+│   │   ├── authService.ts          # Auth API calls + TOTP
+│   │   ├── patientApi.ts           # Patient/file API calls
+│   │   └── hospitalService.ts      # Hospital API calls
+│   ├── layouts/
+│   │   └── MainLayout.tsx          # Navbar + NetworkBanner + Outlet
+│   ├── routes/
+│   │   └── AppRoutes.tsx           # Route definitions
+│   ├── types/
+│   │   └── auth.ts                 # TypeScript interfaces
+│   ├── config/
+│   │   └── constants.ts            # API_URL, OTP config
+│   ├── utils/
+│   │   ├── validator.ts            # Email/phone validation
+│   │   └── persistentLogger.ts     # Client-side error logging
+│   ├── App.tsx                     # Root: ErrorBoundary -> Providers -> Router
+│   └── main.tsx                    # React DOM entry point
+├── Dockerfile                      # Multi-stage: Node -> Nginx
+├── nginx.conf                      # Reverse proxy + SPA fallback
+├── .dockerignore
 ├── tailwind.config.js
-├── postcss.config.js
-└── README.md
+├── vite.config.ts
+├── tsconfig.json
+└── package.json
 ```
 
-## Installation
+---
 
-### Prerequisites
+## Token Management
 
-- Node.js v16+
-- npm or yarn
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant P as Page
+    participant H as useAuth Hook
+    participant A as authService
+    participant API as Axios
+    participant B as Backend
 
-### Steps
+    U->>P: Submit login
+    P->>H: login(identifier, password)
+    H->>A: authService.login()
+    A->>API: POST /api/auth/login
+    B-->>API: { requireTotp, tempToken }
+    A->>A: storeTempToken(sessionStorage)
+    H-->>P: Navigate to /verify-totp
 
-1. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-2. **Setup environment variables**
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   Edit `.env`:
-
-   ```
-   VITE_API_URL=http://localhost:5000
-   VITE_APP_NAME="Hospital Management System"
-   ```
-
-3. **Start development server**
-
-   ```bash
-   npm run dev
-   ```
-
-   Opens http://localhost:3000
-
-4. **Build for production**
-   ```bash
-   npm run build
-   ```
-
-## Features
-
-### Authentication Flow
-
-1. **Login Page** - Email and password entry
-2. **OTP Verification** - 6-digit OTP with auto-verification
-3. **Protected Routes** - Dashboard accessible only after authentication
-4. **Token Management** - Automatic token refresh and storage
-
-### Components
-
-#### TextInput
-
-- Email/password input with validation
-- Error messages
-- Icon support
-- Accessible and responsive
-
-#### OtpInput
-
-- 6 separate input boxes
-- Auto-focus on next input
-- Backspace to delete
-- Paste support
-- Auto-verification when complete
-
-#### Button
-
-- Multiple variants (primary, secondary, danger, ghost)
-- Loading states with spinner
-- Full-width option
-- Icon support
-
-#### CountdownTimer
-
-- Resend OTP timer
-- Countdown display (30-60 seconds)
-- Resend button on expiry
-
-#### ErrorMessage
-
-- Error, warning, and info types
-- Dismissible alerts
-- Icons and colors
-
-### Hooks
-
-#### useAuth
-
-- Authentication state management
-- Login, OTP verification, logout
-- Token storage and retrieval
-- Error handling
-
-### Services
-
-#### authService
-
-- `login(email, password)` - Login request
-- `verifyOtp(otp)` - OTP verification
-- `resendOtp()` - Resend OTP
-- `refreshToken(token)` - Token refresh
-- `logout(token)` - Logout
-- Token management utilities
-
-### Security Features
-
-✅ **Token Management**: Auto-refresh access tokens
-✅ **Secure Storage**: Tokens in localStorage with JWT
-✅ **Error Handling**: Centralized error management
-✅ **Input Validation**: Real-time form validation
-✅ **CORS Enabled**: Secure cross-origin requests
-✅ **TypeScript**: Full type safety
-✅ **Protected Routes**: Route-level access control
-
-## API Integration
-
-### Login
-
-```typescript
-POST / api / auth / login;
-Body: {
-  email, password;
-}
-Response: {
-  tempToken, phone, expiresAt, hospitalName, logoUrl;
-}
+    Note over API,B: Later - Access Token Expires
+    API->>B: Any request (expired token)
+    B-->>API: 401 Unauthorized
+    API->>API: Queue failed request
+    API->>B: POST /api/auth/refresh-token
+    B-->>API: New access token (httpOnly cookie)
+    API->>API: Retry all queued requests
+    API-->>P: Original response delivered
 ```
 
-### Verify OTP
+---
 
-```typescript
-POST / api / auth / verify - otp;
-Headers: Authorization: Bearer<tempToken>;
-Body: {
-  otp;
-}
-Response: {
-  accessToken, refreshToken, hospital;
-}
+## Network Status
+
+```mermaid
+stateDiagram-v2
+    [*] --> Online: App loads
+
+    Online --> Offline: Health check fails
+    Online --> Offline: navigator.onLine = false
+
+    Offline --> Reconnecting: navigator.onLine = true
+    Reconnecting --> Online: Health check passes
+    Reconnecting --> Offline: Health check fails
+
+    state Online {
+        [*] --> Checking
+        Checking --> OK: GET /api/health 200
+        OK --> Checking: Every 30s
+    }
 ```
 
-### Refresh Token
+| Indicator | Location | Purpose |
+|-----------|----------|---------|
+| **NetworkStatusPill** | Navbar (top-right) | Green/yellow/red dot |
+| **NetworkStatusBanner** | Below navbar | Full-width offline warning |
 
-```typescript
-POST / api / auth / refresh - token;
-Body: {
-  refreshToken;
-}
-Response: {
-  accessToken, refreshToken;
-}
-```
+---
 
-## Demo Credentials
+## Routes
 
-```
-Email: admin@citymedical.com
-Password: Password123
+| Path | Component | Auth | Description |
+|------|-----------|------|-------------|
+| `/` | LandingPage | Public | Marketing homepage |
+| `/login` | Login | Public | Credential entry |
+| `/verify-totp` | TotpVerification | Temp Token | TOTP code input |
+| `/setup-2fa` | TotpSetupMandatory | Temp/Access | 2FA enrollment |
+| `/change-password` | ChangePassword | Temp Token | First-login password reset |
+| `/dashboard` | Dashboard | Protected | Patient list + search |
+| `/patients/:id` | PatientDetails | Protected | Patient info + folders |
+| `/patients/:id/folders/:name` | FolderView | Protected | Files in folder |
+| `/security` | SecuritySettings | Protected | 2FA management |
+| `/hospitals` | HospitalsList | Admin | All hospitals |
+| `/register` | HospitalRegistration | Admin | Create hospital |
 
-Email: admin@greenvalley.com
-Password: Password123
+---
 
-Email: admin@royalcare.com
-Password: Password123
-```
+## Key Features
 
-## Development
+### Multi-Step Authentication
+- Unified identifier field (auto-detects email/phone/username)
+- TOTP verification with 6-digit auto-submit input
+- Backup code recovery for lost devices
+- Mandatory 2FA setup after registration
+- Password change enforcement on first login
 
-### Running Development Server
+### Patient Management
+- Paginated patient list (10 per page) with search (350ms debounce)
+- Folder-based document organization (8 predefined categories)
+- Bulk download as PDF or ZIP
+- Export all patient data
+
+### Real-Time Connectivity
+- Periodic health checks to backend (every 30s)
+- Visual indicators for online/offline/reconnecting states
+- Graceful degradation when backend unreachable
+
+---
+
+## Setup
+
+### Development
 
 ```bash
-npm run dev
+cd frontend
+npm install
+npm run dev       # Vite dev server on http://localhost:5173
 ```
 
-Auto-reload on file changes.
+### Environment Variables
 
-### Type Checking
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_URL` | `/api` | Backend API base URL |
+| `VITE_APP_NAME` | Hospital Management System | App title |
 
-```bash
-npm run type-check
-```
-
-### Building for Production
-
-```bash
-npm run build
-npm run preview
-```
-
-## Browser Support
-
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Mobile browsers
-
-## Performance
-
-- Code splitting with React Router
-- Lazy loading components
-- Optimized images
-- CSS purging with TailwindCSS
-- Minified production build
-
-## Testing
-
-API can be tested using Postman or cURL with sample requests provided in backend README.
-
-## Deployment
-
-### Vercel
+### Build
 
 ```bash
-npm i -g vercel
-vercel
-```
-
-### Netlify
-
-```bash
-npm run build
-# Connect to Netlify via GitHub
+npm run build       # Production build -> dist/
+npm run type-check  # TypeScript validation
+npm run lint        # ESLint check
 ```
 
 ### Docker
 
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY . .
-RUN npm install && npm run build
-EXPOSE 3000
-CMD ["npm", "run", "preview"]
+```bash
+docker build \
+  --build-arg VITE_API_URL=/api \
+  --build-arg VITE_APP_NAME="Hospital Management System" \
+  -t hospital-frontend .
 ```
 
-## Troubleshooting
+Multi-stage build: Node 20 Alpine (build) -> Nginx 1.25 Alpine (serve)
 
-### CORS Errors
+### Nginx
 
-- Verify backend CORS configuration
-- Check `VITE_API_URL` in `.env`
+- Proxies `/api/*` to `http://backend:5000`
+- SPA fallback: all routes serve `index.html`
+- Gzip compression enabled
+- Static assets cached 1 year
+- Extended timeouts (300s) for export endpoints
 
-### Token Refresh Issues
+---
 
-- Ensure refresh token is stored correctly
-- Check token expiry times
+## Tech Stack
 
-### OTP Not Working
-
-- Verify backend is running
-- Check browser console for errors
-- Verify API URL configuration
-
-## Contributing
-
-1. Create feature branch
-2. Make changes
-3. Test thoroughly
-4. Submit pull request
-
-## License
-
-MIT License - See LICENSE file
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| React | 18.2.0 | UI framework |
+| TypeScript | 5.2.0 | Type safety |
+| Vite | 4.5.0 | Build tool + HMR dev server |
+| Tailwind CSS | 3.3.0 | Utility-first styling |
+| React Router | 6.15.0 | Client-side routing |
+| Axios | 1.5.0 | HTTP client + interceptors |
+| Headless UI | 2.2.9 | Accessible UI components |
