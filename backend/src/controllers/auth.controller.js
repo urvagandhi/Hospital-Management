@@ -111,13 +111,27 @@ export const changePassword = async (req, res) => {
  */
 export const registerHospital = async (req, res) => {
   try {
-    const { hospitalName, email, phoneNumber, address } = req.body;
+    const { hospitalName, email, phoneNumber, address, username } = req.body;
 
     // Validate inputs
     if (!hospitalName || !email || !phoneNumber || !address) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
+      });
+    }
+
+    // Normalize phone: strip spaces/dashes, prepend +91 if bare 10 digits
+    const phoneDigits = phoneNumber.replace(/[^\d]/g, "");
+    let normalizedPhone;
+    if (phoneDigits.length === 10) {
+      normalizedPhone = `+91${phoneDigits}`;
+    } else if (phoneNumber.startsWith("+") && phoneDigits.length === 12 && phoneDigits.startsWith("91")) {
+      normalizedPhone = `+${phoneDigits}`;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number must be 10 digits",
       });
     }
 
@@ -129,13 +143,33 @@ export const registerHospital = async (req, res) => {
       });
     }
 
-    // Check if hospital already exists
+    // Check if hospital already exists (email)
     const existingHospital = await Hospital.findOne({ email: email.toLowerCase() });
     if (existingHospital) {
       return res.status(409).json({
         success: false,
         message: "Hospital with this email already exists",
       });
+    }
+
+    // Check if phone already taken
+    const existingPhone = await Hospital.findOne({ phone: normalizedPhone });
+    if (existingPhone) {
+      return res.status(409).json({
+        success: false,
+        message: "This phone number is already registered",
+      });
+    }
+
+    // Check if username already taken (if provided)
+    if (username) {
+      const existingUsername = await Hospital.findOne({ username: username.toLowerCase() });
+      if (existingUsername) {
+        return res.status(409).json({
+          success: false,
+          message: "This username is already taken",
+        });
+      }
     }
 
     // Convert logo to base64 data URL for storage
@@ -179,7 +213,7 @@ export const registerHospital = async (req, res) => {
       hospitalName,
       email: email.toLowerCase(),
       passwordHash,
-      phone: phoneNumber,
+      phone: normalizedPhone,
       address,
       logoUrl: logoBase64,
       isActive: true,
@@ -188,6 +222,7 @@ export const registerHospital = async (req, res) => {
       // Mark that admin-set password must be changed on first login
       mustChangePassword: true,
       failedLoginAttempts: 0,
+      ...(username ? { username: username.toLowerCase() } : {}),
     });
 
     // Audit Log
@@ -449,7 +484,15 @@ export const login = async (req, res) => {
     } else if (/^\+?\d{7,15}$/.test(loginId.replace(/[\s\-()]/g, ""))) {
       // Phone (starts with + or is all digits, 7-15 chars)
       const phoneClean = loginId.replace(/[^\d+]/g, "");
-      query = { phone: phoneClean };
+      // Normalize: bare 10-digit → +91XXXXXXXXXX
+      const phoneDigitsOnly = phoneClean.replace(/[^\d]/g, "");
+      let normalizedPhone = phoneClean;
+      if (phoneDigitsOnly.length === 10) {
+        normalizedPhone = `+91${phoneDigitsOnly}`;
+      } else if (phoneDigitsOnly.length === 12 && phoneDigitsOnly.startsWith("91")) {
+        normalizedPhone = `+${phoneDigitsOnly}`;
+      }
+      query = { phone: normalizedPhone };
     } else {
       // Username
       query = { username: loginId.toLowerCase() };

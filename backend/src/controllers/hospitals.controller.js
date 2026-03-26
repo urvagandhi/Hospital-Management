@@ -102,13 +102,27 @@ export const getHospitalById = async (req, res) => {
 export const updateHospital = async (req, res) => {
   try {
     const { id } = req.params;
-    const { hospitalName, email, phone, address, isActive } = req.body;
+    const { hospitalName, email, phone, address, isActive, username } = req.body;
 
     // Validate inputs
     if (!hospitalName || !email || !phone || !address) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
+      });
+    }
+
+    // Normalize phone: strip formatting, prepend +91 if bare 10 digits
+    const phoneDigits = phone.replace(/[^\d]/g, "");
+    let normalizedPhone;
+    if (phoneDigits.length === 10) {
+      normalizedPhone = `+91${phoneDigits}`;
+    } else if (phone.startsWith("+") && phoneDigits.length === 12 && phoneDigits.startsWith("91")) {
+      normalizedPhone = `+${phoneDigits}`;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number must be 10 digits",
       });
     }
 
@@ -136,9 +150,9 @@ export const updateHospital = async (req, res) => {
     }
 
     // Check if phone is already taken by another hospital
-    if (phone !== hospital.phone) {
+    if (normalizedPhone !== hospital.phone) {
       const existingPhone = await Hospital.findOne({
-        phone: phone,
+        phone: normalizedPhone,
         _id: { $ne: id },
       });
       if (existingPhone) {
@@ -149,11 +163,34 @@ export const updateHospital = async (req, res) => {
       }
     }
 
+    // Check if username is already taken by another hospital
+    if (username !== undefined) {
+      const usernameVal = username.trim().toLowerCase();
+      if (usernameVal && usernameVal !== (hospital.username || "")) {
+        const existingUsername = await Hospital.findOne({
+          username: usernameVal,
+          _id: { $ne: id },
+        });
+        if (existingUsername) {
+          return res.status(409).json({
+            success: false,
+            message: "This username is already taken",
+          });
+        }
+      }
+    }
+
     // Update hospital
     hospital.hospitalName = hospitalName;
     hospital.email = email.toLowerCase();
-    hospital.phone = phone;
+    hospital.phone = normalizedPhone;
     hospital.address = address;
+
+    // Update username (allow setting or clearing)
+    if (username !== undefined) {
+      const usernameVal = username.trim().toLowerCase();
+      hospital.username = usernameVal || undefined;
+    }
 
     // Only admins can change isActive status
     if (!req.isSelf && isActive !== undefined) {
@@ -185,6 +222,8 @@ export const updateHospital = async (req, res) => {
         message = "This email address is already registered by another hospital";
       } else if (field === "phone") {
         message = "This phone number is already registered by another hospital";
+      } else if (field === "username") {
+        message = "This username is already taken";
       }
 
       return res.status(409).json({

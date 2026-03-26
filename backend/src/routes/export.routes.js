@@ -8,7 +8,7 @@ import { body } from "express-validator";
 import { verifyAccessToken, verifyAdmin } from "../middleware/auth.js";
 import { handleValidationErrors } from "../middleware/validateRequest.js";
 import rateLimit from "express-rate-limit";
-import { exportArchive } from "../controllers/export.controller.js";
+import { exportArchive, exportPatientsPdf } from "../controllers/export.controller.js";
 
 const router = express.Router();
 
@@ -38,6 +38,17 @@ router.post(
   ],
   handleValidationErrors,
   exportArchive,
+);
+
+/**
+ * GET /api/export/patients/pdf
+ * Stream patients list directly as PDF
+ */
+router.get(
+  "/patients/pdf",
+  verifyAccessToken,
+  exportLimiter,
+  exportPatientsPdf,
 );
 
 export default router;

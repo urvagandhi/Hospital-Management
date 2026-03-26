@@ -1,7 +1,6 @@
 /**
  * Export Controller
- * Generates PDFs for each module, compresses into a single ZIP archive,
- * and streams it to the client.
+ * Generates well-formatted PDF reports and ZIP archives
  */
 
 import archiver from "archiver";
@@ -9,9 +8,294 @@ import PDFDocument from "pdfkit";
 import Patient from "../models/Patient.js";
 import Hospital from "../models/Hospital.js";
 
+// ─── Layout constants ───────────────────────────────────────────
+const MARGIN = 40;
+const PAGE_W = 612; // US Letter
+const PAGE_H = 792;
+const CONTENT_W = PAGE_W - MARGIN * 2;
+const TABLE_RIGHT = PAGE_W - MARGIN;
+
+// Column definitions: [label, x, width, align]
+const COLUMNS = [
+  { label: "#",        x: MARGIN,      w: 24,  align: "left"  },
+  { label: "Patient Name", x: MARGIN + 24, w: 140, align: "left"  },
+  { label: "MRN",      x: 204,         w: 80,  align: "left"  },
+  { label: "DOB",      x: 284,         w: 68,  align: "left"  },
+  { label: "Status",   x: 352,         w: 55,  align: "left"  },
+  { label: "Phone",    x: 407,         w: 90,  align: "left"  },
+  { label: "Registered", x: 497,       w: 75,  align: "left"  },
+];
+
+const ROW_H = 22;
+const HEADER_ROW_H = 26;
+const COLORS = {
+  primary:     "#1e40af",
+  primaryLight:"#dbeafe",
+  headerBg:    "#1e3a5f",
+  headerText:  "#ffffff",
+  rowAlt:      "#f8fafc",
+  rowNormal:   "#ffffff",
+  border:      "#e2e8f0",
+  textDark:    "#1e293b",
+  textMuted:   "#64748b",
+  active:      "#059669",
+  inactive:    "#dc2626",
+  archived:    "#6b7280",
+};
+
+// ─── Helpers ────────────────────────────────────────────────────
+
+function drawRect(doc, x, y, w, h, color) {
+  doc.save().rect(x, y, w, h).fill(color).restore();
+}
+
+function drawTableHeader(doc, y) {
+  // Dark header row
+  drawRect(doc, MARGIN, y, CONTENT_W, HEADER_ROW_H, COLORS.headerBg);
+
+  const textY = y + (HEADER_ROW_H - 9) / 2;
+  doc.font("Helvetica-Bold").fontSize(7.5).fillColor(COLORS.headerText);
+
+  for (const col of COLUMNS) {
+    doc.text(col.label.toUpperCase(), col.x + 5, textY, {
+      width: col.w - 10,
+      align: col.align,
+    });
+  }
+
+  return y + HEADER_ROW_H;
+}
+
+function drawTableRow(doc, y, data, index) {
+  const isAlt = index % 2 === 1;
+  drawRect(doc, MARGIN, y, CONTENT_W, ROW_H, isAlt ? COLORS.rowAlt : COLORS.rowNormal);
+
+  // Bottom border
+  doc.save()
+    .moveTo(MARGIN, y + ROW_H)
+    .lineTo(TABLE_RIGHT, y + ROW_H)
+    .lineWidth(0.5)
+    .stroke(COLORS.border)
+    .restore();
+
+  const textY = y + (ROW_H - 8) / 2;
+
+  // Row number
+  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.textMuted);
+  doc.text(String(data.index), COLUMNS[0].x + 5, textY, { width: COLUMNS[0].w - 10 });
+
+  // Patient name
+  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(COLORS.textDark);
+  doc.text(data.name, COLUMNS[1].x + 5, textY, { width: COLUMNS[1].w - 10, lineBreak: false });
+
+  // MRN
+  doc.font("Helvetica").fontSize(8).fillColor(COLORS.textMuted);
+  doc.text(data.mrn, COLUMNS[2].x + 5, textY, { width: COLUMNS[2].w - 10, lineBreak: false });
+
+  // DOB
+  doc.text(data.dob, COLUMNS[3].x + 5, textY, { width: COLUMNS[3].w - 10, lineBreak: false });
+
+  // Status badge
+  const statusColor = data.status === "active" ? COLORS.active : data.status === "archived" ? COLORS.archived : COLORS.inactive;
+  const statusText = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+  const badgeW = doc.widthOfString(statusText) + 10;
+  const badgeX = COLUMNS[4].x + 5;
+  const badgeY = y + (ROW_H - 12) / 2;
+
+  // Badge background
+  doc.save().roundedRect(badgeX, badgeY, badgeW, 12, 3).fill(statusColor + "18").restore();
+  doc.font("Helvetica-Bold").fontSize(7).fillColor(statusColor);
+  doc.text(statusText, badgeX, badgeY + 2.5, { width: badgeW, align: "center" });
+
+  // Phone
+  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.textMuted);
+  doc.text(data.phone, COLUMNS[5].x + 5, textY, { width: COLUMNS[5].w - 10, lineBreak: false });
+
+  // Registered date
+  doc.text(data.registered, COLUMNS[6].x + 5, textY, { width: COLUMNS[6].w - 10, lineBreak: false });
+
+  return y + ROW_H;
+}
+
+function drawPageHeader(doc, hospitalName, pageNum) {
+  // Blue accent bar at top
+  drawRect(doc, 0, 0, PAGE_W, 4, COLORS.primary);
+
+  if (pageNum === 1) {
+    // Title section on first page
+    doc.font("Helvetica-Bold").fontSize(20).fillColor(COLORS.textDark);
+    doc.text(hospitalName, MARGIN, 30, { width: CONTENT_W });
+
+    doc.font("Helvetica").fontSize(10).fillColor(COLORS.textMuted);
+    doc.text("Patient Records Report", MARGIN, 54);
+
+    // Generation info - right aligned
+    const dateStr = new Date().toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" });
+    const timeStr = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+    doc.font("Helvetica").fontSize(8).fillColor(COLORS.textMuted);
+    doc.text(`Generated: ${dateStr}, ${timeStr}`, MARGIN, 36, { width: CONTENT_W, align: "right" });
+
+    // Separator
+    doc.save()
+      .moveTo(MARGIN, 72)
+      .lineTo(TABLE_RIGHT, 72)
+      .lineWidth(1)
+      .stroke(COLORS.border)
+      .restore();
+
+    return 84;
+  } else {
+    // Continuation header
+    doc.font("Helvetica").fontSize(8).fillColor(COLORS.textMuted);
+    doc.text(`${hospitalName} — Patient Records (continued)`, MARGIN, 16, { width: CONTENT_W });
+    return 32;
+  }
+}
+
+function drawPageFooter(doc, pageNum, totalPatients) {
+  const footerY = PAGE_H - 30;
+
+  doc.save()
+    .moveTo(MARGIN, footerY - 5)
+    .lineTo(TABLE_RIGHT, footerY - 5)
+    .lineWidth(0.5)
+    .stroke(COLORS.border)
+    .restore();
+
+  doc.font("Helvetica").fontSize(7).fillColor(COLORS.textMuted);
+  doc.text(`Total patients: ${totalPatients}`, MARGIN, footerY, { width: CONTENT_W / 2 });
+  doc.text(`Page ${pageNum}`, MARGIN + CONTENT_W / 2, footerY, { width: CONTENT_W / 2, align: "right" });
+}
+
+// ─── Main PDF export ────────────────────────────────────────────
+
+export const exportPatientsPdf = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+
+    if (!hospitalId) {
+      return res.status(401).json({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
+    }
+
+    const hospital = await Hospital.findById(hospitalId).select("hospitalName").lean();
+    if (!hospital) {
+      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Hospital not found" } });
+    }
+
+    req.setTimeout(300000);
+    res.setTimeout(300000);
+
+    // Fetch all patients first for accurate count
+    const allPatients = await Patient.find({ hospitalId })
+      .select("patientName email phone medicalRecordNumber dateOfBirth status createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const totalPatients = allPatients.length;
+
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const filename = `patients_${dateStr}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    const doc = new PDFDocument({ margin: MARGIN, size: "LETTER" });
+    doc.pipe(res);
+
+    let pageNum = 1;
+    let y = drawPageHeader(doc, hospital.hospitalName, pageNum);
+
+    if (totalPatients === 0) {
+      doc.font("Helvetica").fontSize(12).fillColor(COLORS.textMuted);
+      doc.text("No patient records found.", MARGIN, y + 20, { width: CONTENT_W, align: "center" });
+      drawPageFooter(doc, pageNum, 0);
+      doc.end();
+      return;
+    }
+
+    // Summary cards row
+    const activeCount = allPatients.filter((p) => p.status === "active").length;
+    const inactiveCount = allPatients.filter((p) => p.status === "inactive").length;
+    const archivedCount = allPatients.filter((p) => p.status === "archived").length;
+
+    const cardW = (CONTENT_W - 16) / 3;
+    const cards = [
+      { label: "Total Patients", value: totalPatients, color: COLORS.primary },
+      { label: "Active", value: activeCount, color: COLORS.active },
+      { label: "Inactive / Archived", value: `${inactiveCount} / ${archivedCount}`, color: COLORS.archived },
+    ];
+
+    for (let i = 0; i < cards.length; i++) {
+      const cx = MARGIN + i * (cardW + 8);
+      drawRect(doc, cx, y, cardW, 42, cards[i].color + "0d");
+
+      // Card border
+      doc.save().roundedRect(cx, y, cardW, 42, 4).lineWidth(0.5).stroke(cards[i].color + "30").restore();
+
+      doc.font("Helvetica-Bold").fontSize(16).fillColor(cards[i].color);
+      doc.text(String(cards[i].value), cx + 12, y + 8, { width: cardW - 24 });
+
+      doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.textMuted);
+      doc.text(cards[i].label, cx + 12, y + 28, { width: cardW - 24 });
+    }
+
+    y += 54;
+
+    // Table
+    y = drawTableHeader(doc, y);
+
+    for (let i = 0; i < allPatients.length; i++) {
+      const p = allPatients[i];
+
+      // Check if we need a new page (leave room for footer)
+      if (y + ROW_H > PAGE_H - 45) {
+        drawPageFooter(doc, pageNum, totalPatients);
+        doc.addPage();
+        pageNum++;
+        y = drawPageHeader(doc, hospital.hospitalName, pageNum);
+        y = drawTableHeader(doc, y);
+      }
+
+      const dob = p.dateOfBirth
+        ? new Date(p.dateOfBirth).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })
+        : "—";
+
+      y = drawTableRow(doc, y, {
+        index: i + 1,
+        name: p.patientName,
+        mrn: p.medicalRecordNumber || "—",
+        dob,
+        status: p.status || "active",
+        phone: p.phone || "—",
+        registered: new Date(p.createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
+      }, i);
+    }
+
+    // Bottom border of table
+    doc.save()
+      .moveTo(MARGIN, y)
+      .lineTo(TABLE_RIGHT, y)
+      .lineWidth(1)
+      .stroke(COLORS.border)
+      .restore();
+
+    drawPageFooter(doc, pageNum, totalPatients);
+    doc.end();
+  } catch (error) {
+    console.error("[Export] PDF error:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        error: { code: "EXPORT_ERROR", message: "PDF export failed. Please try again." },
+      });
+    }
+  }
+};
+
+// ─── ZIP archive (legacy, kept for multi-module future use) ─────
+
 /**
  * POST /api/export/archive
- * Body: { modules: ["patients", "billing", "reports", ...] }
+ * Body: { modules: ["patients"] }
  */
 export const exportArchive = async (req, res) => {
   try {
@@ -22,23 +306,19 @@ export const exportArchive = async (req, res) => {
       return res.status(401).json({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
     }
 
-    // Check role (admin or hospital — both can export their own data)
     const hospital = await Hospital.findById(hospitalId).select("hospitalName role").lean();
     if (!hospital) {
       return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Hospital not found" } });
     }
 
-    // Set extended timeout for this endpoint (5 minutes)
     req.setTimeout(300000);
     res.setTimeout(300000);
 
-    // Set response headers for ZIP download
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const filename = `hospital_export_${dateStr}.zip`;
     res.setHeader("Content-Type", "application/zip");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
-    // Create ZIP archive, pipe directly to response (no disk buffering)
     const archive = archiver("zip", { zlib: { level: 6 } });
 
     archive.on("error", (err) => {
@@ -50,7 +330,6 @@ export const exportArchive = async (req, res) => {
 
     archive.pipe(res);
 
-    // Process each module
     for (const moduleName of modules) {
       const pdfBuffer = await generateModulePdf(moduleName, hospitalId, hospital.hospitalName);
       const safeModuleName = moduleName.replace(/[^a-z0-9_-]/gi, "_");
@@ -70,7 +349,7 @@ export const exportArchive = async (req, res) => {
 };
 
 /**
- * Generate a PDF buffer for a specific module
+ * Generate a PDF buffer for a specific module (used by ZIP archive)
  */
 async function generateModulePdf(moduleName, hospitalId, hospitalName) {
   return new Promise(async (resolve, reject) => {
@@ -82,7 +361,6 @@ async function generateModulePdf(moduleName, hospitalId, hospitalName) {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
-      // Header
       doc.fontSize(18).text(`${hospitalName} — ${formatModuleName(moduleName)}`, { align: "center" });
       doc.moveDown(0.5);
       doc.fontSize(10).fillColor("grey").text(`Generated: ${new Date().toLocaleString()}`, { align: "center" });
@@ -91,44 +369,31 @@ async function generateModulePdf(moduleName, hospitalId, hospitalName) {
 
       switch (moduleName.toLowerCase()) {
         case "patients": {
-          const PAGE_SIZE = 100;
-          let skip = 0;
-          let totalAdded = 0;
+          const patients = await Patient.find({ hospitalId })
+            .select("patientName email phone medicalRecordNumber status createdAt")
+            .sort({ createdAt: -1 })
+            .lean();
 
-          while (true) {
-            const patients = await Patient.find({ hospitalId })
-              .select("patientName email phone medicalRecordNumber status createdAt")
-              .sort({ createdAt: -1 })
-              .skip(skip)
-              .limit(PAGE_SIZE)
-              .lean();
+          if (patients.length === 0) {
+            doc.fontSize(12).text("No records found for Patients", { italic: true });
+            break;
+          }
 
-            if (patients.length === 0 && totalAdded === 0) {
-              doc.fontSize(12).text("No records found for Patients", { italic: true });
-              break;
-            }
-            if (patients.length === 0) break;
-
-            for (const p of patients) {
-              if (doc.y > 700) doc.addPage();
-              doc.fontSize(11).text(`${p.patientName}`, { continued: true });
-              doc.fontSize(9).fillColor("grey").text(
-                `  MRN: ${p.medicalRecordNumber || "N/A"} | Status: ${p.status || "active"} | Created: ${new Date(p.createdAt).toLocaleDateString()}`,
-              );
-              doc.fillColor("black");
-              if (p.email) doc.fontSize(9).text(`  Email: ${p.email}`);
-              if (p.phone) doc.fontSize(9).text(`  Phone: ${p.phone}`);
-              doc.moveDown(0.3);
-              totalAdded++;
-            }
-
-            skip += PAGE_SIZE;
+          for (const p of patients) {
+            if (doc.y > 700) doc.addPage();
+            doc.fontSize(11).text(p.patientName, { continued: true });
+            doc.fontSize(9).fillColor("grey").text(
+              `  MRN: ${p.medicalRecordNumber || "N/A"} | Status: ${p.status || "active"} | Created: ${new Date(p.createdAt).toLocaleDateString()}`,
+            );
+            doc.fillColor("black");
+            if (p.email) doc.fontSize(9).text(`  Email: ${p.email}`);
+            if (p.phone) doc.fontSize(9).text(`  Phone: ${p.phone}`);
+            doc.moveDown(0.3);
           }
           break;
         }
 
         default: {
-          // For any unrecognized module, include a "No records" placeholder
           doc.fontSize(12).text(`No records found for ${formatModuleName(moduleName)}`, { italic: true });
           break;
         }
@@ -145,4 +410,4 @@ function formatModuleName(name) {
   return name.charAt(0).toUpperCase() + name.slice(1).replace(/[_-]/g, " ");
 }
 
-export default { exportArchive };
+export default { exportArchive, exportPatientsPdf };

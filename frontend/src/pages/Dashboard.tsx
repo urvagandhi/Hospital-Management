@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
 import { persistentLogger } from "../utils/persistentLogger";
 
@@ -14,6 +15,7 @@ interface Patient {
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { state: authState } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -65,17 +67,16 @@ const Dashboard: React.FC = () => {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const response = await api.post("/export/archive", { modules: ["patients"] }, {
+      const response = await api.get("/export/patients/pdf", {
         responseType: "blob",
         timeout: 300000,
       });
-      // Trigger download
-      const blob = new Blob([response.data as BlobPart], { type: "application/zip" });
+      const blob = new Blob([response.data as BlobPart], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
       a.href = url;
-      a.download = `hospital_export_${dateStr}.zip`;
+      a.download = `patients_${dateStr}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -88,27 +89,77 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const stats = useMemo(() => {
+    const activeCount = patients.filter((p) => p.status === "active").length;
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const recentCount = patients.filter((p) => new Date(p.createdAt) >= weekAgo).length;
+    return { activeCount, recentCount };
+  }, [patients]);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  }, []);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const avatarColors = [
+    "bg-blue-500",
+    "bg-emerald-500",
+    "bg-violet-500",
+    "bg-amber-500",
+    "bg-rose-500",
+    "bg-cyan-500",
+    "bg-indigo-500",
+    "bg-teal-500",
+  ];
+
+  const getAvatarColor = (name: string) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return avatarColors[Math.abs(hash) % avatarColors.length];
+  };
+
+  const totalPages = Math.ceil(total / limit);
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Patient Dashboard</h1>
-          <div className="flex items-center space-x-3">
-            <input
-              type="text"
-              placeholder="Search patients..."
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={search}
-              onChange={handleSearch}
-            />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* Welcome Header */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                {greeting},{" "}
+                <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  {authState.hospital?.hospitalName || "Hospital"}
+                </span>
+              </h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Here's an overview of your patient records
+              </p>
+            </div>
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-medium rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/25 transition-all duration-200 hover:shadow-blue-500/40 active:scale-[0.98]"
             >
               {exporting ? (
                 <>
-                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
@@ -119,60 +170,183 @@ const Dashboard: React.FC = () => {
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Export ZIP
+                  Export PDF
                 </>
               )}
             </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
+        {/* Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 text-blue-600">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Patients</p>
+                <p className="text-2xl font-bold text-gray-900">{loading ? "-" : total.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="absolute -right-3 -bottom-3 w-20 h-20 rounded-full bg-blue-50/50" />
+          </div>
+
+          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Active Patients</p>
+                <p className="text-2xl font-bold text-gray-900">{loading ? "-" : stats.activeCount}</p>
+              </div>
+            </div>
+            <div className="absolute -right-3 -bottom-3 w-20 h-20 rounded-full bg-emerald-50/50" />
+          </div>
+
+          <div className="relative overflow-hidden bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-violet-50 text-violet-600">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Added This Week</p>
+                <p className="text-2xl font-bold text-gray-900">{loading ? "-" : stats.recentCount}</p>
+              </div>
+            </div>
+            <div className="absolute -right-3 -bottom-3 w-20 h-20 rounded-full bg-violet-50/50" />
+          </div>
+        </div>
+
+        {/* Patient Table Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Table Header */}
+          <div className="px-6 py-5 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Patient Records</h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {total > 0 ? `${total.toLocaleString()} patient${total !== 1 ? "s" : ""} registered` : "No patients yet"}
+                </p>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search by name, MRN..."
+                  className="w-full sm:w-72 pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200"
+                  value={search}
+                  onChange={handleSearch}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MRN</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date of Birth</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-gray-50/80">
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Patient</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">MRN</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date of Birth</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Registered</th>
+                  <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-50">
                 {loading ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                      Loading...
-                    </td>
-                  </tr>
+                  // Skeleton loading rows
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-gray-200" />
+                          <div className="h-4 w-28 bg-gray-200 rounded" />
+                        </div>
+                      </td>
+                      <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 rounded" /></td>
+                      <td className="px-6 py-4"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
+                      <td className="px-6 py-4"><div className="h-5 w-16 bg-gray-200 rounded-full" /></td>
+                      <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 rounded" /></td>
+                      <td className="px-6 py-4"><div className="h-4 w-4 bg-gray-200 rounded ml-auto" /></td>
+                    </tr>
+                  ))
                 ) : patients.length === 0 ? (
+                  // Empty state
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                      No patients found
+                    <td colSpan={6} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                        <p className="text-gray-900 font-medium">No patients found</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {debouncedSearch ? "Try adjusting your search terms" : "Patient records will appear here once added"}
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   patients.map((patient) => (
-                    <tr key={patient._id} onClick={() => handleRowClick(patient._id)} className="hover:bg-gray-50 cursor-pointer transition-colors">
+                    <tr
+                      key={patient._id}
+                      onClick={() => handleRowClick(patient._id)}
+                      className="group hover:bg-blue-50/40 cursor-pointer transition-colors duration-150"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{patient.patientName}</div>
+                        <div className="flex items-center gap-3">
+                          <div className={`flex-shrink-0 w-9 h-9 rounded-full ${getAvatarColor(patient.patientName)} flex items-center justify-center text-white text-xs font-semibold shadow-sm`}>
+                            {getInitials(patient.patientName)}
+                          </div>
+                          <span className="text-sm font-medium text-gray-900 group-hover:text-blue-700 transition-colors">
+                            {patient.patientName}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{patient.medicalRecordNumber || "-"}</div>
+                        <span className="text-sm text-gray-600 font-mono">{patient.medicalRecordNumber || "-"}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString() : "-"}</div>
+                        <span className="text-sm text-gray-600">
+                          {patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "-"}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${patient.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                            }`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${
+                            patient.status === "active"
+                              ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
+                              : "bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10"
+                          }`}
                         >
+                          <span className={`w-1.5 h-1.5 rounded-full ${patient.status === "active" ? "bg-emerald-500" : "bg-gray-400"}`} />
                           {patient.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{new Date(patient.createdAt).toLocaleDateString()}</div>
+                        <span className="text-sm text-gray-500">
+                          {new Date(patient.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-500 transition-colors ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
                       </td>
                     </tr>
                   ))
@@ -182,50 +356,44 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Pagination */}
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button
-                onClick={() => setPage(Math.max(0, page - 1))}
-                disabled={page === 0}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={(page + 1) * limit >= total}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">{page * limit + 1}</span> to <span className="font-medium">{Math.min((page + 1) * limit, total)}</span> of{" "}
-                  <span className="font-medium">{total}</span> results
+          {!loading && total > 0 && (
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  Showing <span className="font-medium">{page * limit + 1}</span>
+                  {" - "}
+                  <span className="font-medium">{Math.min((page + 1) * limit, total)}</span>
+                  {" of "}
+                  <span className="font-medium">{total.toLocaleString()}</span>
                 </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage(Math.max(0, page - 1))}
                     disabled={page === 0}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    Previous
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Prev
                   </button>
+                  <span className="text-sm text-gray-500 px-2">
+                    Page {page + 1} of {totalPages}
+                  </span>
                   <button
                     onClick={() => setPage(page + 1)}
                     disabled={(page + 1) * limit >= total}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     Next
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </button>
-                </nav>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

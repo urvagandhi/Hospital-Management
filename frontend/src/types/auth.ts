@@ -5,6 +5,7 @@
 export interface Hospital {
   _id: string;
   hospitalName: string;
+  username?: string;
   email: string;
   phone: string;
   logoUrl: string;

@@ -1,28 +1,23 @@
 /**
  * Hospital Registration Page
- * New hospital registration form with Mandatory TOTP Setup
+ * Admin-only hospital registration form
  */
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "../components/Button";
 import { ErrorMessage } from "../components/ErrorMessage";
-import { LogoHeader } from "../components/LogoHeader";
 import { Navbar } from "../components/Navbar";
-// OtpInput removed — registration no longer requires TOTP verification
-import { TextInput } from "../components/TextInput";
 import api from "../services/api";
 import { getEmailError } from "../utils/validator";
 
 export const HospitalRegistration: React.FC = () => {
   const navigate = useNavigate();
 
-  // Step 1: Registration Details
-  // Step 2: Success
   const [step, setStep] = useState<1 | 2>(1);
 
   const [formData, setFormData] = useState({
     hospitalName: "",
+    username: "",
     email: "",
     phoneNumber: "",
     address: "",
@@ -30,6 +25,7 @@ export const HospitalRegistration: React.FC = () => {
 
   const [errors, setErrors] = useState({
     hospitalName: "",
+    username: "",
     email: "",
     phoneNumber: "",
     address: "",
@@ -39,7 +35,6 @@ export const HospitalRegistration: React.FC = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  // Success Data (for Step 2)
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [invitationSent, setInvitationSent] = useState<boolean>(false);
   const [registeredEmail, setRegisteredEmail] = useState<string>("");
@@ -48,13 +43,20 @@ export const HospitalRegistration: React.FC = () => {
   const [displayError, setDisplayError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // --- Step 1 Handlers ---
-
   const validateForm = (): boolean => {
+    let usernameError = "";
+    if (formData.username) {
+      if (formData.username.length < 4) usernameError = "Username must be at least 4 characters";
+      else if (formData.username.length > 30) usernameError = "Username must be at most 30 characters";
+      else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) usernameError = "Only letters, numbers, and underscores";
+    }
+
+    const phoneDigits = formData.phoneNumber.replace(/[^\d]/g, "");
     const newErrors = {
       hospitalName: !formData.hospitalName ? "Hospital name is required" : "",
+      username: usernameError,
       email: getEmailError(formData.email) || "",
-      phoneNumber: !formData.phoneNumber ? "Phone number is required" : !/^[0-9]{10}$/.test(formData.phoneNumber) ? "Phone number must be 10 digits" : "",
+      phoneNumber: !formData.phoneNumber ? "Phone number is required" : phoneDigits.length !== 10 ? "Phone number must be 10 digits" : "",
       address: !formData.address ? "Address is required" : "",
       logo: !logoFile ? "Hospital logo is required" : "",
     };
@@ -73,12 +75,20 @@ export const HospitalRegistration: React.FC = () => {
         case "hospitalName":
           error = !value ? "Hospital name is required" : "";
           break;
+        case "username":
+          if (value) {
+            if (value.length < 4) error = "Username must be at least 4 characters";
+            else if (!/^[a-zA-Z0-9_]+$/.test(value)) error = "Only letters, numbers, and underscores";
+          }
+          break;
         case "email":
           error = getEmailError(value) || "";
           break;
-        case "phoneNumber":
-          error = !value ? "Phone number is required" : !/^[0-9]{10}$/.test(value) ? "Phone number must be 10 digits" : "";
+        case "phoneNumber": {
+          const digits = value.replace(/[^\d]/g, "");
+          error = !value ? "Phone number is required" : digits.length !== 10 ? "Phone number must be 10 digits" : "";
           break;
+        }
         case "address":
           error = !value ? "Address is required" : "";
           break;
@@ -122,8 +132,9 @@ export const HospitalRegistration: React.FC = () => {
     try {
       const formDataToSend = new FormData();
       formDataToSend.append("hospitalName", formData.hospitalName);
+      if (formData.username.trim()) formDataToSend.append("username", formData.username.trim());
       formDataToSend.append("email", formData.email);
-      formDataToSend.append("phoneNumber", formData.phoneNumber);
+      formDataToSend.append("phoneNumber", formData.phoneNumber.replace(/[^\d]/g, ""));
       formDataToSend.append("address", formData.address);
       if (logoFile) formDataToSend.append("logo", logoFile);
 
@@ -133,12 +144,9 @@ export const HospitalRegistration: React.FC = () => {
 
       const data = (response.data as any)?.data || response.data;
 
-      // Store email status and hospital email
       setInvitationSent(data.invitationSent || false);
       setRegisteredEmail(formData.email);
 
-      // Backend now creates hospital immediately (admin registration).
-      // If backend returns backupCodes (unlikely now), store them
       if (data.backupCodes) setBackupCodes(data.backupCodes || []);
       setStep(2);
     } catch (error: any) {
@@ -149,191 +157,277 @@ export const HospitalRegistration: React.FC = () => {
     }
   };
 
-  // No TOTP verification step – registration completes immediately.
-
-  // --- Step 3 Handlers (Finish) ---
-
-  const handleFinish = () => {
-    navigate("/dashboard"); // Redirect to dashboard or login
-  };
-
-  // --- Renders ---
+  const inputClass = (hasError: boolean) =>
+    `w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm transition-all duration-200 focus:outline-none focus:bg-white ${
+      hasError
+        ? "border-red-300 focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
+        : "border-gray-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
+    }`;
 
   const renderStep1 = () => (
-    <form onSubmit={handleInitialSubmit} className="space-y-5 mt-6">
-      <TextInput
-        label="Hospital Name"
-        type="text"
-        placeholder="Enter hospital name"
-        value={formData.hospitalName}
-        onChange={(value: string) => handleChange("hospitalName", value)}
-        error={errors.hospitalName}
-        autoFocus
-        required
-        icon={
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-          </svg>
-        }
-      />
-
-      {/* Logo Upload */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Hospital Logo <span className="text-red-500">*</span>
-        </label>
-        <div className="flex items-center gap-4">
-          {logoPreview && (
-            <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-gray-200 flex-shrink-0">
-              <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+    <form onSubmit={handleInitialSubmit} className="space-y-6">
+      {/* Two-column layout: Logo on left, identity fields on right */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Left column - Logo */}
+        <div className="lg:col-span-2">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Logo</h3>
+          {logoPreview ? (
+            <div className="flex flex-col items-center p-6 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="w-28 h-28 rounded-2xl overflow-hidden border-2 border-blue-200 shadow-sm mb-3">
+                <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+              </div>
+              <p className="text-xs text-gray-500 mb-2 truncate max-w-full">{logoFile?.name}</p>
+              <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Change
+                <input type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
+              </label>
             </div>
-          )}
-          <div className="flex-1">
-            <label className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors">
-              <svg className="w-5 h-5 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.413V13H5.5z" />
-                <path d="M9 13h2v5a1 1 0 11-2 0v-5z" />
-              </svg>
-              <span className="text-sm text-gray-600">{logoFile ? logoFile.name : "Choose logo image"}</span>
+          ) : (
+            <label className="group flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-200 rounded-2xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 h-full min-h-[180px]">
+              <div className="w-14 h-14 rounded-xl bg-gray-100 group-hover:bg-blue-100 flex items-center justify-center mb-3 transition-colors">
+                <svg className="w-7 h-7 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <span className="text-sm font-medium text-gray-600 group-hover:text-blue-600 transition-colors">Upload logo</span>
+              <span className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 2MB</span>
               <input type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
             </label>
-            <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 2MB</p>
+          )}
+          {errors.logo && <p className="text-red-500 text-xs mt-1.5">{errors.logo}</p>}
+        </div>
+
+        {/* Right column - Name & Username */}
+        <div className="lg:col-span-3 space-y-4">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Hospital Identity</h3>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Hospital Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Apollo Care Institute"
+              value={formData.hospitalName}
+              onChange={(e) => handleChange("hospitalName", e.target.value)}
+              className={inputClass(!!errors.hospitalName)}
+              autoFocus
+            />
+            {errors.hospitalName && <p className="text-red-500 text-xs mt-1">{errors.hospitalName}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Username
+              <span className="text-gray-400 font-normal ml-1">(optional, for login)</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">@</span>
+              <input
+                type="text"
+                placeholder="apollo_hospital"
+                value={formData.username}
+                onChange={(e) => handleChange("username", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                className={`${inputClass(!!errors.username)} pl-8`}
+                maxLength={30}
+              />
+            </div>
+            {errors.username ? (
+              <p className="text-red-500 text-xs mt-1">{errors.username}</p>
+            ) : formData.username ? (
+              <p className="text-xs text-gray-400 mt-1">Login ID: @{formData.username}</p>
+            ) : null}
           </div>
         </div>
-        {errors.logo && <p className="text-red-500 text-sm mt-1">{errors.logo}</p>}
       </div>
 
-      <TextInput
-        label="Email Address"
-        type="email"
-        placeholder="hospital@example.com"
-        value={formData.email}
-        onChange={(value: string) => handleChange("email", value)}
-        error={errors.email}
-        autoComplete="email"
-        required
-        icon={
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-          </svg>
-        }
-      />
+      {/* Divider */}
+      <div className="border-t border-gray-100" />
 
-      <TextInput
-        label="Phone Number"
-        type="tel"
-        placeholder="10-digit phone number"
-        value={formData.phoneNumber}
-        onChange={(value: string) => handleChange("phoneNumber", value)}
-        error={errors.phoneNumber}
-        autoComplete="tel"
-        required
-        maxLength={10}
-        icon={
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-          </svg>
-        }
-      />
+      {/* Contact Information - full width grid */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Contact Information</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Email Address <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              placeholder="hospital@example.com"
+              value={formData.email}
+              onChange={(e) => handleChange("email", e.target.value)}
+              className={inputClass(!!errors.email)}
+              autoComplete="email"
+            />
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+          </div>
 
-      <TextInput
-        label="Address"
-        type="text"
-        placeholder="Hospital address"
-        value={formData.address}
-        onChange={(value: string) => handleChange("address", value)}
-        error={errors.address}
-        autoComplete="street-address"
-        required
-        icon={
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-          </svg>
-        }
-      />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Phone Number <span className="text-red-500">*</span>
+            </label>
+            <div className="flex">
+              <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-200 bg-gray-100 text-gray-500 text-sm font-medium select-none">
+                +91
+              </span>
+              <input
+                type="tel"
+                placeholder="9876543210"
+                value={formData.phoneNumber}
+                onChange={(e) => handleChange("phoneNumber", e.target.value.replace(/[^\d]/g, ""))}
+                className={`${inputClass(!!errors.phoneNumber)} rounded-l-none`}
+                maxLength={10}
+                autoComplete="tel"
+              />
+            </div>
+            {errors.phoneNumber && <p className="text-red-500 text-xs mt-1">{errors.phoneNumber}</p>}
+          </div>
 
-      <Button label={loading ? "Processing..." : "Register Hospital"} type="submit" variant="primary" size="lg" fullWidth disabled={loading} loading={loading} />
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Address <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Full hospital address"
+              value={formData.address}
+              onChange={(e) => handleChange("address", e.target.value)}
+              className={inputClass(!!errors.address)}
+              autoComplete="street-address"
+            />
+            {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
+          </div>
+        </div>
+      </div>
+
+      {/* Info Note */}
+      <div className="flex items-start gap-2.5 bg-blue-50/60 border border-blue-100 rounded-xl px-4 py-3">
+        <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p className="text-xs text-blue-700">
+          A temporary password will be generated and emailed to the hospital. They will be asked to change it on first login and set up two-factor authentication.
+        </p>
+      </div>
+
+      {/* Submit */}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/25 transition-all duration-200 hover:shadow-blue-500/40 active:scale-[0.99] flex items-center justify-center gap-2"
+      >
+        {loading ? (
+          <>
+            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Registering...
+          </>
+        ) : (
+          <>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Register Hospital
+          </>
+        )}
+      </button>
     </form>
   );
 
-  // removed TOTP setup UI
-
-  const renderStep3 = () => (
-    <div className="space-y-6 mt-6 animate-fadeIn">
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-          </svg>
+  const renderSuccess = () => (
+    <div className="space-y-6">
+      {/* Two-column success layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Left - Success visual */}
+        <div className="lg:col-span-2 flex flex-col items-center justify-center py-8 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">All Done!</h3>
+          <p className="text-sm text-gray-500 mt-1 text-center px-4">Hospital has been successfully registered</p>
         </div>
-        <h3 className="text-xl font-bold text-green-800">Registration Complete</h3>
-        <p className="text-green-700 mt-2">Hospital has been successfully registered.</p>
+
+        {/* Right - Status details */}
+        <div className="lg:col-span-3 space-y-4">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">What's Next</h3>
+
+          {/* Email Status */}
+          {invitationSent ? (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-blue-900">Invitation Email Sent</h4>
+                  <p className="text-xs text-blue-700 mt-0.5">
+                    A temporary password has been sent to <span className="font-medium">{registeredEmail}</span>. The hospital will be prompted to change it on first login.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-amber-900">Email Delivery Failed</h4>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Hospital registered but the invitation email could not be sent. Please manually share the credentials with <span className="font-medium">{registeredEmail}</span>.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Steps the hospital will go through */}
+          <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">Hospital onboarding steps</h4>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2.5 text-xs text-gray-600">
+                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold text-[10px]">1</span>
+                Sign in with the temporary password
+              </div>
+              <div className="flex items-center gap-2.5 text-xs text-gray-600">
+                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold text-[10px]">2</span>
+                Change password on first login
+              </div>
+              <div className="flex items-center gap-2.5 text-xs text-gray-600">
+                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold text-[10px]">3</span>
+                Set up two-factor authentication (TOTP)
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Email Invitation Status */}
-      {invitationSent ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-              />
-            </svg>
-            <div className="flex-1">
-              <h4 className="font-semibold text-blue-900 mb-1">Invitation Email Sent</h4>
-              <p className="text-sm text-blue-800">
-                A temporary password has been sent to <strong>{registeredEmail}</strong>. The hospital admin can use it to sign in and will be prompted to change the password on
-                first login.
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <div className="flex-1">
-              <h4 className="font-semibold text-yellow-900 mb-1">Email Delivery Failed</h4>
-              <p className="text-sm text-yellow-800">
-                Hospital registered successfully, but the invitation email could not be sent. Please manually share the temporary password with <strong>{registeredEmail}</strong>.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {backupCodes.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
-          <h4 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
+        <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+          <h4 className="text-sm font-semibold text-amber-900 flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
             </svg>
-            Save your Backup Codes
+            Save Backup Codes
           </h4>
-          <p className="text-sm text-yellow-800 mb-4">
-            If you lose access to your authenticator device, you can use these codes to log in.
-            <strong> These will only be shown once.</strong>
+          <p className="text-xs text-amber-700 mb-3">
+            These recovery codes can be used if the authenticator device is lost. <strong>They will only be shown once.</strong>
           </p>
-
-          <div className="grid grid-cols-2 gap-2 bg-white p-3 rounded border border-yellow-100">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-white p-3 rounded-lg border border-amber-100">
             {backupCodes.map((code, index) => (
-              <div key={index} className="text-center font-mono text-xs py-1 bg-gray-50 rounded select-all border border-gray-100">
+              <div key={index} className="text-center font-mono text-xs py-1.5 bg-gray-50 rounded select-all border border-gray-100">
                 {code}
               </div>
             ))}
@@ -341,23 +435,84 @@ export const HospitalRegistration: React.FC = () => {
         </div>
       )}
 
-      <Button label="Back to Hospitals" onClick={() => navigate("/hospitals")} variant="primary" size="lg" fullWidth />
+      <div className="flex gap-3">
+        <button
+          onClick={() => { setStep(1); setFormData({ hospitalName: "", username: "", email: "", phoneNumber: "", address: "" }); setLogoFile(null); setLogoPreview(null); setSubmitted(false); }}
+          className="flex-1 py-3 px-4 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Register Another
+        </button>
+        <button
+          onClick={() => navigate("/hospitals")}
+          className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 transition-all duration-200 hover:shadow-blue-500/40 active:scale-[0.99] flex items-center justify-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Hospitals
+        </button>
+      </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 pt-16">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 pt-16">
       <Navbar />
-      <div className="flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
-        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-6 sm:p-8 animate-fadeIn">
-          <LogoHeader hospitalName="Hospital Registration" subtitle={step === 1 ? "Register your hospital" : "Registration Complete"} />
+      <div className="flex items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+        <div className="w-full max-w-4xl">
+          {/* Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Header */}
+            <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 px-6 sm:px-8 py-6">
+              <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10" />
+                <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-white/10" />
+              </div>
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
+                  <h1 className="text-xl font-bold text-white">
+                    {step === 1 ? "Register Hospital" : "Registration Complete"}
+                  </h1>
+                </div>
+                <p className="text-blue-100 text-sm ml-[52px]">
+                  {step === 1 ? "Fill in the details to add a new hospital" : "Hospital has been successfully created"}
+                </p>
+              </div>
 
-          {displayError && <ErrorMessage message={displayError} type="error" onClose={() => setDisplayError(null)} />}
+              {/* Progress indicator */}
+              <div className="flex gap-2 mt-5 ml-[52px]">
+                <div className="h-1 flex-1 rounded-full bg-white" />
+                <div className={`h-1 flex-1 rounded-full transition-colors duration-500 ${step === 2 ? "bg-white" : "bg-white/30"}`} />
+              </div>
+            </div>
 
-          {step === 1 && renderStep1()}
-          {step === 2 && renderStep3()}
+            {/* Body */}
+            <div className="px-6 sm:px-8 py-6">
+              {displayError && (
+                <div className="mb-5">
+                  <ErrorMessage message={displayError} type="error" onClose={() => setDisplayError(null)} />
+                </div>
+              )}
 
-          {/* Removed public sign-in prompt; registration is admin-driven */}
+              {step === 1 && renderStep1()}
+              {step === 2 && renderSuccess()}
+            </div>
+          </div>
+
+          {/* Footer hint */}
+          {step === 1 && (
+            <p className="text-center text-xs text-gray-400 mt-4">
+              Only system administrators can register new hospitals
+            </p>
+          )}
         </div>
       </div>
     </div>

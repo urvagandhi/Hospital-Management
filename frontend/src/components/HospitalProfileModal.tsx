@@ -56,6 +56,17 @@ export const HospitalProfileModal: React.FC<HospitalProfileModalProps> = ({ hosp
 
               <div className="mt-8 w-full border-t border-gray-100 pt-6">
                 <dl className="divide-y divide-gray-100">
+                  {hospital.username && (
+                    <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0 text-left">
+                      <dt className="text-sm font-medium leading-6 text-gray-500 flex items-center">
+                        <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        Username
+                      </dt>
+                      <dd className="mt-1 text-sm leading-6 text-gray-900 sm:col-span-2 sm:mt-0 font-mono">@{hospital.username}</dd>
+                    </div>
+                  )}
                   <div className="px-4 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0 text-left">
                     <dt className="text-sm font-medium leading-6 text-gray-500 flex items-center">
                       <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

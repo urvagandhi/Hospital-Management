@@ -78,6 +78,13 @@ router.post(
     body("phoneNumber")
       .matches(/^\d{10}$/)
       .withMessage("Phone number must be 10 digits"),
+    body("username")
+      .optional()
+      .trim()
+      .isLength({ min: 4, max: 30 })
+      .withMessage("Username must be 4-30 characters")
+      .matches(/^[a-zA-Z0-9_]+$/)
+      .withMessage("Username may only contain letters, numbers, and underscores"),
     body("address").notEmpty().trim().withMessage("Address is required"),
   ],
   handleValidationErrors,

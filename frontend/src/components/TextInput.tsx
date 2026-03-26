@@ -18,6 +18,7 @@ interface TextInputProps {
   required?: boolean;
   icon?: React.ReactNode;
   maxLength?: number;
+  prefix?: string;
 }
 
 export const TextInput: React.FC<TextInputProps> = ({
@@ -33,6 +34,7 @@ export const TextInput: React.FC<TextInputProps> = ({
   required = false,
   icon,
   maxLength,
+  prefix,
 }) => {
   return (
     <div className="w-full">
@@ -43,8 +45,13 @@ export const TextInput: React.FC<TextInputProps> = ({
         </label>
       )}
 
-      <div className="relative">
-        {icon && <div className="absolute left-3 top-3 text-gray-400">{icon}</div>}
+      <div className="relative flex">
+        {prefix && (
+          <span className="inline-flex items-center px-3 rounded-l-lg border-2 border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm font-medium select-none">
+            {prefix}
+          </span>
+        )}
+        {icon && !prefix && <div className="absolute left-3 top-3 text-gray-400">{icon}</div>}
 
         <input
           type={type}
@@ -56,8 +63,9 @@ export const TextInput: React.FC<TextInputProps> = ({
           autoFocus={autoFocus}
           maxLength={maxLength}
           className={`
-            w-full px-4 py-2.5 rounded-lg border-2 transition-all duration-200
-            ${icon ? "pl-10" : ""}
+            w-full px-4 py-2.5 border-2 transition-all duration-200
+            ${prefix ? "rounded-r-lg" : "rounded-lg"}
+            ${icon && !prefix ? "pl-10" : ""}
             ${disabled ? "bg-gray-100 cursor-not-allowed" : "bg-white"}
             ${error ? "border-red-500 focus:ring-2 focus:ring-red-200" : "border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"}
           `}
