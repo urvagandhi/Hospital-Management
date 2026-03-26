@@ -48,14 +48,14 @@ class PatientRepository(
     }
     
     suspend fun downloadAllPdf(patientId: String): Response<okhttp3.ResponseBody> {
-        return apiService.downloadAllPdf(patientId)
+        return apiService.downloadAllPdfLegacy(patientId)
     }
-    
+
     suspend fun downloadFolderZip(patientId: String, folderName: String): Response<okhttp3.ResponseBody> {
         return apiService.downloadFolderZip(patientId, folderName)
     }
-    
+
     suspend fun downloadAllZip(patientId: String): Response<okhttp3.ResponseBody> {
-        return apiService.downloadAllZip(patientId)
+        return apiService.downloadAllZipLegacy(patientId)
     }
 }
