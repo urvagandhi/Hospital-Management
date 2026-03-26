@@ -15,6 +15,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.hospital.management.data.local.AppDatabase
+import com.hospital.management.utils.NetworkMonitor
 import com.hospital.management.utils.SecurityUtils
 import com.hospital.management.utils.SessionManager
 import com.hospital.management.ui.auth.LoginActivity
@@ -38,6 +39,9 @@ class HospitalApplication : Application() {
         if (SecurityUtils.isDeviceRooted()) {
             Toast.makeText(this, "Warning: Device appears to be rooted. App security may be compromised.", Toast.LENGTH_LONG).show()
         }
+
+        // Initialize NetworkMonitor singleton (online/offline indicator)
+        NetworkMonitor.init(this, "https://hospital-management-8lbf.onrender.com")
 
         // Register network connectivity listener for auto-sync
         registerNetworkCallback()

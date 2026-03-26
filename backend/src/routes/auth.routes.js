@@ -18,6 +18,12 @@ import {
   verifyTotpLogin,
   verifyTotpReset,
   verifyTotpSetup,
+  registerBiometric,
+  biometricChallenge,
+  verifyBiometric,
+  checkSessionConflict,
+  validateSession,
+  forceLogoutOtherSessions,
 } from "../controllers/auth.controller.js";
 import { verifyAccessToken, verifyAdmin, verifyTempToken } from "../middleware/auth.js";
 import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
@@ -88,8 +94,14 @@ router.post(
   "/login",
   authLimiter,
   [
-    body("email").isEmail().normalizeEmail({ gmail_remove_dots: false }).withMessage("Invalid email format"),
-    body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
+    // Accept either "email" (legacy) or "identifier" (new multi-type login)
+    body("password").isLength({ min: 1 }).withMessage("Password is required"),
+    body().custom((value) => {
+      if (!value.email && !value.identifier) {
+        throw new Error("Email, phone, or username is required");
+      }
+      return true;
+    }),
   ],
   handleValidationErrors,
   login,
@@ -261,5 +273,31 @@ router.post("/refresh-token", refreshToken);
  * Invalidate session (uses refresh token from cookie)
  */
 router.post("/logout", logout);
+
+// ═══════════════════════════════════════════════════
+// BIOMETRIC ENDPOINTS (Feature 4)
+// ═══════════════════════════════════════════════════
+
+/** Register biometric public key (requires auth) */
+router.post("/biometric/register", verifyAccessToken, registerBiometric);
+
+/** Generate biometric challenge (no auth — pre-login) */
+router.post("/biometric/challenge", authLimiter, biometricChallenge);
+
+/** Verify biometric signature (no auth — creates session) */
+router.post("/biometric/verify", authLimiter, verifyBiometric);
+
+// ═══════════════════════════════════════════════════
+// SESSION MANAGEMENT ENDPOINTS (Feature 5)
+// ═══════════════════════════════════════════════════
+
+/** Check if there's an active session conflict */
+router.post("/session/check-conflict", authLimiter, checkSessionConflict);
+
+/** Validate current session is still active */
+router.get("/session/validate", verifyAccessToken, validateSession);
+
+/** Force logout other sessions (requires auth) */
+router.post("/session/force-logout", verifyAccessToken, forceLogoutOtherSessions);
 
 export default router;

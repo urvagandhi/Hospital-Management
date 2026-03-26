@@ -15,9 +15,10 @@ class AuthRepository(
     private val tokenManager: TokenManager
 ) {
 
-    suspend fun login(email: String, password: String, isBiometric: Boolean = false): Response<LoginResponse> {
+    suspend fun login(identifier: String, password: String, isBiometric: Boolean = false): Response<LoginResponse> {
         val body = mapOf(
-            "email" to email,
+            "identifier" to identifier,
+            "email" to identifier, // Legacy compat
             "password" to password,
             "isBiometric" to isBiometric
         )
@@ -73,6 +74,22 @@ class AuthRepository(
 
     suspend fun saveHospitalInfo(id: String, name: String, logoUrl: String = "") {
         tokenManager.saveHospitalInfo(id, name, logoUrl)
+    }
+
+    suspend fun registerBiometric(publicKey: String, deviceId: String): Response<Map<String, Any>> {
+        return apiService.registerBiometric(mapOf("publicKey" to publicKey, "deviceId" to deviceId))
+    }
+
+    suspend fun biometricChallenge(identifier: String, deviceId: String): Response<Map<String, Any>> {
+        return apiService.biometricChallenge(mapOf("identifier" to identifier, "deviceId" to deviceId))
+    }
+
+    suspend fun verifyBiometric(hospitalId: String, deviceId: String, signature: String): Response<LoginResponse> {
+        return apiService.verifyBiometric(mapOf("hospitalId" to hospitalId, "deviceId" to deviceId, "signature" to signature))
+    }
+
+    suspend fun validateSession(): Response<Map<String, Any>> {
+        return apiService.validateSession()
     }
 
     suspend fun logout() {

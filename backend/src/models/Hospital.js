@@ -13,6 +13,16 @@ const hospitalSchema = new mongoose.Schema(
       trim: true,
       minlength: [3, "Hospital name must be at least 3 characters"],
     },
+    username: {
+      type: String,
+      unique: true,
+      sparse: true, // Allow null for legacy records
+      lowercase: true,
+      trim: true,
+      minlength: [4, "Username must be at least 4 characters"],
+      maxlength: [30, "Username must be at most 30 characters"],
+      match: [/^[a-z0-9_]+$/, "Username may only contain letters, numbers, and underscores"],
+    },
     email: {
       type: String,
       required: [true, "Email is required"],
@@ -120,6 +130,13 @@ const hospitalSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    // Biometric binding — stores public keys per device
+    biometricKeys: [{
+      deviceId: { type: String, required: true },
+      publicKey: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now },
+    }],
   },
   {
     timestamps: true,
@@ -129,6 +146,7 @@ const hospitalSchema = new mongoose.Schema(
 // Index for faster queries
 hospitalSchema.index({ email: 1 });
 hospitalSchema.index({ phone: 1 });
+hospitalSchema.index({ username: 1 });
 
 // Virtual for full address
 hospitalSchema.virtual("fullAddress").get(function () {

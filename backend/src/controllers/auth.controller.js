@@ -428,19 +428,35 @@ export const verifyRegistration = async (req, res) => {
  */
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    // Support multi-identifier: email, phone, or username
+    const { email, identifier, password } = req.body;
+    const loginId = (identifier || email || "").trim();
 
     // Validate inputs
-    if (!email || !password) {
+    if (!loginId || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required",
+        message: "Credentials are required",
       });
+    }
+
+    // Detect identifier type
+    let query;
+    if (loginId.includes("@")) {
+      // Email
+      query = { email: loginId.toLowerCase() };
+    } else if (/^\+?\d{7,15}$/.test(loginId.replace(/[\s\-()]/g, ""))) {
+      // Phone (starts with + or is all digits, 7-15 chars)
+      const phoneClean = loginId.replace(/[^\d+]/g, "");
+      query = { phone: phoneClean };
+    } else {
+      // Username
+      query = { username: loginId.toLowerCase() };
     }
 
     let hospital;
     try {
-      hospital = await Hospital.findOne({ email: email.toLowerCase() });
+      hospital = await Hospital.findOne(query);
     } catch (e) {
       throw new Error(`DB_FIND_ERROR: ${e.message}`);
     }
@@ -455,7 +471,7 @@ export const login = async (req, res) => {
           status: "FAILURE",
           ipAddress,
           userAgent,
-          metadata: { email, failureReason: "User not found" },
+          metadata: { identifier: loginId, failureReason: "User not found" },
         });
       } catch (e) {
         console.error("AuditLog error:", e);
@@ -463,7 +479,7 @@ export const login = async (req, res) => {
 
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Invalid credentials",
       });
     }
 
@@ -478,7 +494,7 @@ export const login = async (req, res) => {
     if (!hospital.isActive) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Invalid credentials",
       });
     }
 
@@ -491,13 +507,22 @@ export const login = async (req, res) => {
 
     if (!isPasswordValid) {
       hospital.failedLoginAttempts += 1;
-      if (hospital.failedLoginAttempts >= 5) {
+      if (hospital.failedLoginAttempts >= 10) {
+        // 10 failed attempts on account from any IP → lock + send email
+        hospital.lockUntil = Date.now() + 30 * 60 * 1000;
+        try {
+          const { sendAccountLockedEmail } = await import("../services/email.service.js");
+          await sendAccountLockedEmail(hospital.email, hospital.hospitalName, 30);
+        } catch (e) {
+          console.error("Failed to send lock email:", e.message);
+        }
+      } else if (hospital.failedLoginAttempts >= 5) {
         hospital.lockUntil = Date.now() + 15 * 60 * 1000;
       }
       await hospital.save();
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Invalid credentials",
       });
     }
 
@@ -1378,6 +1403,279 @@ export const logout = async (req, res) => {
   }
 };
 
+// ═══════════════════════════════════════════════════
+// BIOMETRIC BINDING (Feature 4)
+// ═══════════════════════════════════════════════════
+
+/**
+ * Register biometric public key
+ * POST /api/auth/biometric/register
+ */
+export const registerBiometric = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    const { publicKey, deviceId } = req.body;
+
+    if (!publicKey || !deviceId) {
+      return res.status(400).json({ success: false, message: "publicKey and deviceId are required" });
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+
+    // Remove existing key for this device (re-enrollment)
+    hospital.biometricKeys = (hospital.biometricKeys || []).filter(
+      (k) => k.deviceId !== deviceId,
+    );
+
+    hospital.biometricKeys.push({ deviceId, publicKey, createdAt: new Date() });
+    await hospital.save();
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    await AuditLog.create({
+      userId: hospitalId,
+      action: "BIOMETRIC_REGISTERED",
+      status: "SUCCESS",
+      ipAddress,
+      userAgent: req.headers["user-agent"],
+      details: { deviceId },
+    }).catch(() => {});
+
+    return res.status(200).json({ success: true, message: "Biometric registered successfully" });
+  } catch (error) {
+    console.error("Biometric register error:", error);
+    return res.status(500).json({ success: false, message: "Failed to register biometric" });
+  }
+};
+
+/**
+ * Generate biometric login challenge
+ * POST /api/auth/biometric/challenge
+ */
+export const biometricChallenge = async (req, res) => {
+  try {
+    const { deviceId, identifier } = req.body;
+
+    if (!deviceId || !identifier) {
+      return res.status(400).json({ success: false, message: "deviceId and identifier are required" });
+    }
+
+    // Find user
+    const loginId = identifier.trim();
+    let query;
+    if (loginId.includes("@")) query = { email: loginId.toLowerCase() };
+    else if (/^\+?\d{7,15}$/.test(loginId.replace(/[\s\-()]/g, ""))) query = { phone: loginId.replace(/[^\d+]/g, "") };
+    else query = { username: loginId.toLowerCase() };
+
+    const hospital = await Hospital.findOne(query).lean();
+    if (!hospital) {
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+
+    // Check if biometric is registered for this device
+    const biometricKey = (hospital.biometricKeys || []).find((k) => k.deviceId === deviceId);
+    if (!biometricKey) {
+      return res.status(404).json({ success: false, message: "No biometric key found for this device" });
+    }
+
+    // Generate challenge (nonce)
+    const challenge = crypto.randomBytes(32).toString("base64");
+
+    // Store challenge in Redis or in-memory with short TTL
+    const { getRedis } = await import("../config/redis.js");
+    const redis = getRedis();
+    await redis.set(`bio:challenge:${hospital._id}:${deviceId}`, challenge, "EX", 120);
+
+    return res.status(200).json({
+      success: true,
+      data: { challenge, hospitalId: hospital._id },
+    });
+  } catch (error) {
+    console.error("Biometric challenge error:", error);
+    return res.status(500).json({ success: false, message: "Failed to generate challenge" });
+  }
+};
+
+/**
+ * Verify biometric login
+ * POST /api/auth/biometric/verify
+ */
+export const verifyBiometric = async (req, res) => {
+  try {
+    const { hospitalId, deviceId, signature } = req.body;
+
+    if (!hospitalId || !deviceId || !signature) {
+      return res.status(400).json({ success: false, message: "hospitalId, deviceId, and signature are required" });
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital || !hospital.isActive) {
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+
+    // Get stored challenge
+    const { getRedis } = await import("../config/redis.js");
+    const redis = getRedis();
+    const challenge = await redis.get(`bio:challenge:${hospitalId}:${deviceId}`);
+    if (!challenge) {
+      return res.status(401).json({ success: false, message: "Challenge expired or invalid" });
+    }
+
+    // Find biometric key for device
+    const biometricKey = (hospital.biometricKeys || []).find((k) => k.deviceId === deviceId);
+    if (!biometricKey) {
+      return res.status(401).json({ success: false, message: "No biometric key for this device" });
+    }
+
+    // Verify signature using the stored public key
+    const verifier = crypto.createVerify("SHA256");
+    verifier.update(challenge);
+    const isValid = verifier.verify(biometricKey.publicKey, signature, "base64");
+
+    // Clean up challenge (single-use)
+    await redis.del(`bio:challenge:${hospitalId}:${deviceId}`);
+
+    if (!isValid) {
+      return res.status(401).json({ success: false, message: "Invalid biometric signature" });
+    }
+
+    // Create session (biometric login = skip TOTP)
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers["user-agent"] || "unknown";
+    const isMobile = true; // Biometric is always mobile
+    const sessionDeviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
+    const session = await createSession(hospital._id, sessionDeviceId, ipAddress, userAgent, isMobile);
+
+    await AuditLog.create({
+      userId: hospital._id,
+      action: "LOGIN_SUCCESS",
+      status: "SUCCESS",
+      ipAddress,
+      userAgent,
+      details: { method: "BIOMETRIC", deviceId },
+    }).catch(() => {});
+
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("accessToken", session.accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie("refreshToken", session.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Biometric login successful",
+      data: {
+        accessToken: session.accessToken,
+        refreshToken: session.refreshToken,
+        hospital: hospital.toJSON(),
+      },
+    });
+  } catch (error) {
+    console.error("Biometric verify error:", error);
+    return res.status(500).json({ success: false, message: "Biometric verification failed" });
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// SESSION MANAGEMENT (Feature 5)
+// ═══════════════════════════════════════════════════
+
+/**
+ * Check for active session conflict before login
+ * POST /api/auth/session/check-conflict
+ */
+export const checkSessionConflict = async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    if (!identifier) return res.status(400).json({ success: false, message: "identifier required" });
+
+    const loginId = identifier.trim();
+    let query;
+    if (loginId.includes("@")) query = { email: loginId.toLowerCase() };
+    else if (/^\+?\d{7,15}$/.test(loginId.replace(/[\s\-()]/g, ""))) query = { phone: loginId.replace(/[^\d+]/g, "") };
+    else query = { username: loginId.toLowerCase() };
+
+    const hospital = await Hospital.findOne(query).select("_id role").lean();
+    if (!hospital) {
+      // Don't reveal if user exists
+      return res.status(200).json({ success: true, conflict: false });
+    }
+
+    // Admin accounts can have multiple sessions
+    if (hospital.role === "admin") {
+      return res.status(200).json({ success: true, conflict: false });
+    }
+
+    const activeSessions = await Session.find({
+      hospitalId: hospital._id,
+      isActive: true,
+      expiresAt: { $gt: new Date() },
+    }).select("platform lastSeenAt lastSeenIp userAgent").lean();
+
+    if (activeSessions.length === 0) {
+      return res.status(200).json({ success: true, conflict: false });
+    }
+
+    const activeDevice = activeSessions[0];
+    return res.status(200).json({
+      success: true,
+      conflict: true,
+      activeDevice: {
+        platform: activeDevice.platform || "unknown",
+        lastSeen: activeDevice.lastSeenAt,
+        ip: activeDevice.lastSeenIp,
+      },
+    });
+  } catch (error) {
+    console.error("Session conflict check error:", error);
+    return res.status(500).json({ success: false, message: "Failed to check session" });
+  }
+};
+
+/**
+ * Validate current session
+ * GET /api/auth/session/validate
+ */
+export const validateSession = async (req, res) => {
+  try {
+    return res.status(200).json({ success: true, valid: true });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Validation failed" });
+  }
+};
+
+/**
+ * Force logout from another device (resolve conflict)
+ * POST /api/auth/session/force-logout
+ */
+export const forceLogoutOtherSessions = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    const currentSessionId = req.sessionId;
+
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    // Invalidate all sessions except current
+    await Session.updateMany(
+      { hospitalId, isActive: true, _id: { $ne: currentSessionId } },
+      { isActive: false, revokedReason: "SESSION_CONFLICT" },
+    );
+
+    return res.status(200).json({ success: true, message: "Other sessions terminated" });
+  } catch (error) {
+    console.error("Force logout error:", error);
+    return res.status(500).json({ success: false, message: "Failed to terminate sessions" });
+  }
+};
+
 export default {
   registerHospital,
   login,
@@ -1390,4 +1688,10 @@ export default {
   recoveryLogin,
   refreshToken,
   logout,
+  registerBiometric,
+  biometricChallenge,
+  verifyBiometric,
+  checkSessionConflict,
+  validateSession,
+  forceLogoutOtherSessions,
 };

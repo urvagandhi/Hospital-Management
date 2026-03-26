@@ -42,6 +42,20 @@ const sessionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    platform: {
+      type: String,
+      default: "web", // "web", "android", "ios"
+    },
+    lastSeenAt: {
+      type: Date,
+      default: Date.now,
+    },
+    lastSeenIp: {
+      type: String,
+    },
+    revokedReason: {
+      type: String, // "SESSION_CONFLICT", "ADMIN_REVOKE", "SUSPICIOUS_ACTIVITY"
+    },
     lastAccessedAt: {
       type: Date,
       default: Date.now,

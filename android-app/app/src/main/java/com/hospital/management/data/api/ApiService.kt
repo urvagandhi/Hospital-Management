@@ -59,6 +59,37 @@ interface ApiService {
         @Body body: Map<String, String>
     ): Response<Map<String, Any>>
 
+    // Biometric endpoints
+    @POST("/api/auth/biometric/register")
+    suspend fun registerBiometric(
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    @POST("/api/auth/biometric/challenge")
+    suspend fun biometricChallenge(
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    @POST("/api/auth/biometric/verify")
+    suspend fun verifyBiometric(
+        @Body body: Map<String, String>
+    ): Response<LoginResponse>
+
+    // Session management
+    @GET("/api/auth/session/validate")
+    suspend fun validateSession(): Response<Map<String, Any>>
+
+    // Health check
+    @GET("/api/health")
+    suspend fun healthCheck(): Response<Map<String, Any>>
+
+    // Export archive
+    @POST("/api/export/archive")
+    @Streaming
+    suspend fun exportArchive(
+        @Body body: Map<String, Any>
+    ): Response<ResponseBody>
+
     @POST("/api/patients")
     suspend fun createPatient(
         @Body body: com.hospital.management.data.models.PatientRequest

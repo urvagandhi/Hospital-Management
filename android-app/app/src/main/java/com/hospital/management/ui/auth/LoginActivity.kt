@@ -53,7 +53,7 @@ class LoginActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         binding.btnLogin.setOnClickListener {
-            val email = binding.etHospitalId.text.toString().trim()
+            val identifier = binding.etHospitalId.text.toString().trim()
             val password = binding.etPassword.text.toString().trim()
 
             // Reset errors
@@ -62,12 +62,34 @@ class LoginActivity : AppCompatActivity() {
 
             var isValid = true
 
-            if (email.isEmpty()) {
-                binding.tilEmail.error = "Email is required"
+            if (identifier.isEmpty()) {
+                binding.tilEmail.error = "Email, phone, or username is required"
                 isValid = false
-            } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                binding.tilEmail.error = "Invalid email format"
-                isValid = false
+            } else {
+                // Validate based on detected type
+                when {
+                    identifier.contains("@") -> {
+                        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(identifier).matches()) {
+                            binding.tilEmail.error = "Invalid email format"
+                            isValid = false
+                        }
+                    }
+                    identifier.startsWith("+") || identifier.all { it.isDigit() } && identifier.length in 7..15 -> {
+                        // Phone - basic check
+                        val cleaned = identifier.replace(Regex("[\\s\\-()]"), "")
+                        if (!cleaned.matches(Regex("^\\+?[1-9]\\d{6,14}$"))) {
+                            binding.tilEmail.error = "Invalid phone number"
+                            isValid = false
+                        }
+                    }
+                    else -> {
+                        // Username
+                        if (identifier.length < 4) {
+                            binding.tilEmail.error = "Username must be at least 4 characters"
+                            isValid = false
+                        }
+                    }
+                }
             }
 
             if (password.isEmpty()) {
@@ -76,7 +98,7 @@ class LoginActivity : AppCompatActivity() {
             }
 
             if (isValid) {
-                authViewModel.login(email, password)
+                authViewModel.login(identifier, password)
             }
         }
     }
@@ -137,8 +159,8 @@ class LoginActivity : AppCompatActivity() {
                 // Enable biometric for future logins (tokens already saved by ViewModel)
                 lifecycleScope.launch {
                     tokenManager.setBiometricEnabled(true)
-                    val email = binding.etHospitalId.text.toString()
-                    if (email.isNotEmpty()) tokenManager.saveEmail(email)
+                    val identifier = binding.etHospitalId.text.toString().trim()
+                    if (identifier.isNotEmpty()) tokenManager.saveEmail(identifier)
                 }
 
                 val intent = Intent(this, DashboardActivity::class.java)

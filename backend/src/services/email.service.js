@@ -111,4 +111,84 @@ export const sendAccountLockedEmail = async (to, hospitalName, lockDurationMinut
   return transporter.sendMail(mailOptions);
 };
 
-export default { sendInvitationEmail, sendAccountLockedEmail };
+export const sendOtpEmail = async (to, otp, hospitalName) => {
+  const subject = `Your verification code — ${hospitalName || "Hospital Management"}`;
+
+  const html = `
+  <html>
+    <body style="font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f6f9fc; padding:20px;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 8px 24px rgba(16,24,40,0.08);">
+              <tr>
+                <td style="padding:28px 32px; text-align:left;">
+                  <h1 style="margin:0 0 8px; font-size:20px; color:#0f172a;">Verification Code</h1>
+                  <p style="margin:0 0 18px; color:#475569; font-size:14px; line-height:1.5;">Use the following code to complete your registration for <strong>${hospitalName || "Hospital Management"}</strong>.</p>
+
+                  <div style="background:#f1f5f9; padding:20px; border-radius:8px; margin-bottom:18px; text-align:center;">
+                    <p style="margin:0; font-size:32px; font-family:monospace; letter-spacing:8px; color:#0f172a; font-weight:700;">${otp}</p>
+                  </div>
+
+                  <p style="margin:0 0 8px; color:#94a3b8; font-size:12px;">This code expires in 10 minutes. Do not share it with anyone.</p>
+                  <p style="margin:18px 0 0; color:#94a3b8; font-size:12px;">— ${config.APP_NAME || "Hospital Management"} Team</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `;
+
+  const mailOptions = {
+    from: config.SMTP_FROM || `no-reply@${config.SMTP_HOST || "example.com"}`,
+    to,
+    subject,
+    html,
+  };
+
+  return transporter.sendMail(mailOptions);
+};
+
+export const sendSessionRevokedEmail = async (to, hospitalName, deviceInfo) => {
+  const subject = `Security Alert: New login detected — ${hospitalName}`;
+
+  const html = `
+  <html>
+    <body style="font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f6f9fc; padding:20px;">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 8px 24px rgba(16,24,40,0.08); border-top: 4px solid #f59e0b;">
+              <tr>
+                <td style="padding:28px 32px; text-align:left;">
+                  <h1 style="margin:0 0 8px; font-size:20px; color:#0f172a;">New Login Detected</h1>
+                  <p style="margin:0 0 18px; color:#475569; font-size:14px; line-height:1.5;">
+                    Someone logged into your account from a new device. Your previous session has been ended.
+                  </p>
+                  <div style="background:#fffbeb; padding:14px; border-radius:8px; margin-bottom:18px; border: 1px solid #fde68a;">
+                    <p style="margin:0; font-size:14px; color:#92400e;"><strong>New device:</strong> ${deviceInfo || "Unknown"}</p>
+                  </div>
+                  <p style="margin:0 0 8px; color:#475569; font-size:14px;">If this wasn't you, please change your password immediately.</p>
+                  <p style="margin:18px 0 0; color:#94a3b8; font-size:12px;">— ${config.APP_NAME || "Hospital Management"} Security Team</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `;
+
+  return transporter.sendMail({
+    from: config.SMTP_FROM || `no-reply@${config.SMTP_HOST || "example.com"}`,
+    to,
+    subject,
+    html,
+  });
+};
+
+export default { sendInvitationEmail, sendAccountLockedEmail, sendOtpEmail, sendSessionRevokedEmail };

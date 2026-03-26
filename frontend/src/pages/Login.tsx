@@ -1,6 +1,6 @@
 /**
  * Login Page
- * Hospital email and password login with OTP flow initiation
+ * Supports login via email, phone, or username (single field auto-detection)
  */
 
 import React, { useEffect, useState } from "react";
@@ -10,23 +10,42 @@ import { ErrorMessage } from "../components/ErrorMessage";
 import { LogoHeader } from "../components/LogoHeader";
 import { TextInput } from "../components/TextInput";
 import { useAuth } from "../hooks/useAuth";
-import { getEmailError, getPasswordError } from "../utils/validator";
+
+/** Detect input type for client-side validation */
+const detectIdentifierType = (value: string): "email" | "phone" | "username" => {
+  if (value.includes("@")) return "email";
+  const cleaned = value.replace(/[\s\-()]/g, "");
+  if (/^\+?\d{7,15}$/.test(cleaned)) return "phone";
+  return "username";
+};
+
+const getIdentifierError = (value: string): string | null => {
+  if (!value.trim()) return "Email, phone, or username is required";
+  const type = detectIdentifierType(value);
+  if (type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Invalid email format";
+  if (type === "phone") {
+    const cleaned = value.replace(/[\s\-()]/g, "");
+    if (!/^\+?[1-9]\d{6,14}$/.test(cleaned)) return "Invalid phone number";
+  }
+  if (type === "username" && value.trim().length < 4) return "Username must be at least 4 characters";
+  return null;
+};
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login, logout, state } = useAuth();
+  const { login, state } = useAuth();
 
   useEffect(() => {
     document.title = "Login - Hospital Management";
   }, []);
 
   const [formData, setFormData] = useState({
-    email: "",
+    identifier: "",
     password: "",
   });
 
   const [errors, setErrors] = useState({
-    email: "",
+    identifier: "",
     password: "",
   });
 
@@ -42,58 +61,31 @@ export const Login: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (state.isAuthenticated) {
-      // Direct redirect to dashboard if authenticated
-      // Ignoring logic about TOTP enabled/disabled since we are bypassing it
       navigate("/dashboard");
     }
   }, [state.isAuthenticated, navigate]);
 
-  /*
-  // If already authenticated, show Welcome Back screen instead of login form
-  if (state.isAuthenticated && state.hospital?.totpEnabled) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 sm:p-8 animate-fadeIn">
-          <LogoHeader hospitalName={state.hospital.hospitalName} subtitle="Secure Admin Portal" />
-
-          <div className="mt-8 text-center space-y-6">
-            <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm">
-              <p className="font-medium">Welcome back!</p>
-              <p>
-                You are already signed in as <strong>{state.hospital.email}</strong>
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <Button label="Continue to Dashboard" onClick={() => navigate("/dashboard")} variant="primary" fullWidth />
-              <Button label="Sign Out" onClick={logout} variant="ghost" fullWidth />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  */
-
-
   const validateForm = (): boolean => {
+    const identifierErr = getIdentifierError(formData.identifier);
+    const passwordErr = !formData.password ? "Password is required" : formData.password.length < 8 ? "Password must be at least 8 characters" : "";
+
     const newErrors = {
-      email: getEmailError(formData.email) || "",
-      password: getPasswordError(formData.password) || "",
+      identifier: identifierErr || "",
+      password: passwordErr,
     };
 
     setErrors(newErrors);
-    return !newErrors.email && !newErrors.password;
+    return !newErrors.identifier && !newErrors.password;
   };
 
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    setDisplayError(null); // Clear error when user starts typing
+    setDisplayError(null);
     if (submitted) {
-      if (field === "email") {
-        setErrors((prev) => ({ ...prev, email: getEmailError(value) || "" }));
+      if (field === "identifier") {
+        setErrors((prev) => ({ ...prev, identifier: getIdentifierError(value) || "" }));
       } else if (field === "password") {
-        setErrors((prev) => ({ ...prev, password: getPasswordError(value) || "" }));
+        setErrors((prev) => ({ ...prev, password: !value ? "Password is required" : "" }));
       }
     }
   };
@@ -107,7 +99,7 @@ export const Login: React.FC = () => {
     if (!isValid) return;
 
     try {
-      const loginComplete = await login(formData.email, formData.password);
+      const loginComplete = await login(formData.identifier.trim(), formData.password);
 
       if (loginComplete === true) {
         navigate("/dashboard");
@@ -132,7 +124,7 @@ export const Login: React.FC = () => {
     }
   };
 
-  // Prevent flash of login screen while checking auth or if already authenticated
+  // Prevent flash of login screen while checking auth
   if (state.loading || state.isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
@@ -140,6 +132,9 @@ export const Login: React.FC = () => {
       </div>
     );
   }
+
+  // Detect type for dynamic placeholder hint
+  const identifierType = formData.identifier ? detectIdentifierType(formData.identifier) : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
@@ -150,22 +145,26 @@ export const Login: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-6">
           <TextInput
-            label="Email Address"
-            type="email"
-            placeholder="your-email@hospital.com"
-            value={formData.email}
-            onChange={(value) => handleChange("email", value)}
-            error={errors.email}
-            autoComplete="email"
+            label="Email, Phone, or Username"
+            type="text"
+            placeholder="admin@hospital.com / +91... / username"
+            value={formData.identifier}
+            onChange={(value) => handleChange("identifier", value)}
+            error={errors.identifier}
+            autoComplete="username"
             autoFocus
             required
             icon={
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
               </svg>
             }
           />
+          {identifierType && (
+            <p className="text-xs text-gray-400 -mt-3 ml-1">
+              Detected: {identifierType}
+            </p>
+          )}
 
           <TextInput
             label="Password"
@@ -186,6 +185,9 @@ export const Login: React.FC = () => {
           <Button label={state.loading ? "Signing in..." : "Sign In"} type="submit" variant="primary" size="lg" fullWidth disabled={state.loading} loading={state.loading} />
         </form>
 
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Biometric login available on the Android app
+        </p>
       </div>
     </div>
   );

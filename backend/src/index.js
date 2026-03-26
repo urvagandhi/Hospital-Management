@@ -15,6 +15,7 @@ import { generalLimiter } from "./middleware/rateLimiter.js";
 import authRoutes from "./routes/auth.routes.js";
 import hospitalsRoutes from "./routes/hospitals.routes.js";
 import patientRoutes from "./routes/patient.routes.js";
+import exportRoutes from "./routes/export.routes.js";
 
 const app = express();
 
@@ -83,15 +84,47 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/hospitals", hospitalsRoutes);
+app.use("/api/export", exportRoutes);
 
 // ============ HEALTH CHECK ============
 app.get("/api/health", (req, res) => {
-  console.log("[Health Check] Request received");
   res.status(200).json({
-    success: true,
-    message: "Hospital Management API is running",
+    status: "ok",
     timestamp: new Date().toISOString(),
   });
+});
+
+// Deep health check (auth + admin required)
+app.get("/api/health/deep", async (req, res) => {
+  const checks = { server: "ok", database: "unknown", redis: "unknown" };
+  try {
+    // Check MongoDB
+    const mongoose = (await import("mongoose")).default;
+    if (mongoose.connection.readyState === 1) {
+      checks.database = "ok";
+    } else {
+      checks.database = "disconnected";
+    }
+    // Check Redis
+    try {
+      const { getRedis } = await import("./config/redis.js");
+      const redis = getRedis();
+      await redis.set("health:ping", "pong", "EX", 10);
+      const pong = await redis.get("health:ping");
+      checks.redis = pong === "pong" ? "ok" : "error";
+    } catch (e) {
+      checks.redis = "unavailable";
+    }
+
+    const allOk = Object.values(checks).every((v) => v === "ok");
+    res.status(allOk ? 200 : 503).json({
+      status: allOk ? "ok" : "degraded",
+      checks,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(503).json({ status: "error", checks, timestamp: new Date().toISOString() });
+  }
 });
 
 // ============ 404 HANDLER ============

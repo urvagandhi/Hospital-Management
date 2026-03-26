@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { HospitalProfileModal } from "./HospitalProfileModal";
 import { getCurrentHospital, Hospital } from "../services/hospitalService";
+import { NetworkStatusPill } from "./NetworkStatus";
 
 export const Navbar: React.FC = () => {
   const { state, logout } = useAuth();
@@ -81,15 +82,20 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Right Side: User Dropdown */}
-          <div className="flex items-center">
-            <Menu as="div" className="ml-3 relative">
+          {/* Right Side: Status + User Dropdown */}
+          <div className="flex items-center gap-3">
+            <NetworkStatusPill />
+            <Menu as="div" className="relative">
               <div className="flex items-center gap-3">
                 <span className="hidden md:block text-sm font-medium text-gray-700">{hospital?.email}</span>
                 <Menu.Button className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-shadow">
                   <span className="sr-only">Open user menu</span>
-                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 font-bold border border-blue-200">
-                    {hospital?.hospitalName?.charAt(0).toUpperCase() || "U"}
+                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 font-bold border border-blue-200 overflow-hidden">
+                    {hospital?.logoUrl ? (
+                      <img className="h-full w-full object-cover" src={hospital.logoUrl} alt={hospital.hospitalName} />
+                    ) : (
+                      hospital?.hospitalName?.charAt(0).toUpperCase() || "U"
+                    )}
                   </div>
                 </Menu.Button>
               </div>

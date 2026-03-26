@@ -57,6 +57,9 @@ const config = {
   SMTP_FROM: process.env.SMTP_FROM,
   SMTP_SECURE: process.env.SMTP_SECURE || "false",
 
+  // Redis
+  REDIS_URL: process.env.REDIS_URL || "",
+
   // CORS
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3000",
 

@@ -25,9 +25,10 @@ function toApiError(error: unknown, fallback: string): Error {
 }
 
 export const authService = {
-  login: async (email: string, password: string): Promise<LoginResponse> => {
+  login: async (identifier: string, password: string): Promise<LoginResponse> => {
     try {
-      const response = await api.post<LoginResponse>("/auth/login", { email, password });
+      // Send both `identifier` (new) and `email` (legacy compat) so backend works either way
+      const response = await api.post<LoginResponse>("/auth/login", { identifier, email: identifier, password });
       return response.data;
     } catch (error: unknown) {
       throw toApiError(error, "Login failed");

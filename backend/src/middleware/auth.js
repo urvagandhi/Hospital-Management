@@ -49,11 +49,22 @@ export const verifyAccessToken = async (req, res, next) => {
     if (!session || !session.isActive) {
       return res.status(401).json({
         success: false,
-        message: "Session expired or invalid. Please login again.",
+        message: session?.revokedReason === "SESSION_CONFLICT"
+          ? "You were logged out because you signed in on another device."
+          : "Session expired or invalid. Please login again.",
+        reason: session?.revokedReason || "SESSION_EXPIRED",
       });
     }
 
+    // Update lastSeenAt on every authenticated request (non-blocking)
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    Session.updateOne(
+      { _id: session._id },
+      { lastSeenAt: new Date(), lastSeenIp: ipAddress },
+    ).exec().catch(() => {});
+
     req.hospital = { id: decoded.id };
+    req.sessionId = decoded.sessionId;
     next();
   } catch (error) {
     return res.status(401).json({

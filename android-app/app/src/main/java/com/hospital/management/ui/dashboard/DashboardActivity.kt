@@ -27,7 +27,14 @@ import com.hospital.management.data.repository.AuthRepository
 import com.hospital.management.data.repository.PatientRepository
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
+import com.hospital.management.data.api.AuthInterceptor
+import com.hospital.management.utils.NetworkMonitor
+import com.hospital.management.utils.NetworkStatus
 import com.hospital.management.utils.SessionManager
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 
 class DashboardActivity : AppCompatActivity() {
@@ -36,6 +43,19 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var authViewModel: AuthViewModel
     private lateinit var patientViewModel: com.hospital.management.presentation.viewmodel.PatientViewModel
     private lateinit var patientAdapter: com.hospital.management.ui.patients.PatientAdapter
+    private var offlineSnackbar: Snackbar? = null
+
+    private val sessionRevokedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            // Force logout: session was invalidated because user logged in on another device
+            runOnUiThread {
+                Toast.makeText(this@DashboardActivity, "You were logged out because you signed in on another device.", Toast.LENGTH_LONG).show()
+                lifecycleScope.launch {
+                    SessionManager.logoutUser(this@DashboardActivity)
+                }
+            }
+        }
+    }
 
     private fun isNetworkAvailable(): Boolean {
         val connectivityManager = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
@@ -56,7 +76,41 @@ class DashboardActivity : AppCompatActivity() {
         setupPatientList()
         setupPatientObservers()
         setupPatientListeners()
+        observeNetworkStatus()
+        registerReceiver(sessionRevokedReceiver, IntentFilter(AuthInterceptor.ACTION_SESSION_REVOKED), Context.RECEIVER_NOT_EXPORTED)
         SessionManager.updateLastInteractionTime(this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try { unregisterReceiver(sessionRevokedReceiver) } catch (_: Exception) {}
+    }
+
+    private fun observeNetworkStatus() {
+        lifecycleScope.launch {
+            NetworkMonitor.status.collect { status ->
+                when (status) {
+                    NetworkStatus.OFFLINE -> {
+                        if (offlineSnackbar == null || !offlineSnackbar!!.isShown) {
+                            offlineSnackbar = Snackbar.make(
+                                binding.root,
+                                "You are offline",
+                                Snackbar.LENGTH_INDEFINITE
+                            )
+                            offlineSnackbar?.show()
+                        }
+                    }
+                    NetworkStatus.ONLINE -> {
+                        offlineSnackbar?.dismiss()
+                        offlineSnackbar = null
+                        Snackbar.make(binding.root, "Back online", Snackbar.LENGTH_SHORT).show()
+                    }
+                    NetworkStatus.RECONNECTING -> {
+                        // Keep showing offline snackbar until confirmed
+                    }
+                }
+            }
+        }
     }
 
     override fun onResume() {

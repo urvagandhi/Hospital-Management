@@ -17,22 +17,18 @@ import config from "../config/env.js";
  * @param {boolean} isMobile - Whether the client is a mobile device
  * @returns {Promise<object>} Session with tokens
  */
-export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, isMobile = false) => {
+export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, isMobile = false, { forceCreate = false } = {}) => {
   try {
     // SINGLE DEVICE POLICY:
-    // If logging in from Mobile, invalidate ALL other active Mobile sessions for this hospital.
-    // If logging in from Web, we allow multiple sessions (no invalidation).
+    // Mobile (Android): only ONE active mobile session per user.
+    //   → Invalidate all other mobile sessions on new mobile login.
+    // Web: multiple concurrent sessions allowed (read-only portal).
     if (isMobile) {
       await Session.updateMany(
-        { 
-          hospitalId, 
-          isMobile: true,
-          isActive: true
-        }, 
-        { isActive: false }
+        { hospitalId, isMobile: true, isActive: true },
+        { isActive: false, revokedReason: "SESSION_CONFLICT" },
       );
     }
-    // Note: We removed the generic "deviceId != deviceId" invalidation to support multiple Web sessions.
 
     // Generate session ID
     const sessionId = new mongoose.Types.ObjectId();
@@ -44,6 +40,9 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
     // Calculate expiry (7 days for refresh token)
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
+    // Determine platform
+    const platform = isMobile ? "android" : "web";
+
     // Create session
     const session = await Session.create({
       _id: sessionId,
@@ -53,8 +52,11 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
       ipAddress,
       userAgent,
       isMobile,
+      platform,
       expiresAt,
       isActive: true,
+      lastSeenAt: new Date(),
+      lastSeenIp: ipAddress,
     });
 
     return {
