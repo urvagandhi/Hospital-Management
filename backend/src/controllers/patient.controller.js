@@ -5,6 +5,7 @@
 
 import * as patientService from "../services/patient.service.js";
 import * as r2Service from "../services/r2.service.js";
+import { deleteFile as cloudinaryDeleteFile } from "../services/storage.service.js";
 import * as pdfService from "../services/pdf.service.js";
 import * as zipService from "../services/zip.service.js";
 
@@ -229,46 +230,19 @@ export const uploadFile = async (req, res) => {
       });
     }
 
-    // Sanitize file name — strip path components to prevent traversal
-    const safeFileName = file.originalname.replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+    // multer-storage-cloudinary has already uploaded the file.
+    // file.path  = Cloudinary secure URL
+    // file.filename = Cloudinary public ID (needed for deletion)
+    const cloudinaryUrl = file.path;
+    const cloudinaryPublicId = file.filename;
 
-    // Generate file key/path: hospitalId/patientId/folderName/filename
-    const key = `${hospitalId}/${patientId}/${folderName}/${Date.now()}_${safeFileName}`;
+    console.log("[Patient Controller] File uploaded to Cloudinary:", cloudinaryUrl);
 
-    let uploadResult;
-    const config = (await import("../config/env.js")).default;
-
-    // Check if we should use local storage
-    if (config.USE_LOCAL_STORAGE) {
-      console.log("[Patient Controller] Using local file storage");
-      const fs = await import("fs/promises");
-      const path = await import("path");
-
-      // Create directories if they don't exist
-      const dirPath = path.join(config.LOCAL_STORAGE_PATH, hospitalId, patientId, folderName);
-      await fs.mkdir(dirPath, { recursive: true });
-
-      // Save file locally
-      const fileName = `${Date.now()}_${safeFileName}`;
-      const filePath = path.join(dirPath, fileName);
-      await fs.writeFile(filePath, file.buffer);
-
-      uploadResult = {
-        key: key,
-        size: file.size,
-      };
-
-      console.log("[Patient Controller] File saved locally:", filePath);
-    } else {
-      // Upload to R2
-      console.log("[Patient Controller] Using R2 cloud storage");
-      uploadResult = await r2Service.uploadFile(file.buffer, key, file.mimetype);
-    }
-
-    // Update patient record
+    // Update patient record — store the Cloudinary URL directly
     const patient = await patientService.addFileToFolder(hospitalId, patientId, folderName, {
       fileName: file.originalname,
-      fileUrl: uploadResult.key,
+      fileUrl: cloudinaryUrl,
+      cloudinaryPublicId: cloudinaryPublicId,
       size: file.size,
       mimeType: file.mimetype,
     });

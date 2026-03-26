@@ -20,6 +20,7 @@ import com.hospital.management.data.repository.AuthRepository
 import com.hospital.management.utils.BiometricHelper
 import com.hospital.management.utils.SessionManager
 import com.hospital.management.data.local.TokenManager
+import android.util.Log
 import android.view.View
 import androidx.lifecycle.lifecycleScope
 
@@ -161,6 +162,20 @@ class LoginActivity : AppCompatActivity() {
                     tokenManager.setBiometricEnabled(true)
                     val identifier = binding.etHospitalId.text.toString().trim()
                     if (identifier.isNotEmpty()) tokenManager.saveEmail(identifier)
+                }
+
+                // Register FCM token after successful login
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val fcmToken = task.result
+                        lifecycleScope.launch {
+                            try {
+                                RetrofitClient.getApiService(this@LoginActivity).postFcmToken(mapOf("fcmToken" to fcmToken))
+                            } catch (e: Exception) {
+                                Log.e("LoginActivity", "Failed to register FCM token", e)
+                            }
+                        }
+                    }
                 }
 
                 val intent = Intent(this, DashboardActivity::class.java)

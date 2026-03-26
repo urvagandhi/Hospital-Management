@@ -158,4 +158,8 @@ interface ApiService {
         @Path("patientId") patientId: String,
         @Path("folderName") folderName: String
     ): Response<ResponseBody>
+
+    // FCM token registration
+    @POST("/api/auth/fcm-token")
+    suspend fun postFcmToken(@Body body: Map<String, String>): Response<Map<String, Any>>
 }

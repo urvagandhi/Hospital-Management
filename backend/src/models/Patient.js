@@ -22,6 +22,9 @@ const fileSchema = new mongoose.Schema({
     type: String,
     default: "application/octet-stream",
   },
+  cloudinaryPublicId: {
+    type: String,
+  },
   uploadedAt: {
     type: Date,
     default: Date.now,

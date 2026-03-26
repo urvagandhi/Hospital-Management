@@ -11,7 +11,8 @@ import Session from "../models/Session.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import PendingHospital from "../models/PendingHospital.js";
-import { sendInvitationEmail } from "../services/email.service.js";
+import { sendWelcomeEmail, sendAccountLockedEmail } from "../services/mail.service.js";
+import { notifyNewLogin, notifySessionRevoked } from "../services/push.service.js";
 import { createSession, invalidateSession, refreshAccessToken } from "../services/token.service.js";
 import {
   checkTotpLockout,
@@ -209,9 +210,9 @@ export const registerHospital = async (req, res) => {
     let invitationSent = false;
     let emailError = null;
     try {
-      await sendInvitationEmail(email, hospital.hospitalName, tempPassword);
+      await sendWelcomeEmail(email, hospital.hospitalName, email);
       invitationSent = true;
-      console.log(`✅ Invitation email sent to ${email} with temporary password`);
+      console.log(`✅ Welcome email sent to ${email}`);
     } catch (emailErr) {
       emailError = emailErr.message;
       console.error("❌ Invitation email send failed:", emailErr);
@@ -511,8 +512,7 @@ export const login = async (req, res) => {
         // 10 failed attempts on account from any IP → lock + send email
         hospital.lockUntil = Date.now() + 30 * 60 * 1000;
         try {
-          const { sendAccountLockedEmail } = await import("../services/email.service.js");
-          await sendAccountLockedEmail(hospital.email, hospital.hospitalName, 30);
+          await sendAccountLockedEmail(hospital.email, 30);
         } catch (e) {
           console.error("Failed to send lock email:", e.message);
         }
@@ -600,6 +600,9 @@ export const login = async (req, res) => {
     const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
     const session = await createSession(hospital._id, deviceId, ipAddress, userAgent, isMobile);
 
+    // Fire-and-forget push notification for new login
+    notifyNewLogin(hospital._id, userAgent).catch(console.error);
+
     await AuditLog.create({
       userId: hospital._id,
       action: "LOGIN_SUCCESS",
@@ -629,7 +632,7 @@ export const login = async (req, res) => {
       success: true,
       message: "Login successful. Please setup 2FA to continue.",
       requireTotp: false,
-      requireTotpSetup: false, // Force setup for existing users
+      requireTotpSetup: !hospital.totpEnabled, // Force 2FA setup if not enabled
       data: {
         accessToken: session.accessToken,
         refreshToken: session.refreshToken,
@@ -913,6 +916,9 @@ export const verifyTotpLogin = async (req, res) => {
     // Generate device ID and create session
     const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
     const session = await createSession(hospitalId, deviceId, ipAddress, userAgent);
+
+    // Fire-and-forget push notification for new login
+    notifyNewLogin(hospitalId, userAgent).catch(console.error);
 
     await AuditLog.create({
       userId: hospitalId,
@@ -1274,6 +1280,9 @@ export const recoveryLogin = async (req, res) => {
     const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
     const session = await createSession(hospitalId, deviceId, ipAddress, userAgent);
 
+    // Fire-and-forget push notification for new login
+    notifyNewLogin(hospitalId, userAgent).catch(console.error);
+
     await AuditLog.create({
       userId: hospitalId,
       action: "LOGIN_SUCCESS",
@@ -1546,6 +1555,9 @@ export const verifyBiometric = async (req, res) => {
     const sessionDeviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
     const session = await createSession(hospital._id, sessionDeviceId, ipAddress, userAgent, isMobile);
 
+    // Fire-and-forget push notification for new login
+    notifyNewLogin(hospital._id, userAgent).catch(console.error);
+
     await AuditLog.create({
       userId: hospital._id,
       action: "LOGIN_SUCCESS",
@@ -1669,10 +1681,36 @@ export const forceLogoutOtherSessions = async (req, res) => {
       { isActive: false, revokedReason: "SESSION_CONFLICT" },
     );
 
+    // Fire-and-forget push notification for revoked sessions
+    notifySessionRevoked(hospitalId).catch(console.error);
+
     return res.status(200).json({ success: true, message: "Other sessions terminated" });
   } catch (error) {
     console.error("Force logout error:", error);
     return res.status(500).json({ success: false, message: "Failed to terminate sessions" });
+  }
+};
+
+/**
+ * Store FCM push notification token from mobile client
+ * POST /api/auth/fcm-token
+ */
+export const storeFcmToken = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const { fcmToken } = req.body;
+    if (!fcmToken) return res.status(400).json({ success: false, message: "fcmToken is required" });
+
+    await Hospital.findByIdAndUpdate(hospitalId, {
+      fcmToken: { token: fcmToken, updatedAt: new Date() },
+    });
+
+    return res.status(200).json({ success: true, message: "FCM token stored" });
+  } catch (error) {
+    console.error("Store FCM token error:", error);
+    return res.status(500).json({ success: false, message: "Failed to store FCM token" });
   }
 };
 
@@ -1694,4 +1732,5 @@ export default {
   checkSessionConflict,
   validateSession,
   forceLogoutOtherSessions,
+  storeFcmToken,
 };

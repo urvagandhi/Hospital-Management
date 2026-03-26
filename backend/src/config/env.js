@@ -76,6 +76,31 @@ const config = {
   // Local File Storage (fallback when R2 not configured)
   USE_LOCAL_STORAGE: process.env.USE_LOCAL_STORAGE === "true" || (!process.env.R2_ACCESS_KEY_ID && process.env.NODE_ENV === "development"),
   LOCAL_STORAGE_PATH: process.env.LOCAL_STORAGE_PATH || "./uploads",
+
+  // Cloudinary
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+
+  // Upstash Redis
+  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+
+  // Brevo (production email)
+  BREVO_API_KEY: process.env.BREVO_API_KEY,
+  BREVO_SENDER_EMAIL: process.env.BREVO_SENDER_EMAIL || "noreply@hospitalhms.com",
+  BREVO_SENDER_NAME: process.env.BREVO_SENDER_NAME || "Hospital HMS",
+
+  // Mailtrap (development email)
+  MAILTRAP_HOST: process.env.MAILTRAP_HOST || "sandbox.smtp.mailtrap.io",
+  MAILTRAP_PORT: parseInt(process.env.MAILTRAP_PORT || "2525"),
+  MAILTRAP_USER: process.env.MAILTRAP_USER,
+  MAILTRAP_PASS: process.env.MAILTRAP_PASS,
+
+  // Firebase
+  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+  FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
+  FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
 };
 
 // Validate required environment variables in production
@@ -95,11 +120,8 @@ if (config.NODE_ENV === "production") {
   if (!config.MONGODB_URI) {
     throw new Error("MONGODB_URI must be set in production");
   }
-  if (!config.R2_ACCESS_KEY_ID) {
-    throw new Error("R2_ACCESS_KEY_ID must be set in production");
-  }
-  if (!config.R2_SECRET_ACCESS_KEY) {
-    throw new Error("R2_SECRET_ACCESS_KEY must be set in production");
+  if (!config.CLOUDINARY_CLOUD_NAME && !config.R2_ACCESS_KEY_ID) {
+    console.warn("WARNING: Neither Cloudinary nor R2 storage configured for production");
   }
 }
 

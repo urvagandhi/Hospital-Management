@@ -56,8 +56,7 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const allowedOrigins = [
-        config.FRONTEND_URL,
-        "https://hospital-record-management.vercel.app",
+        ...config.FRONTEND_URL.split(",").map((u) => u.trim()),
         "http://localhost:3000",
         "http://localhost:5173",
       ];

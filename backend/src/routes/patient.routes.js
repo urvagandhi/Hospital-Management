@@ -5,34 +5,14 @@
 
 import express from "express";
 import { body, param, query } from "express-validator";
-import multer from "multer";
-import path from "path";
 import * as patientController from "../controllers/patient.controller.js";
+import { uploadDocument } from "../services/storage.service.js";
 import { verifyAccessToken } from "../middleware/auth.js";
 import { handleValidationErrors } from "../middleware/validateRequest.js";
 import Hospital from "../models/Hospital.js";
 import { patientLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
-
-// Allowed file types for patient documents
-const patientFileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp|pdf|doc|docx|xls|xlsx|csv|txt|dicom|dcm/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const allowedMimes = /image\/|application\/pdf|application\/msword|application\/vnd\.|text\/|application\/dicom/;
-  const mimetype = allowedMimes.test(file.mimetype);
-
-  if (mimetype || extname) {
-    return cb(null, true);
-  }
-  cb(new Error("File type not allowed. Allowed: images, PDF, DOC, XLSX, CSV, TXT, DICOM"));
-};
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB max
-  fileFilter: patientFileFilter,
-});
 
 // Lightweight middleware to reject deactivated hospitals
 const verifyHospitalActive = async (req, res, next) => {
@@ -119,7 +99,7 @@ router.get("/:patientId/files/:folderName", patientController.getFolderFiles);
  * POST /api/patients/:patientId/files/:folderName
  * Upload file to folder
  */
-router.post("/:patientId/files/:folderName", upload.single("file"), patientController.uploadFile);
+router.post("/:patientId/files/:folderName", uploadDocument.single("file"), patientController.uploadFile);
 
 /**
  * GET /api/patients/:patientId/download/pdf

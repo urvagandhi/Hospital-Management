@@ -68,6 +68,10 @@ Desktop.ini
 secrets/
 .secrets/
 
+# Firebase Admin SDK
+serviceAccountKey.json
+*firebase-adminsdk*
+
 # User-specific files
 *.sublime-project
 *.sublime-workspace

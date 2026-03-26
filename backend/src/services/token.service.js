@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import Session from "../models/Session.js";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 import config from "../config/env.js";
+import { notifySessionRevoked } from "./push.service.js";
 
 /**
  * Create new session
@@ -24,10 +25,15 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
     //   → Invalidate all other mobile sessions on new mobile login.
     // Web: multiple concurrent sessions allowed (read-only portal).
     if (isMobile) {
-      await Session.updateMany(
+      const revoked = await Session.updateMany(
         { hospitalId, isMobile: true, isActive: true },
         { isActive: false, revokedReason: "SESSION_CONFLICT" },
       );
+
+      // If sessions were revoked, send push notification (fire-and-forget)
+      if (revoked.modifiedCount > 0) {
+        notifySessionRevoked(hospitalId).catch(console.error);
+      }
     }
 
     // Generate session ID

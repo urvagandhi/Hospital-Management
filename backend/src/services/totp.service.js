@@ -18,7 +18,7 @@ import config from "../config/env.js";
 import BackupCode from "../models/BackupCode.js";
 import { decryptTotpSecret, encryptTotpSecret } from "../utils/encryption.js";
 import { compareOtp, hashOtp } from "../utils/hash.js";
-import { sendAccountLockedEmail } from "./email.service.js";
+import { sendAccountLockedEmail } from "./mail.service.js";
 
 /**
  * Generate TOTP secret and QR code for authenticator app setup
@@ -224,7 +224,7 @@ export const recordFailedAttempt = async (hospital) => {
         // Send email notification asynchronously (don't block response)
         try {
             console.log(`[TOTP] Account locked for ${hospital.email}. Sending notification...`);
-            sendAccountLockedEmail(hospital.email, hospital.hospitalName, config.TOTP_LOCK_DURATION_MINUTES || 5)
+            sendAccountLockedEmail(hospital.email, config.TOTP_LOCK_DURATION_MINUTES || 5)
                 .catch(err => console.error("[TOTP] Failed to send lock email:", err));
         } catch (error) {
             console.error("[TOTP] Error triggering lock email:", error);

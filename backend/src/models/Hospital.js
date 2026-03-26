@@ -131,6 +131,12 @@ const hospitalSchema = new mongoose.Schema(
       default: false,
     },
 
+    // FCM push notification token
+    fcmToken: {
+      token: { type: String },
+      updatedAt: { type: Date },
+    },
+
     // Biometric binding — stores public keys per device
     biometricKeys: [{
       deviceId: { type: String, required: true },

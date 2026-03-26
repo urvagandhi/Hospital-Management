@@ -24,6 +24,7 @@ import {
   checkSessionConflict,
   validateSession,
   forceLogoutOtherSessions,
+  storeFcmToken,
 } from "../controllers/auth.controller.js";
 import { verifyAccessToken, verifyAdmin, verifyTempToken } from "../middleware/auth.js";
 import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
@@ -299,5 +300,17 @@ router.get("/session/validate", verifyAccessToken, validateSession);
 
 /** Force logout other sessions (requires auth) */
 router.post("/session/force-logout", verifyAccessToken, forceLogoutOtherSessions);
+
+// ═══════════════════════════════════════════════════
+// FCM TOKEN ENDPOINT
+// ═══════════════════════════════════════════════════
+
+/** Store FCM push notification token from mobile client */
+router.post(
+  "/fcm-token",
+  verifyAccessToken,
+  body("fcmToken").notEmpty().withMessage("fcmToken is required"),
+  storeFcmToken,
+);
 
 export default router;
