@@ -24,8 +24,8 @@ class DocumentRepository(
         file: File
     ): Result<Boolean> {
         return try {
-            val mediaType = "image/jpeg".toMediaTypeOrNull()
-            val requestFile = file.asRequestBody(mediaType)
+            val mediaType = if (file.name.endsWith(".pdf")) "application/pdf" else "image/jpeg"
+            val requestFile = file.asRequestBody(mediaType.toMediaTypeOrNull())
             val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
 
             val response = apiService.uploadFile(patientId, folderName, body)
