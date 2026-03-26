@@ -4,17 +4,21 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.animation.OvershootInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.hospital.management.databinding.ActivitySplashBinding
+import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.ui.auth.LoginActivity
 import com.hospital.management.ui.dashboard.DashboardActivity
 import com.hospital.management.utils.SessionManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SplashActivity : AppCompatActivity() {
 
@@ -87,10 +91,20 @@ class SplashActivity : AppCompatActivity() {
             val isSessionValid = SessionManager.restoreSession(this@SplashActivity)
 
             if (isSessionValid) {
-                // Session is valid, go to dashboard
-                binding.tvLoading.text = "Welcome back!"
-                delay(500)
-                navigateToDashboard()
+                // Verify session with server (catches SESSION_CONFLICT from another device)
+                val serverValid = validateSessionWithServer()
+
+                if (serverValid) {
+                    binding.tvLoading.text = "Welcome back!"
+                    delay(500)
+                    navigateToDashboard()
+                } else {
+                    // Session revoked on server (another device logged in)
+                    tokenManager.clearAll()
+                    binding.tvLoading.text = "Signed in on another device"
+                    delay(1000)
+                    navigateToLogin()
+                }
             } else {
                 // Token exists but session expired — require re-login (enforces TOTP)
                 tokenManager.clearAll()
@@ -103,6 +117,22 @@ class SplashActivity : AppCompatActivity() {
             binding.tvLoading.text = "Please sign in"
             delay(500)
             navigateToLogin()
+        }
+    }
+
+    /**
+     * Call GET /api/auth/session/validate to check if the session is still active on the server.
+     * Returns false if session was revoked (e.g., another device logged in).
+     * On network error, returns true (give benefit of the doubt — AuthInterceptor will catch it later).
+     */
+    private suspend fun validateSessionWithServer(): Boolean {
+        return try {
+            val apiService = RetrofitClient.getApiService(this@SplashActivity)
+            val response = withContext(Dispatchers.IO) { apiService.validateSession() }
+            response.isSuccessful
+        } catch (e: Exception) {
+            Log.w("SplashActivity", "Session validation failed (network?): ${e.message}")
+            true // Allow through — AuthInterceptor will handle 401 on first API call
         }
     }
 

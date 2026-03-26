@@ -424,7 +424,15 @@ class FolderDetailsActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun isFolderEmpty(): Boolean {
+        return pendingOfflineFiles.isEmpty() && patientViewModel.currentFolderFiles.value.isEmpty()
+    }
+
     private fun downloadFolderPdf() {
+        if (isFolderEmpty()) {
+            Toast.makeText(this, "No files to download", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (pendingOfflineFiles.isNotEmpty()) {
             syncAndDownload("PDF")
         } else {
@@ -751,6 +759,10 @@ class FolderDetailsActivity : AppCompatActivity() {
     }
 
     private fun downloadFolderZip() {
+        if (isFolderEmpty()) {
+            Toast.makeText(this, "No files to download", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (pendingOfflineFiles.isNotEmpty()) {
             syncAndDownload("ZIP")
         } else {

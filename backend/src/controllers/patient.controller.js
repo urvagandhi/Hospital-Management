@@ -262,18 +262,79 @@ export const uploadFile = async (req, res) => {
 };
 
 /**
- * GET /api/patients/:patientId/download/pdf
- * Download all files as PDF
+ * GET /api/patients/:patientId/download/zip/size-check
+ * Check total file size before downloading ZIP.
+ * Returns folder breakdown so frontend can show picker if over 10MB.
+ */
+export const zipSizeCheck = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const hospitalId = req.hospital?.id;
+    const patient = await patientService.getPatientById(hospitalId, patientId);
+    const result = zipService.checkSize(patient);
+    return res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    console.error("[Patient Controller] Size check error:", error);
+    if (!res.headersSent) {
+      return res.status(error.message === "Patient not found" ? 404 : 500).json({
+        success: false,
+        message: error.message === "Patient not found" ? error.message : "Size check failed",
+      });
+    }
+  }
+};
+
+/**
+ * POST /api/patients/:patientId/download/zip
+ * Download all files as ZIP (optionally filtered by selectedFolders).
+ * Body: { selectedFolders?: ["Id", "Reports"] }
+ */
+export const downloadAllZip = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const hospitalId = req.hospital?.id;
+    const { selectedFolders } = req.body || {};
+
+    const patient = await patientService.getPatientById(hospitalId, patientId);
+
+    req.setTimeout(300000);
+    res.setTimeout(300000);
+
+    await zipService.generatePatientZip(patient, res, selectedFolders || null);
+  } catch (error) {
+    console.error("[Patient Controller] ZIP error:", error);
+    if (!res.headersSent) {
+      return res.status(error.message === "Patient not found" ? 404 : 500).json({
+        success: false,
+        message: error.message === "Patient not found" ? error.message : "Failed to generate ZIP",
+      });
+    }
+  }
+};
+
+/**
+ * POST /api/patients/:patientId/download/pdf
+ * Download patient files as PDF.
+ * Body: { mode: "merged" | "per-folder" }
+ *   merged    → one big PDF with section headers per folder
+ *   per-folder → one PDF per folder, bundled in a ZIP
  */
 export const downloadAllPdf = async (req, res) => {
   try {
     const { patientId } = req.params;
     const hospitalId = req.hospital?.id;
-
-    console.log("[Patient Controller] Generating PDF for patient:", patientId);
+    const { mode } = req.body || {};
 
     const patient = await patientService.getPatientById(hospitalId, patientId);
-    await pdfService.generatePatientPdf(patient, res);
+
+    req.setTimeout(300000);
+    res.setTimeout(300000);
+
+    if (mode === "per-folder") {
+      await pdfService.generatePatientPdfPerFolder(patient, res);
+    } else {
+      await pdfService.generatePatientPdfMerged(patient, res);
+    }
   } catch (error) {
     console.error("[Patient Controller] PDF error:", error);
     if (!res.headersSent) {
@@ -286,17 +347,19 @@ export const downloadAllPdf = async (req, res) => {
 };
 
 /**
- * GET /api/patients/:patientId/folders/:folderName/pdf
- * Download folder-wise PDF
+ * GET /api/patients/:patientId/folders/:folderName/download/pdf
+ * Merge all PDFs in a folder into a single PDF with cover page.
  */
 export const downloadFolderPdf = async (req, res) => {
   try {
     const { patientId, folderName } = req.params;
     const hospitalId = req.hospital?.id;
 
-    console.log("[Patient Controller] Generating folder PDF:", folderName);
-
     const patient = await patientService.getPatientById(hospitalId, patientId);
+
+    req.setTimeout(300000);
+    res.setTimeout(300000);
+
     await pdfService.generateFolderPdf(patient, folderName, res);
   } catch (error) {
     console.error("[Patient Controller] Folder PDF error:", error);
@@ -311,41 +374,19 @@ export const downloadFolderPdf = async (req, res) => {
 };
 
 /**
- * GET /api/patients/:patientId/download/zip
- * Download all files as ZIP
- */
-export const downloadAllZip = async (req, res) => {
-  try {
-    const { patientId } = req.params;
-    const hospitalId = req.hospital?.id;
-
-    console.log("[Patient Controller] Generating ZIP for patient:", patientId);
-
-    const patient = await patientService.getPatientById(hospitalId, patientId);
-    await zipService.generatePatientZip(patient, res);
-  } catch (error) {
-    console.error("[Patient Controller] ZIP error:", error);
-    if (!res.headersSent) {
-      return res.status(error.message === "Patient not found" ? 404 : 500).json({
-        success: false,
-        message: error.message === "Patient not found" ? error.message : "Failed to generate ZIP",
-      });
-    }
-  }
-};
-
-/**
- * GET /api/patients/:patientId/folders/:folderName/zip
- * Download folder-wise ZIP
+ * GET /api/patients/:patientId/folders/:folderName/download/zip
+ * Download all files in a folder as a flat ZIP.
  */
 export const downloadFolderZip = async (req, res) => {
   try {
     const { patientId, folderName } = req.params;
     const hospitalId = req.hospital?.id;
 
-    console.log("[Patient Controller] Generating folder ZIP:", folderName);
-
     const patient = await patientService.getPatientById(hospitalId, patientId);
+
+    req.setTimeout(300000);
+    res.setTimeout(300000);
+
     await zipService.generateFolderZip(patient, folderName, res);
   } catch (error) {
     console.error("[Patient Controller] Folder ZIP error:", error);

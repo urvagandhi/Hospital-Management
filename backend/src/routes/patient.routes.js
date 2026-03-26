@@ -101,28 +101,29 @@ router.get("/:patientId/files/:folderName", patientController.getFolderFiles);
  */
 router.post("/:patientId/files/:folderName", uploadDocument.single("file"), patientController.uploadFile);
 
-/**
- * GET /api/patients/:patientId/download/pdf
- * Download all files as PDF
- */
+// ═══════════════════════════════════════════════════
+// DOWNLOAD ENDPOINTS
+// ═══════════════════════════════════════════════════
+
+/** Check total size before ZIP download (returns folder breakdown if >10MB) */
+router.get("/:patientId/download/zip/size-check", patientLimiter, patientController.zipSizeCheck);
+
+/** Download all files as ZIP (POST — accepts optional selectedFolders in body) */
+router.post("/:patientId/download/zip", patientLimiter, patientController.downloadAllZip);
+
+/** Download all files as PDF (POST — accepts { mode: "merged" | "per-folder" }) */
+router.post("/:patientId/download/pdf", patientLimiter, patientController.downloadAllPdf);
+
+/** Download single folder as merged PDF */
+router.get("/:patientId/folders/:folderName/download/pdf", patientLimiter, patientController.downloadFolderPdf);
+
+/** Download single folder as flat ZIP */
+router.get("/:patientId/folders/:folderName/download/zip", patientLimiter, patientController.downloadFolderZip);
+
+// Keep legacy GET routes for backward compatibility
 router.get("/:patientId/download/pdf", patientLimiter, patientController.downloadAllPdf);
-
-/**
- * GET /api/patients/:patientId/folders/:folderName/pdf
- * Download folder-wise PDF
- */
-router.get("/:patientId/folders/:folderName/pdf", patientLimiter, patientController.downloadFolderPdf);
-
-/**
- * GET /api/patients/:patientId/download/zip
- * Download all files as ZIP
- */
 router.get("/:patientId/download/zip", patientLimiter, patientController.downloadAllZip);
-
-/**
- * GET /api/patients/:patientId/folders/:folderName/zip
- * Download folder-wise ZIP
- */
+router.get("/:patientId/folders/:folderName/pdf", patientLimiter, patientController.downloadFolderPdf);
 router.get("/:patientId/folders/:folderName/zip", patientLimiter, patientController.downloadFolderZip);
 
 // Auto-delete is handled by the internal cron job (jobs/autoDelete.job.js),

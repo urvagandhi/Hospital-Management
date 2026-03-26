@@ -134,6 +134,10 @@ class ApiService {
     return this.api.get(url, { ...config, responseType: "blob" });
   }
 
+  async postBlob(url: string, data = {}, config = {}) {
+    return this.api.post(url, data, { ...config, responseType: "blob" });
+  }
+
   async post<T>(url: string, data = {}, config = {}) {
     return this.api.post<T>(url, data, config);
   }

@@ -25,7 +25,7 @@ interface ApiService {
         @Body body: Map<String, String>
     ): Response<ChangePasswordResponse>
 
-    @GET("/api/auth/2fa/setup")
+    @POST("/api/auth/2fa/setup")
     suspend fun setupTotp(
         @Header("Authorization") authorization: String
     ): Response<TotpSetupResponse>
@@ -78,6 +78,12 @@ interface ApiService {
     // Session management
     @GET("/api/auth/session/validate")
     suspend fun validateSession(): Response<Map<String, Any>>
+
+    @POST("/api/auth/session/check-conflict")
+    suspend fun checkSessionConflict(@Body body: Map<String, String>): Response<Map<String, Any>>
+
+    @POST("/api/auth/session/force-logout")
+    suspend fun forceLogoutOtherSessions(): Response<Map<String, Any>>
 
     // Health check
     @GET("/api/health")
@@ -133,31 +139,47 @@ interface ApiService {
         @Part file: MultipartBody.Part
     ): Response<Map<String, Any>>
 
-    @GET("/api/patients/{patientId}/download/pdf")
+    // ── Download endpoints ──
+
+    @GET("/api/patients/{patientId}/download/zip/size-check")
+    suspend fun checkZipSize(@Path("patientId") patientId: String): Response<Map<String, Any>>
+
+    @POST("/api/patients/{patientId}/download/zip")
     @Streaming
-    suspend fun downloadAllPdf(
-        @Path("patientId") patientId: String
+    suspend fun downloadPatientZip(
+        @Path("patientId") patientId: String,
+        @Body body: Map<String, Any>?
     ): Response<ResponseBody>
 
-    @GET("/api/patients/{patientId}/folders/{folderName}/pdf")
+    @POST("/api/patients/{patientId}/download/pdf")
+    @Streaming
+    suspend fun downloadPatientPdf(
+        @Path("patientId") patientId: String,
+        @Body body: Map<String, String>
+    ): Response<ResponseBody>
+
+    @GET("/api/patients/{patientId}/folders/{folderName}/download/zip")
+    @Streaming
+    suspend fun downloadFolderZip(
+        @Path("patientId") patientId: String,
+        @Path("folderName") folderName: String
+    ): Response<ResponseBody>
+
+    @GET("/api/patients/{patientId}/folders/{folderName}/download/pdf")
     @Streaming
     suspend fun downloadFolderPdf(
         @Path("patientId") patientId: String,
         @Path("folderName") folderName: String
     ): Response<ResponseBody>
 
+    // Legacy GET routes (backward compat)
+    @GET("/api/patients/{patientId}/download/pdf")
+    @Streaming
+    suspend fun downloadAllPdfLegacy(@Path("patientId") patientId: String): Response<ResponseBody>
+
     @GET("/api/patients/{patientId}/download/zip")
     @Streaming
-    suspend fun downloadAllZip(
-        @Path("patientId") patientId: String
-    ): Response<ResponseBody>
-
-    @GET("/api/patients/{patientId}/folders/{folderName}/zip")
-    @Streaming
-    suspend fun downloadFolderZip(
-        @Path("patientId") patientId: String,
-        @Path("folderName") folderName: String
-    ): Response<ResponseBody>
+    suspend fun downloadAllZipLegacy(@Path("patientId") patientId: String): Response<ResponseBody>
 
     // FCM token registration
     @POST("/api/auth/fcm-token")

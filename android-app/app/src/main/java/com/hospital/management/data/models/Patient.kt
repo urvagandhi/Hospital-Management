@@ -46,3 +46,16 @@ data class PatientsData(
     val limit: Int,
     val skip: Int
 )
+
+data class ZipSizeCheckResponse(
+    val success: Boolean,
+    val overLimit: Boolean,
+    val totalSize: Long,
+    val folders: List<FolderSizeInfo>?
+)
+
+data class FolderSizeInfo(
+    val name: String,
+    val size: Long,
+    val fileCount: Int
+)

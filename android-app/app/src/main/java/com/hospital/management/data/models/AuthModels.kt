@@ -40,9 +40,9 @@ data class TotpSetupResponse(
 )
 
 data class TotpSetupData(
-    @SerializedName("qrCodeUrl") val qrCodeUrl: String,
+    @SerializedName("qrCode") val qrCodeUrl: String,
     @SerializedName("secret") val secret: String,
-    @SerializedName("issuer") val issuer: String
+    @SerializedName("issuer") val issuer: String? = null
 )
 
 data class TotpVerifyResponse(

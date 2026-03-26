@@ -1,76 +1,119 @@
 /**
  * ZIP Generation Service
  * Generates ZIP archives for patient records and folders
+ * Fetches files from Cloudinary URLs using native fetch()
  */
 
 import archiver from "archiver";
-import { getFileStream } from "./r2.service.js";
 
 /**
- * Generate ZIP for a patient record
- * @param {Object} patient - Patient object
- * @param {Object} res - Express response object
+ * Fetch a file buffer from a Cloudinary (or any HTTPS) URL.
+ * Returns null on failure instead of throwing.
  */
-export const generatePatientZip = async (patient, res) => {
-    const archive = archiver("zip", { zlib: { level: 9 } });
-    const filename = `${patient.patientName.replace(/[^a-z0-9]/gi, "_")}_records.zip`;
+async function fetchFileBuffer(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return Buffer.from(await response.arrayBuffer());
+  } catch (error) {
+    console.error(`[ZIP Service] Failed to fetch ${url}:`, error.message);
+    return null;
+  }
+}
 
-    res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+/**
+ * Safe filename: replace non-alphanumeric (except dot, dash) with underscores
+ */
+function safeName(name) {
+  return name.replace(/[^a-z0-9.\-]/gi, "_");
+}
 
-    archive.pipe(res);
+/**
+ * Generate ZIP for a patient — all folders or selected folders only.
+ * @param {Object} patient - Patient document
+ * @param {Object} res - Express response
+ * @param {string[]} [selectedFolders] - If provided, only include these folders (case-insensitive)
+ */
+export const generatePatientZip = async (patient, res, selectedFolders = null) => {
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  const filename = `${safeName(patient.patientName)}_records.zip`;
 
-    // Add files from all folders
-    for (const folder of patient.folders) {
-        for (const file of folder.files) {
-            try {
-                const stream = await getFileStream(file.fileUrl);
-                // Add file to zip with folder structure
-                archive.append(stream, { name: `${folder.name}/${file.fileName}` });
-            } catch (error) {
-                console.error(`[ZIP Service] Failed to add file ${file.fileName}:`, error);
-                // Continue with other files even if one fails
-            }
-        }
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  archive.pipe(res);
+
+  const foldersToInclude = selectedFolders
+    ? patient.folders.filter((f) =>
+        selectedFolders.some((s) => s.toLowerCase() === f.name.toLowerCase()),
+      )
+    : patient.folders;
+
+  for (const folder of foldersToInclude) {
+    const folderPrefix = safeName(folder.name);
+    for (const file of folder.files) {
+      const buffer = await fetchFileBuffer(file.fileUrl);
+      if (buffer) {
+        archive.append(buffer, { name: `${folderPrefix}/${safeName(file.fileName)}` });
+      }
     }
+  }
 
-    await archive.finalize();
+  await archive.finalize();
 };
 
 /**
- * Generate ZIP for a specific folder
- * @param {Object} patient - Patient object
- * @param {string} folderName - Name of the folder
- * @param {Object} res - Express response object
+ * Generate ZIP for a single folder (flat — no subfolder structure).
+ * @param {Object} patient - Patient document
+ * @param {string} folderName - Folder name (case-insensitive match)
+ * @param {Object} res - Express response
  */
 export const generateFolderZip = async (patient, folderName, res) => {
-    const folder = patient.folders.find((f) => f.name === folderName);
-    if (!folder) {
-        throw new Error("Folder not found");
+  const folder = patient.folders.find(
+    (f) => f.name.toLowerCase() === folderName.toLowerCase(),
+  );
+  if (!folder) throw new Error("Folder not found");
+
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  const filename = `${safeName(patient.patientName)}_${safeName(folderName)}.zip`;
+
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  archive.pipe(res);
+
+  for (const file of folder.files) {
+    const buffer = await fetchFileBuffer(file.fileUrl);
+    if (buffer) {
+      archive.append(buffer, { name: safeName(file.fileName) });
     }
+  }
 
-    const archive = archiver("zip", { zlib: { level: 9 } });
-    const filename = `${patient.patientName.replace(/[^a-z0-9]/gi, "_")}_${folderName.replace(/[^a-z0-9]/gi, "_")}.zip`;
-
-    res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-
-    archive.pipe(res);
-
-    // Add files from folder
-    for (const file of folder.files) {
-        try {
-            const stream = await getFileStream(file.fileUrl);
-            archive.append(stream, { name: file.fileName });
-        } catch (error) {
-            console.error(`[ZIP Service] Failed to add file ${file.fileName}:`, error);
-        }
-    }
-
-    await archive.finalize();
+  await archive.finalize();
 };
 
-export default {
-    generatePatientZip,
-    generateFolderZip,
+/**
+ * Calculate total size and per-folder breakdown from DB records (no network calls).
+ * @param {Object} patient - Patient document
+ * @param {number} limit - Size limit in bytes (default 10MB)
+ * @returns {{ overLimit: boolean, totalSize: number, folders: Array }}
+ */
+export const checkSize = (patient, limit = 10 * 1024 * 1024) => {
+  const folders = patient.folders
+    .filter((f) => f.files.length > 0)
+    .map((f) => ({
+      name: f.name,
+      size: f.files.reduce((sum, file) => sum + (file.size || 0), 0),
+      fileCount: f.files.length,
+    }));
+
+  const totalSize = folders.reduce((sum, f) => sum + f.size, 0);
+
+  return {
+    overLimit: totalSize > limit,
+    totalSize,
+    folders,
+  };
 };
+
+export default { generatePatientZip, generateFolderZip, checkSize };

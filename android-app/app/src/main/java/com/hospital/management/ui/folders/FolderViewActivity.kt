@@ -18,7 +18,12 @@ import com.hospital.management.presentation.viewmodel.PatientState
 import com.hospital.management.presentation.viewmodel.PatientViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.data.models.Folder
+import android.content.ContentValues
+import android.provider.MediaStore
+import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class FolderViewActivity : AppCompatActivity() {
 
@@ -31,6 +36,7 @@ class FolderViewActivity : AppCompatActivity() {
 
     private var patientId: String = ""
     private var patientName: String = ""
+    private var isDownloading = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -258,30 +264,260 @@ class FolderViewActivity : AppCompatActivity() {
 
 
     private fun showDownloadOptionsDialog() {
-        val options = arrayOf("Download as PDF", "Download as ZIP")
+        // Check if there are any files across all folders
+        val patient = patientViewModel.currentPatient.value
+        val totalFiles = patient?.folders?.sumOf { it.fileCount } ?: 0
+        if (totalFiles == 0) {
+            Toast.makeText(this, "No files to download", Toast.LENGTH_SHORT).show()
+            return
+        }
 
+        val options = arrayOf("Download as PDF", "Download as ZIP")
         AlertDialog.Builder(this)
             .setTitle("Download All Files")
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> downloadAllPdf()
-                    1 -> downloadAllZip()
+                    0 -> showPdfModeDialog()
+                    1 -> handleZipDownload()
                 }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun downloadAllPdf() {
-        patientViewModel.downloadAllPdf(patientId)
+    // ─── PDF Download ───────────────────────────────────────────
+
+    private fun showPdfModeDialog() {
+        val modes = arrayOf(
+            "One merged PDF\nAll folders combined into a single file",
+            "One PDF per folder\nEach folder as separate PDF, downloaded as ZIP"
+        )
+        var selectedMode = 0
+
+        AlertDialog.Builder(this)
+            .setTitle("Download as PDF")
+            .setSingleChoiceItems(modes, 0) { _, which -> selectedMode = which }
+            .setPositiveButton("Download") { _, _ ->
+                val mode = if (selectedMode == 0) "merged" else "per-folder"
+                downloadPdf(mode)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
-    private fun downloadAllZip() {
-        patientViewModel.downloadAllZip(patientId)
+    private fun downloadPdf(mode: String) {
+        if (isDownloading) return
+        isDownloading = true
+        val rootView = findViewById<View>(android.R.id.content)
+
+        lifecycleScope.launch {
+            try {
+                Snackbar.make(rootView, "Preparing PDF download...", Snackbar.LENGTH_SHORT).show()
+                val apiService = RetrofitClient.getApiService(this@FolderViewActivity)
+                val response = withContext(Dispatchers.IO) {
+                    apiService.downloadPatientPdf(patientId, mapOf("mode" to mode))
+                }
+
+                if (response.isSuccessful && response.body() != null) {
+                    val ext = if (mode == "per-folder") "zip" else "pdf"
+                    val mime = if (mode == "per-folder") "application/zip" else "application/pdf"
+                    val safeName = patientName.replace(Regex("[^a-zA-Z0-9]"), "_")
+                    val fileName = "${safeName}_records.$ext"
+
+                    withContext(Dispatchers.IO) {
+                        saveToDownloads(response.body()!!, fileName, mime)
+                    }
+                    Snackbar.make(rootView, "Saved to Downloads: $fileName", Snackbar.LENGTH_LONG).show()
+                } else {
+                    Snackbar.make(rootView, "Download failed. Please try again.", Snackbar.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Snackbar.make(rootView, "Download failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+            } finally {
+                isDownloading = false
+            }
+        }
+    }
+
+    // ─── ZIP Download ───────────────────────────────────────────
+
+    private fun handleZipDownload() {
+        if (isDownloading) return
+        isDownloading = true
+        val rootView = findViewById<View>(android.R.id.content)
+
+        lifecycleScope.launch {
+            try {
+                Snackbar.make(rootView, "Checking file sizes...", Snackbar.LENGTH_SHORT).show()
+                val apiService = RetrofitClient.getApiService(this@FolderViewActivity)
+                val checkResponse = withContext(Dispatchers.IO) {
+                    apiService.checkZipSize(patientId)
+                }
+
+                if (!checkResponse.isSuccessful || checkResponse.body() == null) {
+                    // Size check failed — download anyway
+                    triggerZipDownload(null)
+                    return@launch
+                }
+
+                val body = checkResponse.body()!!
+                val overLimit = body["overLimit"] as? Boolean ?: false
+
+                if (!overLimit) {
+                    triggerZipDownload(null)
+                } else {
+                    isDownloading = false
+                    val totalSize = (body["totalSize"] as? Number)?.toLong() ?: 0
+                    val foldersRaw = body["folders"] as? List<*>
+                    showZipFolderPickerDialog(totalSize, foldersRaw)
+                }
+            } catch (e: Exception) {
+                isDownloading = false
+                Snackbar.make(rootView, "Download failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun showZipFolderPickerDialog(totalSize: Long, foldersRaw: List<*>?) {
+        data class FolderInfo(val name: String, val size: Long, val fileCount: Int, var checked: Boolean = true)
+
+        val folders = foldersRaw?.mapNotNull { item ->
+            val map = item as? Map<*, *> ?: return@mapNotNull null
+            FolderInfo(
+                name = map["name"] as? String ?: return@mapNotNull null,
+                size = (map["size"] as? Number)?.toLong() ?: 0,
+                fileCount = (map["fileCount"] as? Number)?.toInt() ?: 0
+            )
+        } ?: return
+
+        fun formatMB(bytes: Long): String = "%.1f MB".format(bytes / (1024.0 * 1024.0))
+
+        val layout = android.widget.LinearLayout(this)
+        layout.orientation = android.widget.LinearLayout.VERTICAL
+        layout.setPadding(50, 30, 50, 10)
+
+        val tvInfo = android.widget.TextView(this)
+        tvInfo.text = "Total: ${formatMB(totalSize)} — select folders to include"
+        tvInfo.setTextColor(android.graphics.Color.parseColor("#DC2626"))
+        tvInfo.textSize = 13f
+        tvInfo.setPadding(0, 0, 0, 20)
+        layout.addView(tvInfo)
+
+        val tvSelected = android.widget.TextView(this)
+        tvSelected.textSize = 14f
+        tvSelected.setPadding(0, 20, 0, 0)
+
+        val checkBoxes = mutableListOf<android.widget.CheckBox>()
+
+        fun updateSelectedSize() {
+            val sel = folders.filter { it.checked }.sumOf { it.size }
+            val isOver = sel > 10 * 1024 * 1024
+            tvSelected.text = "Selected: ${formatMB(sel)}" + if (isOver) " — still over 10 MB" else ""
+            tvSelected.setTextColor(
+                if (isOver) android.graphics.Color.parseColor("#DC2626")
+                else android.graphics.Color.parseColor("#374151")
+            )
+        }
+
+        for (f in folders) {
+            val row = android.widget.LinearLayout(this)
+            row.orientation = android.widget.LinearLayout.HORIZONTAL
+            row.setPadding(0, 8, 0, 8)
+
+            val cb = android.widget.CheckBox(this)
+            cb.isChecked = true
+            cb.text = "${f.name}  (${formatMB(f.size)}, ${f.fileCount} files)"
+            cb.textSize = 13f
+            cb.setOnCheckedChangeListener { _, isChecked ->
+                f.checked = isChecked
+                updateSelectedSize()
+            }
+            checkBoxes.add(cb)
+            row.addView(cb)
+            layout.addView(row)
+        }
+
+        layout.addView(tvSelected)
+        updateSelectedSize()
+
+        AlertDialog.Builder(this)
+            .setTitle("Download too large (${formatMB(totalSize)})")
+            .setView(layout)
+            .setPositiveButton("Download Selected") { _, _ ->
+                val selected = folders.filter { it.checked }.map { it.name }
+                if (selected.isEmpty()) {
+                    Toast.makeText(this, "Select at least one folder", Toast.LENGTH_SHORT).show()
+                } else {
+                    triggerZipDownload(selected)
+                }
+            }
+            .setNegativeButton("Cancel") { _, _ -> isDownloading = false }
+            .setOnCancelListener { isDownloading = false }
+            .show()
+    }
+
+    private fun triggerZipDownload(selectedFolders: List<String>?) {
+        if (!isDownloading) isDownloading = true
+        val rootView = findViewById<View>(android.R.id.content)
+
+        lifecycleScope.launch {
+            try {
+                Snackbar.make(rootView, "Downloading ZIP...", Snackbar.LENGTH_SHORT).show()
+                val apiService = RetrofitClient.getApiService(this@FolderViewActivity)
+                val body: Map<String, Any>? = if (selectedFolders != null) {
+                    mapOf("selectedFolders" to selectedFolders)
+                } else null
+
+                val response = withContext(Dispatchers.IO) {
+                    apiService.downloadPatientZip(patientId, body)
+                }
+
+                if (response.isSuccessful && response.body() != null) {
+                    val safeName = patientName.replace(Regex("[^a-zA-Z0-9]"), "_")
+                    val fileName = "${safeName}_records.zip"
+                    withContext(Dispatchers.IO) {
+                        saveToDownloads(response.body()!!, fileName, "application/zip")
+                    }
+                    Snackbar.make(rootView, "Saved to Downloads: $fileName", Snackbar.LENGTH_LONG).show()
+                } else {
+                    Snackbar.make(rootView, "Download failed. Please try again.", Snackbar.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Snackbar.make(rootView, "Download failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+            } finally {
+                isDownloading = false
+            }
+        }
+    }
+
+    // ─── File Save Helper ───────────────────────────────────────
+
+    private fun saveToDownloads(body: okhttp3.ResponseBody, fileName: String, mimeType: String) {
+        val resolver = contentResolver
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+            put(MediaStore.Downloads.MIME_TYPE, mimeType)
+            put(MediaStore.Downloads.IS_PENDING, 1)
+        }
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues) ?: return
+        resolver.openOutputStream(uri)?.use { output ->
+            body.byteStream().copyTo(output)
+        }
+        contentValues.clear()
+        contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
+        resolver.update(uri, contentValues, null, null)
     }
 
     override fun onResume() {
         super.onResume()
         loadFolders() // Refresh folder list when returning from scanner
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && patientId.isNotEmpty()) {
+            // Silent refresh when app regains focus (catches mobile uploads from other apps)
+            patientViewModel.getPatientById(patientId)
+        }
     }
 }

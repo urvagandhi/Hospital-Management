@@ -2,27 +2,28 @@ package com.hospital.management.ui.auth
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.hospital.management.data.api.RetrofitClient
+import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.models.LoginResponse
+import com.hospital.management.data.repository.AuthRepository
 import com.hospital.management.databinding.ActivityLoginBinding
+import com.hospital.management.presentation.viewmodel.AuthState
+import com.hospital.management.presentation.viewmodel.AuthViewModel
+import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.ui.dashboard.DashboardActivity
+import com.hospital.management.utils.BiometricHelper
+import com.hospital.management.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.lifecycle.ViewModelProvider
-import com.hospital.management.presentation.viewmodel.AuthState
-import com.hospital.management.presentation.viewmodel.AuthViewModel
-import com.hospital.management.presentation.viewmodel.ViewModelFactory
-import com.hospital.management.data.repository.AuthRepository
-import com.hospital.management.utils.BiometricHelper
-import com.hospital.management.utils.SessionManager
-import com.hospital.management.data.local.TokenManager
-import android.util.Log
-import android.view.View
-import androidx.lifecycle.lifecycleScope
 
 class LoginActivity : AppCompatActivity() {
 
@@ -99,6 +100,61 @@ class LoginActivity : AppCompatActivity() {
             }
 
             if (isValid) {
+                checkConflictThenLogin(identifier, password)
+            }
+        }
+    }
+
+    /**
+     * Check if another device has an active session before logging in.
+     * If conflict exists, show a dialog asking the user to confirm.
+     */
+    private fun checkConflictThenLogin(identifier: String, password: String) {
+        binding.loadingOverlay.visibility = View.VISIBLE
+        binding.btnLogin.isEnabled = false
+
+        lifecycleScope.launch {
+            try {
+                val apiService = RetrofitClient.getApiService(this@LoginActivity)
+                val response = withContext(Dispatchers.IO) {
+                    apiService.checkSessionConflict(mapOf("identifier" to identifier))
+                }
+
+                binding.loadingOverlay.visibility = View.GONE
+                binding.btnLogin.isEnabled = true
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    val hasConflict = (body?.get("conflict") as? Boolean) == true
+
+                    if (hasConflict) {
+                        val activeDevice = body?.get("activeDevice") as? Map<*, *>
+                        val platform = activeDevice?.get("platform") as? String ?: "another device"
+
+                        AlertDialog.Builder(this@LoginActivity)
+                            .setTitle("Active Session Found")
+                            .setMessage(
+                                "You are already logged in on $platform. " +
+                                "Continuing will sign you out of that device."
+                            )
+                            .setPositiveButton("Continue Login") { _, _ ->
+                                authViewModel.login(identifier, password)
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .setCancelable(true)
+                            .show()
+                    } else {
+                        authViewModel.login(identifier, password)
+                    }
+                } else {
+                    // If conflict check fails, proceed with login anyway
+                    authViewModel.login(identifier, password)
+                }
+            } catch (e: Exception) {
+                binding.loadingOverlay.visibility = View.GONE
+                binding.btnLogin.isEnabled = true
+                // Network error on conflict check — proceed with login
+                Log.w("LoginActivity", "Conflict check failed: ${e.message}")
                 authViewModel.login(identifier, password)
             }
         }
@@ -157,9 +213,8 @@ class LoginActivity : AppCompatActivity() {
             "Login successful" -> {
                 SessionManager.startSession(this)
 
-                // Enable biometric for future logins (tokens already saved by ViewModel)
+                // Save identifier for future logins
                 lifecycleScope.launch {
-                    tokenManager.setBiometricEnabled(true)
                     val identifier = binding.etHospitalId.text.toString().trim()
                     if (identifier.isNotEmpty()) tokenManager.saveEmail(identifier)
                 }
@@ -178,10 +233,13 @@ class LoginActivity : AppCompatActivity() {
                     }
                 }
 
-                val intent = Intent(this, DashboardActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
-                finish()
+                // Check if biometric is already enabled or not available
+                val alreadyEnabled = withContext(Dispatchers.IO) { tokenManager.isBiometricEnabled() }
+                if (alreadyEnabled || !biometricHelper.isBiometricAvailable()) {
+                    navigateToDashboard()
+                } else {
+                    showBiometricBindingDialog()
+                }
             }
             else -> {
                  // Check if it's just an OTP sent message
@@ -190,6 +248,61 @@ class LoginActivity : AppCompatActivity() {
                  }
             }
         }
+    }
+
+    private fun navigateToDashboard() {
+        val intent = Intent(this, DashboardActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
+    }
+
+    /**
+     * Show dialog asking user if they want to enable biometric login.
+     * On Yes → verify fingerprint/face → register with server → enable.
+     * On Skip → proceed to dashboard without biometric.
+     */
+    private fun showBiometricBindingDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Enable Biometric Login")
+            .setMessage("Would you like to use fingerprint or face unlock for faster login next time?")
+            .setPositiveButton("Enable") { _, _ ->
+                biometricHelper.showBiometricPrompt(
+                    this@LoginActivity,
+                    onSuccess = {
+                        lifecycleScope.launch {
+                            try {
+                                // Register biometric with server
+                                val deviceId = withContext(Dispatchers.IO) { tokenManager.getDeviceId() } ?: "unknown"
+                                val apiService = RetrofitClient.getApiService(this@LoginActivity)
+                                withContext(Dispatchers.IO) {
+                                    apiService.registerBiometric(
+                                        mapOf("publicKey" to "biometric-bound", "deviceId" to deviceId)
+                                    )
+                                }
+
+                                // Enable locally
+                                withContext(Dispatchers.IO) { tokenManager.setBiometricEnabled(true) }
+                                Toast.makeText(this@LoginActivity, "Biometric login enabled", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Log.e("LoginActivity", "Biometric registration failed", e)
+                                // Still enable locally even if server call fails
+                                withContext(Dispatchers.IO) { tokenManager.setBiometricEnabled(true) }
+                            }
+                            navigateToDashboard()
+                        }
+                    },
+                    onError = {
+                        Toast.makeText(this@LoginActivity, "Biometric setup skipped", Toast.LENGTH_SHORT).show()
+                        navigateToDashboard()
+                    }
+                )
+            }
+            .setNegativeButton("Skip") { _, _ ->
+                navigateToDashboard()
+            }
+            .setCancelable(false)
+            .show()
     }
 
     private fun setupBiometricLogin() {
@@ -207,13 +320,9 @@ class LoginActivity : AppCompatActivity() {
                     biometricHelper.showBiometricPrompt(
                         this@LoginActivity,
                         onSuccess = {
-                            // Use existing refresh token to get new session
                             lifecycleScope.launch {
                                 SessionManager.startSession(this@LoginActivity)
-                                val intent = Intent(this@LoginActivity, DashboardActivity::class.java)
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                startActivity(intent)
-                                finish()
+                                navigateToDashboard()
                             }
                         },
                         onError = {
