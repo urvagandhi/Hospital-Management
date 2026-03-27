@@ -31,7 +31,8 @@ function sleep(ms) {
 }
 
 /**
- * Send via Brevo REST API with retry (2 retries, 1 s delay).
+ * Send via Brevo REST API (direct HTTP, no SDK).
+ * Retries up to 2 times with 1 s delay.
  */
 async function sendViaBrevo(to, subject, htmlContent) {
   const apiKey = process.env.BREVO_API_KEY;
@@ -44,34 +45,46 @@ async function sendViaBrevo(to, subject, htmlContent) {
 
   console.log(`[Brevo] Sending email to=${to}, from=${senderEmail}, subject="${subject}"`);
 
-  const brevo = await import("@getbrevo/brevo");
-  const apiInstance = new brevo.TransactionalEmailsApi();
-  apiInstance.setApiKey(
-    brevo.TransactionalEmailsApiApiKeys.apiKey,
-    apiKey,
-  );
-
-  const sendSmtpEmail = new brevo.SendSmtpEmail();
-  sendSmtpEmail.sender = { email: senderEmail, name: SENDER_NAME() };
-  sendSmtpEmail.to = [{ email: to }];
-  sendSmtpEmail.subject = subject;
-  sendSmtpEmail.htmlContent = htmlContent;
+  const payload = JSON.stringify({
+    sender: { name: SENDER_NAME(), email: senderEmail },
+    to: [{ email: to }],
+    subject,
+    htmlContent,
+  });
 
   const MAX_RETRIES = 2;
   let lastError;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`[Brevo] Email sent successfully. messageId=${result?.body?.messageId}`);
-      return { success: true, messageId: result?.body?.messageId };
-    } catch (err) {
-      const errBody = err?.body || err?.response?.body || err?.message || err;
-      console.error(`[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`, JSON.stringify(errBody));
-      lastError = err;
-      if (attempt < MAX_RETRIES) {
-        await sleep(1000);
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "content-type": "application/json",
+          "api-key": apiKey,
+        },
+        body: payload,
+      });
+
+      const body = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        console.log(`[Brevo] Email sent successfully. messageId=${body.messageId}`);
+        return { success: true, messageId: body.messageId };
       }
+
+      // Brevo returned an error
+      const errMsg = body.message || JSON.stringify(body);
+      console.error(`[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} failed (${res.status}): ${errMsg}`);
+      lastError = new Error(`Brevo API error ${res.status}: ${errMsg}`);
+    } catch (err) {
+      console.error(`[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} network error:`, err.message);
+      lastError = err;
+    }
+
+    if (attempt < MAX_RETRIES) {
+      await sleep(1000);
     }
   }
   throw lastError;
