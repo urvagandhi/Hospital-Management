@@ -245,7 +245,7 @@ export const registerHospital = async (req, res) => {
     let invitationSent = false;
     let emailError = null;
     try {
-      await sendWelcomeEmail(email, hospital.hospitalName, email);
+      await sendWelcomeEmail(email, hospital.hospitalName, username || email, tempPassword);
       invitationSent = true;
       console.log(`✅ Welcome email sent to ${email}`);
     } catch (emailErr) {

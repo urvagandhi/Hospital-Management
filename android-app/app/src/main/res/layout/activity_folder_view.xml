@@ -10,138 +10,158 @@
         android:layout_height="match_parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- App Bar -->
-    <View
-        android:id="@+id/viewHeader"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:background="@android:color/transparent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <ImageButton
-        android:id="@+id/btnBack"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
-        android:layout_marginStart="@dimen/space_md"
-        android:layout_marginTop="@dimen/space_md"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="10dp"
-        android:src="@drawable/ic_chevron_right"
-        android:rotation="180"
-        android:contentDescription="Back"
-        app:tint="@color/color_on_surface"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Patient Folders"
-        android:textColor="@color/color_on_surface"
-        android:textSize="20sp"
-        android:fontFamily="@font/inter_semibold"
-        android:letterSpacing="-0.01"
-        app:layout_constraintBottom_toBottomOf="@id/btnBack"
-        app:layout_constraintStart_toEndOf="@id/btnBack"
-        app:layout_constraintTop_toTopOf="@id/btnBack" />
-
-    <!-- Patient Info Card -->
-    <com.hospital.management.ui.components.GlassCardView
-        android:id="@+id/cvPatientInfo"
+    <!-- Top section with status bar insets -->
+    <LinearLayout
+        android:id="@+id/layoutTopSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="@dimen/space_base"
-        android:layout_marginTop="@dimen/space_sm"
-        app:layout_constraintTop_toBottomOf="@id/btnBack">
+        android:orientation="vertical"
+        app:layout_constraintTop_toTopOf="parent">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <!-- App Bar -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="@dimen/space_base">
-
-            <View
-                android:id="@+id/avatarBg"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/bg_stat_card_icon"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent" />
-
-            <ImageView
-                android:layout_width="@dimen/icon_size_sm"
-                android:layout_height="@dimen/icon_size_sm"
-                android:src="@drawable/ic_people"
-                app:tint="@color/brand_primary"
-                app:layout_constraintStart_toStartOf="@id/avatarBg"
-                app:layout_constraintEnd_toEndOf="@id/avatarBg"
-                app:layout_constraintTop_toTopOf="@id/avatarBg"
-                app:layout_constraintBottom_toBottomOf="@id/avatarBg" />
-
-            <TextView
-                android:id="@+id/tvPatientName"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:text="Patient Name"
-                android:textColor="@color/color_on_surface"
-                android:textSize="16sp"
-                android:fontFamily="@font/inter_semibold"
-                android:layout_marginStart="@dimen/space_md"
-                app:layout_constraintStart_toEndOf="@id/avatarBg"
-                app:layout_constraintTop_toTopOf="@id/avatarBg"
-                app:layout_constraintEnd_toStartOf="@id/btnEditPatient" />
-
-            <TextView
-                android:id="@+id/tvMrn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="MRN: --"
-                android:textColor="@color/color_on_surface_muted"
-                android:textSize="12sp"
-                android:fontFamily="@font/inter"
-                android:layout_marginTop="2dp"
-                app:layout_constraintStart_toStartOf="@id/tvPatientName"
-                app:layout_constraintTop_toBottomOf="@id/tvPatientName" />
-
-            <TextView
-                android:id="@+id/tvPhone"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Phone: --"
-                android:textColor="@color/color_on_surface_muted"
-                android:textSize="12sp"
-                android:fontFamily="@font/inter"
-                android:layout_marginStart="@dimen/space_md"
-                app:layout_constraintStart_toEndOf="@id/tvMrn"
-                app:layout_constraintTop_toTopOf="@id/tvMrn" />
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="@dimen/space_xs">
 
             <ImageButton
-                android:id="@+id/btnEditPatient"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="@drawable/bg_stat_card_icon"
-                android:src="@android:drawable/ic_menu_edit"
-                app:tint="@color/brand_primary"
-                android:padding="@dimen/space_sm"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent" />
+                android:id="@+id/btnBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="10dp"
+                android:src="@drawable/ic_chevron_right"
+                android:rotation="180"
+                android:contentDescription="Back"
+                app:tint="@color/color_on_surface" />
 
-        </androidx.constraintlayout.widget.ConstraintLayout>
-    </com.hospital.management.ui.components.GlassCardView>
+            <TextView
+                android:id="@+id/tvTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Patient Folders"
+                android:textColor="@color/color_on_surface"
+                android:textSize="20sp"
+                android:fontFamily="@font/inter_semibold"
+                android:letterSpacing="-0.01" />
+        </LinearLayout>
+
+        <!-- Patient Info Card - Enhanced -->
+        <com.hospital.management.ui.components.GlassCardView
+            android:id="@+id/cvPatientInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/space_base"
+            android:layout_marginBottom="@dimen/space_sm"
+            app:cardCornerRadius="@dimen/radius_xl">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/space_base">
+
+                <!-- Top row: Avatar + Name + Edit -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <!-- Avatar circle -->
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp">
+
+                        <View
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_stat_card_icon" />
+
+                        <ImageView
+                            android:layout_width="@dimen/icon_size_md"
+                            android:layout_height="@dimen/icon_size_md"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_people"
+                            app:tint="@color/brand_primary" />
+                    </FrameLayout>
+
+                    <!-- Patient Name -->
+                    <TextView
+                        android:id="@+id/tvPatientName"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Patient Name"
+                        android:textColor="@color/color_on_surface"
+                        android:textSize="17sp"
+                        android:fontFamily="@font/inter_semibold"
+                        android:layout_marginHorizontal="@dimen/space_md"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+
+                    <!-- Edit Button -->
+                    <ImageButton
+                        android:id="@+id/btnEditPatient"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:background="@drawable/bg_stat_card_icon"
+                        android:src="@android:drawable/ic_menu_edit"
+                        app:tint="@color/brand_primary"
+                        android:padding="@dimen/space_sm" />
+                </LinearLayout>
+
+                <!-- Bottom row: MRN + Phone -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="@dimen/space_sm"
+                    android:layout_marginStart="56dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tvMrn"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="MRN: --"
+                        android:textColor="@color/color_on_surface_variant"
+                        android:textSize="12sp"
+                        android:fontFamily="@font/inter_medium"
+                        android:background="@drawable/bg_badge"
+                        android:paddingHorizontal="@dimen/space_sm"
+                        android:paddingVertical="2dp" />
+
+                    <TextView
+                        android:id="@+id/tvPhone"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Phone: --"
+                        android:textColor="@color/color_on_surface_variant"
+                        android:textSize="12sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginStart="@dimen/space_sm"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.hospital.management.ui.components.GlassCardView>
+    </LinearLayout>
 
     <!-- Folders Grid -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvFolders"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="@dimen/space_md"
+        android:layout_marginTop="@dimen/space_sm"
         android:paddingHorizontal="10dp"
         android:paddingTop="@dimen/space_xs"
         android:paddingBottom="88dp"
         android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/cvPatientInfo"
+        app:layout_constraintTop_toBottomOf="@id/layoutTopSection"
         app:layout_constraintBottom_toBottomOf="parent" />
 
     <TextView

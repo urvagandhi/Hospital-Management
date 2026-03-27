@@ -46,6 +46,7 @@ class FolderDetailsActivity : BaseActivity() {
     private var patientId: String = ""
     private var folderName: String = ""
     private var patientName: String = ""
+    private var hospitalName: String = ""
     private var pendingOfflineFiles: List<FileItem> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +61,18 @@ class FolderDetailsActivity : BaseActivity() {
         patientId = intent.getStringExtra("PATIENT_ID") ?: ""
         folderName = intent.getStringExtra("FOLDER_NAME") ?: ""
         patientName = intent.getStringExtra("PATIENT_NAME") ?: ""
+        val patientMrn = intent.getStringExtra("PATIENT_MRN") ?: ""
+        val patientPhone = intent.getStringExtra("PATIENT_PHONE") ?: ""
+
+        // Fetch hospital name for download folder hierarchy
+        lifecycleScope.launch {
+            hospitalName = tokenManager.getHospitalName() ?: "Hospital"
+        }
+
+        // Populate patient info row
+        findViewById<android.widget.TextView>(R.id.tvPatientName).text = patientName
+        findViewById<android.widget.TextView>(R.id.tvPatientMrn).text = if (patientMrn.isNotEmpty()) "MRN: $patientMrn" else ""
+        findViewById<android.widget.TextView>(R.id.tvPatientPhone).text = patientPhone
 
         setupViews()
         setupObservers()
@@ -88,10 +101,14 @@ class FolderDetailsActivity : BaseActivity() {
             .split(" ")
             .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
         findViewById<android.widget.TextView>(R.id.tvFolderName).text = displayName
+        findViewById<android.widget.TextView>(R.id.tvFolderDisplayName).text = displayName
+
+        val fileCount = intent.getIntExtra("FILE_COUNT", 0)
+        findViewById<android.widget.TextView>(R.id.tvFileCount).text = "$fileCount files"
 
         rvFiles = findViewById(R.id.rvFiles)
         progressBar = findViewById(R.id.progressBar)
-        tvEmpty = findViewById(R.id.tvEmpty)
+        tvEmpty = findViewById(R.id.layoutEmpty)
 
         rvFiles.layoutManager = LinearLayoutManager(this)
 
@@ -119,10 +136,12 @@ class FolderDetailsActivity : BaseActivity() {
                         progressBar.visibility = View.GONE
                         
                         if (state.message == "PDF Ready" && state.data is okhttp3.ResponseBody) {
-                            val fileName = "${folderName}_${System.currentTimeMillis()}.pdf"
+                            val safeFolder = folderName.replace(Regex("[^a-zA-Z0-9 ]"), "").trim().replace("\\s+".toRegex(), "_")
+                            val fileName = "${safeFolder}.pdf"
                             saveFileToDownloads(state.data, fileName)
                         } else if (state.message == "ZIP Ready" && state.data is okhttp3.ResponseBody) {
-                            val fileName = "${folderName}_${System.currentTimeMillis()}.zip"
+                            val safeFolder = folderName.replace(Regex("[^a-zA-Z0-9 ]"), "").trim().replace("\\s+".toRegex(), "_")
+                            val fileName = "${safeFolder}.zip"
                             saveFileToDownloads(state.data, fileName)
                         } else if (state.message?.isNotEmpty() == true && state.message != "Files loaded") {
                             Toast.makeText(this@FolderDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
@@ -297,11 +316,12 @@ class FolderDetailsActivity : BaseActivity() {
         }
 
         try {
+            val subPath = getDownloadSubPath()
             val request = android.app.DownloadManager.Request(Uri.parse(fileUrl))
                 .setTitle(file.name)
                 .setDescription("Downloading file...")
                 .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, file.name)
+                .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "$subPath/${file.name}")
                 .setAllowedOverMetered(true)
                 .setAllowedOverRoaming(true)
 
@@ -330,9 +350,11 @@ class FolderDetailsActivity : BaseActivity() {
             val mimeType = getMimeType(cleanName)
 
             val resolver = contentResolver
+            val relativePath = getDownloadSubPath()
             val contentValues = android.content.ContentValues().apply {
                 put(android.provider.MediaStore.Downloads.DISPLAY_NAME, cleanName)
                 put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeType)
+                put(android.provider.MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$relativePath")
                 put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
             }
             val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
@@ -351,7 +373,7 @@ class FolderDetailsActivity : BaseActivity() {
             contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
             resolver.update(uri, contentValues, null, null)
 
-            Toast.makeText(this, "Saved to Downloads: $cleanName", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Saved to $relativePath/$cleanName", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -573,7 +595,7 @@ class FolderDetailsActivity : BaseActivity() {
                     return@launch
                 }
 
-                val fileName = "${folderName}_local_${System.currentTimeMillis()}.zip"
+                val fileName = "${folderName}_local.zip"
                 val zipFile = File(cacheDir, fileName)
                 
                 var filesAdded = 0
@@ -641,9 +663,11 @@ class FolderDetailsActivity : BaseActivity() {
 
     private suspend fun saveLocalFileToMediaStore(sourceFile: File, displayName: String, mimeType: String) {
         val resolver = contentResolver
+        val relativePath = getDownloadSubPath()
         val contentValues = android.content.ContentValues().apply {
             put(android.provider.MediaStore.Downloads.DISPLAY_NAME, displayName)
             put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeType)
+            put(android.provider.MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$relativePath")
             put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
         }
         val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
@@ -660,7 +684,7 @@ class FolderDetailsActivity : BaseActivity() {
         contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
         resolver.update(uri, contentValues, null, null)
         withContext(Dispatchers.Main) {
-            Toast.makeText(this@FolderDetailsActivity, "Saved to Downloads: $displayName", Toast.LENGTH_LONG).show()
+            Toast.makeText(this@FolderDetailsActivity, "Saved to $relativePath/$displayName", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -707,11 +731,11 @@ class FolderDetailsActivity : BaseActivity() {
 
                 if (localPdfFiles.size == 1) {
                     // Single PDF — save via MediaStore
-                    val fileName = "${folderName}_local_${System.currentTimeMillis()}.pdf"
+                    val fileName = "${folderName}_local.pdf"
                     saveLocalFileToMediaStore(localPdfFiles[0], fileName, "application/pdf")
                 } else {
                     // Multiple PDFs — bundle as ZIP in cache, then save via MediaStore
-                    val zipFileName = "${folderName}_local_${System.currentTimeMillis()}.zip"
+                    val zipFileName = "${folderName}_local.zip"
                     val zipFile = File(cacheDir, zipFileName)
                     java.util.zip.ZipOutputStream(zipFile.outputStream()).use { zos ->
                         localPdfFiles.forEachIndexed { index, pdfFile ->
@@ -839,6 +863,17 @@ class FolderDetailsActivity : BaseActivity() {
         }
     }
 
+    private fun getDownloadSubPath(includeFolder: Boolean = true): String {
+        val safeHospital = hospitalName.replace(Regex("[^a-zA-Z0-9 _-]"), "").trim().ifEmpty { "Hospital" }
+        val safePatient = patientName.replace(Regex("[^a-zA-Z0-9 _-]"), "").trim().ifEmpty { "Patient" }
+        val safeFolder = folderName.replace(Regex("[^a-zA-Z0-9 _-]"), "").trim()
+        return if (includeFolder && safeFolder.isNotEmpty()) {
+            "HospitalRecords/$safeHospital/$safePatient/$safeFolder"
+        } else {
+            "HospitalRecords/$safeHospital/$safePatient"
+        }
+    }
+
     private fun saveFileToDownloads(body: okhttp3.ResponseBody, fileName: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -848,9 +883,11 @@ class FolderDetailsActivity : BaseActivity() {
                     else -> "application/octet-stream"
                 }
                 val resolver = contentResolver
+                val relativePath = getDownloadSubPath()
                 val contentValues = android.content.ContentValues().apply {
                     put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName)
                     put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeType)
+                    put(android.provider.MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$relativePath")
                     put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
                 }
                 val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
@@ -870,7 +907,7 @@ class FolderDetailsActivity : BaseActivity() {
                 resolver.update(uri, contentValues, null, null)
 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@FolderDetailsActivity, "Saved to Downloads: $fileName", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@FolderDetailsActivity, "Saved to $relativePath/$fileName", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {

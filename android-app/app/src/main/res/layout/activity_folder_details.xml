@@ -10,56 +10,212 @@
         android:layout_height="match_parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- App Bar -->
-    <View
-        android:id="@+id/viewHeader"
+    <!-- Top section with status bar insets -->
+    <LinearLayout
+        android:id="@+id/layoutTopSection"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:background="@android:color/transparent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <ImageButton
-        android:id="@+id/btnBack"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
-        android:layout_marginStart="@dimen/space_md"
-        android:layout_marginTop="@dimen/space_md"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="10dp"
-        android:src="@drawable/ic_chevron_right"
-        android:rotation="180"
-        android:contentDescription="Back"
-        app:tint="@color/color_on_surface"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/tvFolderName"
-        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Folder Name"
-        android:textColor="@color/color_on_surface"
-        android:textSize="20sp"
+        android:orientation="vertical"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- App Bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="@dimen/space_xs">
+
+            <ImageButton
+                android:id="@+id/btnBack"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="10dp"
+                android:src="@drawable/ic_chevron_right"
+                android:rotation="180"
+                android:contentDescription="Back"
+                app:tint="@color/color_on_surface" />
+
+            <TextView
+                android:id="@+id/tvFolderName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Folder Name"
+                android:textColor="@color/color_on_surface"
+                android:textSize="20sp"
+                android:fontFamily="@font/inter_semibold"
+                android:letterSpacing="-0.01"
+                android:layout_marginStart="@dimen/space_xs"
+                android:layout_marginEnd="@dimen/space_base"
+                android:maxLines="1"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <!-- Patient Info Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="@dimen/space_lg"
+            android:paddingVertical="@dimen/space_xs">
+
+            <FrameLayout
+                android:layout_width="28dp"
+                android:layout_height="28dp">
+
+                <View
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:background="@drawable/bg_stat_card_icon" />
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_people"
+                    app:tint="@color/brand_primary" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvPatientName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Patient"
+                android:textColor="@color/color_on_surface"
+                android:textSize="13sp"
+                android:fontFamily="@font/inter_medium"
+                android:layout_marginStart="@dimen/space_sm" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="14dp"
+                android:background="@color/color_divider"
+                android:layout_marginHorizontal="@dimen/space_sm" />
+
+            <TextView
+                android:id="@+id/tvPatientMrn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MRN: --"
+                android:textColor="@color/color_on_surface_muted"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="14dp"
+                android:background="@color/color_divider"
+                android:layout_marginHorizontal="@dimen/space_sm" />
+
+            <TextView
+                android:id="@+id/tvPatientPhone"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text=""
+                android:textColor="@color/color_on_surface_muted"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter"
+                android:maxLines="1"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <!-- Folder Info Header Card -->
+        <com.hospital.management.ui.components.GlassCardView
+            android:id="@+id/cardFolderInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="@dimen/space_base"
+            android:layout_marginBottom="@dimen/space_sm"
+            app:cardCornerRadius="@dimen/radius_lg">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="@dimen/space_base"
+                android:gravity="center_vertical">
+
+                <!-- Folder icon -->
+                <FrameLayout
+                    android:layout_width="44dp"
+                    android:layout_height="44dp">
+
+                    <View
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:background="@drawable/bg_folder_icon" />
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_folder"
+                        app:tint="@color/brand_primary" />
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="@dimen/space_md">
+
+                    <TextView
+                        android:id="@+id/tvFolderDisplayName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Folder"
+                        android:textColor="@color/color_on_surface"
+                        android:textSize="15sp"
+                        android:fontFamily="@font/inter_semibold"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+
+                    <TextView
+                        android:id="@+id/tvFileCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0 files"
+                        android:textColor="@color/color_on_surface_variant"
+                        android:textSize="12sp"
+                        android:fontFamily="@font/inter"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.hospital.management.ui.components.GlassCardView>
+    </LinearLayout>
+
+    <!-- Section label -->
+    <TextView
+        android:id="@+id/tvFilesLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Files"
+        android:textSize="13sp"
         android:fontFamily="@font/inter_semibold"
-        android:letterSpacing="-0.01"
-        android:layout_marginStart="@dimen/space_xs"
-        android:layout_marginEnd="@dimen/space_base"
-        app:layout_constraintBottom_toBottomOf="@id/btnBack"
-        app:layout_constraintStart_toEndOf="@id/btnBack"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/btnBack" />
+        android:textColor="@color/color_on_surface_variant"
+        android:letterSpacing="0.04"
+        android:textAllCaps="true"
+        android:layout_marginStart="@dimen/space_lg"
+        android:layout_marginTop="@dimen/space_md"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/layoutTopSection" />
 
     <!-- File List -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvFiles"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="@dimen/space_base"
+        android:layout_marginTop="@dimen/space_sm"
         android:paddingHorizontal="@dimen/space_md"
-        android:paddingTop="@dimen/space_sm"
+        android:paddingTop="@dimen/space_xs"
         android:paddingBottom="88dp"
         android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/viewHeader"
+        app:layout_constraintTop_toBottomOf="@id/tvFilesLabel"
         app:layout_constraintBottom_toBottomOf="parent" />
 
     <!-- Empty State -->
@@ -75,11 +231,23 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <View
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:background="@drawable/bg_circle_light"
-            android:layout_marginBottom="@dimen/space_md" />
+        <FrameLayout
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginBottom="@dimen/space_md">
+
+            <View
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:background="@drawable/bg_circle_light" />
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_file_document"
+                app:tint="@color/color_on_surface_muted" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/tvEmpty"

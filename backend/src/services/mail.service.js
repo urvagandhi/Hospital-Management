@@ -34,15 +34,25 @@ function sleep(ms) {
  * Send via Brevo REST API with retry (2 retries, 1 s delay).
  */
 async function sendViaBrevo(to, subject, htmlContent) {
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = SENDER_EMAIL();
+
+  if (!apiKey) {
+    console.error("[Brevo] BREVO_API_KEY is not set!");
+    throw new Error("BREVO_API_KEY environment variable is not configured");
+  }
+
+  console.log(`[Brevo] Sending email to=${to}, from=${senderEmail}, subject="${subject}"`);
+
   const brevo = await import("@getbrevo/brevo");
   const apiInstance = new brevo.TransactionalEmailsApi();
   apiInstance.setApiKey(
     brevo.TransactionalEmailsApiApiKeys.apiKey,
-    process.env.BREVO_API_KEY,
+    apiKey,
   );
 
   const sendSmtpEmail = new brevo.SendSmtpEmail();
-  sendSmtpEmail.sender = { email: SENDER_EMAIL(), name: SENDER_NAME() };
+  sendSmtpEmail.sender = { email: senderEmail, name: SENDER_NAME() };
   sendSmtpEmail.to = [{ email: to }];
   sendSmtpEmail.subject = subject;
   sendSmtpEmail.htmlContent = htmlContent;
@@ -53,8 +63,11 @@ async function sendViaBrevo(to, subject, htmlContent) {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+      console.log(`[Brevo] Email sent successfully. messageId=${result?.body?.messageId}`);
       return { success: true, messageId: result?.body?.messageId };
     } catch (err) {
+      const errBody = err?.body || err?.response?.body || err?.message || err;
+      console.error(`[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} failed:`, JSON.stringify(errBody));
       lastError = err;
       if (attempt < MAX_RETRIES) {
         await sleep(1000);
@@ -168,20 +181,42 @@ export async function sendOTPEmail(to, otp, type) {
  * @param {string} to
  * @param {string} hospitalName
  * @param {string} username
+ * @param {string} [tempPassword] — temporary password (included if provided)
  */
-export async function sendWelcomeEmail(to, hospitalName, username) {
-  const subject = `Welcome to ${APP_NAME}`;
+export async function sendWelcomeEmail(to, hospitalName, username, tempPassword) {
+  const subject = `Welcome to ${APP_NAME} — Your Account Details`;
+
+  const credentialsBlock = tempPassword
+    ? `
+    <div style="background:#f1f5f9;padding:18px;border-radius:8px;margin-bottom:18px;border:1px solid #e2e8f0;">
+      <p style="margin:0 0 10px;font-size:14px;color:#0f172a;font-weight:700;">Your Login Credentials</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:4px 0;color:#64748b;font-size:13px;width:120px;">Email / Username</td>
+          <td style="padding:4px 0;color:#0f172a;font-size:13px;font-weight:600;">${username}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:#64748b;font-size:13px;">Temporary Password</td>
+          <td style="padding:4px 0;font-family:'Courier New',monospace;font-size:15px;color:#0f172a;font-weight:700;letter-spacing:1px;">${tempPassword}</td>
+        </tr>
+      </table>
+    </div>
+    <div style="background:#fffbeb;padding:12px;border-radius:8px;margin-bottom:18px;border:1px solid #fde68a;">
+      <p style="margin:0;font-size:13px;color:#92400e;">&#9888; You will be asked to change your password on first login.</p>
+    </div>`
+    : `
+    <div style="background:#f0fdf4;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #bbf7d0;">
+      <p style="margin:0;font-size:14px;color:#166534;"><strong>You're all set!</strong></p>
+      <p style="margin:6px 0 0;font-size:13px;color:#15803d;">You can sign in using your username (<strong>${username}</strong>) or your email address.</p>
+    </div>`;
 
   const body = `
     <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Welcome!</h2>
     <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
-      Your account for <strong>${hospitalName}</strong> has been successfully created.
+      Your account for <strong>${hospitalName}</strong> has been successfully created on ${APP_NAME}.
     </p>
-    <div style="background:#f0fdf4;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #bbf7d0;">
-      <p style="margin:0;font-size:14px;color:#166534;"><strong>You're all set!</strong></p>
-      <p style="margin:6px 0 0;font-size:13px;color:#15803d;">You can sign in using your username (<strong>${username}</strong>) or your email address.</p>
-    </div>
-    <p style="margin:0;color:#94a3b8;font-size:12px;">If you have any questions, please contact your hospital administrator.</p>`;
+    ${credentialsBlock}
+    <p style="margin:0;color:#94a3b8;font-size:12px;">If you have any questions, please contact your administrator.</p>`;
 
   return sendEmail(to, subject, wrapHtml(body));
 }

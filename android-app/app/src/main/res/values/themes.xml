@@ -286,8 +286,21 @@
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorSecondary">@color/brand_accent</item>
         <item name="shapeAppearanceOverlay">@style/ShapeAppearance.App.LargeComponent</item>
-        <item name="materialAlertDialogBodyTextStyle">@style/TextAppearance.App.Body</item>
-        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.App.Title</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/Widget.App.AlertDialog.Body.Text</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/Widget.App.AlertDialog.Title.Text</item>
+    </style>
+
+    <style name="Widget.App.AlertDialog.Body.Text" parent="MaterialAlertDialog.Material3.Body.Text">
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textColor">@color/color_on_surface</item>
+    </style>
+
+    <style name="Widget.App.AlertDialog.Title.Text" parent="MaterialAlertDialog.Material3.Title.Text">
+        <item name="android:textSize">20sp</item>
+        <item name="android:fontFamily">@font/inter_semibold</item>
+        <item name="android:letterSpacing">-0.01</item>
+        <item name="android:textColor">@color/color_on_surface</item>
     </style>
 
     <!-- ══════════════════════════════════════════════════════════════════

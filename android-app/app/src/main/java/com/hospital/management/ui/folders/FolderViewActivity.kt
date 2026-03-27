@@ -2,6 +2,7 @@ package com.hospital.management.ui.folders
 
 import com.hospital.management.R
 import com.hospital.management.data.api.RetrofitClient
+import com.hospital.management.data.api.ZipDownloadRequest
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -21,7 +22,14 @@ import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.data.models.Folder
 import android.content.ContentValues
 import android.provider.MediaStore
+import android.text.InputType
+import android.view.Gravity
+import android.widget.FrameLayout
+import android.widget.ImageView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -37,6 +45,7 @@ class FolderViewActivity : BaseActivity() {
 
     private var patientId: String = ""
     private var patientName: String = ""
+    private var hospitalName: String = ""
     private var isDownloading = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,6 +58,11 @@ class FolderViewActivity : BaseActivity() {
         // Get patient info from intent
         patientId = intent.getStringExtra("PATIENT_ID") ?: ""
         patientName = intent.getStringExtra("PATIENT_NAME") ?: "Patient"
+
+        // Fetch hospital name for download folder hierarchy
+        lifecycleScope.launch {
+            hospitalName = tokenManager.getHospitalName() ?: "Hospital"
+        }
 
         setupViews()
         setupObservers()
@@ -170,6 +184,8 @@ class FolderViewActivity : BaseActivity() {
                     intent.putExtra("FOLDER_NAME", folder.name)
                     intent.putExtra("FILE_COUNT", folder.fileCount)
                     intent.putExtra("PATIENT_NAME", patient.patientName)
+                    intent.putExtra("PATIENT_MRN", patient.medicalRecordNumber)
+                    intent.putExtra("PATIENT_PHONE", patient.phone)
                     startActivity(intent)
                 }
                 rvFolders.adapter = folderAdapter
@@ -183,29 +199,113 @@ class FolderViewActivity : BaseActivity() {
     }
 
     private fun showEditPatientDialog(patient: com.hospital.management.data.models.Patient) {
-        // Let's create a layout programmatically to avoid creating a new file for now, or just inflate a simple linear layout
-        val layout = android.widget.LinearLayout(this)
-        layout.orientation = android.widget.LinearLayout.VERTICAL
-        layout.setPadding(50, 40, 50, 40)
+        val dp = resources.displayMetrics.density
+        val pad = (24 * dp).toInt()
+        val fieldSpacing = (16 * dp).toInt()
 
-        val etName = android.widget.EditText(this)
-        etName.hint = "Patient Name"
-        etName.setText(patient.patientName)
-        layout.addView(etName)
+        val container = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(pad, (20 * dp).toInt(), pad, (8 * dp).toInt())
+        }
 
-        val etMrn = android.widget.EditText(this)
-        etMrn.hint = "Medical Record Number"
-        etMrn.setText(patient.medicalRecordNumber)
-        layout.addView(etMrn)
+        // Avatar header
+        val headerLayout = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, fieldSpacing)
+        }
+        val avatarFrame = FrameLayout(this).apply {
+            val size = (48 * dp).toInt()
+            layoutParams = android.widget.LinearLayout.LayoutParams(size, size)
+        }
+        val avatarBg = View(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundResource(R.drawable.bg_stat_card_icon)
+        }
+        val avatarIcon = ImageView(this).apply {
+            val iconSize = (24 * dp).toInt()
+            layoutParams = FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER)
+            setImageResource(R.drawable.ic_people)
+            setColorFilter(resources.getColor(R.color.brand_primary, theme))
+        }
+        avatarFrame.addView(avatarBg)
+        avatarFrame.addView(avatarIcon)
+        headerLayout.addView(avatarFrame)
 
-        val etPhone = android.widget.EditText(this)
-        etPhone.hint = "Phone Number"
-        etPhone.setText(patient.phone)
-        layout.addView(etPhone)
+        val headerText = android.widget.TextView(this).apply {
+            text = patient.patientName
+            textSize = 18f
+            setTextColor(resources.getColor(R.color.color_on_surface, theme))
+            typeface = resources.getFont(R.font.inter_semibold)
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.marginStart = (12 * dp).toInt()
+            layoutParams = lp
+        }
+        headerLayout.addView(headerText)
+        container.addView(headerLayout)
 
-        AlertDialog.Builder(this)
+        // Name field
+        val tilName = TextInputLayout(this, null, com.google.android.material.R.attr.textInputStyle).apply {
+            hint = "Patient Name"
+            boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.bottomMargin = fieldSpacing
+            layoutParams = lp
+        }
+        val etName = TextInputEditText(tilName.context).apply {
+            setText(patient.patientName)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        }
+        tilName.addView(etName)
+        container.addView(tilName)
+
+        // MRN field
+        val tilMrn = TextInputLayout(this, null, com.google.android.material.R.attr.textInputStyle).apply {
+            hint = "Medical Record Number"
+            boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.bottomMargin = fieldSpacing
+            layoutParams = lp
+        }
+        val etMrn = TextInputEditText(tilMrn.context).apply {
+            setText(patient.medicalRecordNumber)
+            inputType = InputType.TYPE_CLASS_TEXT
+        }
+        tilMrn.addView(etMrn)
+        container.addView(tilMrn)
+
+        // Phone field
+        val tilPhone = TextInputLayout(this, null, com.google.android.material.R.attr.textInputStyle).apply {
+            hint = "Phone Number"
+            boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            layoutParams = lp
+        }
+        val etPhone = TextInputEditText(tilPhone.context).apply {
+            setText(patient.phone)
+            inputType = InputType.TYPE_CLASS_PHONE
+        }
+        tilPhone.addView(etPhone)
+        container.addView(tilPhone)
+
+        MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
             .setTitle("Edit Patient Details")
-            .setView(layout)
+            .setView(container)
             .setPositiveButton("Update") { _, _ ->
                 val name = etName.text.toString().trim()
                 val mrn = etMrn.text.toString().trim()
@@ -239,13 +339,27 @@ class FolderViewActivity : BaseActivity() {
     }
 
     private fun showCreateFolderDialog() {
-        val input = android.widget.EditText(this)
-        input.hint = "Enter folder name"
-        input.setPadding(50, 20, 50, 20)
+        val dp = resources.displayMetrics.density
+        val pad = (24 * dp).toInt()
 
-        AlertDialog.Builder(this)
+        val container = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(pad, (16 * dp).toInt(), pad, (8 * dp).toInt())
+        }
+
+        val til = TextInputLayout(this, null, com.google.android.material.R.attr.textInputStyle).apply {
+            hint = "Folder name"
+            boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
+        }
+        val input = TextInputEditText(til.context).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        }
+        til.addView(input)
+        container.addView(til)
+
+        MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
             .setTitle("Create New Folder")
-            .setView(input)
+            .setView(container)
             .setPositiveButton("Create") { _, _ ->
                 val folderName = input.text.toString().trim()
                 if (folderName.isNotEmpty()) {
@@ -322,13 +436,13 @@ class FolderViewActivity : BaseActivity() {
                 if (response.isSuccessful && response.body() != null) {
                     val ext = if (mode == "per-folder") "zip" else "pdf"
                     val mime = if (mode == "per-folder") "application/zip" else "application/pdf"
-                    val safeName = patientName.replace(Regex("[^a-zA-Z0-9]"), "_")
-                    val fileName = "${safeName}_records.$ext"
+                    val safeName = patientName.replace(Regex("[^a-zA-Z0-9 ]"), "").trim().replace("\\s+".toRegex(), "_")
+                    val fileName = "${safeName}_all_records.$ext"
 
                     withContext(Dispatchers.IO) {
                         saveToDownloads(response.body()!!, fileName, mime)
                     }
-                    Snackbar.make(rootView, "Saved to Downloads: $fileName", Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(rootView, "Saved to ${getDownloadSubPath()}/$fileName", Snackbar.LENGTH_LONG).show()
                 } else {
                     Snackbar.make(rootView, "Download failed. Please try again.", Snackbar.LENGTH_LONG).show()
                 }
@@ -465,21 +579,22 @@ class FolderViewActivity : BaseActivity() {
             try {
                 Snackbar.make(rootView, "Downloading ZIP...", Snackbar.LENGTH_SHORT).show()
                 val apiService = RetrofitClient.getApiService(this@FolderViewActivity)
-                val body: Map<String, Any>? = if (selectedFolders != null) {
-                    mapOf("selectedFolders" to selectedFolders)
-                } else null
 
                 val response = withContext(Dispatchers.IO) {
-                    apiService.downloadPatientZip(patientId, body)
+                    if (selectedFolders != null) {
+                        apiService.downloadPatientZip(patientId, ZipDownloadRequest(selectedFolders))
+                    } else {
+                        apiService.downloadPatientZipAll(patientId)
+                    }
                 }
 
                 if (response.isSuccessful && response.body() != null) {
-                    val safeName = patientName.replace(Regex("[^a-zA-Z0-9]"), "_")
-                    val fileName = "${safeName}_records.zip"
+                    val safeName = patientName.replace(Regex("[^a-zA-Z0-9 ]"), "").trim().replace("\\s+".toRegex(), "_")
+                    val fileName = "${safeName}_all_records.zip"
                     withContext(Dispatchers.IO) {
                         saveToDownloads(response.body()!!, fileName, "application/zip")
                     }
-                    Snackbar.make(rootView, "Saved to Downloads: $fileName", Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(rootView, "Saved to ${getDownloadSubPath()}/$fileName", Snackbar.LENGTH_LONG).show()
                 } else {
                     Snackbar.make(rootView, "Download failed. Please try again.", Snackbar.LENGTH_LONG).show()
                 }
@@ -493,11 +608,21 @@ class FolderViewActivity : BaseActivity() {
 
     // ─── File Save Helper ───────────────────────────────────────
 
-    private fun saveToDownloads(body: okhttp3.ResponseBody, fileName: String, mimeType: String) {
+    private fun getDownloadSubPath(vararg extra: String): String {
+        val safeHospital = hospitalName.replace(Regex("[^a-zA-Z0-9 _-]"), "").trim().ifEmpty { "Hospital" }
+        val safePatient = patientName.replace(Regex("[^a-zA-Z0-9 _-]"), "").trim().ifEmpty { "Patient" }
+        val parts = mutableListOf("HospitalRecords", safeHospital, safePatient)
+        parts.addAll(extra)
+        return parts.joinToString("/")
+    }
+
+    private fun saveToDownloads(body: okhttp3.ResponseBody, fileName: String, mimeType: String, subPath: String? = null) {
         val resolver = contentResolver
+        val relativePath = subPath ?: getDownloadSubPath()
         val contentValues = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, fileName)
             put(MediaStore.Downloads.MIME_TYPE, mimeType)
+            put(MediaStore.Downloads.RELATIVE_PATH, "${android.os.Environment.DIRECTORY_DOWNLOADS}/$relativePath")
             put(MediaStore.Downloads.IS_PENDING, 1)
         }
         val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues) ?: return

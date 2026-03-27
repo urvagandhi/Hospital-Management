@@ -36,6 +36,8 @@ import com.hospital.management.utils.NetworkMonitor
 import com.hospital.management.utils.NetworkStatus
 import com.hospital.management.utils.SessionManager
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class DashboardActivity : BaseActivity() {
@@ -45,6 +47,7 @@ class DashboardActivity : BaseActivity() {
     private lateinit var patientViewModel: com.hospital.management.presentation.viewmodel.PatientViewModel
     private lateinit var patientAdapter: com.hospital.management.ui.patients.PatientAdapter
     private var offlineSnackbar: Snackbar? = null
+    private var searchDebounceJob: Job? = null
 
     private val sessionRevokedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -89,6 +92,7 @@ class DashboardActivity : BaseActivity() {
 
     private fun observeNetworkStatus() {
         lifecycleScope.launch {
+            var isFirstEmission = true
             NetworkMonitor.status.collect { status ->
                 when (status) {
                     NetworkStatus.OFFLINE -> {
@@ -104,12 +108,16 @@ class DashboardActivity : BaseActivity() {
                     NetworkStatus.ONLINE -> {
                         offlineSnackbar?.dismiss()
                         offlineSnackbar = null
-                        Snackbar.make(binding.root, "Back online", Snackbar.LENGTH_SHORT).show()
+                        // Don't show "Back online" on first emission (app start)
+                        if (!isFirstEmission) {
+                            Snackbar.make(binding.root, "Back online", Snackbar.LENGTH_SHORT).show()
+                        }
                     }
                     NetworkStatus.RECONNECTING -> {
                         // Keep showing offline snackbar until confirmed
                     }
                 }
+                isFirstEmission = false
             }
         }
     }
@@ -332,19 +340,28 @@ class DashboardActivity : BaseActivity() {
         }
         binding.searchView.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
+                searchDebounceJob?.cancel()
                 val search = query?.trim()
                 if (!search.isNullOrEmpty()) {
                     patientViewModel.getPatients(search = search)
                 } else {
                     patientViewModel.getPatients()
                 }
-                return false
+                binding.searchView.clearFocus()
+                return true
             }
             override fun onQueryTextChange(newText: String?): Boolean {
-                if (newText.isNullOrEmpty()) {
-                    patientViewModel.getPatients()
+                searchDebounceJob?.cancel()
+                searchDebounceJob = lifecycleScope.launch {
+                    delay(350)
+                    val search = newText?.trim()
+                    if (!search.isNullOrEmpty()) {
+                        patientViewModel.getPatients(search = search)
+                    } else {
+                        patientViewModel.getPatients()
+                    }
                 }
-                return false
+                return true
             }
         })
     }

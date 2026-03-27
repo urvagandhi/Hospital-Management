@@ -25,7 +25,7 @@ enum class NetworkStatus {
  */
 object NetworkMonitor {
 
-    private val _status = MutableStateFlow(NetworkStatus.OFFLINE)
+    private val _status = MutableStateFlow(NetworkStatus.ONLINE)
     val status: StateFlow<NetworkStatus> = _status.asStateFlow()
 
     private var initialized = false
@@ -39,11 +39,20 @@ object NetworkMonitor {
 
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-        // Check initial state
+        // Check initial state — assume ONLINE if network capability exists,
+        // then verify with health ping in background
         val activeNetwork = connectivityManager.activeNetwork
         val capabilities = activeNetwork?.let { connectivityManager.getNetworkCapabilities(it) }
         val hasInternet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         _status.value = if (hasInternet) NetworkStatus.ONLINE else NetworkStatus.OFFLINE
+
+        // Verify with actual ping if we think we're online
+        if (hasInternet) {
+            CoroutineScope(Dispatchers.IO).launch {
+                val ok = pingHealth()
+                if (!ok) _status.value = NetworkStatus.OFFLINE
+            }
+        }
 
         // Register callback
         val request = NetworkRequest.Builder()
@@ -52,17 +61,24 @@ object NetworkMonitor {
 
         connectivityManager.registerNetworkCallback(request, object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                _status.value = NetworkStatus.RECONNECTING
-                // Confirm with a real health ping
+                // Set ONLINE immediately if connectivity reports available,
+                // then verify in background
+                _status.value = NetworkStatus.ONLINE
                 CoroutineScope(Dispatchers.IO).launch {
-                    delay(2000) // Grace period
+                    delay(1000)
                     val ok = pingHealth()
-                    _status.value = if (ok) NetworkStatus.ONLINE else NetworkStatus.OFFLINE
+                    if (!ok) _status.value = NetworkStatus.OFFLINE
                 }
             }
 
             override fun onLost(network: Network) {
-                _status.value = NetworkStatus.OFFLINE
+                // Check if there's still another active network before going offline
+                val current = connectivityManager.activeNetwork
+                val caps = current?.let { connectivityManager.getNetworkCapabilities(it) }
+                val stillConnected = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                if (!stillConnected) {
+                    _status.value = NetworkStatus.OFFLINE
+                }
             }
         })
 

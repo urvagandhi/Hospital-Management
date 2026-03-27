@@ -6,6 +6,8 @@ import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
 
+data class ZipDownloadRequest(val selectedFolders: List<String>)
+
 interface ApiService {
 
         // Fetch current authenticated hospital info
@@ -153,7 +155,13 @@ interface ApiService {
     @Streaming
     suspend fun downloadPatientZip(
         @Path("patientId") patientId: String,
-        @Body body: Map<String, Any>?
+        @Body body: ZipDownloadRequest
+    ): Response<ResponseBody>
+
+    @POST("/api/patients/{patientId}/download/zip")
+    @Streaming
+    suspend fun downloadPatientZipAll(
+        @Path("patientId") patientId: String
     ): Response<ResponseBody>
 
     @POST("/api/patients/{patientId}/download/pdf")

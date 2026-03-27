@@ -4,30 +4,35 @@
     style="@style/Widget.App.Card.Clickable"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="@dimen/space_xs"
+    android:layout_marginBottom="@dimen/space_sm"
     android:layout_marginHorizontal="@dimen/space_xs"
-    app:cardCornerRadius="@dimen/radius_md">
+    app:cardCornerRadius="@dimen/radius_lg">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="@dimen/space_md"
+        android:padding="@dimen/space_base"
         android:gravity="center_vertical">
 
-        <!-- File type icon -->
-        <View
-            android:id="@+id/fileIconBg"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:background="@drawable/bg_stat_card_icon" />
+        <!-- File type icon with colored background -->
+        <FrameLayout
+            android:layout_width="44dp"
+            android:layout_height="44dp">
 
-        <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_marginStart="-31dp"
-            android:src="@drawable/ic_file_document"
-            app:tint="@color/brand_primary" />
+            <View
+                android:id="@+id/fileIconBg"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_stat_card_icon" />
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_file_document"
+                app:tint="@color/brand_primary" />
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"
@@ -60,11 +65,11 @@
 
         <ImageButton
             android:id="@+id/btnMore"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:src="@drawable/ic_more_vert"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:padding="@dimen/space_sm"
-            app:tint="@color/color_on_surface_muted" />
+            app:tint="@color/color_on_surface_variant" />
     </LinearLayout>
 </com.hospital.management.ui.components.GlassCardView>
