@@ -73,7 +73,24 @@
       "Bash(nslookup hospital-management.hi7pqgk.mongodb.net 8.8.8.8)",
       "Bash(git rm:*)",
       "Bash(git config:*)",
-      "Bash(git gc:*)"
+      "Bash(git gc:*)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//tmp/claude-1000/-media-urva-Personal-Technical-Project-Urva-Hospital-Management/4c060dce-8934-4087-882b-1ed922b05958/tasks/**)",
+      "Bash(python3 -c \"import sys,json; d=json.loads\\(sys.stdin.read\\(\\)\\); print\\(d.get\\(''''type'''',''''unknown''''\\)\\)\")",
+      "Bash(done)",
+      "Bash(curl -s -X POST \"https://hospital-management-8lbf.onrender.com/api/auth/login\" -H \"Content-Type: application/json\" -H \"X-Client-Type: Android\" -d '{\"\"\"\"identifier\"\"\"\":\"\"\"\"admin@sunrisehealth.in\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Test@1234\"\"\"\"}')",
+      "Bash(ls /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/res/drawable/bg_*.xml)",
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/res/values* -type f -name \"*.xml\")",
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/frontend -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.tsx -o -name *.ts \\\\\\))",
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/frontend/src -type f \\\\\\(-name *.jsx -o -name *.js -o -name *.tsx -o -name *.ts \\\\\\))",
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/java -type f -name *Download* -o -name *Viewer*)",
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management -name .env* -o -name env.js)",
+      "Bash(./BUILD android:*)",
+      "Bash(ls /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/res/drawable/bg_glow* /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/res/drawable/ic_splash*)",
+      "Bash(fuser -k 5000/tcp)",
+      "Bash(adb logcat:*)",
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app -name *Logger* -o -name *Logging* -o -name *Log.*)"
     ]
   }
 }
