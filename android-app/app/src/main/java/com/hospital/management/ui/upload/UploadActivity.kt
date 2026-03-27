@@ -9,6 +9,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -34,7 +35,7 @@ import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.ui.scanner.ScannerActivity
 import java.util.Collections
 
-class UploadActivity : AppCompatActivity() {
+class UploadActivity : BaseActivity() {
 
     private lateinit var binding: ActivityUploadBinding
     private lateinit var patientViewModel: PatientViewModel
@@ -70,6 +71,13 @@ class UploadActivity : AppCompatActivity() {
         // Set dynamic title
         val title = if (patientName.isNotEmpty()) "$patientName / $folderName" else folderName
         binding.tvTitle.text = title
+
+        // Show patient name prefix in filename hint
+        val sanitizedPatientName = patientName.replace(Regex("[^A-Za-z0-9 ]"), "").trim()
+        if (sanitizedPatientName.isNotEmpty()) {
+            binding.tilFileName.hint = "File name (optional)"
+            binding.tilFileName.prefixText = "${sanitizedPatientName}_"
+        }
     }
 
     private fun setupViewModel() {
@@ -134,8 +142,8 @@ class UploadActivity : AppCompatActivity() {
                 viewHolder: RecyclerView.ViewHolder,
                 target: RecyclerView.ViewHolder
             ): Boolean {
-                val from = viewHolder.adapterPosition
-                val to = target.adapterPosition
+                val from = viewHolder.bindingAdapterPosition
+                val to = target.bindingAdapterPosition
                 Collections.swap(scannedPages, from, to)
                 pageAdapter.notifyItemMoved(from, to)
                 return true
@@ -230,10 +238,16 @@ class UploadActivity : AppCompatActivity() {
                 // Create a single PDF from all scanned pages
                 binding.tvUploadProgress.text = "Converting ${scannedPages.size} page(s) to PDF..."
                 
-                // Format filename: patientName_folderName_timestamp.pdf
+                // Build filename: use user input if provided, otherwise auto-generate
+                val userInput = binding.etFileName.text.toString().trim()
                 val sanitizedPatientName = patientName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
-                val sanitizedFolderName = folderName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
-                val pdfFileName = "${sanitizedPatientName}_${sanitizedFolderName}_${System.currentTimeMillis()}.pdf"
+                val pdfFileName = if (userInput.isNotEmpty()) {
+                    val sanitizedInput = userInput.replace(Regex("[^A-Za-z0-9_\\- ]"), "_")
+                    "${sanitizedPatientName}_${sanitizedInput}.pdf"
+                } else {
+                    val sanitizedFolderName = folderName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
+                    "${sanitizedPatientName}_${sanitizedFolderName}_${System.currentTimeMillis()}.pdf"
+                }
                 val pdfFile = withContext(Dispatchers.IO) {
                     com.hospital.management.utils.PdfUtils.createPdfFromImages(
                         applicationContext,

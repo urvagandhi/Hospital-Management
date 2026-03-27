@@ -5,9 +5,9 @@
         android:type="linear"
         android:angle="135"
         android:startColor="@color/primary"
-        android:centerColor="@color/primary_dark"
-        android:endColor="#4A148C" />
+        android:centerColor="@color/accent"
+        android:endColor="@color/gradient_end" />
     <corners
-        android:bottomLeftRadius="32dp"
-        android:bottomRightRadius="32dp" />
+        android:bottomLeftRadius="28dp"
+        android:bottomRightRadius="28dp" />
 </shape>

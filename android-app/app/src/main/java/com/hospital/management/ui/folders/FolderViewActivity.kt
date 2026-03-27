@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -25,7 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class FolderViewActivity : AppCompatActivity() {
+class FolderViewActivity : BaseActivity() {
 
     private lateinit var patientViewModel: PatientViewModel
     private lateinit var rvFolders: RecyclerView
@@ -69,8 +70,8 @@ class FolderViewActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         tvEmpty = findViewById(R.id.tvEmpty)
         val tvPatientName = findViewById<android.widget.TextView>(R.id.tvPatientName)
-        val tvMrn = findViewById<android.widget.TextView>(R.id.tvMrn)
-        val tvPhone = findViewById<android.widget.TextView>(R.id.tvPhone)
+        findViewById<android.widget.TextView>(R.id.tvMrn)
+        findViewById<android.widget.TextView>(R.id.tvPhone)
 
         // Set initial data (might be empty initially)
         tvPatientName.text = patientName

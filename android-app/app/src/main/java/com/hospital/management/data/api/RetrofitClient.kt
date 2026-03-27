@@ -10,8 +10,9 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    private const val BASE_URL = "https://hospital-management-8lbf.onrender.com" // Production URL
+    private const val BASE_URL = "https://hospital-management-8lbf.onrender.com"
 
+    @Volatile
     private var retrofit: Retrofit? = null
 
     private val cookieStore = HashMap<String, List<Cookie>>()
@@ -20,46 +21,45 @@ object RetrofitClient {
         cookieStore.clear()
     }
 
-    /**
-     * Reset the Retrofit client entirely (call on logout to clear all state)
-     */
+    @Synchronized
     fun reset() {
         cookieStore.clear()
         retrofit = null
     }
 
     fun getClient(context: Context): Retrofit {
-        if (retrofit == null) {
-            val cookieJar = object : CookieJar {
-                override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-                    cookieStore[url.host] = cookies
-                }
+        return retrofit ?: synchronized(this) {
+            retrofit ?: buildClient(context).also { retrofit = it }
+        }
+    }
 
-                override fun loadForRequest(url: HttpUrl): List<Cookie> {
-                    return cookieStore[url.host] ?: ArrayList()
-                }
+    private fun buildClient(context: Context): Retrofit {
+        val cookieJar = object : CookieJar {
+            override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+                cookieStore[url.host] = cookies
             }
 
-            val certificatePinner = okhttp3.CertificatePinner.Builder()
-                .add("hospital-management-8lbf.onrender.com", "sha256/IX2/a47sFHkF9jewioc5OzEDzS0dNQjNMCX8PCQ26Pg=")
-                .build()
-
-            val client = OkHttpClient.Builder()
-                .cookieJar(cookieJar)
-                .certificatePinner(certificatePinner)
-                .addInterceptor(AuthInterceptor(context))
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .build()
-
-            retrofit = Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .client(client)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
+            override fun loadForRequest(url: HttpUrl): List<Cookie> {
+                return cookieStore[url.host] ?: ArrayList()
+            }
         }
-        return retrofit!!
+
+        // Certificate pinning with backup pin (intermediate CA)
+        // Remove OkHttp pinning — rely on network_security_config.xml instead
+        // to avoid double-pinning conflicts.
+        val client = OkHttpClient.Builder()
+            .cookieJar(cookieJar)
+            .addInterceptor(AuthInterceptor(context))
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
     }
 
     fun getApiService(context: Context): ApiService {

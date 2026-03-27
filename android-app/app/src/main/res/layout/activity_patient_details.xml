@@ -1,30 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/color_background">
 
-    <!-- Header Section -->
+    <com.hospital.management.ui.components.GradientBlobBackground
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- App Bar -->
     <View
         android:id="@+id/viewHeader"
         android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:background="@color/primary"
+        android:layout_height="56dp"
+        android:background="@android:color/transparent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <ImageButton
         android:id="@+id/btnBack"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginStart="@dimen/space_sm"
+        android:layout_marginTop="@dimen/space_sm"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="12dp"
+        android:padding="@dimen/space_md"
         android:src="@drawable/ic_chevron_right"
         android:rotation="180"
-        app:tint="@color/white"
+        android:contentDescription="Back"
+        app:tint="@color/color_on_surface"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -33,9 +38,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Patient Profile"
-        android:textColor="@color/white"
+        android:textColor="@color/color_on_surface"
         android:textSize="20sp"
-        android:textStyle="bold"
+        android:fontFamily="@font/inter_semibold"
+        android:letterSpacing="-0.01"
         app:layout_constraintBottom_toBottomOf="@id/btnBack"
         app:layout_constraintStart_toEndOf="@id/btnBack"
         app:layout_constraintTop_toTopOf="@id/btnBack" />
@@ -54,38 +60,33 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="@dimen/space_xl">
 
             <!-- Personal Info Card -->
-            <com.google.android.material.card.MaterialCardView
+            <com.hospital.management.ui.components.GlassCardView
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/surface">
+                android:layout_height="wrap_content">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="24dp">
+                    android:padding="@dimen/space_xl">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Personal Information"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:layout_marginBottom="24dp" />
+                        style="@style/TextAppearance.App.Subtitle"
+                        android:layout_marginBottom="@dimen/space_xl" />
 
                     <!-- Name -->
                     <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.App.TextInputLayout"
+                        style="@style/Widget.App.TextInputLayout.Glass"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="Full Name"
-                        android:layout_marginBottom="16dp">
+                        android:layout_marginBottom="@dimen/space_base">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etPatientName"
@@ -93,7 +94,7 @@
                             android:layout_height="wrap_content"
                             android:inputType="textPersonName"
                             android:enabled="false"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/color_on_surface" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <!-- MRN & DOB Row -->
@@ -102,31 +103,31 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:baselineAligned="false"
-                        android:layout_marginBottom="16dp">
+                        android:layout_marginBottom="@dimen/space_base">
 
                         <com.google.android.material.textfield.TextInputLayout
-                            style="@style/Widget.App.TextInputLayout"
+                            style="@style/Widget.App.TextInputLayout.Glass"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:hint="MRN"
-                            android:layout_marginEnd="8dp">
+                            android:layout_marginEnd="@dimen/space_sm">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/etMrn"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:enabled="false"
-                                android:textColor="@color/text_primary"/>
+                                android:textColor="@color/color_on_surface" />
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.textfield.TextInputLayout
-                            style="@style/Widget.App.TextInputLayout"
+                            style="@style/Widget.App.TextInputLayout.Glass"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:hint="Date of Birth"
-                            android:layout_marginStart="8dp">
+                            android:layout_marginStart="@dimen/space_sm">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/etDateOfBirth"
@@ -134,19 +135,19 @@
                                 android:layout_height="wrap_content"
                                 android:inputType="date"
                                 android:enabled="false"
-                                android:textColor="@color/text_primary"/>
+                                android:textColor="@color/color_on_surface" />
                         </com.google.android.material.textfield.TextInputLayout>
                     </LinearLayout>
 
                     <!-- Contact Info -->
                     <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.App.TextInputLayout"
+                        style="@style/Widget.App.TextInputLayout.Glass"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="Phone Number"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="@dimen/space_base"
                         app:startIconDrawable="@drawable/ic_phone"
-                        app:startIconTint="@color/primary">
+                        app:startIconTint="@color/brand_primary">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etPhone"
@@ -154,17 +155,17 @@
                             android:layout_height="wrap_content"
                             android:inputType="phone"
                             android:enabled="false"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/color_on_surface" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.App.TextInputLayout"
+                        style="@style/Widget.App.TextInputLayout.Glass"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="Email Address"
-                        android:layout_marginBottom="16dp"
+                        android:layout_marginBottom="@dimen/space_base"
                         app:startIconDrawable="@drawable/ic_email"
-                        app:startIconTint="@color/primary">
+                        app:startIconTint="@color/brand_primary">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etEmail"
@@ -172,12 +173,12 @@
                             android:layout_height="wrap_content"
                             android:inputType="textEmailAddress"
                             android:enabled="false"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/color_on_surface" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <!-- Notes -->
                     <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.App.TextInputLayout"
+                        style="@style/Widget.App.TextInputLayout.Glass"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="Medical Notes">
@@ -190,23 +191,20 @@
                             android:minLines="3"
                             android:gravity="top"
                             android:enabled="false"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/color_on_surface" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                 </LinearLayout>
-
-            </com.google.android.material.card.MaterialCardView>
+            </com.hospital.management.ui.components.GlassCardView>
 
             <!-- Folders Section -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Patient Documents"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="16dp" />
+                style="@style/TextAppearance.App.Subtitle"
+                android:layout_marginTop="@dimen/space_xl"
+                android:layout_marginBottom="@dimen/space_base" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvFolders"
@@ -225,19 +223,21 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:indeterminateTint="@color/primary"
+        android:indeterminateTint="@color/brand_primary"
         android:visibility="gone" />
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/btnEdit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="24dp"
+        android:layout_margin="@dimen/space_xl"
         android:text="Edit Profile"
-        android:textColor="@color/white"
+        android:textColor="@android:color/white"
+        android:fontFamily="@font/inter_medium"
         app:icon="@drawable/ic_edit_pencil"
-        app:iconTint="@color/white"
-        app:backgroundTint="@color/primary"
+        app:iconTint="@android:color/white"
+        app:backgroundTint="@color/brand_primary"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.App.LargeComponent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 

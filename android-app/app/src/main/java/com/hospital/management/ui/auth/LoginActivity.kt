@@ -6,7 +6,6 @@ import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.hospital.management.data.api.RetrofitClient
@@ -19,13 +18,16 @@ import com.hospital.management.presentation.viewmodel.AuthViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.ui.dashboard.DashboardActivity
 import com.hospital.management.utils.BiometricHelper
+import com.hospital.management.ui.base.BaseActivity
+import com.hospital.management.ui.components.DesignAnimations
+import com.hospital.management.ui.components.GlassSnackbar
 import com.hospital.management.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : BaseActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var tokenManager: TokenManager
@@ -44,6 +46,10 @@ class LoginActivity : AppCompatActivity() {
         setupObservers()
         setupListeners()
         setupBiometricLogin()
+
+        // Attach press-scale animation to buttons
+        DesignAnimations.attachPressScale(binding.btnLogin)
+        DesignAnimations.attachPressScale(binding.btnBiometric)
     }
 
     private fun setupViewModel() {
@@ -176,7 +182,7 @@ class LoginActivity : AppCompatActivity() {
                     is AuthState.Error -> {
                         binding.loadingOverlay.visibility = View.GONE
                         binding.btnLogin.isEnabled = true
-                        Toast.makeText(this@LoginActivity, state.message, Toast.LENGTH_SHORT).show()
+                        GlassSnackbar.show(this@LoginActivity, state.message, GlassSnackbar.Variant.ERROR)
                     }
                     else -> {
                         binding.loadingOverlay.visibility = View.GONE
@@ -190,6 +196,7 @@ class LoginActivity : AppCompatActivity() {
     private suspend fun handleSuccessState(state: AuthState.Success) {
         val message = state.message
         val data = state.data // tempToken or status code or data object
+        Log.d("LoginActivity", "handleSuccessState: message='$message'")
 
         when (message) {
             "Password change required" -> {
@@ -206,7 +213,7 @@ class LoginActivity : AppCompatActivity() {
             }
             "TOTP Setup Required" -> {
                 SessionManager.startSession(this)
-                Toast.makeText(this, "Please setup 2FA", Toast.LENGTH_LONG).show()
+                GlassSnackbar.show(this, "Please setup 2FA", GlassSnackbar.Variant.INFO)
                 startActivity(Intent(this, TotpSetupActivity::class.java))
                 finish()
             }
@@ -267,38 +274,45 @@ class LoginActivity : AppCompatActivity() {
             .setTitle("Enable Biometric Login")
             .setMessage("Would you like to use fingerprint or face unlock for faster login next time?")
             .setPositiveButton("Enable") { _, _ ->
-                biometricHelper.showBiometricPrompt(
-                    this@LoginActivity,
-                    onSuccess = {
-                        lifecycleScope.launch {
-                            try {
-                                // Register biometric with server
-                                val deviceId = android.provider.Settings.Secure.getString(
-                                    contentResolver, android.provider.Settings.Secure.ANDROID_ID
-                                ) ?: "unknown"
-                                val apiService = RetrofitClient.getApiService(this@LoginActivity)
-                                withContext(Dispatchers.IO) {
-                                    apiService.registerBiometric(
-                                        mapOf("publicKey" to "biometric-bound", "deviceId" to deviceId)
-                                    )
-                                }
-
-                                // Enable locally
-                                withContext(Dispatchers.IO) { tokenManager.setBiometricEnabled(true) }
-                                Toast.makeText(this@LoginActivity, "Biometric login enabled", Toast.LENGTH_SHORT).show()
-                            } catch (e: Exception) {
-                                Log.e("LoginActivity", "Biometric registration failed", e)
-                                // Still enable locally even if server call fails
-                                withContext(Dispatchers.IO) { tokenManager.setBiometricEnabled(true) }
-                            }
+                lifecycleScope.launch {
+                    try {
+                        // Generate a real RSA key pair in Android Keystore
+                        val publicKey = biometricHelper.generateKeyPair()
+                        if (publicKey == null) {
+                            GlassSnackbar.show(this@LoginActivity, "Failed to generate biometric key", GlassSnackbar.Variant.ERROR)
                             navigateToDashboard()
+                            return@launch
                         }
-                    },
-                    onError = {
-                        Toast.makeText(this@LoginActivity, "Biometric setup skipped", Toast.LENGTH_SHORT).show()
-                        navigateToDashboard()
+
+                        val deviceId = android.provider.Settings.Secure.getString(
+                            contentResolver, android.provider.Settings.Secure.ANDROID_ID
+                        ) ?: "unknown"
+
+                        // Register the real public key with the server
+                        val apiService = RetrofitClient.getApiService(this@LoginActivity)
+                        val response = withContext(Dispatchers.IO) {
+                            apiService.registerBiometric(
+                                mapOf("publicKey" to publicKey, "deviceId" to deviceId)
+                            )
+                        }
+
+                        if (response.isSuccessful) {
+                            withContext(Dispatchers.IO) {
+                                tokenManager.setBiometricEnabled(true)
+                                tokenManager.saveDeviceId(deviceId)
+                            }
+                            GlassSnackbar.show(this@LoginActivity, "Biometric login enabled", GlassSnackbar.Variant.ERROR)
+                        } else {
+                            biometricHelper.deleteKeyPair()
+                            GlassSnackbar.show(this@LoginActivity, "Failed to register biometric with server", GlassSnackbar.Variant.ERROR)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("LoginActivity", "Biometric registration failed", e)
+                        biometricHelper.deleteKeyPair()
+                        GlassSnackbar.show(this@LoginActivity, "Biometric setup failed", GlassSnackbar.Variant.ERROR)
                     }
-                )
+                    navigateToDashboard()
+                }
             }
             .setNegativeButton("Skip") { _, _ ->
                 navigateToDashboard()
@@ -310,28 +324,123 @@ class LoginActivity : AppCompatActivity() {
     private fun setupBiometricLogin() {
         lifecycleScope.launch {
             val biometricEnabled = withContext(Dispatchers.IO) { tokenManager.isBiometricEnabled() }
-            val hasToken = withContext(Dispatchers.IO) { tokenManager.hasValidToken() }
+            val hasKeyPair = biometricHelper.hasKeyPair()
 
-            if (biometricEnabled && hasToken && biometricHelper.isBiometricAvailable()) {
+            if (biometricEnabled && hasKeyPair && biometricHelper.isBiometricAvailable()) {
                 val email = withContext(Dispatchers.IO) { tokenManager.getEmail() }
                 if (!email.isNullOrEmpty()) {
                     binding.etHospitalId.setText(email)
                 }
                 binding.btnBiometric.visibility = View.VISIBLE
                 binding.btnBiometric.setOnClickListener {
-                    biometricHelper.showBiometricPrompt(
-                        this@LoginActivity,
-                        onSuccess = {
-                            lifecycleScope.launch {
-                                SessionManager.startSession(this@LoginActivity)
-                                navigateToDashboard()
-                            }
-                        },
-                        onError = {
-                            Toast.makeText(this@LoginActivity, "Authentication failed", Toast.LENGTH_SHORT).show()
-                        }
-                    )
+                    performBiometricLogin()
                 }
+            }
+        }
+    }
+
+    /**
+     * Full server-verified biometric login flow:
+     * 1. Get challenge from server
+     * 2. Show biometric prompt with CryptoObject to sign the challenge
+     * 3. Send signature to server for verification
+     * 4. Receive fresh tokens and navigate to dashboard
+     */
+    private fun performBiometricLogin() {
+        binding.loadingOverlay.visibility = View.VISIBLE
+        binding.btnBiometric.isEnabled = false
+        binding.btnLogin.isEnabled = false
+
+        lifecycleScope.launch {
+            try {
+                val identifier = withContext(Dispatchers.IO) { tokenManager.getEmail() } ?: ""
+                val deviceId = android.provider.Settings.Secure.getString(
+                    contentResolver, android.provider.Settings.Secure.ANDROID_ID
+                ) ?: "unknown"
+
+                // Step 1: Get challenge from server
+                val apiService = RetrofitClient.getApiService(this@LoginActivity)
+                val challengeResponse = withContext(Dispatchers.IO) {
+                    apiService.biometricChallenge(mapOf("identifier" to identifier, "deviceId" to deviceId))
+                }
+
+                if (!challengeResponse.isSuccessful || challengeResponse.body()?.get("success") != true) {
+                    val errorMsg = challengeResponse.body()?.get("message") as? String ?: "Biometric challenge failed"
+                    throw Exception(errorMsg)
+                }
+
+                val data = challengeResponse.body()?.get("data") as? Map<*, *>
+                val challenge = data?.get("challenge") as? String
+                    ?: throw Exception("Invalid challenge response")
+                val hospitalId = data["hospitalId"] as? String
+                    ?: throw Exception("Invalid hospital ID in challenge")
+
+                binding.loadingOverlay.visibility = View.GONE
+
+                // Step 2: Show biometric prompt to sign the challenge
+                biometricHelper.showBiometricPromptForSigning(
+                    activity = this@LoginActivity,
+                    challenge = challenge,
+                    onSuccess = { signature ->
+                        // Step 3: Verify signature with server
+                        lifecycleScope.launch {
+                            binding.loadingOverlay.visibility = View.VISIBLE
+                            try {
+                                val verifyResponse = withContext(Dispatchers.IO) {
+                                    apiService.verifyBiometric(mapOf(
+                                        "hospitalId" to hospitalId,
+                                        "deviceId" to deviceId,
+                                        "signature" to signature
+                                    ))
+                                }
+
+                                binding.loadingOverlay.visibility = View.GONE
+
+                                if (verifyResponse.isSuccessful && verifyResponse.body()?.success == true) {
+                                    val loginData = verifyResponse.body()?.data
+                                    if (loginData?.accessToken != null && loginData.refreshToken != null) {
+                                        // Step 4: Save fresh tokens and navigate
+                                        withContext(Dispatchers.IO) {
+                                            tokenManager.saveTokens(loginData.accessToken, loginData.refreshToken)
+                                            if (loginData.hospital != null) {
+                                                tokenManager.saveHospitalInfo(
+                                                    loginData.hospital._id,
+                                                    loginData.hospital.hospitalName,
+                                                    loginData.hospital.logoUrl ?: ""
+                                                )
+                                            }
+                                        }
+                                        SessionManager.startSession(this@LoginActivity)
+                                        navigateToDashboard()
+                                    } else {
+                                        GlassSnackbar.show(this@LoginActivity, "Invalid server response", GlassSnackbar.Variant.ERROR)
+                                    }
+                                } else {
+                                    val errorMsg = verifyResponse.body()?.message ?: "Biometric verification failed"
+                                    GlassSnackbar.show(this@LoginActivity, errorMsg, GlassSnackbar.Variant.ERROR)
+                                }
+                            } catch (e: Exception) {
+                                binding.loadingOverlay.visibility = View.GONE
+                                GlassSnackbar.show(this@LoginActivity, "Verification error: ${e.message}", GlassSnackbar.Variant.ERROR)
+                            }
+                            binding.btnBiometric.isEnabled = true
+                            binding.btnLogin.isEnabled = true
+                        }
+                    },
+                    onError = { errorMsg ->
+                        binding.loadingOverlay.visibility = View.GONE
+                        binding.btnBiometric.isEnabled = true
+                        binding.btnLogin.isEnabled = true
+                        if (errorMsg.isNotEmpty()) {
+                            GlassSnackbar.show(this@LoginActivity, errorMsg, GlassSnackbar.Variant.ERROR)
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                binding.loadingOverlay.visibility = View.GONE
+                binding.btnBiometric.isEnabled = true
+                binding.btnLogin.isEnabled = true
+                GlassSnackbar.show(this@LoginActivity, "Biometric login failed: ${e.message}", GlassSnackbar.Variant.ERROR)
             }
         }
     }

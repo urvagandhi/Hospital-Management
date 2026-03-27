@@ -11,9 +11,10 @@
     <domain-config>
         <domain includeSubdomains="true">hospital-management-8lbf.onrender.com</domain>
         <pin-set expiration="2027-01-01">
-            <!-- Leaf certificate pin for hospital-management-8lbf.onrender.com (generated 2026-03-15) -->
-            <!-- Re-generate if cert rotates: python3 -c "import ssl,socket,hashlib,base64; ... " or use openssl -->
+            <!-- Leaf certificate pin for hospital-management-8lbf.onrender.com -->
             <pin digest="SHA-256">IX2/a47sFHkF9jewioc5OzEDzS0dNQjNMCX8PCQ26Pg=</pin>
+            <!-- Backup: Let's Encrypt R3 intermediate CA (used by Render) -->
+            <pin digest="SHA-256">jQJTbIh0grw0/1TkHSumWb+Fs0Ggogr621gT3PvPKG0=</pin>
         </pin-set>
     </domain-config>
 

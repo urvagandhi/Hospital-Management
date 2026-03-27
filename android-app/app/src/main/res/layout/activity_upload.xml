@@ -3,14 +3,19 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/color_background">
 
-    <!-- Header -->
+    <com.hospital.management.ui.components.GradientBlobBackground
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- App Bar -->
     <View
         android:id="@+id/viewHeader"
         android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:background="@drawable/bg_dashboard_gradient"
+        android:layout_height="56dp"
+        android:background="@android:color/transparent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <ImageButton
@@ -18,11 +23,11 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_marginTop="36dp"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="@dimen/space_md"
         android:background="?android:attr/selectableItemBackgroundBorderless"
         android:src="@drawable/ic_arrow_back"
         android:contentDescription="Back"
-        app:tint="@color/white"
+        app:tint="@color/color_on_surface"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -31,13 +36,13 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Upload Documents"
-        android:textColor="@color/white"
+        android:textColor="@color/color_on_surface"
         android:textSize="20sp"
         android:maxLines="1"
         android:ellipsize="end"
-        android:fontFamily="sans-serif-medium"
-        android:textStyle="bold"
-        android:layout_marginEnd="8dp"
+        android:fontFamily="@font/inter_semibold"
+        android:letterSpacing="-0.01"
+        android:layout_marginEnd="@dimen/space_sm"
         app:layout_constraintStart_toEndOf="@id/btnBack"
         app:layout_constraintTop_toTopOf="@id/btnBack"
         app:layout_constraintBottom_toBottomOf="@id/btnBack"
@@ -48,10 +53,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="0 pages scanned"
-        android:textColor="@color/white"
-        android:alpha="0.85"
+        android:textColor="@color/color_on_surface_muted"
         android:textSize="13sp"
-        android:layout_marginEnd="16dp"
+        android:fontFamily="@font/inter"
+        android:layout_marginEnd="@dimen/space_base"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/tvTitle"
         app:layout_constraintBottom_toBottomOf="@id/tvTitle" />
@@ -68,25 +73,23 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="20dp"
-            android:paddingTop="20dp"
-            android:paddingBottom="32dp">
+            android:paddingHorizontal="@dimen/space_lg"
+            android:paddingTop="@dimen/space_lg"
+            android:paddingBottom="@dimen/space_2xl">
 
             <!-- Main Preview Card -->
-            <com.google.android.material.card.MaterialCardView
+            <com.hospital.management.ui.components.GlassCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="@dimen/space_base">
 
                 <ImageView
                     android:id="@+id/ivPreview"
                     android:layout_width="match_parent"
                     android:layout_height="280dp"
                     android:scaleType="centerCrop"
-                    android:background="@color/surface_variant" />
-            </com.google.android.material.card.MaterialCardView>
+                    android:background="@color/color_surface_variant" />
+            </com.hospital.management.ui.components.GlassCardView>
 
             <!-- Page Thumbnails -->
             <TextView
@@ -94,10 +97,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Pages (drag to reorder)"
-                android:textColor="@color/text_secondary"
+                android:textColor="@color/color_on_surface_variant"
                 android:textSize="13sp"
+                android:fontFamily="@font/inter"
                 android:visibility="gone"
-                android:layout_marginBottom="8dp" />
+                android:layout_marginBottom="@dimen/space_sm" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvPages"
@@ -105,20 +109,40 @@
                 android:layout_height="wrap_content"
                 android:clipToPadding="false"
                 android:visibility="gone"
-                android:layout_marginBottom="20dp" />
+                android:layout_marginBottom="@dimen/space_lg" />
+
+            <!-- Filename Input -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilFileName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="File name (optional)"
+                app:boxStrokeColor="@color/brand_primary"
+                app:hintTextColor="@color/brand_primary"
+                app:helperText="Leave empty for auto-generated name"
+                app:helperTextTextColor="@color/color_on_surface_muted"
+                android:layout_marginBottom="@dimen/space_base">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etFileName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:textSize="14sp" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Upload Button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnUpload"
+                style="@style/Widget.App.Button.Primary"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="@dimen/button_height"
                 android:text="Upload Documents"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                app:cornerRadius="12dp"
                 app:icon="@drawable/ic_upload"
                 app:iconGravity="textStart"
-                app:iconPadding="12dp" />
+                app:iconPadding="@dimen/space_md"
+                app:iconTint="@android:color/white" />
 
             <!-- Upload Progress -->
             <LinearLayout
@@ -126,13 +150,13 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center"
-                android:layout_marginTop="16dp">
+                android:layout_marginTop="@dimen/space_base">
 
                 <ProgressBar
                     android:id="@+id/progressBar"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:indeterminateTint="@color/primary"
+                    android:indeterminateTint="@color/brand_primary"
                     android:visibility="gone" />
 
                 <TextView
@@ -140,9 +164,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Uploading..."
-                    android:textColor="@color/text_secondary"
+                    android:textColor="@color/color_on_surface_variant"
                     android:textSize="14sp"
-                    android:layout_marginStart="8dp"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginStart="@dimen/space_sm"
                     android:visibility="gone" />
             </LinearLayout>
 

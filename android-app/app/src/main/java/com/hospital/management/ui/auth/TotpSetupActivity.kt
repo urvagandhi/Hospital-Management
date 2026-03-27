@@ -12,6 +12,7 @@ import android.util.Base64
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import androidx.lifecycle.lifecycleScope
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
@@ -24,10 +25,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Response
 
-class TotpSetupActivity : AppCompatActivity() {
+class TotpSetupActivity : BaseActivity() {
     private lateinit var binding: ActivityTotpSetupBinding
     private lateinit var tokenManager: TokenManager
     private var backupCodes: List<String> = emptyList()
+    private var setupLoaded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,17 +37,10 @@ class TotpSetupActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         tokenManager = TokenManager(this)
+        tokenManager.setTotpSetupPending(true)
 
         loadTotpSetup()
-
-        binding.btnVerify.setOnClickListener {
-            val totpCode = binding.etTotpCode.text.toString()
-            if (totpCode.length == 6) {
-                verifyTotp(totpCode)
-            } else {
-                Toast.makeText(this, "Please enter a 6-digit code", Toast.LENGTH_SHORT).show()
-            }
-        }
+        setupVerifyButton()
 
         binding.btnCopyBackupCodes.setOnClickListener {
             copyBackupCodesToClipboard()
@@ -56,28 +51,27 @@ class TotpSetupActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupVerifyButton() {
+        binding.btnVerify.setOnClickListener {
+            val totpCode = binding.etTotpCode.text.toString()
+            if (totpCode.length == 6) {
+                verifyTotp(totpCode)
+            } else {
+                Toast.makeText(this, "Please enter a 6-digit code", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun loadTotpSetup() {
         binding.progressBar.visibility = View.VISIBLE
         binding.btnVerify.isEnabled = false
 
         lifecycleScope.launch {
             try {
-                val accessToken = withContext(Dispatchers.IO) { tokenManager.getAccessToken() }
-
-                if (accessToken == null) {
-                    Toast.makeText(
-                        this@TotpSetupActivity,
-                        "Session expired. Please login again.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    finish()
-                    return@launch
-                }
-
                 val apiService = RetrofitClient.getApiService(this@TotpSetupActivity)
-                android.util.Log.d("TotpSetup", "Calling POST /2fa/setup with token: ${accessToken?.take(20)}...")
+                android.util.Log.d("TotpSetup", "Calling POST /2fa/setup")
                 val response: Response<TotpSetupResponse> = withContext(Dispatchers.IO) {
-                    apiService.setupTotp("Bearer $accessToken")
+                    apiService.setupTotp()
                 }
                 android.util.Log.d("TotpSetup", "Response: code=${response.code()} success=${response.body()?.success}")
 
@@ -87,32 +81,46 @@ class TotpSetupActivity : AppCompatActivity() {
                 if (response.isSuccessful && response.body()?.success == true) {
                     val data = response.body()?.data
                     if (data != null) {
+                        setupLoaded = true
                         displayQrCode(data.qrCodeUrl)
                         binding.tvManualKey.text = data.secret
                         binding.tvManualKey.visibility = View.VISIBLE
                         binding.tvManualKeyLabel.visibility = View.VISIBLE
                         binding.ivQrCode.visibility = View.VISIBLE
+                        setupVerifyButton()
                     } else {
-                        Toast.makeText(this@TotpSetupActivity, "No setup data received", Toast.LENGTH_SHORT).show()
+                        showSetupError("No setup data received")
                     }
                 } else {
-                    val errorBody = response.errorBody()?.string() ?: response.message()
-                    android.util.Log.e("TotpSetup", "Setup failed: code=${response.code()} body=$errorBody")
-                    Toast.makeText(
-                        this@TotpSetupActivity,
-                        "Failed to load setup (${response.code()}): $errorBody",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    val errorMsg = try {
+                        val body = response.errorBody()?.string() ?: ""
+                        if (body.startsWith("{")) {
+                            org.json.JSONObject(body).optString("message", response.message())
+                        } else {
+                            response.message()
+                        }
+                    } catch (e: Exception) {
+                        response.message()
+                    }
+                    android.util.Log.e("TotpSetup", "Setup failed: code=${response.code()} msg=$errorMsg")
+                    showSetupError("Failed to load 2FA setup: $errorMsg")
                 }
             } catch (e: Exception) {
                 binding.progressBar.visibility = View.GONE
-                binding.btnVerify.isEnabled = true
-                Toast.makeText(
-                    this@TotpSetupActivity,
-                    "Error: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                showSetupError("Network error: ${e.message}")
             }
+        }
+    }
+
+    private fun showSetupError(message: String) {
+        binding.progressBar.visibility = View.GONE
+        Toast.makeText(this@TotpSetupActivity, message, Toast.LENGTH_LONG).show()
+        binding.btnVerify.text = "Retry Setup"
+        binding.btnVerify.isEnabled = true
+        binding.btnVerify.setOnClickListener {
+            binding.btnVerify.text = "Verify and Continue"
+            setupVerifyButton()
+            loadTotpSetup()
         }
     }
 
@@ -133,22 +141,9 @@ class TotpSetupActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val accessToken = withContext(Dispatchers.IO) { tokenManager.getAccessToken() }
-
-                if (accessToken == null) {
-                    Toast.makeText(
-                        this@TotpSetupActivity,
-                        "Session expired",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    finish()
-                    return@launch
-                }
-
                 val apiService = RetrofitClient.getApiService(this@TotpSetupActivity)
                 val response: Response<TotpVerifyResponse> = withContext(Dispatchers.IO) {
                     apiService.verifyTotpSetup(
-                        authorization = "Bearer $accessToken",
                         body = mapOf("token" to totpCode)
                     )
                 }
@@ -185,6 +180,7 @@ class TotpSetupActivity : AppCompatActivity() {
 
     private fun showBackupCodes() {
         binding.cardBackupCodes.visibility = View.VISIBLE
+        binding.btnContinueToDashboard.visibility = View.VISIBLE
         binding.tvBackupCodes.text = backupCodes.joinToString("\n")
 
         binding.ivQrCode.visibility = View.GONE
@@ -212,15 +208,29 @@ class TotpSetupActivity : AppCompatActivity() {
             try {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                     clipboard.clearPrimaryClip()
+                } else {
+                    // API 26-27: overwrite with empty content
+                    clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
                 }
             } catch (_: Exception) {}
         }, 60_000)
     }
 
     private fun navigateToDashboard() {
+        tokenManager.setTotpSetupPending(false)
         val intent = Intent(this, DashboardActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
+    }
+
+    /**
+     * Do NOT clear totpSetupPending on destroy — only clear it on successful TOTP verification
+     * (in navigateToDashboard). This ensures that if the user backgrounds the app or swipes it
+     * from recents, they'll be sent back to TOTP setup on next launch.
+     */
+    override fun onBackPressed() {
+        // Prevent going back — user must complete TOTP setup
+        Toast.makeText(this, "Please complete 2FA setup to continue", Toast.LENGTH_SHORT).show()
     }
 }

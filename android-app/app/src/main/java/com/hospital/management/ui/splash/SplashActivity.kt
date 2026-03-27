@@ -8,11 +8,13 @@ import android.util.Log
 import android.view.View
 import android.view.animation.OvershootInterpolator
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import androidx.lifecycle.lifecycleScope
 import com.hospital.management.databinding.ActivitySplashBinding
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.ui.auth.LoginActivity
+import com.hospital.management.ui.auth.TotpSetupActivity
 import com.hospital.management.ui.dashboard.DashboardActivity
 import com.hospital.management.utils.SessionManager
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class SplashActivity : AppCompatActivity() {
+class SplashActivity : BaseActivity() {
 
     private lateinit var binding: ActivitySplashBinding
     private lateinit var tokenManager: TokenManager
@@ -95,6 +97,10 @@ class SplashActivity : AppCompatActivity() {
                 val serverValid = validateSessionWithServer()
 
                 if (serverValid) {
+                    if (tokenManager.isTotpSetupPending()) {
+                        navigateToTotpSetup()
+                        return
+                    }
                     binding.tvLoading.text = "Welcome back!"
                     delay(500)
                     navigateToDashboard()
@@ -140,7 +146,25 @@ class SplashActivity : AppCompatActivity() {
         val intent = Intent(this, DashboardActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
-        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        @Suppress("DEPRECATION")
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, android.R.anim.fade_in, android.R.anim.fade_out)
+        } else {
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        }
+        finish()
+    }
+
+    private fun navigateToTotpSetup() {
+        val intent = Intent(this, TotpSetupActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        @Suppress("DEPRECATION")
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, android.R.anim.fade_in, android.R.anim.fade_out)
+        } else {
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        }
         finish()
     }
 
@@ -148,7 +172,12 @@ class SplashActivity : AppCompatActivity() {
         val intent = Intent(this, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
-        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        @Suppress("DEPRECATION")
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, android.R.anim.fade_in, android.R.anim.fade_out)
+        } else {
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        }
         finish()
     }
 }

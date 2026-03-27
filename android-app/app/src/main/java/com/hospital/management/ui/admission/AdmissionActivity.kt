@@ -3,6 +3,7 @@ package com.hospital.management.ui.admission
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.databinding.ActivityAdmissionBinding
 import kotlinx.coroutines.CoroutineScope
@@ -19,7 +20,7 @@ import com.hospital.management.presentation.viewmodel.PatientViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import android.view.View
 
-class AdmissionActivity : AppCompatActivity() {
+class AdmissionActivity : BaseActivity() {
     private lateinit var binding: ActivityAdmissionBinding
     private lateinit var patientViewModel: PatientViewModel
     private lateinit var tokenManager: TokenManager

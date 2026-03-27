@@ -1,86 +1,327 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme -->
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         BASE THEME — Glassmorphism Design System
+         ══════════════════════════════════════════════════════════════════ -->
     <style name="Base.Theme.HospitalManagement" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Primary brand color -->
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryVariant">@color/primary_dark</item>
-        <item name="colorOnPrimary">@color/white</item>
+        <!-- Primary -->
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryVariant">@color/brand_primary_variant</item>
+        <item name="colorOnPrimary">@android:color/white</item>
 
-        <!-- Secondary brand color -->
-        <item name="colorSecondary">@color/accent</item>
-        <item name="colorSecondaryVariant">@color/accent_dark</item>
-        <item name="colorOnSecondary">@color/white</item>
+        <!-- Secondary -->
+        <item name="colorSecondary">@color/brand_accent</item>
+        <item name="colorOnSecondary">@android:color/white</item>
 
-        <!-- Status bar color -->
-        <item name="android:statusBarColor">@color/background</item>
+        <!-- Surface -->
+        <item name="colorSurface">@color/color_surface</item>
+        <item name="colorSurfaceVariant">@color/color_surface_variant</item>
+        <item name="android:colorBackground">@color/color_background</item>
+        <item name="colorOnSurface">@color/color_on_surface</item>
+        <item name="colorOnBackground">@color/color_on_surface</item>
+        <item name="colorOutline">@color/color_glass_stroke</item>
+
+        <!-- Error -->
+        <item name="colorError">@color/brand_destructive</item>
+        <item name="colorOnError">@android:color/white</item>
+
+        <!-- Typography -->
+        <item name="android:fontFamily">@font/inter</item>
+
+        <!-- Status / Navigation bars — transparent for edge-to-edge -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
 
-        <!-- Background colors -->
-        <item name="android:colorBackground">@color/background</item>
-        <item name="colorSurface">@color/surface</item>
-        <item name="colorSurfaceVariant">@color/surface_variant</item>
+        <!-- Window -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
 
-        <!-- Text colors -->
-        <item name="android:textColorPrimary">@color/text_primary</item>
-        <item name="android:textColorSecondary">@color/text_secondary</item>
-        <item name="android:textColorHint">@color/text_hint</item>
+        <!-- Text -->
+        <item name="android:textColorPrimary">@color/color_on_surface</item>
+        <item name="android:textColorSecondary">@color/color_on_surface_variant</item>
+        <item name="android:textColorHint">@color/color_on_surface_muted</item>
 
-        <!-- Shape -->
+        <!-- Shapes -->
         <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.App.SmallComponent</item>
         <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.App.MediumComponent</item>
         <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.App.LargeComponent</item>
 
-        <!-- Button Style -->
-        <item name="materialButtonStyle">@style/Widget.App.Button</item>
+        <!-- Default widget styles -->
+        <item name="materialButtonStyle">@style/Widget.App.Button.Primary</item>
+        <item name="textInputStyle">@style/Widget.App.TextInputLayout.Glass</item>
+        <item name="materialCardViewStyle">@style/Widget.App.Card.Glass</item>
 
-        <!-- Text Input Style -->
-        <item name="textInputStyle">@style/Widget.App.TextInputLayout</item>
+        <!-- Disable all-caps globally on buttons -->
+        <item name="android:textAllCaps">false</item>
     </style>
 
+    <!-- ── Shape Appearances ── -->
     <style name="ShapeAppearance.App.SmallComponent" parent="ShapeAppearance.Material3.SmallComponent">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">8dp</item>
+        <item name="cornerSize">@dimen/radius_sm</item>
     </style>
 
     <style name="ShapeAppearance.App.MediumComponent" parent="ShapeAppearance.Material3.MediumComponent">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">12dp</item>
+        <item name="cornerSize">@dimen/radius_md</item>
     </style>
 
     <style name="ShapeAppearance.App.LargeComponent" parent="ShapeAppearance.Material3.LargeComponent">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">16dp</item>
+        <item name="cornerSize">@dimen/radius_lg</item>
     </style>
 
-    <style name="Widget.App.Button" parent="Widget.Material3.Button">
-        <item name="android:paddingVertical">12dp</item>
+    <!-- ══════════════════════════════════════════════════════════════════
+         TYPOGRAPHY STYLES
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <style name="TextAppearance.App.Display">
+        <item name="android:textSize">28sp</item>
+        <item name="android:fontFamily">@font/inter_bold</item>
+        <item name="android:letterSpacing">-0.02</item>
+        <item name="android:textColor">@color/color_on_surface</item>
+    </style>
+
+    <style name="TextAppearance.App.Title">
+        <item name="android:textSize">20sp</item>
+        <item name="android:fontFamily">@font/inter_semibold</item>
+        <item name="android:letterSpacing">-0.01</item>
+        <item name="android:textColor">@color/color_on_surface</item>
+    </style>
+
+    <style name="TextAppearance.App.Subtitle">
+        <item name="android:textSize">16sp</item>
+        <item name="android:fontFamily">@font/inter_semibold</item>
+        <item name="android:textColor">@color/color_on_surface</item>
+    </style>
+
+    <style name="TextAppearance.App.Body">
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textColor">@color/color_on_surface</item>
+    </style>
+
+    <style name="TextAppearance.App.BodyMedium">
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/inter_medium</item>
+        <item name="android:textColor">@color/color_on_surface</item>
+    </style>
+
+    <style name="TextAppearance.App.Caption">
+        <item name="android:textSize">12sp</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:textColor">@color/color_on_surface_muted</item>
+    </style>
+
+    <style name="TextAppearance.App.Label">
+        <item name="android:textSize">11sp</item>
+        <item name="android:fontFamily">@font/inter_semibold</item>
+        <item name="android:letterSpacing">0.06</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@color/color_on_surface_variant</item>
+    </style>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         BUTTON STYLES
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Primary Button -->
+    <style name="Widget.App.Button.Primary" parent="Widget.Material3.Button">
+        <item name="android:minHeight">@dimen/button_height</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/inter_medium</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="backgroundTint">@color/brand_primary</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="rippleColor">@color/color_ripple_white</item>
         <item name="shapeAppearance">@style/ShapeAppearance.App.MediumComponent</item>
     </style>
 
-    <style name="Widget.App.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
-        <item name="boxCornerRadiusTopStart">12dp</item>
-        <item name="boxCornerRadiusTopEnd">12dp</item>
-        <item name="boxCornerRadiusBottomStart">12dp</item>
-        <item name="boxCornerRadiusBottomEnd">12dp</item>
-        <item name="boxStrokeColor">@color/primary</item>
-        <item name="hintTextColor">@color/primary</item>
+    <!-- Secondary Button -->
+    <style name="Widget.App.Button.Secondary" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:minHeight">@dimen/button_height</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/inter_medium</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@color/brand_primary</item>
+        <item name="backgroundTint">@color/color_primary_alpha_10</item>
+        <item name="strokeColor">@color/color_primary_alpha_30</item>
+        <item name="strokeWidth">@dimen/glass_stroke_width</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.App.MediumComponent</item>
     </style>
+
+    <!-- Ghost Button -->
+    <style name="Widget.App.Button.Ghost" parent="Widget.Material3.Button.TextButton">
+        <item name="android:minHeight">@dimen/button_height</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/inter_medium</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@color/color_on_surface_variant</item>
+        <item name="rippleColor">@color/color_on_surface_alpha_8</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.App.MediumComponent</item>
+    </style>
+
+    <!-- Destructive Button -->
+    <style name="Widget.App.Button.Destructive" parent="Widget.Material3.Button">
+        <item name="android:minHeight">@dimen/button_height</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/inter_medium</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="backgroundTint">@color/brand_destructive</item>
+        <item name="rippleColor">@color/color_ripple_white</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.App.MediumComponent</item>
+    </style>
+
+    <!-- Root style for dot-notation resolution -->
+    <style name="Widget.App" parent="" />
+
+    <!-- Legacy compat wrappers -->
+    <style name="Widget.App.Button" parent="Widget.App.Button.Primary" />
+    <style name="Widget.App.Button.Outlined" parent="Widget.App.Button.Secondary" />
+    <style name="Widget.App.Button.Text" parent="Widget.App.Button.Ghost" />
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         TEXT INPUT STYLES
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <style name="Widget.App.TextInputLayout.Glass" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">@dimen/radius_md</item>
+        <item name="boxCornerRadiusTopEnd">@dimen/radius_md</item>
+        <item name="boxCornerRadiusBottomStart">@dimen/radius_md</item>
+        <item name="boxCornerRadiusBottomEnd">@dimen/radius_md</item>
+        <item name="boxStrokeColor">@color/color_glass_stroke</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">1.5dp</item>
+        <item name="boxBackgroundColor">@color/color_glass_fill</item>
+        <item name="hintTextColor">@color/color_on_surface_muted</item>
+        <item name="android:textColorHint">@color/color_on_surface_muted</item>
+        <item name="boxStrokeErrorColor">@color/brand_destructive</item>
+        <item name="errorTextColor">@color/brand_destructive</item>
+    </style>
+
+    <!-- Legacy compat -->
+    <style name="Widget.App.TextInputLayout" parent="Widget.App.TextInputLayout.Glass" />
+
+    <!-- Label style (static label above TextInputLayout) -->
+    <style name="Widget.App.Label">
+        <item name="android:textSize">11sp</item>
+        <item name="android:fontFamily">@font/inter_semibold</item>
+        <item name="android:letterSpacing">0.06</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@color/color_on_surface_variant</item>
+        <item name="android:layout_marginBottom">@dimen/space_xs</item>
+    </style>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         CARD STYLES
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Glass Card (default) — uses GlassCardView custom view -->
+    <style name="Widget.App.Card.Glass" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardCornerRadius">@dimen/radius_lg</item>
+        <item name="cardElevation">@dimen/elevation_card</item>
+        <item name="contentPadding">@dimen/space_base</item>
+        <item name="strokeWidth">@dimen/glass_stroke_width</item>
+        <item name="strokeColor">@color/color_glass_stroke</item>
+        <item name="cardBackgroundColor">@color/color_glass_fill</item>
+    </style>
+
+    <!-- Flat Card (for nested inside glass surfaces) -->
+    <style name="Widget.App.Card.Flat" parent="Widget.Material3.CardView.Filled">
+        <item name="cardCornerRadius">@dimen/radius_lg</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">@dimen/glass_stroke_width</item>
+        <item name="strokeColor">@color/color_divider</item>
+        <item name="cardBackgroundColor">@color/color_surface_elevated</item>
+    </style>
+
+    <!-- Clickable Card (glass + ripple) -->
+    <style name="Widget.App.Card.Clickable" parent="Widget.App.Card.Glass">
+        <item name="android:foreground">@drawable/ripple_surface</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!-- Legacy compat -->
+    <style name="Widget.App.Card" parent="Widget.App.Card.Glass" />
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         BADGE & CHIP STYLES
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <style name="Widget.App.Badge">
+        <item name="android:textSize">11sp</item>
+        <item name="android:fontFamily">@font/inter_semibold</item>
+        <item name="android:letterSpacing">0.06</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:paddingStart">@dimen/space_sm</item>
+        <item name="android:paddingEnd">@dimen/space_sm</item>
+        <item name="android:minHeight">@dimen/badge_height</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <style name="Widget.App.Chip" parent="Widget.Material3.Chip.Suggestion">
+        <item name="chipCornerRadius">@dimen/radius_pill</item>
+        <item name="chipBackgroundColor">@color/color_surface</item>
+        <item name="chipStrokeColor">@color/color_glass_stroke</item>
+        <item name="chipStrokeWidth">@dimen/glass_stroke_width</item>
+        <item name="android:textColor">@color/color_on_surface_variant</item>
+    </style>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         DIALOG STYLES
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <style name="AlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorSecondary">@color/brand_accent</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.App.LargeComponent</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/TextAppearance.App.Body</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.App.Title</item>
+    </style>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         SECTION HEADER (legacy compat)
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <style name="TextAppearance.App" parent="TextAppearance.Material3.BodyMedium" />
+
+    <style name="TextAppearance.App.SectionHeader">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">@color/color_on_surface_variant</item>
+        <item name="android:fontFamily">@font/inter_semibold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.06</item>
+    </style>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         THEME VARIANTS
+         ══════════════════════════════════════════════════════════════════ -->
 
     <style name="Theme.HospitalManagement" parent="Base.Theme.HospitalManagement" />
 
     <!-- Splash Screen Theme -->
     <style name="Theme.HospitalManagement.Splash" parent="Base.Theme.HospitalManagement">
         <item name="android:windowBackground">@drawable/bg_splash_gradient</item>
-        <item name="android:statusBarColor">@color/primary</item>
-        <item name="android:navigationBarColor">@color/primary_light</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
 
-    <!-- AlertDialog Theme -->
-    <style name="AlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.App.MediumComponent</item>
+    <!-- Immersive header theme -->
+    <style name="Theme.HospitalManagement.Immersive" parent="Base.Theme.HospitalManagement">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
+
 </resources>

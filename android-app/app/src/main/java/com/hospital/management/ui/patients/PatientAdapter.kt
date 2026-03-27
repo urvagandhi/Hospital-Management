@@ -41,6 +41,7 @@ class PatientAdapter(
                 return filterResults
             }
 
+            @Suppress("UNCHECKED_CAST")
             override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
                 val old = patientsFiltered
                 val new = results?.values as? List<Patient> ?: emptyList()

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Dark mode overrides -->
+    <style name="Base.Theme.HospitalManagement" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Primary -->
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryVariant">@color/brand_primary_variant</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+
+        <!-- Secondary -->
+        <item name="colorSecondary">@color/brand_accent</item>
+        <item name="colorOnSecondary">@android:color/white</item>
+
+        <!-- Surface -->
+        <item name="colorSurface">@color/color_surface</item>
+        <item name="colorSurfaceVariant">@color/color_surface_variant</item>
+        <item name="android:colorBackground">@color/color_background</item>
+        <item name="colorOnSurface">@color/color_on_surface</item>
+        <item name="colorOnBackground">@color/color_on_surface</item>
+        <item name="colorOutline">@color/color_glass_stroke</item>
+
+        <!-- Error -->
+        <item name="colorError">@color/brand_destructive</item>
+        <item name="colorOnError">@android:color/white</item>
+
+        <!-- Typography -->
+        <item name="android:fontFamily">@font/inter</item>
+
+        <!-- Status / Navigation bars — transparent -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+
+        <!-- Window -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
+
+        <!-- Text -->
+        <item name="android:textColorPrimary">@color/color_on_surface</item>
+        <item name="android:textColorSecondary">@color/color_on_surface_variant</item>
+        <item name="android:textColorHint">@color/color_on_surface_muted</item>
+
+        <!-- Shapes -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.App.SmallComponent</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.App.MediumComponent</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.App.LargeComponent</item>
+
+        <!-- Default widget styles -->
+        <item name="materialButtonStyle">@style/Widget.App.Button.Primary</item>
+        <item name="textInputStyle">@style/Widget.App.TextInputLayout.Glass</item>
+        <item name="materialCardViewStyle">@style/Widget.App.Card.Glass</item>
+
+        <!-- Disable all-caps globally -->
+        <item name="android:textAllCaps">false</item>
+    </style>
+</resources>

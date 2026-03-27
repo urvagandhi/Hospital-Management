@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -19,7 +20,7 @@ import com.hospital.management.presentation.viewmodel.PatientViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import kotlinx.coroutines.launch
 
-class PatientListActivity : AppCompatActivity() {
+class PatientListActivity : BaseActivity() {
     private lateinit var binding: ActivityPatientListBinding
     private lateinit var adapter: PatientAdapter
     private lateinit var patientViewModel: PatientViewModel

@@ -1,38 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.hospital.management.ui.components.GlassCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/Widget.App.Card.Clickable"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    android:layout_marginHorizontal="4dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="1dp"
-    app:strokeWidth="0dp"
-    android:clickable="true"
-    android:foreground="?android:attr/selectableItemBackground">
+    android:layout_marginBottom="@dimen/space_xs"
+    android:layout_marginHorizontal="@dimen/space_xs"
+    app:cardCornerRadius="@dimen/radius_md">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp"
+        android:padding="@dimen/space_md"
         android:gravity="center_vertical">
 
+        <!-- File type icon -->
+        <View
+            android:id="@+id/fileIconBg"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/bg_stat_card_icon" />
+
         <ImageView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="-31dp"
             android:src="@drawable/ic_file_document"
-            app:tint="@color/primary"
-            android:padding="8dp"
-            android:background="@drawable/bg_rounded_surface"
-            android:backgroundTint="@color/surface_variant" />
+            app:tint="@color/brand_primary" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:layout_marginStart="16dp">
+            android:layout_marginStart="@dimen/space_md">
 
             <TextView
                 android:id="@+id/tvFileName"
@@ -40,8 +42,8 @@
                 android:layout_height="wrap_content"
                 android:text="file_name.pdf"
                 android:textSize="14sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"
+                android:fontFamily="@font/inter_medium"
+                android:textColor="@color/color_on_surface"
                 android:maxLines="1"
                 android:ellipsize="middle" />
 
@@ -51,7 +53,8 @@
                 android:layout_height="wrap_content"
                 android:text="1.2 MB"
                 android:textSize="12sp"
-                android:textColor="@color/text_secondary"
+                android:fontFamily="@font/inter"
+                android:textColor="@color/color_on_surface_muted"
                 android:layout_marginTop="2dp" />
         </LinearLayout>
 
@@ -61,9 +64,7 @@
             android:layout_height="wrap_content"
             android:src="@drawable/ic_more_vert"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="8dp"
-            app:tint="@color/text_secondary" />
+            android:padding="@dimen/space_sm"
+            app:tint="@color/color_on_surface_muted" />
     </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
-
-
+</com.hospital.management.ui.components.GlassCardView>

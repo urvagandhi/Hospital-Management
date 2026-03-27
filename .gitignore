@@ -5,6 +5,10 @@
 .env.production
 .env.development
 
+# Firebase service account key — NEVER commit credentials
+serviceAccountKey.json
+backend/serviceAccountKey.json
+
 # Node
 node_modules/
 npm-debug.log*

@@ -125,6 +125,9 @@ dependencies {
     // Accompanist (Compose utilities)
     implementation "com.google.accompanist:accompanist-permissions:0.32.0"
 
+    // Shimmer loading effect
+    implementation 'com.facebook.shimmer:shimmer:0.5.0'
+
     // Firebase BoM (32.x — last version compatible with Kotlin 1.9)
     implementation platform('com.google.firebase:firebase-bom:32.8.1')
     implementation 'com.google.firebase:firebase-analytics-ktx'
@@ -139,7 +142,4 @@ dependencies {
     implementation "androidx.room:room-runtime:$room_version"
     implementation "androidx.room:room-ktx:$room_version"
     kapt "androidx.room:room-compiler:$room_version"
-
-    // WorkManager
-    implementation "androidx.work:work-runtime-ktx:2.9.0"
 }

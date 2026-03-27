@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ══════════════════════════════════════════════════════════
+         DESIGN TOKENS — DARK MODE
+         Same brand palette, dark semantic surface tokens
+         ══════════════════════════════════════════════════════════ -->
+
+    <!-- ─── Brand Palette (same as light — never use directly) ─── -->
+    <color name="brand_primary">#2563EB</color>
+    <color name="brand_primary_variant">#1D4ED8</color>
+    <color name="brand_accent">#0EA5E9</color>
+    <color name="brand_destructive">#EF4444</color>
+    <color name="brand_warning">#F59E0B</color>
+    <color name="brand_success">#10B981</color>
+
+    <!-- ─── Semantic Surface Tokens — Dark ─── -->
+    <color name="color_background">#080C14</color>
+    <color name="color_surface">#CC0F172A</color>          <!-- rgba(15,23,42, 0.80) -->
+    <color name="color_surface_variant">#0F1A2E</color>
+    <color name="color_surface_elevated">#111827</color>
+    <color name="color_glass_fill">#A60F172A</color>       <!-- rgba(15,23,42, 0.65) -->
+    <color name="color_glass_border">#14FFFFFF</color>     <!-- rgba(255,255,255, 0.08) -->
+    <color name="color_glass_stroke">#3360A5FA</color>     <!-- rgba(96,165,250, 0.20) -->
+    <color name="color_on_surface">#F1F5F9</color>
+    <color name="color_on_surface_variant">#94A3B8</color>
+    <color name="color_on_surface_muted">#475569</color>
+    <color name="color_divider">#0FFFFFFF</color>          <!-- rgba(255,255,255, 0.06) -->
+
+    <!-- ─── Derived tokens for components ─── -->
+    <color name="color_primary_alpha_10">#1A2563EB</color>
+    <color name="color_primary_alpha_12">#1F2563EB</color>
+    <color name="color_primary_alpha_30">#4D2563EB</color>
+    <color name="color_on_surface_alpha_8">#14F1F5F9</color>
+    <color name="color_ripple_white">#33FFFFFF</color>
+    <color name="color_on_surface_muted_alpha_30">#4D475569</color>
+
+    <!-- ─── Blob gradient colors — Dark ─── -->
+    <color name="color_blob_primary">#261D4ED8</color>     <!-- #1D4ED8 @ 15% -->
+    <color name="color_blob_accent">#1A0EA5E9</color>     <!-- #0EA5E9 @ 10% -->
+</resources>

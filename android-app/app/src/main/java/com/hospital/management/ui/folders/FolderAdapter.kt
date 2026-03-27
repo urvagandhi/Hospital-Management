@@ -23,7 +23,7 @@ class FolderAdapter(
             val displayName = folder.name
                 .replace("-", " ")
                 .split(" ")
-                .joinToString(" ") { it.capitalize() }
+                .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
 
             tvFolderName.text = displayName
             tvFileCount.text = "${folder.fileCount} files"

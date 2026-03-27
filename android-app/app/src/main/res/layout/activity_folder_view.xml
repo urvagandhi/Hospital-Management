@@ -1,30 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/color_background">
 
-    <!-- Header Section -->
+    <com.hospital.management.ui.components.GradientBlobBackground
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- App Bar -->
     <View
         android:id="@+id/viewHeader"
         android:layout_width="match_parent"
-        android:layout_height="180dp"
-        android:background="@drawable/bg_dashboard_header"
+        android:layout_height="56dp"
+        android:background="@android:color/transparent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <ImageButton
         android:id="@+id/btnBack"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_marginStart="@dimen/space_md"
+        android:layout_marginTop="@dimen/space_md"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="12dp"
+        android:padding="10dp"
         android:src="@drawable/ic_chevron_right"
         android:rotation="180"
-        app:tint="@color/white"
+        android:contentDescription="Back"
+        app:tint="@color/color_on_surface"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -33,40 +38,58 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Patient Folders"
-        android:textColor="@color/white"
+        android:textColor="@color/color_on_surface"
         android:textSize="20sp"
-        android:textStyle="bold"
+        android:fontFamily="@font/inter_semibold"
+        android:letterSpacing="-0.01"
         app:layout_constraintBottom_toBottomOf="@id/btnBack"
         app:layout_constraintStart_toEndOf="@id/btnBack"
         app:layout_constraintTop_toTopOf="@id/btnBack" />
 
     <!-- Patient Info Card -->
-    <androidx.cardview.widget.CardView
+    <com.hospital.management.ui.components.GlassCardView
         android:id="@+id/cvPatientInfo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="16dp"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="4dp"
-        app:cardBackgroundColor="@color/surface"
+        android:layout_marginHorizontal="@dimen/space_base"
+        android:layout_marginTop="@dimen/space_sm"
         app:layout_constraintTop_toBottomOf="@id/btnBack">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="16dp">
+            android:padding="@dimen/space_base">
+
+            <View
+                android:id="@+id/avatarBg"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_stat_card_icon"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <ImageView
+                android:layout_width="@dimen/icon_size_sm"
+                android:layout_height="@dimen/icon_size_sm"
+                android:src="@drawable/ic_people"
+                app:tint="@color/brand_primary"
+                app:layout_constraintStart_toStartOf="@id/avatarBg"
+                app:layout_constraintEnd_toEndOf="@id/avatarBg"
+                app:layout_constraintTop_toTopOf="@id/avatarBg"
+                app:layout_constraintBottom_toBottomOf="@id/avatarBg" />
 
             <TextView
                 android:id="@+id/tvPatientName"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:text="Patient Name"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
+                android:textColor="@color/color_on_surface"
+                android:textSize="16sp"
+                android:fontFamily="@font/inter_semibold"
+                android:layout_marginStart="@dimen/space_md"
+                app:layout_constraintStart_toEndOf="@id/avatarBg"
+                app:layout_constraintTop_toTopOf="@id/avatarBg"
                 app:layout_constraintEnd_toStartOf="@id/btnEditPatient" />
 
             <TextView
@@ -74,9 +97,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="MRN: --"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp"
-                android:layout_marginTop="4dp"
+                android:textColor="@color/color_on_surface_muted"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter"
+                android:layout_marginTop="2dp"
                 app:layout_constraintStart_toStartOf="@id/tvPatientName"
                 app:layout_constraintTop_toBottomOf="@id/tvPatientName" />
 
@@ -85,38 +109,38 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Phone: --"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp"
-                android:layout_marginTop="2dp"
-                app:layout_constraintStart_toStartOf="@id/tvPatientName"
-                app:layout_constraintTop_toBottomOf="@id/tvMrn" />
+                android:textColor="@color/color_on_surface_muted"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter"
+                android:layout_marginStart="@dimen/space_md"
+                app:layout_constraintStart_toEndOf="@id/tvMrn"
+                app:layout_constraintTop_toTopOf="@id/tvMrn" />
 
             <ImageButton
                 android:id="@+id/btnEditPatient"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_stat_card_icon"
                 android:src="@android:drawable/ic_menu_edit"
-                app:tint="@color/primary"
-                android:padding="8dp"
+                app:tint="@color/brand_primary"
+                android:padding="@dimen/space_sm"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
-    </androidx.cardview.widget.CardView>
+    </com.hospital.management.ui.components.GlassCardView>
 
-    <!-- Content -->
+    <!-- Folders Grid -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvFolders"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="16dp"
-        android:paddingHorizontal="16dp"
-        android:paddingTop="8dp"
+        android:layout_marginTop="@dimen/space_md"
+        android:paddingHorizontal="10dp"
+        android:paddingTop="@dimen/space_xs"
         android:paddingBottom="88dp"
         android:clipToPadding="false"
-
         app:layout_constraintTop_toBottomOf="@id/cvPatientInfo"
         app:layout_constraintBottom_toBottomOf="parent" />
 
@@ -125,8 +149,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="No folders available"
-        android:textSize="16sp"
-        android:textColor="@color/text_secondary"
+        android:textSize="15sp"
+        android:fontFamily="@font/inter_medium"
+        android:textColor="@color/color_on_surface_variant"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="@+id/rvFolders"
         app:layout_constraintBottom_toBottomOf="@+id/rvFolders"
@@ -137,7 +162,7 @@
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:indeterminateTint="@color/primary"
+        android:indeterminateTint="@color/brand_primary"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="@+id/rvFolders"
         app:layout_constraintBottom_toBottomOf="@+id/rvFolders"
@@ -149,11 +174,12 @@
         android:id="@+id/fabCreateFolder"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="24dp"
+        android:layout_margin="@dimen/space_lg"
         android:src="@android:drawable/ic_input_add"
-        app:tint="@color/white"
-        app:backgroundTint="#F59E0B"
+        app:tint="@android:color/white"
+        app:backgroundTint="@color/brand_primary"
         app:fabSize="normal"
+        app:shapeAppearance="@style/ShapeAppearance.App.MediumComponent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -161,11 +187,12 @@
         android:id="@+id/fabDownloadAll"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="24dp"
+        android:layout_margin="@dimen/space_lg"
         android:src="@android:drawable/stat_sys_download"
-        app:tint="@color/white"
-        app:backgroundTint="#10B981"
+        app:tint="@android:color/white"
+        app:backgroundTint="@color/brand_success"
         app:fabSize="mini"
+        app:shapeAppearance="@style/ShapeAppearance.App.SmallComponent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/fabCreateFolder" />
 

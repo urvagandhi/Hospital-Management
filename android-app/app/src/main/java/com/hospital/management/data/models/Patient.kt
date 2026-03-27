@@ -23,6 +23,7 @@ data class Folder(
 }
 
 data class FileItem(
+    val _id: String? = null,
     val fileName: String,
     val fileUrl: String? = null,
     val url: String? = null,

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ══════════════════════════════════════════════════════════
+         SPACING TOKENS
+         ══════════════════════════════════════════════════════════ -->
+    <dimen name="space_xs">4dp</dimen>
+    <dimen name="space_sm">8dp</dimen>
+    <dimen name="space_md">12dp</dimen>
+    <dimen name="space_base">16dp</dimen>
+    <dimen name="space_lg">20dp</dimen>
+    <dimen name="space_xl">24dp</dimen>
+    <dimen name="space_2xl">32dp</dimen>
+    <dimen name="space_3xl">48dp</dimen>
+
+    <!-- ══════════════════════════════════════════════════════════
+         RADIUS TOKENS
+         ══════════════════════════════════════════════════════════ -->
+    <dimen name="radius_sm">8dp</dimen>
+    <dimen name="radius_md">12dp</dimen>
+    <dimen name="radius_lg">16dp</dimen>
+    <dimen name="radius_xl">20dp</dimen>
+    <dimen name="radius_pill">999dp</dimen>
+
+    <!-- ══════════════════════════════════════════════════════════
+         ELEVATION TOKENS
+         ══════════════════════════════════════════════════════════ -->
+    <dimen name="elevation_card">0dp</dimen>
+    <dimen name="elevation_bottom_bar">8dp</dimen>
+    <dimen name="elevation_dialog">24dp</dimen>
+    <dimen name="elevation_fab">6dp</dimen>
+
+    <!-- ══════════════════════════════════════════════════════════
+         COMPONENT SIZES
+         ══════════════════════════════════════════════════════════ -->
+    <dimen name="button_height">48dp</dimen>
+    <dimen name="list_item_min_height">64dp</dimen>
+    <dimen name="icon_size_sm">20dp</dimen>
+    <dimen name="icon_size_md">24dp</dimen>
+    <dimen name="badge_height">20dp</dimen>
+    <dimen name="glass_stroke_width">1dp</dimen>
+    <dimen name="glass_stroke_width_focused">1.5dp</dimen>
+    <dimen name="bottom_nav_margin_bottom">12dp</dimen>
+    <dimen name="bottom_nav_margin_horizontal">24dp</dimen>
+    <dimen name="bottom_sheet_handle_width">32dp</dimen>
+    <dimen name="bottom_sheet_handle_height">4dp</dimen>
+    <dimen name="otp_box_width">48dp</dimen>
+    <dimen name="otp_box_height">56dp</dimen>
+</resources>

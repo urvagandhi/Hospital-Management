@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import androidx.lifecycle.lifecycleScope
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
@@ -16,7 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Response
 
-class ChangePasswordActivity : AppCompatActivity() {
+class ChangePasswordActivity : BaseActivity() {
     private lateinit var binding: ActivityChangePasswordBinding
     private lateinit var tokenManager: TokenManager
     private var tempToken: String? = null
@@ -93,13 +94,11 @@ class ChangePasswordActivity : AppCompatActivity() {
                     val data = response.body()?.data
                     if (data != null) {
                         tokenManager.saveTokens(data.accessToken, data.refreshToken)
-                        if (data.hospital != null) {
-                            tokenManager.saveHospitalInfo(
-                                data.hospital._id,
-                                data.hospital.hospitalName,
-                                data.hospital.logoUrl ?: ""
-                            )
-                        }
+                        tokenManager.saveHospitalInfo(
+                            data.hospital._id,
+                            data.hospital.hospitalName,
+                            data.hospital.logoUrl ?: ""
+                        )
 
                         Toast.makeText(
                             this@ChangePasswordActivity,

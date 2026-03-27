@@ -16,6 +16,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.hospital.management.data.local.AppDatabase
 import com.hospital.management.utils.NetworkMonitor
+import com.hospital.management.utils.FileLogger
 import com.hospital.management.utils.SecurityUtils
 import com.hospital.management.utils.SessionManager
 import com.hospital.management.ui.auth.LoginActivity
@@ -34,6 +35,16 @@ class HospitalApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Initialize file-based logging
+        FileLogger.init(this)
+
+        // Install global crash handler so crashes are logged to file
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            FileLogger.e("CRASH", "Uncaught exception on thread ${thread.name}", throwable)
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
 
         // Root Detection
         if (SecurityUtils.isDeviceRooted()) {
@@ -61,6 +72,7 @@ class HospitalApplication : Application() {
                 // We only force logout if the session was explicitly marked active (user logged in)
                 // and the time has expired.
                 val isAuthScreen = activity is LoginActivity
+                    || activity is com.hospital.management.ui.splash.SplashActivity
                     || activity is com.hospital.management.ui.auth.TotpSetupActivity
                     || activity is com.hospital.management.ui.auth.TotpVerificationActivity
                     || activity is com.hospital.management.ui.auth.ChangePasswordActivity
@@ -157,16 +169,6 @@ class HospitalApplication : Application() {
         }
     }
 
-    override fun onTerminate() {
-        super.onTerminate()
-        // Unregister network callback
-        networkCallback?.let {
-            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            try {
-                connectivityManager.unregisterNetworkCallback(it)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
+    // Note: onTerminate() is never called on real Android devices,
+    // only in emulators. Network callback cleanup is unnecessary here.
 }

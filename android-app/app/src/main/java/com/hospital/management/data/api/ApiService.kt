@@ -26,13 +26,10 @@ interface ApiService {
     ): Response<ChangePasswordResponse>
 
     @POST("/api/auth/2fa/setup")
-    suspend fun setupTotp(
-        @Header("Authorization") authorization: String
-    ): Response<TotpSetupResponse>
+    suspend fun setupTotp(): Response<TotpSetupResponse>
 
     @POST("/api/auth/2fa/verify")
     suspend fun verifyTotpSetup(
-        @Header("Authorization") authorization: String,
         @Body body: Map<String, String>
     ): Response<TotpVerifyResponse>
 
@@ -137,6 +134,14 @@ interface ApiService {
         @Path("patientId") patientId: String,
         @Path("folderName") folderName: String,
         @Part file: MultipartBody.Part
+    ): Response<Map<String, Any>>
+
+    @PATCH("/api/patients/{patientId}/files/{folderName}/{fileId}/rename")
+    suspend fun renameFile(
+        @Path("patientId") patientId: String,
+        @Path("folderName") folderName: String,
+        @Path("fileId") fileId: String,
+        @Body body: Map<String, String>
     ): Response<Map<String, Any>>
 
     // ── Download endpoints ──

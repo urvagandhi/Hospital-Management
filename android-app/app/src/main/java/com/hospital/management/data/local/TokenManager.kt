@@ -2,6 +2,7 @@ package com.hospital.management.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.channels.awaitClose
@@ -17,6 +18,7 @@ class TokenManager(private val context: Context) {
     }
 
     companion object {
+        private const val TAG = "TokenManager"
         private const val PREFS_NAME = "secure_hospital_prefs"
         private const val ACCESS_TOKEN = "access_token"
         private const val REFRESH_TOKEN = "refresh_token"
@@ -28,19 +30,49 @@ class TokenManager(private val context: Context) {
         private const val USER_EMAIL = "user_email"
         private const val BIOMETRIC_ENABLED = "biometric_enabled"
         private const val SESSION_TIMESTAMP = "session_timestamp"
+        private const val TOTP_SETUP_PENDING = "totp_setup_pending"
     }
 
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    private val prefs: SharedPreferences = createEncryptedPrefs()
 
-    private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        PREFS_NAME,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private fun createEncryptedPrefs(): SharedPreferences {
+        return try {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            EncryptedSharedPreferences.create(
+                context,
+                PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "EncryptedSharedPreferences corrupted, clearing and recreating", e)
+            // Delete the corrupted prefs file and retry
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
+            try {
+                val file = java.io.File(context.filesDir.parent, "shared_prefs/$PREFS_NAME.xml")
+                if (file.exists()) file.delete()
+            } catch (_: Exception) {}
+            try {
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                EncryptedSharedPreferences.create(
+                    context,
+                    PREFS_NAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            } catch (e2: Exception) {
+                Log.e(TAG, "Failed to recreate EncryptedSharedPreferences, falling back", e2)
+                // Last resort: use regular SharedPreferences so the app doesn't crash
+                context.getSharedPreferences("${PREFS_NAME}_fallback", Context.MODE_PRIVATE)
+            }
+        }
+    }
 
     // Helper to generic flow from preferences
     private fun getFlow(key: String): Flow<String?> = callbackFlow {
@@ -103,6 +135,7 @@ class TokenManager(private val context: Context) {
             remove(HOSPITAL_NAME)
             remove(HOSPITAL_LOGO_URL)
             remove(SESSION_TIMESTAMP)
+            remove(TOTP_SETUP_PENDING)
             apply()
         }
     }
@@ -151,6 +184,14 @@ class TokenManager(private val context: Context) {
 
     suspend fun hasValidToken(): Boolean {
         return !prefs.getString(ACCESS_TOKEN, null).isNullOrEmpty()
+    }
+
+    fun setTotpSetupPending(isPending: Boolean) {
+        prefs.edit().putBoolean(TOTP_SETUP_PENDING, isPending).apply()
+    }
+
+    fun isTotpSetupPending(): Boolean {
+        return prefs.getBoolean(TOTP_SETUP_PENDING, false)
     }
 }
 

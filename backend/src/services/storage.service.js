@@ -60,7 +60,7 @@ const documentStorage = new CloudinaryStorage({
   cloudinary: cloudinaryModule,
   params: {
     folder: 'hospital/documents',
-    resource_type: 'auto',
+    resource_type: 'raw',
     allowed_formats: ['pdf'],
   },
 });

@@ -230,11 +230,11 @@ export const uploadFile = async (req, res) => {
       });
     }
 
-    // multer-storage-cloudinary has already uploaded the file.
-    // file.path  = Cloudinary secure URL
-    // file.filename = Cloudinary public ID (needed for deletion)
-    const cloudinaryUrl = file.path;
-    const cloudinaryPublicId = file.filename;
+    // multer-storage-cloudinary merges Cloudinary's response into req.file.
+    // Depending on the library version the URL lives in .secure_url or .path,
+    // and the public ID in .public_id or .filename.
+    const cloudinaryUrl = file.secure_url || file.path;
+    const cloudinaryPublicId = file.public_id || file.filename;
 
     console.log("[Patient Controller] File uploaded to Cloudinary:", cloudinaryUrl);
 
@@ -243,7 +243,7 @@ export const uploadFile = async (req, res) => {
       fileName: file.originalname,
       fileUrl: cloudinaryUrl,
       cloudinaryPublicId: cloudinaryPublicId,
-      size: file.size,
+      size: file.size || file.bytes,
       mimeType: file.mimetype,
     });
 
@@ -257,6 +257,40 @@ export const uploadFile = async (req, res) => {
     return res.status(error.message === "Patient not found" || error.message === "Folder not found" ? 404 : 500).json({
       success: false,
       message: error.message === "Patient not found" || error.message === "Folder not found" ? error.message : "Failed to upload file",
+    });
+  }
+};
+
+/**
+ * PATCH /api/patients/:patientId/files/:folderName/:fileId/rename
+ * Rename a file in a patient folder
+ */
+export const renameFile = async (req, res) => {
+  try {
+    const { patientId, folderName, fileId } = req.params;
+    const { newFileName } = req.body;
+    const hospitalId = req.hospital?.id;
+
+    if (!newFileName || !newFileName.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "New file name is required",
+      });
+    }
+
+    const patient = await patientService.renameFile(hospitalId, patientId, folderName, fileId, newFileName.trim());
+
+    return res.status(200).json({
+      success: true,
+      data: patient,
+      message: "File renamed successfully",
+    });
+  } catch (error) {
+    console.error("[Patient Controller] Rename error:", error);
+    const isNotFound = error.message.includes("not found");
+    return res.status(isNotFound ? 404 : 500).json({
+      success: false,
+      message: isNotFound ? error.message : "Failed to rename file",
     });
   }
 };

@@ -9,6 +9,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -32,7 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.os.Environment
 
-class FolderDetailsActivity : AppCompatActivity() {
+class FolderDetailsActivity : BaseActivity() {
 
     private lateinit var patientViewModel: PatientViewModel
     private lateinit var rvFiles: RecyclerView
@@ -119,10 +120,10 @@ class FolderDetailsActivity : AppCompatActivity() {
                         
                         if (state.message == "PDF Ready" && state.data is okhttp3.ResponseBody) {
                             val fileName = "${folderName}_${System.currentTimeMillis()}.pdf"
-                            saveFileToDownloads(state.data as okhttp3.ResponseBody, fileName)
+                            saveFileToDownloads(state.data, fileName)
                         } else if (state.message == "ZIP Ready" && state.data is okhttp3.ResponseBody) {
                             val fileName = "${folderName}_${System.currentTimeMillis()}.zip"
-                            saveFileToDownloads(state.data as okhttp3.ResponseBody, fileName)
+                            saveFileToDownloads(state.data, fileName)
                         } else if (state.message?.isNotEmpty() == true && state.message != "Files loaded") {
                             Toast.makeText(this@FolderDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
                         }
@@ -175,18 +176,70 @@ class FolderDetailsActivity : AppCompatActivity() {
         popup.menu.add("Open")
         popup.menu.add("Open with Drive PDF Viewer")
         popup.menu.add("Download")
+        popup.menu.add("Rename")
         popup.menu.add("Delete")
-        
+
         popup.setOnMenuItemClickListener { item ->
             when (item.title) {
                 "Open" -> openFile(file)
                 "Open with Drive PDF Viewer" -> openFileInDrive(file)
                 "Download" -> downloadFile(file)
+                "Rename" -> showRenameDialog(file)
                 "Delete" -> confirmDelete(file)
             }
             true
         }
         popup.show()
+    }
+
+    private fun showRenameDialog(file: FileItem) {
+        val fileId = file._id
+        if (fileId.isNullOrEmpty()) {
+            Toast.makeText(this, "Cannot rename pending offline files", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val currentName = file.fileName.removeSuffix(".pdf").removeSuffix(".PDF")
+        val editText = com.google.android.material.textfield.TextInputEditText(this).apply {
+            setText(currentName)
+            selectAll()
+            setSingleLine()
+        }
+        val container = android.widget.FrameLayout(this).apply {
+            val dp16 = (16 * resources.displayMetrics.density).toInt()
+            setPadding(dp16, dp16, dp16, 0)
+            addView(editText)
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Rename File")
+            .setView(container)
+            .setPositiveButton("Rename") { _, _ ->
+                val newName = editText.text.toString().trim()
+                if (newName.isNotEmpty()) {
+                    val finalName = if (newName.endsWith(".pdf", ignoreCase = true)) newName else "$newName.pdf"
+                    renameFile(file, fileId, finalName)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun renameFile(@Suppress("UNUSED_PARAMETER") file: FileItem, fileId: String, newFileName: String) {
+        lifecycleScope.launch {
+            try {
+                val apiService = com.hospital.management.data.api.RetrofitClient.getApiService(this@FolderDetailsActivity)
+                val response = apiService.renameFile(patientId, folderName, fileId, mapOf("newFileName" to newFileName))
+                if (response.isSuccessful) {
+                    Toast.makeText(this@FolderDetailsActivity, "File renamed", Toast.LENGTH_SHORT).show()
+                    loadFiles()
+                } else {
+                    Toast.makeText(this@FolderDetailsActivity, "Rename failed", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@FolderDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
     
     private fun openFileInDrive(file: FileItem) {
@@ -273,25 +326,32 @@ class FolderDetailsActivity : AppCompatActivity() {
                 return
             }
 
-            val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
-            val destFile = File(downloadsDir, file.name.replace("[Pending] ", ""))
+            val cleanName = file.name.replace("[Pending] ", "")
+            val mimeType = getMimeType(cleanName)
 
-            sourceFile.inputStream().use { input ->
-                destFile.outputStream().use { output ->
+            val resolver = contentResolver
+            val contentValues = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Downloads.DISPLAY_NAME, cleanName)
+                put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeType)
+                put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+            }
+            val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            if (uri == null) {
+                Toast.makeText(this, "Failed to create download entry", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            resolver.openOutputStream(uri)?.use { output ->
+                sourceFile.inputStream().use { input ->
                     input.copyTo(output)
                 }
             }
 
-            // Scannable for media provider
-            android.media.MediaScannerConnection.scanFile(
-                this,
-                arrayOf(destFile.absolutePath),
-                null,
-                null
-            )
+            contentValues.clear()
+            contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+            resolver.update(uri, contentValues, null, null)
 
-            Toast.makeText(this, "Saved to Downloads: ${destFile.name}", Toast.LENGTH_LONG).show()
-            showDownloadNotification(destFile)
+            Toast.makeText(this, "Saved to Downloads: $cleanName", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -442,11 +502,14 @@ class FolderDetailsActivity : AppCompatActivity() {
     
     // ... helper method to sync before download
     private fun syncAndDownload(type: String) {
-        val progressDialog = android.app.ProgressDialog(this).apply {
-            setMessage("Syncing pending files to server...")
-            setCancelable(false)
-            show()
-        }
+        val progressDialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setMessage("Syncing pending files to server...")
+            .setCancelable(false)
+            .setView(android.widget.ProgressBar(this).apply {
+                setPadding(0, 48, 0, 48)
+                isIndeterminate = true
+            })
+            .show()
 
         // Create OneTimeWorkRequest
         val syncRequest = androidx.work.OneTimeWorkRequest.Builder(com.hospital.management.worker.SyncDocumentsWorker::class.java)
@@ -511,8 +574,7 @@ class FolderDetailsActivity : AppCompatActivity() {
                 }
 
                 val fileName = "${folderName}_local_${System.currentTimeMillis()}.zip"
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val zipFile = File(downloadsDir, fileName)
+                val zipFile = File(cacheDir, fileName)
                 
                 var filesAdded = 0
                 
@@ -534,9 +596,9 @@ class FolderDetailsActivity : AppCompatActivity() {
                                         if (file.exists()) {
                                             inputStream = java.io.FileInputStream(file)
                                         }
-                                    } else {
+                                    } else if (!fileItem.fileUrl.isNullOrEmpty()) {
                                         // Try plain file path string
-                                        val file = File(fileItem.fileUrl)
+                                        val file = File(fileItem.fileUrl!!)
                                         if (file.exists()) {
                                             inputStream = java.io.FileInputStream(file)
                                         }
@@ -561,11 +623,11 @@ class FolderDetailsActivity : AppCompatActivity() {
                     }
                 }
                 
-                withContext(Dispatchers.Main) {
-                    if (filesAdded > 0) {
-                        Toast.makeText(this@FolderDetailsActivity, "Local ZIP generated: $fileName ($filesAdded files)", Toast.LENGTH_LONG).show()
-                        showDownloadNotification(zipFile)
-                    } else {
+                if (filesAdded > 0) {
+                    saveLocalFileToMediaStore(zipFile, fileName, "application/zip")
+                    zipFile.delete()
+                } else {
+                    withContext(Dispatchers.Main) {
                         Toast.makeText(this@FolderDetailsActivity, "Failed to zip files. Valid local files not found.", Toast.LENGTH_LONG).show()
                     }
                 }
@@ -574,6 +636,31 @@ class FolderDetailsActivity : AppCompatActivity() {
                     Toast.makeText(this@FolderDetailsActivity, "ZIP generation failed: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
+
+    private suspend fun saveLocalFileToMediaStore(sourceFile: File, displayName: String, mimeType: String) {
+        val resolver = contentResolver
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Downloads.DISPLAY_NAME, displayName)
+            put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeType)
+            put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+        }
+        val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+        if (uri == null) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@FolderDetailsActivity, "Failed to save to Downloads", Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
+        resolver.openOutputStream(uri)?.use { output ->
+            sourceFile.inputStream().use { it.copyTo(output) }
+        }
+        contentValues.clear()
+        contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+        resolver.update(uri, contentValues, null, null)
+        withContext(Dispatchers.Main) {
+            Toast.makeText(this@FolderDetailsActivity, "Saved to Downloads: $displayName", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -587,74 +674,56 @@ class FolderDetailsActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val pdfDocument = android.graphics.pdf.PdfDocument()
-                var pageCount = 0
-
+                // Collect valid local PDF files
+                val localPdfFiles = mutableListOf<File>()
                 for (fileItem in pendingOfflineFiles) {
-                     try {
+                    try {
                         val uri = Uri.parse(fileItem.fileUrl)
-                        var inputStream: InputStream? = null
-                        
-                         // Check file extension/type - simple check for images
-                        if (!(fileItem.fileName.endsWith(".jpg", true) || 
-                              fileItem.fileName.endsWith(".jpeg", true) || 
-                              fileItem.fileName.endsWith(".png", true))) {
-                            continue
-                        }
-
-                        // Try to open input stream
-                        if (uri.scheme == "content") {
-                            inputStream = contentResolver.openInputStream(uri)
-                        } else {
-                            val path = uri.path
-                            if (path != null) {
-                                val file = File(path)
-                                if (file.exists()) {
-                                    inputStream = java.io.FileInputStream(file)
+                        val file: File? = when (uri.scheme) {
+                            "content" -> {
+                                val tmp = File(cacheDir, "merge_tmp_${System.currentTimeMillis()}.pdf")
+                                contentResolver.openInputStream(uri)?.use { input ->
+                                    tmp.outputStream().use { input.copyTo(it) }
                                 }
-                            } else {
-                                val file = File(fileItem.fileUrl)
-                                if (file.exists()) {
-                                    inputStream = java.io.FileInputStream(file)
-                                }
+                                tmp
                             }
+                            "file" -> File(uri.path ?: "")
+                            else -> File(fileItem.fileUrl ?: "")
                         }
-
-                        if (inputStream != null) {
-                            inputStream.use { stream ->
-                                val bitmap = android.graphics.BitmapFactory.decodeStream(stream)
-                                if (bitmap != null) {
-                                    val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, ++pageCount).create()
-                                    val page = pdfDocument.startPage(pageInfo)
-                                    page.canvas.drawBitmap(bitmap, 0f, 0f, null)
-                                    pdfDocument.finishPage(page)
-                                }
-                            }
+                        if (file != null && file.exists() && file.length() > 0) {
+                            localPdfFiles.add(file)
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
                 }
 
-                if (pageCount > 0) {
+                if (localPdfFiles.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@FolderDetailsActivity, "No valid local PDF files found", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+
+                if (localPdfFiles.size == 1) {
+                    // Single PDF — save via MediaStore
                     val fileName = "${folderName}_local_${System.currentTimeMillis()}.pdf"
-                    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                    val pdfFile = File(downloadsDir, fileName)
-                    
-                    FileOutputStream(pdfFile).use { 
-                        pdfDocument.writeTo(it)
-                    }
-                    pdfDocument.close()
-                    
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@FolderDetailsActivity, "Local PDF generated: $fileName ($pageCount pages)", Toast.LENGTH_LONG).show()
-                        showDownloadNotification(pdfFile)
-                    }
+                    saveLocalFileToMediaStore(localPdfFiles[0], fileName, "application/pdf")
                 } else {
-                    pdfDocument.close()
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@FolderDetailsActivity, "No valid local images found for PDF", Toast.LENGTH_SHORT).show()
+                    // Multiple PDFs — bundle as ZIP in cache, then save via MediaStore
+                    val zipFileName = "${folderName}_local_${System.currentTimeMillis()}.zip"
+                    val zipFile = File(cacheDir, zipFileName)
+                    java.util.zip.ZipOutputStream(zipFile.outputStream()).use { zos ->
+                        localPdfFiles.forEachIndexed { index, pdfFile ->
+                            val entry = java.util.zip.ZipEntry("${folderName}_doc_${index + 1}.pdf")
+                            zos.putNextEntry(entry)
+                            pdfFile.inputStream().use { it.copyTo(zos) }
+                            zos.closeEntry()
+                        }
                     }
+
+                    saveLocalFileToMediaStore(zipFile, zipFileName, "application/zip")
+                    zipFile.delete()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -773,48 +842,39 @@ class FolderDetailsActivity : AppCompatActivity() {
     private fun saveFileToDownloads(body: okhttp3.ResponseBody, fileName: String) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val file = File(downloadsDir, fileName)
-                
-                var inputStream: InputStream? = null
-                var outputStream: OutputStream? = null
-                
-                try {
-                    val fileReader = ByteArray(4096)
-                    val fileSize = body.contentLength()
-                    var fileSizeDownloaded: Long = 0
-                    
-                    inputStream = body.byteStream()
-                    outputStream = FileOutputStream(file)
-                    
-                    while (true) {
-                        val read = inputStream.read(fileReader)
-                        if (read == -1) break
-                        
-                        outputStream.write(fileReader, 0, read)
-                        fileSizeDownloaded += read
-                    }
-                    
-                    outputStream.flush()
-                    
-                    // Notify user on Main thread
+                val mimeType = when {
+                    fileName.endsWith(".pdf", true) -> "application/pdf"
+                    fileName.endsWith(".zip", true) -> "application/zip"
+                    else -> "application/octet-stream"
+                }
+                val resolver = contentResolver
+                val contentValues = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeType)
+                    put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                if (uri == null) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@FolderDetailsActivity, "Downloaded: $fileName (${fileSizeDownloaded} bytes)", Toast.LENGTH_LONG).show()
-                        
-                        // Show system notification
-                        showDownloadNotification(file)
+                        Toast.makeText(this@FolderDetailsActivity, "Failed to create download entry", Toast.LENGTH_SHORT).show()
                     }
-                } catch (e: IOException) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@FolderDetailsActivity, "Failed to save file", Toast.LENGTH_SHORT).show()
-                    }
-                } finally {
-                    inputStream?.close()
-                    outputStream?.close()
+                    return@launch
+                }
+
+                resolver.openOutputStream(uri)?.use { output ->
+                    body.byteStream().copyTo(output)
+                }
+
+                contentValues.clear()
+                contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+                resolver.update(uri, contentValues, null, null)
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@FolderDetailsActivity, "Saved to Downloads: $fileName", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@FolderDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FolderDetailsActivity, "Error saving file: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }

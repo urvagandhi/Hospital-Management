@@ -15,12 +15,11 @@ class AuthRepository(
     private val tokenManager: TokenManager
 ) {
 
-    suspend fun login(identifier: String, password: String, isBiometric: Boolean = false): Response<LoginResponse> {
+    suspend fun login(identifier: String, password: String): Response<LoginResponse> {
         val body = mapOf(
             "identifier" to identifier,
             "email" to identifier, // Legacy compat
-            "password" to password,
-            "isBiometric" to isBiometric
+            "password" to password
         )
         return apiService.login(body)
     }
@@ -41,17 +40,13 @@ class AuthRepository(
     }
 
     suspend fun setupTotp(): Response<TotpSetupResponse> {
-        // Need access token. Assuming we are logged in or have a token.
-        // For setup, we usually expect the user to be fully logged in (AccessToken).
-        val accessToken = tokenManager.accessToken.firstOrNull() ?: ""
-        val authHeader = "Bearer $accessToken"
-        return apiService.setupTotp(authHeader)
+        // AuthInterceptor adds the Authorization header automatically
+        return apiService.setupTotp()
     }
 
     suspend fun verifyTotpSetup(totp: String): Response<TotpVerifyResponse> {
-        val accessToken = tokenManager.accessToken.firstOrNull() ?: ""
-        val authHeader = "Bearer $accessToken"
-        return apiService.verifyTotpSetup(authHeader, mapOf("token" to totp))
+        // AuthInterceptor adds the Authorization header automatically
+        return apiService.verifyTotpSetup(mapOf("token" to totp))
     }
 
     suspend fun verifyTotpLogin(tempToken: String, totp: String): Response<LoginResponse> {

@@ -21,13 +21,15 @@ class SyncDocumentsWorker(
 
     companion object {
         private const val TAG = "SyncDocumentsWorker"
+        private const val MAX_RETRY_COUNT = 5
     }
 
     override suspend fun doWork(): Result {
         val context = applicationContext
         val database = AppDatabase.getDatabase(context)
+        val documentDao = database.documentDao()
         val apiService = RetrofitClient.getApiService(context)
-        val repository = DocumentRepository(apiService, database.documentDao(), context)
+        val repository = DocumentRepository(apiService, documentDao, context)
 
         return withContext(Dispatchers.IO) {
             try {
@@ -41,36 +43,52 @@ class SyncDocumentsWorker(
                 var successCount = 0
                 
                 for (doc in pendingDocs) {
+                    // Skip permanently failed documents (exceeded max retries)
+                    if (doc.retryCount >= MAX_RETRY_COUNT) {
+                        Log.w(TAG, "Skipping document that exceeded max retries: ${doc.fileUri}")
+                        continue
+                    }
+
                     try {
                         repository.updateStatus(doc, SyncStatus.UPLOADING)
-                        
+
                         val uri = Uri.parse(doc.fileUri)
                         val file = getFileFromUri(context, uri)
-                        
+
                         if (file != null && file.exists()) {
                            val result = repository.uploadDocument(doc.patientId, doc.folderName, file)
                            if (result.isSuccess) {
-                               Log.d(TAG, "Successfully uploaded: ${doc.fileUri}")
-                               
+                               Log.d(TAG, "Successfully uploaded document")
+
                                // Delete from database
                                repository.deleteDocument(doc)
-                               
+
                                // Delete local file to free up storage
                                deleteLocalFile(uri)
-                               
+
                                successCount++
                            } else {
-                               Log.e(TAG, "Upload failed for: ${doc.fileUri}")
-                               repository.updateStatus(doc, SyncStatus.FAILED)
+                               Log.e(TAG, "Upload failed for document")
+                               val updatedDoc = doc.copy(
+                                   status = SyncStatus.FAILED,
+                                   retryCount = doc.retryCount + 1,
+                                   errorMessage = "Upload returned error"
+                               )
+                               documentDao.update(updatedDoc)
                            }
                         } else {
                             // File not found locally, remove the database entry
-                            Log.w(TAG, "File not found locally, removing entry: ${doc.fileUri}")
+                            Log.w(TAG, "File not found locally, removing entry")
                             repository.deleteDocument(doc)
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error syncing document: ${doc.fileUri}", e)
-                        repository.updateStatus(doc, SyncStatus.FAILED)
+                        Log.e(TAG, "Error syncing document", e)
+                        val updatedDoc = doc.copy(
+                            status = SyncStatus.FAILED,
+                            retryCount = doc.retryCount + 1,
+                            errorMessage = e.message?.take(200)
+                        )
+                        documentDao.update(updatedDoc)
                     }
                 }
                 
@@ -119,8 +137,14 @@ class SyncDocumentsWorker(
             if (uri.scheme == "file") {
                 return File(uri.path!!)
             } else if (uri.scheme == "content") {
-                // Determine a valid file extension and name
-                val fileName = "temp_upload_${System.currentTimeMillis()}.jpg"
+                val mimeType = context.contentResolver.getType(uri) ?: "application/pdf"
+                val extension = when (mimeType) {
+                    "application/pdf" -> "pdf"
+                    "image/jpeg", "image/jpg" -> "jpg"
+                    "image/png" -> "png"
+                    else -> "pdf"
+                }
+                val fileName = "temp_upload_${System.currentTimeMillis()}.$extension"
                 val file = File(context.cacheDir, fileName)
                 
                 context.contentResolver.openInputStream(uri)?.use { input ->

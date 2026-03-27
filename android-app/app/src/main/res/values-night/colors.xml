@@ -1,25 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand Colors - Dark Mode Adjusted -->
-    <!-- Using lighter shades for primary brand colors in dark mode -->
-    <color name="primary">#818CF8</color> <!-- Indigo 400 -->
-    <color name="primary_dark">#6366F1</color> <!-- Indigo 500 -->
-    <color name="primary_light">#A5B4FC</color> <!-- Indigo 300 -->
-    <color name="primary_lighter">#312E81</color> <!-- Indigo 900 (Used for backgrounds usually) -->
+    <!-- ═══════════════════════════════════════════════════════
+         BACKWARD-COMPAT COLOR ALIASES — DARK MODE
+         Maps old color names → new dark design token values
+         ═══════════════════════════════════════════════════════ -->
 
-    <!-- Secondary/Accent Colors -->
-    <color name="accent">#22D3EE</color> <!-- Cyan 400 -->
-    <color name="accent_dark">#06B6D4</color> <!-- Cyan 500 -->
-    <color name="accent_light">#67E8F9</color> <!-- Cyan 300 -->
+    <!-- Brand aliases (keep consistent with light — brand is invariant) -->
+    <color name="primary">@color/brand_primary</color>
+    <color name="primary_dark">@color/brand_primary_variant</color>
+    <color name="primary_light">#60A5FA</color>
+    <color name="primary_lighter">#1E3A5F</color>
 
-    <!-- Gradient Colors (kept similar or slightly adjusted) -->
-    <color name="gradient_start">#6366F1</color> <!-- Indigo 500 -->
-    <color name="gradient_center">#8B5CF6</color> <!-- Violet 500 -->
-    <color name="gradient_end">#EC4899</color> <!-- Pink 500 -->
+    <color name="accent">@color/brand_accent</color>
+    <color name="accent_dark">#0284C7</color>
+    <color name="accent_light">#38BDF8</color>
+
+    <!-- Gradient Colors -->
+    <color name="gradient_start">@color/brand_primary</color>
+    <color name="gradient_center">#8B5CF6</color>
+    <color name="gradient_end">#EC4899</color>
     <color name="gradient_accent_start">#22D3EE</color>
     <color name="gradient_accent_end">#34D399</color>
 
-    <!-- Card Gradient Colors - Kept vibrant -->
+    <!-- Card Gradient Colors -->
     <color name="card_gradient_blue_start">#3B82F6</color>
     <color name="card_gradient_blue_end">#1E40AF</color>
     <color name="card_gradient_purple_start">#8B5CF6</color>
@@ -29,24 +32,34 @@
     <color name="card_gradient_amber_start">#FBBF24</color>
     <color name="card_gradient_amber_end">#B45309</color>
 
-    <!-- Neutral Colors - DARK MODE -->
-    <color name="background">#0F172A</color> <!-- Slate 900 -->
-    <color name="surface">#1E293B</color> <!-- Slate 800 -->
-    <color name="surface_variant">#334155</color> <!-- Slate 700 -->
-    <color name="surface_elevated">#1E293B</color>
+    <!-- Surface aliases → dark tokens -->
+    <color name="background">@color/color_background</color>
+    <color name="surface">@color/color_surface_elevated</color>
+    <color name="surface_variant">@color/color_surface_variant</color>
+    <color name="surface_elevated">@color/color_surface_elevated</color>
 
-    <!-- Text Colors - Inverted for Dark Mode -->
-    <color name="text_primary">#F8FAFC</color> <!-- Slate 50 -->
-    <color name="text_secondary">#CBD5E1</color> <!-- Slate 300 -->
-    <color name="text_hint">#94A3B8</color> <!-- Slate 400 -->
-    <color name="text_inverse">#0F172A</color> <!-- Slate 900 -->
+    <!-- Text aliases → dark tokens -->
+    <color name="text_primary">@color/color_on_surface</color>
+    <color name="text_secondary">@color/color_on_surface_variant</color>
+    <color name="text_hint">@color/color_on_surface_muted</color>
+    <color name="text_inverse">#0F172A</color>
 
-    <!-- Semantic Colors -->
-    <color name="success">#34D399</color> <!-- Emerald 400 -->
-    <color name="success_light">#064E3B</color> <!-- Emerald 900 (Backgrounds) -->
-    <color name="error">#F87171</color> <!-- Red 400 -->
-    <color name="error_light">#7F1D1D</color> <!-- Red 900 -->
-    <color name="warning">#FBBF24</color> <!-- Amber 400 -->
-    <color name="warning_light">#78350F</color> <!-- Amber 900 -->
-    <color name="info">#60A5FA</color> <!-- Blue 400 -->
+    <!-- Semantic aliases → dark tokens (use brighter variants for dark bg) -->
+    <color name="success">#34D399</color>
+    <color name="success_light">#064E3B</color>
+    <color name="error">#F87171</color>
+    <color name="error_light">#7F1D1D</color>
+    <color name="warning">#FBBF24</color>
+    <color name="warning_light">#78350F</color>
+    <color name="info">#60A5FA</color>
+
+    <!-- UI aliases → dark tokens -->
+    <color name="gray">@color/color_on_surface_variant</color>
+    <color name="divider">@color/color_divider</color>
+    <color name="border">@color/color_glass_stroke</color>
+    <color name="border_focus">@color/brand_primary</color>
+
+    <!-- Shimmer -->
+    <color name="shimmer_base">@color/color_surface_variant</color>
+    <color name="shimmer_highlight">@color/color_glass_fill</color>
 </resources>

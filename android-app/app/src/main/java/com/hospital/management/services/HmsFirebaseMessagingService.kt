@@ -8,7 +8,6 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
@@ -100,8 +99,11 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
             tokenManager.clearAll()
         }
 
-        val intent = Intent(ACTION_SESSION_REVOKED)
-        LocalBroadcastManager.getInstance(applicationContext).sendBroadcast(intent)
+        // Use system broadcast with the same action constant as AuthInterceptor
+        // so DashboardActivity's registerReceiver picks it up
+        val intent = Intent(com.hospital.management.data.api.AuthInterceptor.ACTION_SESSION_REVOKED)
+        intent.setPackage(applicationContext.packageName)
+        applicationContext.sendBroadcast(intent)
     }
 
     private fun showNotification(message: RemoteMessage) {

@@ -1,30 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/color_background">
 
-    <!-- Header Section -->
-    <View
-        android:id="@+id/viewHeader"
+    <com.hospital.management.ui.components.GradientBlobBackground
         android:layout_width="match_parent"
-        android:layout_height="140dp"
-        android:background="@color/primary"
+        android:layout_height="match_parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- App Bar -->
     <ImageButton
         android:id="@+id/btnBack"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginStart="@dimen/space_sm"
+        android:layout_marginTop="@dimen/space_sm"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="12dp"
+        android:padding="@dimen/space_md"
         android:src="@drawable/ic_chevron_right"
         android:rotation="180"
-        app:tint="@color/white"
+        android:contentDescription="Back"
+        app:tint="@color/color_on_surface"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -33,26 +31,32 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Patients Directory"
-        android:textColor="@color/white"
+        android:textColor="@color/color_on_surface"
         android:textSize="20sp"
-        android:textStyle="bold"
+        android:fontFamily="@font/inter_semibold"
+        android:letterSpacing="-0.01"
         app:layout_constraintBottom_toBottomOf="@id/btnBack"
         app:layout_constraintStart_toEndOf="@id/btnBack"
         app:layout_constraintTop_toTopOf="@id/btnBack" />
 
+    <!-- Invisible header anchor for constraint compat -->
+    <View
+        android:id="@+id/viewHeader"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <!-- Search Bar -->
-    <com.google.android.material.card.MaterialCardView
+    <com.hospital.management.ui.components.GlassCardView
         android:id="@+id/cardSearch"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="24dp"
-        android:layout_marginTop="24dp"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp"
+        android:layout_marginHorizontal="@dimen/space_base"
+        android:layout_marginTop="@dimen/space_sm"
         app:layout_constraintTop_toBottomOf="@id/btnBack"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="@id/viewHeader">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <androidx.appcompat.widget.SearchView
             android:id="@+id/searchView"
@@ -61,14 +65,14 @@
             app:iconifiedByDefault="false"
             app:queryHint="Search patients by name or MRN"
             android:background="@null" />
-    </com.google.android.material.card.MaterialCardView>
+    </com.hospital.management.ui.components.GlassCardView>
 
     <!-- Content -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefresh"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="@dimen/space_base"
         app:layout_constraintTop_toBottomOf="@id/cardSearch"
         app:layout_constraintBottom_toBottomOf="parent">
 
@@ -80,8 +84,8 @@
                 android:id="@+id/rvPatients"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:paddingHorizontal="20dp"
-                android:paddingTop="8dp"
+                android:paddingHorizontal="@dimen/space_lg"
+                android:paddingTop="@dimen/space_sm"
                 android:paddingBottom="88dp"
                 android:clipToPadding="false" />
 
@@ -98,8 +102,8 @@
                     android:layout_width="64dp"
                     android:layout_height="64dp"
                     android:src="@drawable/ic_people"
-                    app:tint="@color/text_hint"
-                    android:layout_marginBottom="16dp" />
+                    app:tint="@color/color_on_surface_muted"
+                    android:layout_marginBottom="@dimen/space_base" />
 
                 <TextView
                     android:id="@+id/tvEmpty"
@@ -107,7 +111,8 @@
                     android:layout_height="wrap_content"
                     android:text="No patients found"
                     android:textSize="16sp"
-                    android:textColor="@color/text_secondary" />
+                    android:fontFamily="@font/inter_medium"
+                    android:textColor="@color/color_on_surface_variant" />
             </LinearLayout>
 
             <ProgressBar
@@ -115,7 +120,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:indeterminateTint="@color/primary"
+                android:indeterminateTint="@color/brand_primary"
                 android:visibility="gone" />
         </FrameLayout>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
@@ -124,13 +129,11 @@
         android:id="@+id/fabAddPatient"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="24dp"
+        android:layout_margin="@dimen/space_xl"
         android:src="@drawable/ic_person_add"
-        app:tint="@color/white"
-        app:backgroundTint="@color/primary"
+        app:tint="@android:color/white"
+        app:backgroundTint="@color/brand_primary"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
-
-

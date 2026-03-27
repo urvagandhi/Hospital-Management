@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.repository.PatientRepository
@@ -24,7 +25,7 @@ import com.hospital.management.data.models.Patient
 import com.hospital.management.ui.folders.FolderAdapter
 import com.hospital.management.ui.folders.FolderDetailsActivity
 
-class PatientDetailsActivity : AppCompatActivity() {
+class PatientDetailsActivity : BaseActivity() {
     private lateinit var binding: ActivityPatientDetailsBinding
     private lateinit var patientViewModel: PatientViewModel
     private lateinit var tokenManager: TokenManager

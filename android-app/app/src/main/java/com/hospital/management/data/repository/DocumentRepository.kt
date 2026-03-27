@@ -24,7 +24,11 @@ class DocumentRepository(
         file: File
     ): Result<Boolean> {
         return try {
-            val mediaType = if (file.name.endsWith(".pdf")) "application/pdf" else "image/jpeg"
+            val mediaType = when {
+                file.name.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                file.name.endsWith(".png", ignoreCase = true) -> "image/png"
+                else -> "image/jpeg"
+            }
             val requestFile = file.asRequestBody(mediaType.toMediaTypeOrNull())
             val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
 

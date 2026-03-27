@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="GlassCardView">
+        <attr name="glass_blur_radius" format="float" />
+        <attr name="glass_alpha" format="float" />
+        <attr name="glass_corner_radius" format="dimension" />
+    </declare-styleable>
+</resources>

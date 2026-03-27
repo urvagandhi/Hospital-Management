@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -37,7 +38,7 @@ import com.hospital.management.utils.SessionManager
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 
-class DashboardActivity : AppCompatActivity() {
+class DashboardActivity : BaseActivity() {
     private lateinit var binding: ActivityDashboardBinding
     private lateinit var tokenManager: TokenManager
     private lateinit var authViewModel: AuthViewModel

@@ -80,11 +80,12 @@ object SessionManager {
     }
 
     /**
-     * Logout user and clear all session data
+     * Logout user and clear all session data.
+     * Suspends until tokens are fully cleared before navigating.
      */
-    fun logoutUser(context: Context) {
+    suspend fun logoutUser(context: Context) {
         _isSessionActive = false
-        CoroutineScope(Dispatchers.IO).launch {
+        kotlinx.coroutines.withContext(Dispatchers.IO) {
             getTokenManager(context).clearAll()
         }
         // Reset Retrofit client to clear cookies and stale auth state

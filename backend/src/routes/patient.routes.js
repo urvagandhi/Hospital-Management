@@ -101,6 +101,12 @@ router.get("/:patientId/files/:folderName", patientController.getFolderFiles);
  */
 router.post("/:patientId/files/:folderName", uploadDocument.single("file"), patientController.uploadFile);
 
+/**
+ * PATCH /api/patients/:patientId/files/:folderName/:fileId/rename
+ * Rename a file in a folder
+ */
+router.patch("/:patientId/files/:folderName/:fileId/rename", patientController.renameFile);
+
 // ═══════════════════════════════════════════════════
 // DOWNLOAD ENDPOINTS
 // ═══════════════════════════════════════════════════

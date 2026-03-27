@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ══════════════════════════════════════════════════════════
+         DESIGN TOKENS — LIGHT MODE
+         Brand palette + semantic surface tokens for glassmorphism
+         ══════════════════════════════════════════════════════════ -->
+
+    <!-- ─── Brand Palette (invariant — never use directly in layouts) ─── -->
+    <color name="brand_primary">#2563EB</color>
+    <color name="brand_primary_variant">#1D4ED8</color>
+    <color name="brand_accent">#0EA5E9</color>
+    <color name="brand_destructive">#EF4444</color>
+    <color name="brand_warning">#F59E0B</color>
+    <color name="brand_success">#10B981</color>
+
+    <!-- ─── Semantic Surface Tokens — Light ─── -->
+    <color name="color_background">#F0F4FF</color>
+    <color name="color_surface">#D9FFFFFF</color>          <!-- #FFFFFF @ 85% -->
+    <color name="color_surface_variant">#E8EEFF</color>
+    <color name="color_surface_elevated">#FFFFFF</color>
+    <color name="color_glass_fill">#B3FFFFFF</color>       <!-- #FFFFFF @ 70% -->
+    <color name="color_glass_border">#80FFFFFF</color>     <!-- #FFFFFF @ 50% -->
+    <color name="color_glass_stroke">#DBEAFE</color>
+    <color name="color_on_surface">#0F172A</color>
+    <color name="color_on_surface_variant">#475569</color>
+    <color name="color_on_surface_muted">#94A3B8</color>
+    <color name="color_divider">#3394A3B8</color>          <!-- rgba(148,163,184, 0.20) -->
+
+    <!-- ─── Derived tokens for components ─── -->
+    <color name="color_primary_alpha_10">#1A2563EB</color>
+    <color name="color_primary_alpha_12">#1F2563EB</color>
+    <color name="color_primary_alpha_30">#4D2563EB</color>
+    <color name="color_on_surface_alpha_8">#140F172A</color>
+    <color name="color_ripple_white">#33FFFFFF</color>     <!-- white @ 20% -->
+    <color name="color_on_surface_muted_alpha_30">#4D94A3B8</color>
+
+    <!-- ─── Blob gradient colors — Light ─── -->
+    <color name="color_blob_primary">#142563EB</color>     <!-- primary @ 8% -->
+    <color name="color_blob_accent">#0F0EA5E9</color>     <!-- accent @ 6% -->
+</resources>

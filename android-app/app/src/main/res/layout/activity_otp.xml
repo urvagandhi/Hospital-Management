@@ -3,185 +3,203 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@color/color_background"
     android:fillViewport="true">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp"
-        android:gravity="center">
+        android:layout_height="wrap_content">
 
-        <!-- Logo and Title Section -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Hospital Management"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Verify Your Identity"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:layout_marginBottom="24dp" />
-
-        <!-- Info Card -->
-        <androidx.cardview.widget.CardView
+        <!-- Gradient blob background -->
+        <com.hospital.management.ui.components.GradientBlobBackground
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="@color/surface_variant"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="0dp">
+            android:layout_height="match_parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="OTP Sent Successfully"
-                    android:textStyle="bold"
-                    android:textSize="14sp"
-                    android:textColor="@color/primary"
-                    android:layout_marginBottom="4dp" />
-
-                <TextView
-                    android:id="@+id/tvMessage"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="We've sent a 6-digit code to your registered phone"
-                    android:textSize="13sp"
-                    android:textColor="@color/primary" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Error Message -->
-        <TextView
-            android:id="@+id/tvError"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:background="@color/error_light"
-            android:padding="12dp"
-            android:textColor="@color/error"
-            android:textSize="13sp"
-            android:visibility="gone" />
-
-        <!-- OTP Input Section -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Enter 6-Digit OTP"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
-            android:layout_gravity="start"
-            android:layout_marginBottom="12dp" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="••••••"
-            app:boxStrokeColor="@color/primary"
-            app:hintTextColor="@color/text_hint">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etOtp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:maxLength="6"
-                android:textSize="16sp"
-                android:letterSpacing="0.5"
-                android:gravity="center" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <!-- Verify Button -->
-        <Button
-            android:id="@+id/btnVerify"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="24dp"
-            android:text="Verify OTP"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:backgroundTint="@color/primary" />
-
-        <!-- Progress Bar -->
-        <ProgressBar
-            android:id="@+id/progressBar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:indeterminateTint="@color/primary"
-            android:visibility="gone" />
-
-        <!-- Divider -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="24dp"
-            android:background="@color/surface_variant" />
-
-        <!-- Resend Section -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="@dimen/space_xl"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
+            <!-- Logo and Title Section -->
             <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Didn't receive code?"
-                android:textSize="13sp"
-                android:textColor="@color/text_secondary" />
-
-            <TextView
-                android:id="@+id/tvCountdown"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Resend in 30s"
+                android:layout_marginBottom="@dimen/space_sm"
+                android:fontFamily="@font/inter_bold"
+                android:text="Hospital Management"
+                android:textColor="@color/color_on_surface"
+                android:textSize="24sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_xl"
+                android:fontFamily="@font/inter"
+                android:text="Verify Your Identity"
+                android:textColor="@color/color_on_surface_variant"
+                android:textSize="14sp" />
+
+            <!-- Info Card using GlassCardView -->
+            <com.hospital.management.ui.components.GlassCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_xl">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/space_base">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="@dimen/space_xs"
+                        android:fontFamily="@font/inter_semibold"
+                        android:text="OTP Sent Successfully"
+                        android:textColor="@color/brand_primary"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvMessage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/inter"
+                        android:text="We've sent a 6-digit code to your registered phone"
+                        android:textColor="@color/brand_primary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </com.hospital.management.ui.components.GlassCardView>
+
+            <!-- Error Message -->
+            <TextView
+                android:id="@+id/tvError"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/space_base"
+                android:background="@color/color_surface_variant"
+                android:fontFamily="@font/inter"
+                android:padding="@dimen/space_md"
+                android:textColor="@color/brand_destructive"
                 android:textSize="13sp"
-                android:textColor="@color/text_secondary"
-                android:visibility="visible" />
+                android:visibility="gone" />
+
+            <!-- OTP Input Section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start"
+                android:layout_marginBottom="@dimen/space_md"
+                android:fontFamily="@font/inter_semibold"
+                android:text="Enter 6-Digit OTP"
+                android:textColor="@color/color_on_surface"
+                android:textSize="14sp" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.App.TextInputLayout.Glass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="••••••">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etOtp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/inter"
+                    android:gravity="center"
+                    android:inputType="number"
+                    android:letterSpacing="0.5"
+                    android:maxLength="6"
+                    android:textSize="16sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Verify Button -->
+            <Button
+                android:id="@+id/btnVerify"
+                style="@style/Widget.App.Button.Primary"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/button_height"
+                android:layout_marginTop="@dimen/space_xl"
+                android:fontFamily="@font/inter_medium"
+                android:text="Verify OTP"
+                android:textSize="16sp" />
+
+            <!-- Progress Bar -->
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_base"
+                android:visibility="gone" />
+
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="@dimen/space_xl"
+                android:layout_marginBottom="@dimen/space_xl"
+                android:background="@color/color_divider" />
+
+            <!-- Resend Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/inter"
+                    android:text="Didn't receive code?"
+                    android:textColor="@color/color_on_surface_variant"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/tvCountdown"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/inter"
+                    android:text="Resend in 30s"
+                    android:textColor="@color/color_on_surface_muted"
+                    android:textSize="13sp"
+                    android:visibility="visible" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnResend"
+                style="@style/Widget.App.Button.Secondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_md"
+                android:enabled="false"
+                android:fontFamily="@font/inter_medium"
+                android:text="Resend OTP"
+                android:textSize="14sp" />
+
+            <!-- Back to Login -->
+            <Button
+                android:id="@+id/btnBackToLogin"
+                style="@style/Widget.App.Button.Ghost"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_base"
+                android:fontFamily="@font/inter_medium"
+                android:text="Back to Login"
+                android:textSize="13sp" />
+
         </LinearLayout>
 
-        <Button
-            android:id="@+id/btnResend"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Resend OTP"
-            android:textSize="14sp"
-            android:backgroundTint="#F3F4F6"
-            android:textColor="@color/primary"
-            style="?attr/materialButtonOutlinedStyle"
-            android:enabled="false" />
-
-        <!-- Back to Login -->
-        <Button
-            android:id="@+id/btnBackToLogin"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Back to Login"
-            android:textSize="13sp"
-            android:textColor="@color/primary"
-            android:backgroundTint="@android:color/transparent"
-            style="?attr/borderlessButtonStyle" />
-
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

@@ -7,6 +7,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import androidx.lifecycle.lifecycleScope
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
@@ -16,7 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class OtpActivity : AppCompatActivity() {
+class OtpActivity : BaseActivity() {
     private lateinit var binding: ActivityOtpBinding
     private lateinit var tokenManager: TokenManager
     private var tempToken: String? = null

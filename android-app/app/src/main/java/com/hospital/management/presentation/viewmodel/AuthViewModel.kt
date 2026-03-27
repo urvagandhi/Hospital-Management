@@ -32,16 +32,17 @@ class AuthViewModel(
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
-    fun login(email: String, password: String, isBiometric: Boolean = false) {
+    fun login(email: String, password: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                val response = loginUseCase(email, password, isBiometric)
+                val response = loginUseCase(email, password)
                 if (response.isSuccessful && response.body()?.success == true) {
                     val body = response.body()!!
                     val data = body.data
 
                     // Handle different login states
+                    android.util.Log.d("AuthViewModel", "Login response: requireTotp=${body.requireTotp} requireTotpSetup=${body.requireTotpSetup} requirePasswordChange=${body.requirePasswordChange}")
                     if (body.requirePasswordChange == true) {
                         _authState.value = AuthState.Success("Password change required", data?.tempToken)
                     } else if (body.requireTotp == true) {

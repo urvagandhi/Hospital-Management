@@ -10,6 +10,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_JPEG
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_FULL
@@ -18,7 +19,7 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import com.hospital.management.databinding.ActivityScannerBinding
 import com.hospital.management.ui.upload.UploadActivity
 
-class ScannerActivity : AppCompatActivity() {
+class ScannerActivity : BaseActivity() {
 
     private lateinit var binding: ActivityScannerBinding
     private lateinit var scannerLauncher: ActivityResultLauncher<IntentSenderRequest>

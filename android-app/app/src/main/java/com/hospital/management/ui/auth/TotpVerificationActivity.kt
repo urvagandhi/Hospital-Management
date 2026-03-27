@@ -5,18 +5,22 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.hospital.management.ui.base.BaseActivity
+import androidx.lifecycle.lifecycleScope
 import com.hospital.management.data.api.RetrofitClient
+import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.models.LoginResponse
 import com.hospital.management.databinding.ActivityTotpVerificationBinding
 import com.hospital.management.ui.dashboard.DashboardActivity
-import kotlinx.coroutines.CoroutineScope
+import com.hospital.management.utils.SessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Response
 
-class TotpVerificationActivity : AppCompatActivity() {
+class TotpVerificationActivity : BaseActivity() {
     private lateinit var binding: ActivityTotpVerificationBinding
+    private lateinit var tokenManager: TokenManager
     private var tempToken: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,6 +28,7 @@ class TotpVerificationActivity : AppCompatActivity() {
         binding = ActivityTotpVerificationBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        tokenManager = TokenManager(this)
         tempToken = intent.getStringExtra("tempToken")
         val hospitalName = intent.getStringExtra("hospitalName")
 
@@ -56,66 +61,47 @@ class TotpVerificationActivity : AppCompatActivity() {
         binding.progressBar.visibility = View.VISIBLE
         binding.btnVerify.isEnabled = false
 
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch {
             try {
                 val apiService = RetrofitClient.getApiService(this@TotpVerificationActivity)
                 val authHeader = "Bearer ${tempToken ?: ""}"
-                val response: Response<LoginResponse> = apiService.verifyTotpLogin(
-                    authHeader,
-                    mapOf("token" to totpCode)
-                )
+                val response: Response<LoginResponse> = withContext(Dispatchers.IO) {
+                    apiService.verifyTotpLogin(authHeader, mapOf("token" to totpCode))
+                }
 
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
-                    binding.btnVerify.isEnabled = true
+                binding.progressBar.visibility = View.GONE
+                binding.btnVerify.isEnabled = true
 
-                    if (response.isSuccessful && response.body()?.success == true) {
-                        val data = response.body()?.data
-                        if (data?.accessToken != null && data.refreshToken != null) {
-                            // Save tokens
-                            saveTokens(data.accessToken, data.refreshToken)
-
-                            Toast.makeText(
-                                this@TotpVerificationActivity,
-                                "Login successful",
-                                Toast.LENGTH_SHORT
-                            ).show()
-
-                            navigateToDashboard()
-                        } else {
-                            Toast.makeText(
-                                this@TotpVerificationActivity,
-                                "Invalid response from server",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val data = response.body()?.data
+                    if (data?.accessToken != null && data.refreshToken != null) {
+                        // Await token and hospital info save before navigating
+                        withContext(Dispatchers.IO) {
+                            tokenManager.saveTokens(data.accessToken, data.refreshToken)
+                            if (data.hospital != null) {
+                                tokenManager.saveHospitalInfo(
+                                    data.hospital._id,
+                                    data.hospital.hospitalName,
+                                    data.hospital.logoUrl ?: ""
+                                )
+                            }
                         }
+
+                        SessionManager.startSession(this@TotpVerificationActivity)
+                        Toast.makeText(this@TotpVerificationActivity, "Login successful", Toast.LENGTH_SHORT).show()
+                        navigateToDashboard()
                     } else {
-                        val errorMsg = response.body()?.message ?: "Verification failed"
-                        Toast.makeText(
-                            this@TotpVerificationActivity,
-                            errorMsg,
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(this@TotpVerificationActivity, "Invalid response from server", Toast.LENGTH_SHORT).show()
                     }
+                } else {
+                    val errorMsg = response.body()?.message ?: "Verification failed"
+                    Toast.makeText(this@TotpVerificationActivity, errorMsg, Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
-                    binding.btnVerify.isEnabled = true
-                    Toast.makeText(
-                        this@TotpVerificationActivity,
-                        "Error: ${e.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                binding.progressBar.visibility = View.GONE
+                binding.btnVerify.isEnabled = true
+                Toast.makeText(this@TotpVerificationActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-        }
-    }
-
-    private fun saveTokens(accessToken: String, refreshToken: String) {
-        val tokenManager = com.hospital.management.data.local.TokenManager(this)
-        CoroutineScope(Dispatchers.IO).launch {
-            tokenManager.saveTokens(accessToken, refreshToken)
         }
     }
 

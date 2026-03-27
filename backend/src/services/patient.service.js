@@ -254,6 +254,51 @@ export const getFolderFiles = async (hospitalId, patientId, folderName) => {
 };
 
 /**
+ * Rename a file inside a patient folder
+ * @param {string} hospitalId
+ * @param {string} patientId
+ * @param {string} folderName
+ * @param {string} fileId
+ * @param {string} newFileName
+ * @returns {Promise<Object>}
+ */
+export const renameFile = async (hospitalId, patientId, folderName, fileId, newFileName) => {
+  try {
+    console.log("[Patient Service] Renaming file:", fileId, "to:", newFileName);
+
+    const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
+
+    const patient = await Patient.findOne({
+      _id: patientId,
+      hospitalId: hospitalObjectId,
+    });
+
+    if (!patient) {
+      throw new Error("Patient not found");
+    }
+
+    const folder = patient.folders.find((f) => f.name === folderName);
+    if (!folder) {
+      throw new Error("Folder not found");
+    }
+
+    const file = folder.files.id(fileId);
+    if (!file) {
+      throw new Error("File not found");
+    }
+
+    file.fileName = newFileName;
+    await patient.save();
+
+    console.log("[Patient Service] File renamed successfully");
+    return patient;
+  } catch (error) {
+    console.error("[Patient Service] Rename file error:", error);
+    throw error;
+  }
+};
+
+/**
  * Delete patient and all associated files from R2
  * @param {string} hospitalId
  * @param {string} patientId

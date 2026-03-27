@@ -12,7 +12,8 @@ data class OfflineDocument(
     val fileUri: String,
     val timestamp: Long = System.currentTimeMillis(),
     val status: SyncStatus = SyncStatus.PENDING,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val retryCount: Int = 0
 )
 
 enum class SyncStatus {
