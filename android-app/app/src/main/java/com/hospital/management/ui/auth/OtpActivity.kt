@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class OtpActivity : BaseActivity() {
+    override val isAuthScreen: Boolean = true
     private lateinit var binding: ActivityOtpBinding
     private lateinit var tokenManager: TokenManager
     private var tempToken: String? = null

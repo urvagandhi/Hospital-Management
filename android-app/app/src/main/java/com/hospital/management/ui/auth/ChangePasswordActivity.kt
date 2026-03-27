@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import retrofit2.Response
 
 class ChangePasswordActivity : BaseActivity() {
+    override val isAuthScreen: Boolean = true
     private lateinit var binding: ActivityChangePasswordBinding
     private lateinit var tokenManager: TokenManager
     private var tempToken: String? = null

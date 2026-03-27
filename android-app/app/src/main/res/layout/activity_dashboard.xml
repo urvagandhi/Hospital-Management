@@ -71,10 +71,10 @@
             <com.hospital.management.ui.components.GlassCardView
                 android:id="@+id/cardTotalPatients"
                 android:layout_width="0dp"
-                android:layout_height="120dp"
+                android:layout_height="140dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="6dp"
-                app:cardCornerRadius="@dimen/radius_xl"
+                app:cardCornerRadius="@dimen/radius_lg"
                 app:cardElevation="@dimen/elevation_card"
                 app:strokeWidth="@dimen/glass_stroke_width"
                 app:strokeColor="@color/color_glass_stroke">
@@ -83,9 +83,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:padding="@dimen/space_base"
+                    android:clipToPadding="false">
 
-                    <!-- Icon row -->
+                    <!-- Icon -->
                     <FrameLayout
                         android:layout_width="36dp"
                         android:layout_height="36dp">
@@ -115,8 +116,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"
-                        android:textSize="26sp"
-                        android:fontFamily="@font/inter_semibold"
+                        android:textSize="28sp"
+                        android:fontFamily="@font/inter_bold"
                         android:textColor="@color/color_on_surface" />
 
                     <!-- Label -->
@@ -125,9 +126,10 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Total Patients"
-                        android:textSize="11sp"
+                        android:textSize="13sp"
                         android:fontFamily="@font/inter_medium"
-                        android:textColor="@color/color_on_surface_variant"
+                        android:textColor="@color/color_on_surface"
+                        android:alpha="0.6"
                         android:layout_marginTop="2dp" />
                 </LinearLayout>
             </com.hospital.management.ui.components.GlassCardView>
@@ -136,13 +138,13 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btnNewAdmission"
                 android:layout_width="0dp"
-                android:layout_height="120dp"
+                android:layout_height="140dp"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
-                app:cardCornerRadius="@dimen/radius_xl"
+                app:cardCornerRadius="@dimen/radius_lg"
                 app:cardElevation="@dimen/elevation_card"
                 app:strokeWidth="0dp"
                 app:cardBackgroundColor="@color/brand_primary">
@@ -151,7 +153,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:padding="14dp">
+                    android:padding="@dimen/space_base"
+                    android:clipToPadding="false">
 
                     <FrameLayout
                         android:layout_width="36dp"
@@ -176,27 +179,37 @@
                         android:layout_height="0dp"
                         android:layout_weight="1" />
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="New"
+                        android:textSize="18sp"
+                        android:fontFamily="@font/inter_bold"
+                        android:textColor="@android:color/white" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="1dp">
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="New\nAdmission"
-                            android:textSize="16sp"
-                            android:fontFamily="@font/inter_semibold"
-                            android:lineSpacingExtra="2dp"
-                            android:textColor="@android:color/white" />
+                            android:text="Admission"
+                            android:textSize="13sp"
+                            android:fontFamily="@font/inter_medium"
+                            android:textColor="@android:color/white"
+                            android:alpha="0.85" />
 
                         <ImageView
                             android:layout_width="@dimen/icon_size_sm"
                             android:layout_height="@dimen/icon_size_sm"
                             android:src="@drawable/ic_chevron_right"
-                            app:tint="@color/color_ripple_white"
+                            app:tint="@android:color/white"
+                            android:alpha="0.7"
                             android:contentDescription="@null" />
                     </LinearLayout>
                 </LinearLayout>

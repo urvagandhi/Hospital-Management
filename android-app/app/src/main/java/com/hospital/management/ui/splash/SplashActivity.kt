@@ -24,6 +24,7 @@ import kotlinx.coroutines.withContext
 
 class SplashActivity : BaseActivity() {
 
+    override val isAuthScreen: Boolean = true
     private lateinit var binding: ActivitySplashBinding
     private lateinit var tokenManager: TokenManager
 

@@ -3,18 +3,24 @@ package com.hospital.management
 import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.hospital.management.data.api.AuthInterceptor
+import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.AppDatabase
+import com.hospital.management.data.local.TokenManager
+import com.hospital.management.ui.base.BaseActivity
 import com.hospital.management.utils.NetworkMonitor
 import com.hospital.management.utils.FileLogger
 import com.hospital.management.utils.SecurityUtils
@@ -23,7 +29,9 @@ import com.hospital.management.ui.auth.LoginActivity
 import com.hospital.management.worker.SyncDocumentsWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class HospitalApplication : Application() {
@@ -32,6 +40,12 @@ class HospitalApplication : Application() {
     private var isActivityChangingConfigurations = false
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var heartbeatJob: Job? = null
+
+    companion object {
+        private const val HEARTBEAT_INTERVAL_MS = 60_000L // 60 seconds
+        private const val TAG = "HospitalApplication"
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -62,8 +76,9 @@ class HospitalApplication : Application() {
 
             override fun onActivityStarted(activity: Activity) {
                 if (++activityReferences == 1 && !isActivityChangingConfigurations) {
-                    // App enters foreground - check for pending uploads
+                    // App enters foreground - check for pending uploads and start heartbeat
                     scheduleSyncIfNeeded()
+                    startSessionHeartbeat()
                 }
             }
 
@@ -71,12 +86,7 @@ class HospitalApplication : Application() {
                 // Check for session timeout
                 // We only force logout if the session was explicitly marked active (user logged in)
                 // and the time has expired.
-                val isAuthScreen = activity is LoginActivity
-                    || activity is com.hospital.management.ui.splash.SplashActivity
-                    || activity is com.hospital.management.ui.auth.TotpSetupActivity
-                    || activity is com.hospital.management.ui.auth.TotpVerificationActivity
-                    || activity is com.hospital.management.ui.auth.ChangePasswordActivity
-                    || activity is com.hospital.management.ui.auth.OtpActivity
+                val isAuthScreen = (activity as? BaseActivity)?.isAuthScreen == true
                 if (SessionManager.isSessionActive && !isAuthScreen) {
                     applicationScope.launch {
                         if (!SessionManager.isSessionValid(activity)) {
@@ -98,7 +108,8 @@ class HospitalApplication : Application() {
             override fun onActivityStopped(activity: Activity) {
                 isActivityChangingConfigurations = activity.isChangingConfigurations
                 if (--activityReferences == 0 && !isActivityChangingConfigurations) {
-                    // App enters background
+                    // App enters background — stop heartbeat to save battery
+                    stopSessionHeartbeat()
                 }
             }
 
@@ -138,6 +149,47 @@ class HospitalApplication : Application() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    /**
+     * Start a periodic heartbeat that validates the session with the server.
+     * Catches SESSION_CONFLICT even when no user-initiated API calls are happening.
+     * Runs every 60s while the app is in the foreground.
+     */
+    private fun startSessionHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = applicationScope.launch(Dispatchers.IO) {
+            while (true) {
+                delay(HEARTBEAT_INTERVAL_MS)
+                if (!SessionManager.isSessionActive) continue
+                try {
+                    val tokenManager = TokenManager(this@HospitalApplication)
+                    val hasToken = tokenManager.hasValidToken()
+                    if (!hasToken) continue
+
+                    val apiService = RetrofitClient.getApiService(this@HospitalApplication)
+                    val response = apiService.validateSession()
+
+                    if (!response.isSuccessful) {
+                        // Session revoked on server — broadcast so BaseActivity picks it up
+                        val body = response.errorBody()?.string() ?: ""
+                        Log.w(TAG, "Session heartbeat: server rejected session (${response.code()}): $body")
+                        val intent = Intent(AuthInterceptor.ACTION_SESSION_REVOKED)
+                        intent.setPackage(packageName)
+                        sendBroadcast(intent)
+                        break // Stop heartbeat after revocation
+                    }
+                } catch (e: Exception) {
+                    // Network error — skip this cycle, try again next interval
+                    Log.w(TAG, "Session heartbeat failed (network?): ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun stopSessionHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
     }
 
     private fun scheduleSyncIfNeeded() {

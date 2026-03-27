@@ -90,6 +90,15 @@ class FolderViewActivity : BaseActivity() {
         // Set initial data (might be empty initially)
         tvPatientName.text = patientName
 
+        // Set initials (first letter of first name + first letter of last name)
+        val parts = patientName.trim().split("\\s+".toRegex())
+        val initials = when {
+            parts.size >= 2 -> "${parts.first().first()}${parts.last().first()}".uppercase()
+            parts.isNotEmpty() && parts[0].isNotEmpty() -> parts[0].first().toString().uppercase()
+            else -> "?"
+        }
+        findViewById<android.widget.TextView>(R.id.tvPatientInitials).text = initials
+
         rvFolders.layoutManager = GridLayoutManager(this, 2)
 
         // Edit Button Logic

@@ -48,91 +48,103 @@
                 android:letterSpacing="-0.01" />
         </LinearLayout>
 
-        <!-- Patient Info Card - Enhanced -->
-        <com.hospital.management.ui.components.GlassCardView
+        <!-- Patient Info Card - Gradient Header -->
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/cvPatientInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="@dimen/space_base"
             android:layout_marginBottom="@dimen/space_sm"
-            app:cardCornerRadius="@dimen/radius_xl">
+            app:cardCornerRadius="@dimen/radius_xl"
+            app:cardElevation="2dp"
+            app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="@dimen/space_base">
+                android:orientation="vertical">
 
-                <!-- Top row: Avatar + Name + Edit -->
+                <!-- Gradient header section -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="@drawable/bg_patient_header_gradient"
                     android:orientation="horizontal"
+                    android:padding="@dimen/space_base"
                     android:gravity="center_vertical">
 
-                    <!-- Avatar circle -->
-                    <FrameLayout
-                        android:layout_width="44dp"
-                        android:layout_height="44dp">
+                    <!-- Avatar with initials -->
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        app:cardCornerRadius="@dimen/radius_md"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="@color/white_alpha_20"
+                        app:strokeWidth="0dp">
 
-                        <View
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
-                            android:background="@drawable/bg_stat_card_icon" />
+                        <TextView
+                            android:id="@+id/tvPatientInitials"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:text="PD"
+                            android:gravity="center"
+                            android:textColor="@android:color/white"
+                            android:textSize="17sp"
+                            android:fontFamily="@font/inter_bold"
+                            android:includeFontPadding="false" />
+                    </com.google.android.material.card.MaterialCardView>
 
-                        <ImageView
-                            android:layout_width="@dimen/icon_size_md"
-                            android:layout_height="@dimen/icon_size_md"
-                            android:layout_gravity="center"
-                            android:src="@drawable/ic_people"
-                            app:tint="@color/brand_primary" />
-                    </FrameLayout>
-
-                    <!-- Patient Name -->
-                    <TextView
-                        android:id="@+id/tvPatientName"
+                    <!-- Name + MRN -->
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Patient Name"
-                        android:textColor="@color/color_on_surface"
-                        android:textSize="17sp"
-                        android:fontFamily="@font/inter_semibold"
-                        android:layout_marginHorizontal="@dimen/space_md"
-                        android:maxLines="1"
-                        android:ellipsize="end" />
+                        android:orientation="vertical"
+                        android:layout_marginStart="@dimen/space_md">
+
+                        <TextView
+                            android:id="@+id/tvPatientName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Patient Name"
+                            android:textColor="@android:color/white"
+                            android:textSize="18sp"
+                            android:fontFamily="@font/inter_bold"
+                            android:maxLines="1"
+                            android:ellipsize="end" />
+
+                        <TextView
+                            android:id="@+id/tvMrn"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="MRN: --"
+                            android:textColor="@android:color/white"
+                            android:alpha="0.8"
+                            android:textSize="13sp"
+                            android:fontFamily="@font/inter_medium"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
 
                     <!-- Edit Button -->
                     <ImageButton
                         android:id="@+id/btnEditPatient"
                         android:layout_width="36dp"
                         android:layout_height="36dp"
-                        android:background="@drawable/bg_stat_card_icon"
+                        android:background="@drawable/bg_circle_white_alpha"
                         android:src="@android:drawable/ic_menu_edit"
-                        app:tint="@color/brand_primary"
+                        app:tint="@android:color/white"
                         android:padding="@dimen/space_sm" />
                 </LinearLayout>
 
-                <!-- Bottom row: MRN + Phone -->
+                <!-- Details row below gradient -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:layout_marginTop="@dimen/space_sm"
-                    android:layout_marginStart="56dp"
+                    android:background="@color/color_surface_elevated"
+                    android:paddingHorizontal="@dimen/space_base"
+                    android:paddingVertical="@dimen/space_md"
                     android:gravity="center_vertical">
-
-                    <TextView
-                        android:id="@+id/tvMrn"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="MRN: --"
-                        android:textColor="@color/color_on_surface_variant"
-                        android:textSize="12sp"
-                        android:fontFamily="@font/inter_medium"
-                        android:background="@drawable/bg_badge"
-                        android:paddingHorizontal="@dimen/space_sm"
-                        android:paddingVertical="2dp" />
 
                     <TextView
                         android:id="@+id/tvPhone"
@@ -141,14 +153,14 @@
                         android:layout_weight="1"
                         android:text="Phone: --"
                         android:textColor="@color/color_on_surface_variant"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:fontFamily="@font/inter"
-                        android:layout_marginStart="@dimen/space_sm"
+                        android:drawablePadding="6dp"
                         android:maxLines="1"
                         android:ellipsize="end" />
                 </LinearLayout>
             </LinearLayout>
-        </com.hospital.management.ui.components.GlassCardView>
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
     <!-- Folders Grid -->

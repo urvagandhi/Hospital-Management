@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.hospital.management.data.models.Patient
+import com.hospital.management.R
 import com.hospital.management.databinding.ItemPatientBinding
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -55,16 +56,33 @@ class PatientAdapter(
     inner class PatientViewHolder(private val binding: ItemPatientBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
+        private val avatarColors = intArrayOf(
+            0xFF2563EB.toInt(), // blue
+            0xFF7C3AED.toInt(), // violet
+            0xFF0891B2.toInt(), // cyan
+            0xFF059669.toInt(), // emerald
+            0xFFD97706.toInt(), // amber
+            0xFFE11D48.toInt(), // rose
+            0xFF4F46E5.toInt(), // indigo
+            0xFF0D9488.toInt(), // teal
+        )
+
         fun bind(patient: Patient) {
             binding.tvPatientName.text = patient.patientName
             binding.tvMrn.text = "MRN: ${patient.medicalRecordNumber}"
             binding.tvPhone.text = patient.phone
 
-            binding.tvInitials.text = if (patient.patientName.isNotEmpty()) {
-                patient.patientName.first().toString().uppercase()
-            } else {
-                "?"
+            // Two-letter initials: first letter of first name + first letter of last name
+            val parts = patient.patientName.trim().split("\\s+".toRegex())
+            binding.tvInitials.text = when {
+                parts.size >= 2 -> "${parts.first().first()}${parts.last().first()}".uppercase()
+                parts.isNotEmpty() && parts[0].isNotEmpty() -> parts[0].first().toString().uppercase()
+                else -> "?"
             }
+
+            // Assign a consistent color based on patient name hash
+            val colorIndex = (patient.patientName.hashCode().and(0x7FFFFFFF)) % avatarColors.size
+            binding.cvAvatar.setCardBackgroundColor(avatarColors[colorIndex])
 
             binding.root.setOnClickListener {
                 onPatientClick(patient)

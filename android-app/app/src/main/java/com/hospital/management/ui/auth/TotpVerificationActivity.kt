@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 import retrofit2.Response
 
 class TotpVerificationActivity : BaseActivity() {
+    override val isAuthScreen: Boolean = true
     private lateinit var binding: ActivityTotpVerificationBinding
     private lateinit var tokenManager: TokenManager
     private var tempToken: String? = null

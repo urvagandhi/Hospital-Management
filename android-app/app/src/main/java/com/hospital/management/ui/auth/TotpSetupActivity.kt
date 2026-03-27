@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 import retrofit2.Response
 
 class TotpSetupActivity : BaseActivity() {
+    override val isAuthScreen: Boolean = true
     private lateinit var binding: ActivityTotpSetupBinding
     private lateinit var tokenManager: TokenManager
     private var backupCodes: List<String> = emptyList()

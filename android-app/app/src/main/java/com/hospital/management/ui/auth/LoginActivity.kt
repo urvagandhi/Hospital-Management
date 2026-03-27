@@ -29,6 +29,7 @@ import kotlinx.coroutines.withContext
 
 class LoginActivity : BaseActivity() {
 
+    override val isAuthScreen: Boolean = true
     private lateinit var binding: ActivityLoginBinding
     private lateinit var tokenManager: TokenManager
     private lateinit var biometricHelper: BiometricHelper
@@ -153,15 +154,15 @@ class LoginActivity : BaseActivity() {
                         authViewModel.login(identifier, password)
                     }
                 } else {
-                    // If conflict check fails, proceed with login anyway
-                    authViewModel.login(identifier, password)
+                    // Server error on conflict check — do not silently proceed
+                    GlassSnackbar.show(this@LoginActivity, "Unable to verify session. Please try again.", GlassSnackbar.Variant.ERROR)
                 }
             } catch (e: Exception) {
                 binding.loadingOverlay.visibility = View.GONE
                 binding.btnLogin.isEnabled = true
-                // Network error on conflict check — proceed with login
+                // Network error — block login, don't silently fall through
                 Log.w("LoginActivity", "Conflict check failed: ${e.message}")
-                authViewModel.login(identifier, password)
+                GlassSnackbar.show(this@LoginActivity, "Network error. Please check your connection and try again.", GlassSnackbar.Variant.ERROR)
             }
         }
     }
