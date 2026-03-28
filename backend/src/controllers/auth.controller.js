@@ -11,7 +11,7 @@ import Session from "../models/Session.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import PendingHospital from "../models/PendingHospital.js";
-import { sendWelcomeEmail, sendAccountLockedEmail } from "../services/mail.service.js";
+import { sendWelcomeEmail, sendAccountLockedEmail, sendSessionRevokedEmail } from "../services/mail.service.js";
 import { notifyNewLogin, notifySessionRevoked } from "../services/push.service.js";
 import { createSession, invalidateSession, refreshAccessToken } from "../services/token.service.js";
 import {
@@ -1740,8 +1740,11 @@ export const forceLogoutOtherSessions = async (req, res) => {
       { isActive: false, revokedReason: "SESSION_CONFLICT" },
     );
 
-    // Fire-and-forget push notification for revoked sessions
+    // Fire-and-forget push + email notification for revoked sessions
     notifySessionRevoked(hospitalId).catch(console.error);
+    Hospital.findById(hospitalId).select("email").lean()
+      .then((h) => h?.email && sendSessionRevokedEmail(h.email, req.headers["user-agent"]))
+      .catch((e) => console.error("[Auth] session-revoked email failed:", e.message));
 
     return res.status(200).json({ success: true, message: "Other sessions terminated" });
   } catch (error) {

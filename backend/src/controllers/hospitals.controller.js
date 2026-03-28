@@ -11,7 +11,7 @@ import Hospital from "../models/Hospital.js";
  */
 export const getAllHospitals = async (req, res) => {
   try {
-    const hospitals = await Hospital.find().select("-passwordHash -failedLoginAttempts -lockUntil -__v").sort({ createdAt: -1 });
+    const hospitals = await Hospital.find().select("-passwordHash -totpSecretEncrypted -totpPendingSecret -fcmToken -biometricKeys -totpFailedAttempts -totpLockedUntil -failedLoginAttempts -lockUntil -__v").sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,

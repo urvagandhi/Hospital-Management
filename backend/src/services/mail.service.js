@@ -26,6 +26,17 @@ const APP_NAME = "Hospital HMS";
 const SENDER_EMAIL = () => process.env.BREVO_SENDER_EMAIL || "noreply@hospital-hms.com";
 const SENDER_NAME = () => process.env.BREVO_SENDER_NAME || APP_NAME;
 
+/** Escape HTML special characters to prevent injection in email templates */
+function escapeHtml(str) {
+  if (typeof str !== "string") return str;
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -197,6 +208,9 @@ export async function sendOTPEmail(to, otp, type) {
  * @param {string} [tempPassword] — temporary password (included if provided)
  */
 export async function sendWelcomeEmail(to, hospitalName, username, tempPassword) {
+  const safeHospital = escapeHtml(hospitalName);
+  const safeUsername = escapeHtml(username);
+  const safeTempPassword = escapeHtml(tempPassword);
   const subject = `Welcome to ${APP_NAME} — Your Account Details`;
 
   const credentialsBlock = tempPassword
@@ -206,11 +220,11 @@ export async function sendWelcomeEmail(to, hospitalName, username, tempPassword)
       <table style="width:100%;border-collapse:collapse;">
         <tr>
           <td style="padding:4px 0;color:#64748b;font-size:13px;width:120px;">Email / Username</td>
-          <td style="padding:4px 0;color:#0f172a;font-size:13px;font-weight:600;">${username}</td>
+          <td style="padding:4px 0;color:#0f172a;font-size:13px;font-weight:600;">${safeUsername}</td>
         </tr>
         <tr>
           <td style="padding:4px 0;color:#64748b;font-size:13px;">Temporary Password</td>
-          <td style="padding:4px 0;font-family:'Courier New',monospace;font-size:15px;color:#0f172a;font-weight:700;letter-spacing:1px;">${tempPassword}</td>
+          <td style="padding:4px 0;font-family:'Courier New',monospace;font-size:15px;color:#0f172a;font-weight:700;letter-spacing:1px;">${safeTempPassword}</td>
         </tr>
       </table>
     </div>
@@ -220,13 +234,13 @@ export async function sendWelcomeEmail(to, hospitalName, username, tempPassword)
     : `
     <div style="background:#f0fdf4;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #bbf7d0;">
       <p style="margin:0;font-size:14px;color:#166534;"><strong>You're all set!</strong></p>
-      <p style="margin:6px 0 0;font-size:13px;color:#15803d;">You can sign in using your username (<strong>${username}</strong>) or your email address.</p>
+      <p style="margin:6px 0 0;font-size:13px;color:#15803d;">You can sign in using your username (<strong>${safeUsername}</strong>) or your email address.</p>
     </div>`;
 
   const body = `
     <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Welcome!</h2>
     <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
-      Your account for <strong>${hospitalName}</strong> has been successfully created on ${APP_NAME}.
+      Your account for <strong>${safeHospital}</strong> has been successfully created on ${APP_NAME}.
     </p>
     ${credentialsBlock}
     <p style="margin:0;color:#94a3b8;font-size:12px;">If you have any questions, please contact your administrator.</p>`;
@@ -243,15 +257,16 @@ export async function sendWelcomeEmail(to, hospitalName, username, tempPassword)
  * @param {string} deviceInfo — e.g. "Chrome on Windows"
  */
 export async function sendSessionRevokedEmail(to, deviceInfo) {
+  const safeDevice = escapeHtml(deviceInfo || "Unknown");
   const subject = `Session ended — ${APP_NAME}`;
 
   const body = `
     <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">You've Been Logged Out</h2>
     <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
-      You have been logged out of ${APP_NAME} on <strong>${deviceInfo || "an unknown device"}</strong> because you signed in on a new device.
+      You have been logged out of ${APP_NAME} on <strong>${safeDevice}</strong> because you signed in on a new device.
     </p>
     <div style="background:#fffbeb;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #fde68a;">
-      <p style="margin:0;font-size:14px;color:#92400e;"><strong>Previous device:</strong> ${deviceInfo || "Unknown"}</p>
+      <p style="margin:0;font-size:14px;color:#92400e;"><strong>Previous device:</strong> ${safeDevice}</p>
     </div>
     <p style="margin:0 0 8px;color:#475569;font-size:14px;">If this wasn't you, please change your password immediately and contact your administrator.</p>
     <p style="margin:0;color:#94a3b8;font-size:12px;">Only one mobile session is allowed at a time for security.</p>`;

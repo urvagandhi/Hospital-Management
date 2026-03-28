@@ -8,6 +8,8 @@ import Session from "../models/Session.js";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 import config from "../config/env.js";
 import { notifySessionRevoked } from "./push.service.js";
+import { sendSessionRevokedEmail } from "./mail.service.js";
+import Hospital from "../models/Hospital.js";
 
 /**
  * Create new session
@@ -30,9 +32,13 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
         { isActive: false, revokedReason: "SESSION_CONFLICT" },
       );
 
-      // If sessions were revoked, send push notification (fire-and-forget)
+      // If sessions were revoked, notify the user (fire-and-forget)
       if (revoked.modifiedCount > 0) {
         notifySessionRevoked(hospitalId).catch(console.error);
+        // Send email about session revocation
+        Hospital.findById(hospitalId).select("email").lean()
+          .then((h) => h?.email && sendSessionRevokedEmail(h.email, userAgent))
+          .catch((e) => console.error("[Token] session-revoked email failed:", e.message));
       }
     }
 

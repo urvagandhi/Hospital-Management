@@ -8,6 +8,19 @@ import * as r2Service from "../services/r2.service.js";
 import { deleteFile as cloudinaryDeleteFile } from "../services/storage.service.js";
 import * as pdfService from "../services/pdf.service.js";
 import * as zipService from "../services/zip.service.js";
+import AuditLog from "../models/AuditLog.js";
+
+/** Fire-and-forget audit log — never blocks the response */
+function logAudit(userId, action, req, details) {
+  AuditLog.create({
+    userId,
+    action,
+    status: "SUCCESS",
+    ipAddress: req.ip || req.connection?.remoteAddress,
+    userAgent: req.headers?.["user-agent"],
+    details,
+  }).catch((e) => console.error("[Audit] log failed:", e.message));
+}
 
 /**
  * POST /api/patients
@@ -94,6 +107,8 @@ export const getPatientById = async (req, res) => {
     console.log("[Patient Controller] Fetching patient:", patientId);
 
     const patient = await patientService.getPatientById(hospitalId, patientId);
+
+    logAudit(hospitalId, "PATIENT_VIEW", req, { patientId });
 
     return res.status(200).json({
       success: true,
@@ -331,6 +346,8 @@ export const downloadAllZip = async (req, res) => {
 
     const patient = await patientService.getPatientById(hospitalId, patientId);
 
+    logAudit(hospitalId, "PATIENT_EXPORT_ZIP", req, { patientId, selectedFolders: selectedFolders || "all" });
+
     req.setTimeout(300000);
     res.setTimeout(300000);
 
@@ -360,6 +377,8 @@ export const downloadAllPdf = async (req, res) => {
     const { mode } = req.body || {};
 
     const patient = await patientService.getPatientById(hospitalId, patientId);
+
+    logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, { patientId, mode: mode || "merged" });
 
     req.setTimeout(300000);
     res.setTimeout(300000);
@@ -391,6 +410,8 @@ export const downloadFolderPdf = async (req, res) => {
 
     const patient = await patientService.getPatientById(hospitalId, patientId);
 
+    logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, { patientId, folderName });
+
     req.setTimeout(300000);
     res.setTimeout(300000);
 
@@ -418,6 +439,8 @@ export const downloadFolderZip = async (req, res) => {
 
     const patient = await patientService.getPatientById(hospitalId, patientId);
 
+    logAudit(hospitalId, "PATIENT_EXPORT_ZIP", req, { patientId, folderName });
+
     req.setTimeout(300000);
     res.setTimeout(300000);
 
@@ -431,30 +454,6 @@ export const downloadFolderZip = async (req, res) => {
         message: isNotFound ? error.message : "Failed to generate folder ZIP",
       });
     }
-  }
-};
-
-/**
- * DELETE /api/patients/autodelete
- * Auto-delete patients older than 90 days (cron job)
- */
-export const autoDelete = async (req, res) => {
-  try {
-    console.log("[Patient Controller] Running auto-delete job");
-
-    const result = await patientService.deleteOldPatients(90);
-
-    return res.status(200).json({
-      success: true,
-      data: result,
-      message: `Deleted ${result.deletedCount} patients and ${result.filesDeleted} files`,
-    });
-  } catch (error) {
-    console.error("[Patient Controller] Auto-delete error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Auto-delete operation failed",
-    });
   }
 };
 
@@ -479,5 +478,4 @@ export default {
   downloadFolderPdf,
   downloadAllZip,
   downloadFolderZip,
-  autoDelete,
 };

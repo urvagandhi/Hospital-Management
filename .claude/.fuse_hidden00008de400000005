@@ -90,7 +90,26 @@
       "Bash(ls /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/res/drawable/bg_glow* /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/res/drawable/ic_splash*)",
       "Bash(fuser -k 5000/tcp)",
       "Bash(adb logcat:*)",
-      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app -name *Logger* -o -name *Logging* -o -name *Log.*)"
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app -name *Logger* -o -name *Logging* -o -name *Log.*)",
+      "Bash(adb devices:*)",
+      "Read(//home/urva/Android/Sdk/platform-tools/**)",
+      "Bash(~/Android/Sdk/platform-tools/adb devices:*)",
+      "Bash(ls -la /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/build/outputs/apk/debug/*.apk)",
+      "Bash(~/Android/Sdk/platform-tools/adb install:*)",
+      "Bash(curl -sL \"https://fonts.google.com/download?family=Inter\" -o inter.zip)",
+      "Bash(unzip -l inter.zip)",
+      "Bash(curl -sL -o inter_regular.ttf \"https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf\")",
+      "Bash(FONT_DIR=/media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/res/font)",
+      "Bash(cp /tmp/inter_regular.ttf \"$FONT_DIR/inter_variable.ttf\")",
+      "Read(//media/urva/Personal/Technical/Project/Urva/Hospital-Management/**)",
+      "Bash(adb install:*)",
+      "Bash(export PATH=$PATH:~/Android/Sdk/platform-tools)",
+      "Bash(adb -s RZCW30XME6M install -r /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/build/outputs/apk/debug/app-debug.apk)",
+      "Bash(mongosh \"mongodb+srv://23bce078_db_user:cd6nCoyBZa1OCltF@hospital-management.hi7pqgk.mongodb.net/\" --eval 'db.hospitals.find\\({email: \"\"urvagandhi24@gmail.com\"\"}, {_id:1, hospitalName:1, email:1}\\).toArray\\(\\)')",
+      "Bash(npx --yes mongosh --version)",
+      "Bash(timeout 15 node -e \":*)",
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app -path */src/main/java/com/hospital/management/*.kt -o -path */src/main/java/com/hospital/management/*.java)",
+      "Bash(ls -1 /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/java/com/hospital/management/ui/**/*.kt)"
     ]
   }
 }

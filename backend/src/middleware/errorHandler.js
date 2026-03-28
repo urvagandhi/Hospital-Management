@@ -21,8 +21,12 @@ export const errorHandler = (err, req, res, next) => {
   // Mongoose duplicate key error
   if (err.code === 11000) {
     statusCode = 400;
-    const field = Object.keys(err.keyPattern)[0];
-    message = `Duplicate field: ${field} already exists`;
+    if (process.env.NODE_ENV === "production") {
+      message = "A record with this value already exists";
+    } else {
+      const field = Object.keys(err.keyPattern)[0];
+      message = `Duplicate field: ${field} already exists`;
+    }
   }
 
   // Mongoose cast error
@@ -60,7 +64,7 @@ export const errorHandler = (err, req, res, next) => {
 export const notFoundHandler = (req, res) => {
   res.status(404).json({
     success: false,
-    message: `Route ${req.originalUrl} not found`,
+    message: process.env.NODE_ENV === "production" ? "Not found" : `Route ${req.originalUrl} not found`,
   });
 };
 

@@ -337,37 +337,52 @@ export const deletePatient = async (hospitalId, patientId) => {
 };
 
 /**
- * Delete patients older than X days
+ * Delete patients older than X days.
+ * Processes per-hospital to ensure scoped deletion and auditability.
  * @param {number} days - Days threshold
  * @returns {Promise<{deletedCount: number, filesDeleted: number}>}
  */
 export const deleteOldPatients = async (days = 90) => {
   try {
+    if (days < 30) {
+      throw new Error("Safety: days threshold must be >= 30");
+    }
+
     console.log("[Patient Service] Finding patients older than", days, "days");
 
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
+    // Process per-hospital for scoped deletion and traceability
     const oldPatients = await Patient.find({
       createdAt: { $lt: cutoffDate },
-    });
+    }).select("_id hospitalId folders");
 
     console.log("[Patient Service] Found", oldPatients.length, "old patients");
 
+    if (oldPatients.length === 0) {
+      return { deletedCount: 0, filesDeleted: 0 };
+    }
+
     let filesDeleted = 0;
+    const patientIds = [];
+
     for (const patient of oldPatients) {
       try {
         const prefix = `${patient.hospitalId}/${patient._id}/`;
         const deletedFiles = await deleteFolder(prefix);
         filesDeleted += deletedFiles;
+        patientIds.push(patient._id);
       } catch (error) {
         console.error("[Patient Service] Error deleting R2 files for patient:", patient._id, error);
+        // Still mark for DB deletion — storage cleanup can be retried
+        patientIds.push(patient._id);
       }
     }
 
-    // Delete from database
+    // Delete only the specific patients we processed (by _id, not by date re-query)
     const result = await Patient.deleteMany({
-      createdAt: { $lt: cutoffDate },
+      _id: { $in: patientIds },
     });
 
     console.log("[Patient Service] Deleted", result.deletedCount, "patients and", filesDeleted, "files");

@@ -57,8 +57,9 @@ app.use(
     origin: (origin, callback) => {
       const allowedOrigins = [
         ...config.FRONTEND_URL.split(",").map((u) => u.trim()),
-        "http://localhost:3000",
-        "http://localhost:5173",
+        ...(config.NODE_ENV !== "production"
+          ? ["http://localhost:3000", "http://localhost:5173"]
+          : []),
       ];
 
       // Allow requests with no origin (mobile apps, server-to-server)

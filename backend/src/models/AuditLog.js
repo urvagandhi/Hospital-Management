@@ -37,6 +37,9 @@ const auditLogSchema = new mongoose.Schema(
         "TOTP_ROTATION_INITIATED",
         "TOTP_ROTATION_COMPLETED",
         "AUTO_DELETE",
+        "PATIENT_VIEW",
+        "PATIENT_EXPORT_PDF",
+        "PATIENT_EXPORT_ZIP",
       ],
     },
     status: {

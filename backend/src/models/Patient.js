@@ -96,6 +96,18 @@ const patientSchema = new mongoose.Schema(
   },
 );
 
+// Strip internal storage identifiers from JSON responses
+patientSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  if (obj.folders) {
+    obj.folders = obj.folders.map((folder) => ({
+      ...folder,
+      files: (folder.files || []).map(({ cloudinaryPublicId, ...file }) => file),
+    }));
+  }
+  return obj;
+};
+
 // Index for auto-deletion queries
 patientSchema.index({ createdAt: 1 });
 patientSchema.index({ hospitalId: 1, createdAt: 1 });
