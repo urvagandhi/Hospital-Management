@@ -288,6 +288,172 @@ export async function getLastOTPSent(identifier) {
   }
 }
 
+// ── Forgot-Password OTP ─────────────────────────────────────────────────────
+//
+//   forgot_otp:{hospitalId}      OTP hash + attempt counter     TTL: 10 min
+//                                Keyed by hospitalId (not identifier) so the
+//                                same pattern works for email- or phone-based
+//                                lookups, and so the OTP namespace can't
+//                                collide with the registration `otp:{email}`
+//                                key.
+//
+//   forgot_last_sent:{hospitalId} Unix-ms timestamp of last send TTL: 60 sec
+//                                Drives the resend cooldown.
+
+function forgotOtpKey(hospitalId) {
+  return `forgot_otp:${hospitalId}`;
+}
+function forgotLastSentKey(hospitalId) {
+  return `forgot_last_sent:${hospitalId}`;
+}
+
+export async function setForgotPasswordOtp(hospitalId, otp, ttlSeconds = 600) {
+  try {
+    const data = JSON.stringify({ hash: hashOTP(otp), attempts: 0 });
+    await redis.set(forgotOtpKey(hospitalId), data, { ex: ttlSeconds });
+  } catch (err) {
+    console.error("[redis.service] setForgotPasswordOtp error:", err.message);
+  }
+}
+
+export async function verifyForgotPasswordOtp(hospitalId, providedOtp, maxAttempts = 5) {
+  try {
+    const key = forgotOtpKey(hospitalId);
+    const raw = await redis.get(key);
+    if (!raw) return { valid: false, expired: true, attemptsLeft: 0 };
+
+    const record = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const providedHash = hashOTP(providedOtp);
+
+    if (providedHash === record.hash) {
+      await redis.del(key);
+      return { valid: true, expired: false, attemptsLeft: 0 };
+    }
+
+    record.attempts += 1;
+    if (record.attempts >= maxAttempts) {
+      await redis.del(key);
+      return { valid: false, expired: false, attemptsLeft: 0 };
+    }
+
+    const ttl = await redis.ttl(key);
+    await redis.set(key, JSON.stringify(record), { ex: ttl > 0 ? ttl : 600 });
+    return { valid: false, expired: false, attemptsLeft: maxAttempts - record.attempts };
+  } catch (err) {
+    console.error("[redis.service] verifyForgotPasswordOtp error:", err.message);
+    return { valid: false, expired: true, attemptsLeft: 0 };
+  }
+}
+
+export async function deleteForgotPasswordOtp(hospitalId) {
+  try {
+    await redis.del(forgotOtpKey(hospitalId));
+  } catch (err) {
+    console.error("[redis.service] deleteForgotPasswordOtp error:", err.message);
+  }
+}
+
+export async function setForgotPasswordLastSent(hospitalId, ttlSeconds = 60) {
+  try {
+    await redis.set(forgotLastSentKey(hospitalId), String(Date.now()), { ex: ttlSeconds });
+  } catch (err) {
+    console.error("[redis.service] setForgotPasswordLastSent error:", err.message);
+  }
+}
+
+export async function getForgotPasswordLastSent(hospitalId) {
+  try {
+    const val = await redis.get(forgotLastSentKey(hospitalId));
+    return val ? Number(val) : null;
+  } catch (err) {
+    console.error("[redis.service] getForgotPasswordLastSent error:", err.message);
+    return null;
+  }
+}
+
+// ── Contact-Change OTP (email / phone change in settings) ──────────────────
+//
+//   contact_change:{hospitalId}  { field, newValue, hash, attempts }  TTL: 10m
+//                                OTP is always emailed to the CURRENT email on
+//                                file (proof the user still controls the
+//                                account), regardless of which field is being
+//                                changed. SMS path deferred.
+
+function contactChangeKey(hospitalId) {
+  return `contact_change:${hospitalId}`;
+}
+
+export async function setContactChangeRequest(hospitalId, field, newValue, otp, ttlSeconds = 600) {
+  try {
+    const data = JSON.stringify({
+      field,
+      newValue,
+      hash: hashOTP(otp),
+      attempts: 0,
+    });
+    await redis.set(contactChangeKey(hospitalId), data, { ex: ttlSeconds });
+  } catch (err) {
+    console.error("[redis.service] setContactChangeRequest error:", err.message);
+  }
+}
+
+export async function getContactChangeRequest(hospitalId) {
+  try {
+    const raw = await redis.get(contactChangeKey(hospitalId));
+    if (!raw) return null;
+    return typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch (err) {
+    console.error("[redis.service] getContactChangeRequest error:", err.message);
+    return null;
+  }
+}
+
+export async function verifyContactChangeOtp(hospitalId, providedOtp, maxAttempts = 5) {
+  try {
+    const key = contactChangeKey(hospitalId);
+    const raw = await redis.get(key);
+    if (!raw) return { valid: false, expired: true, attemptsLeft: 0, request: null };
+
+    const record = typeof raw === "string" ? JSON.parse(raw) : raw;
+    const providedHash = hashOTP(providedOtp);
+
+    if (providedHash === record.hash) {
+      await redis.del(key);
+      return {
+        valid: true,
+        expired: false,
+        attemptsLeft: 0,
+        request: { field: record.field, newValue: record.newValue },
+      };
+    }
+
+    record.attempts += 1;
+    if (record.attempts >= maxAttempts) {
+      await redis.del(key);
+      return { valid: false, expired: false, attemptsLeft: 0, request: null };
+    }
+    const ttl = await redis.ttl(key);
+    await redis.set(key, JSON.stringify(record), { ex: ttl > 0 ? ttl : 600 });
+    return {
+      valid: false,
+      expired: false,
+      attemptsLeft: maxAttempts - record.attempts,
+      request: null,
+    };
+  } catch (err) {
+    console.error("[redis.service] verifyContactChangeOtp error:", err.message);
+    return { valid: false, expired: true, attemptsLeft: 0, request: null };
+  }
+}
+
+export async function deleteContactChangeRequest(hospitalId) {
+  try {
+    await redis.del(contactChangeKey(hospitalId));
+  } catch (err) {
+    console.error("[redis.service] deleteContactChangeRequest error:", err.message);
+  }
+}
+
 // ── Biometric Challenge (one-shot nonce) ────────────────────────────────────
 
 function bioChallengeKey(hospitalId, deviceId) {

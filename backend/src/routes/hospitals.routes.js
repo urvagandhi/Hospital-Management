@@ -4,9 +4,19 @@
  */
 
 import express from "express";
-import { getAllHospitals, getCurrentHospital, getHospitalById, updateHospital, resendWelcomeEmail } from "../controllers/hospitals.controller.js";
+import {
+  getAllHospitals,
+  getCurrentHospital,
+  getHospitalById,
+  updateHospital,
+  resendWelcomeEmail,
+  patchMe,
+  initContactChange,
+  verifyContactChange,
+} from "../controllers/hospitals.controller.js";
 import { verifyAccessToken, verifyAdmin, verifyAdminOrSelf } from "../middleware/auth.js";
 import { uploadSingle } from "../middleware/upload.js";
+import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
@@ -18,6 +28,25 @@ router.use(verifyAccessToken);
  * Get current authenticated hospital (must be before /:id)
  */
 router.get("/me", getCurrentHospital);
+
+/**
+ * PATCH /api/hospitals/me
+ * Update non-sensitive profile fields (hospitalName, address, logo).
+ * Email / phone changes must go through /me/change-contact/* (OTP-gated).
+ */
+router.patch("/me", uploadSingle("logo"), patchMe);
+
+/**
+ * POST /api/hospitals/me/change-contact/init
+ * Body: { newEmail } or { newPhone }
+ */
+router.post("/me/change-contact/init", authLimiter, initContactChange);
+
+/**
+ * POST /api/hospitals/me/change-contact/verify
+ * Body: { otp }
+ */
+router.post("/me/change-contact/verify", otpLimiter, verifyContactChange);
 
 /**
  * GET /api/hospitals

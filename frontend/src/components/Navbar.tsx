@@ -78,6 +78,12 @@ export const Navbar: React.FC = () => {
                 >
                   Hospitals
                 </Link>
+                <Link
+                  to="/activity"
+                  className="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-500 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
+                >
+                  Activity
+                </Link>
               </div>
             )}
           </div>
@@ -115,14 +121,23 @@ export const Navbar: React.FC = () => {
                         <button onClick={() => setIsProfileOpen(true)} className={`${active ? "bg-gray-50" : ""} w-full text-left px-4 py-3 group`}>
                           <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors">{hospital?.hospitalName}</p>
                           <p className="text-xs text-gray-500 truncate mt-0.5">{hospital?.email}</p>
-                          <p className="text-[10px] text-blue-500 mt-1 uppercase font-semibold tracking-wider">View Profile</p>
+                          <p className="text-[10px] text-blue-500 mt-1 uppercase font-semibold tracking-wider">Quick view</p>
                         </button>
                       )}
                     </Menu.Item>
                   </div>
 
-                  {/* 
                   <div className="py-1">
+                    <Menu.Item>
+                      {({ active }) => (
+                        <Link to="/profile" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
+                          <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                          Edit Profile
+                        </Link>
+                      )}
+                    </Menu.Item>
                     <Menu.Item>
                       {({ active }) => (
                         <Link to="/security" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
@@ -134,7 +149,6 @@ export const Navbar: React.FC = () => {
                       )}
                     </Menu.Item>
                   </div>
-                  */}
 
                   <div className="py-1">
                     <Menu.Item>

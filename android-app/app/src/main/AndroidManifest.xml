@@ -70,6 +70,41 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.HospitalManagement" />
+        <activity
+            android:name=".ui.auth.ForgotPasswordActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement" />
+        <activity
+            android:name=".ui.auth.ForgotPasswordOtpActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement" />
+        <activity
+            android:name=".ui.auth.ForgotPasswordResetActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement" />
+        <activity
+            android:name=".ui.profile.ProfileActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement" />
+        <activity
+            android:name=".ui.profile.SessionsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement" />
+        <activity
+            android:name=".ui.profile.ChangePasswordSettingsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement" />
+        <activity
+            android:name=".ui.profile.NotificationsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement" />
         <activity android:name=".ui.dashboard.DashboardActivity" android:exported="false" />
         <activity android:name=".ui.admission.AdmissionActivity" android:exported="false" />
         <activity android:name=".ui.scanner.ScannerActivity" android:exported="false" />

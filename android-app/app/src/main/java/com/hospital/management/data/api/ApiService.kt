@@ -78,6 +78,63 @@ interface ApiService {
     @POST("/api/auth/session/reverify-auth-code")
     suspend fun reverifyAuthCode(@Body body: Map<String, String>): Response<Map<String, Any>>
 
+    // ── Forgot password (Task #27) ──
+    @POST("/api/auth/forgot-password/init")
+    suspend fun forgotPasswordInit(
+        @Body body: Map<String, String>
+    ): Response<com.hospital.management.data.models.ForgotInitResponse>
+
+    @POST("/api/auth/forgot-password/verify")
+    suspend fun forgotPasswordVerify(
+        @Body body: Map<String, String>
+    ): Response<com.hospital.management.data.models.ForgotVerifyResponse>
+
+    @POST("/api/auth/forgot-password/reset")
+    suspend fun forgotPasswordReset(
+        @Header("Authorization") bearer: String,
+        @Body body: Map<String, String>
+    ): Response<com.hospital.management.data.models.GenericMessageResponse>
+
+    // ── Settings-based change password (Task #28) ──
+    @POST("/api/auth/password/change")
+    suspend fun changePasswordSettings(
+        @Body body: Map<String, String>
+    ): Response<com.hospital.management.data.models.GenericMessageResponse>
+
+    // ── Profile management (Task #28) ──
+    @PATCH("/api/hospitals/me")
+    suspend fun patchProfile(
+        @Body body: Map<String, String>
+    ): Response<com.hospital.management.data.models.HospitalResponse>
+
+    @Multipart
+    @PATCH("/api/hospitals/me")
+    suspend fun patchProfileMultipart(
+        @Part logo: MultipartBody.Part,
+        @Part("hospitalName") hospitalName: okhttp3.RequestBody? = null,
+        @Part("address") address: okhttp3.RequestBody? = null
+    ): Response<com.hospital.management.data.models.HospitalResponse>
+
+    @POST("/api/hospitals/me/change-contact/init")
+    suspend fun initContactChange(
+        @Body body: Map<String, String>
+    ): Response<com.hospital.management.data.models.ContactChangeInitResponse>
+
+    @POST("/api/hospitals/me/change-contact/verify")
+    suspend fun verifyContactChange(
+        @Body body: Map<String, String>
+    ): Response<com.hospital.management.data.models.HospitalResponse>
+
+    // ── Session management (Task #28) ──
+    @GET("/api/auth/session/list")
+    suspend fun listSessions(): Response<com.hospital.management.data.models.SessionListResponse>
+
+    @POST("/api/auth/session/revoke/{id}")
+    suspend fun revokeSession(@Path("id") id: String): Response<com.hospital.management.data.models.GenericMessageResponse>
+
+    @POST("/api/auth/session/revoke-all-others")
+    suspend fun revokeAllOtherSessions(): Response<Map<String, Any>>
+
     // Health check
     @GET("/api/health")
     suspend fun healthCheck(): Response<Map<String, Any>>

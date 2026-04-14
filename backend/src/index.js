@@ -16,6 +16,7 @@ import authRoutes from "./routes/auth.routes.js";
 import hospitalsRoutes from "./routes/hospitals.routes.js";
 import patientRoutes from "./routes/patient.routes.js";
 import exportRoutes from "./routes/export.routes.js";
+import auditRoutes from "./routes/audit.routes.js";
 
 const app = express();
 
@@ -85,6 +86,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/hospitals", hospitalsRoutes);
 app.use("/api/export", exportRoutes);
+app.use("/api/audits", auditRoutes);
 
 // ============ HEALTH CHECK ============
 app.get("/api/health", (req, res) => {

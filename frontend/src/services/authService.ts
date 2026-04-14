@@ -7,10 +7,15 @@ import { LoginResponse, AuthCodeVerifyResponse, RefreshTokenResponse } from "../
 import api from "./api";
 
 function extractErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error) return error.message;
+  // Check the API response body FIRST — axios errors are also Error
+  // instances, so we must not short-circuit on error.message (which is the
+  // generic "Request failed with status code 4xx").
   if (typeof error === "object" && error !== null && "response" in error) {
     const resp = (error as { response?: { data?: { message?: string } } }).response;
-    return resp?.data?.message || fallback;
+    if (resp?.data?.message) return resp.data.message;
+  }
+  if (error instanceof Error && error.message && !/^Request failed with status code/i.test(error.message)) {
+    return error.message;
   }
   return fallback;
 }
@@ -104,7 +109,101 @@ export const authService = {
   clearTokens: () => {
     sessionStorage.removeItem("accessToken");
     sessionStorage.removeItem("tempToken");
+    sessionStorage.removeItem("resetToken");
     localStorage.removeItem("hospital");
+  },
+
+  // ── Forgot password (public, pre-auth) ───────────────────────────────────
+  forgotPasswordInit: async (identifier: string) => {
+    try {
+      const response = await api.post<{ success: boolean; message: string }>(
+        "/auth/forgot-password/init",
+        { identifier },
+      );
+      return response.data;
+    } catch (error: unknown) {
+      throw toApiError(error, "Unable to send reset code");
+    }
+  },
+
+  forgotPasswordVerify: async (identifier: string, otp: string) => {
+    try {
+      const response = await api.post<{
+        success: boolean;
+        message: string;
+        data?: { tempToken?: string; expiresInSeconds?: number };
+      }>("/auth/forgot-password/verify", { identifier, otp });
+      const token = response.data.data?.tempToken;
+      if (token) sessionStorage.setItem("resetToken", token);
+      return response.data;
+    } catch (error: unknown) {
+      throw toApiError(error, "Invalid or expired code");
+    }
+  },
+
+  forgotPasswordReset: async (newPassword: string) => {
+    const resetToken = sessionStorage.getItem("resetToken");
+    if (!resetToken) throw new Error("Session expired. Please start over.");
+    try {
+      const response = await api.post<{ success: boolean; message: string }>(
+        "/auth/forgot-password/reset",
+        { newPassword },
+        { headers: { Authorization: `Bearer ${resetToken}` } },
+      );
+      sessionStorage.removeItem("resetToken");
+      return response.data;
+    } catch (error: unknown) {
+      throw toApiError(error, "Password reset failed");
+    }
+  },
+
+  // ── Settings-based change password (logged in) ───────────────────────────
+  changePasswordSettings: async (currentPassword: string, newPassword: string) => {
+    try {
+      const response = await api.post<{ success: boolean; message: string }>(
+        "/auth/password/change",
+        { currentPassword, newPassword },
+      );
+      return response.data;
+    } catch (error: unknown) {
+      throw toApiError(error, "Password change failed");
+    }
+  },
+
+  // ── Session management (logged in) ───────────────────────────────────────
+  listSessions: async () => {
+    try {
+      const response = await api.get<{ success: boolean; data: any[] }>(
+        "/auth/session/list",
+      );
+      return response.data;
+    } catch (error: unknown) {
+      throw toApiError(error, "Unable to load sessions");
+    }
+  },
+
+  revokeSession: async (id: string) => {
+    try {
+      const response = await api.post<{ success: boolean; message: string }>(
+        `/auth/session/revoke/${id}`,
+      );
+      return response.data;
+    } catch (error: unknown) {
+      throw toApiError(error, "Unable to revoke session");
+    }
+  },
+
+  revokeAllOtherSessions: async () => {
+    try {
+      const response = await api.post<{
+        success: boolean;
+        message: string;
+        revokedCount?: number;
+      }>("/auth/session/revoke-all-others");
+      return response.data;
+    } catch (error: unknown) {
+      throw toApiError(error, "Unable to revoke sessions");
+    }
   },
 };
 

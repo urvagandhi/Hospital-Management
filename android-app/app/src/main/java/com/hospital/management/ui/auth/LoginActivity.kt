@@ -57,6 +57,10 @@ class LoginActivity : BaseActivity() {
             startActivity(Intent(this, RegisterActivity::class.java))
         }
 
+        binding.tvForgotPassword.setOnClickListener {
+            startActivity(Intent(this, ForgotPasswordActivity::class.java))
+        }
+
         // Attach press-scale animation to buttons
         DesignAnimations.attachPressScale(binding.btnLogin)
         DesignAnimations.attachPressScale(binding.btnBiometric)

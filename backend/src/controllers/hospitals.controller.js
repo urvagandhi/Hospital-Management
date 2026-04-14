@@ -7,7 +7,12 @@ import crypto from "crypto";
 import Hospital from "../models/Hospital.js";
 import AuditLog from "../models/AuditLog.js";
 import { hashPassword } from "../utils/hash.js";
-import { sendWelcomeEmail } from "../services/mail.service.js";
+import { sendWelcomeEmail, sendOTPEmail, sendContactChangedNoticeEmail } from "../services/mail.service.js";
+import {
+  setContactChangeRequest,
+  verifyContactChangeOtp,
+  deleteContactChangeRequest,
+} from "../services/redis.service.js";
 
 /**
  * Get all hospitals
@@ -321,9 +326,283 @@ export const resendWelcomeEmail = async (req, res) => {
   }
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Profile management: PATCH /me + OTP-gated contact change
+// ═══════════════════════════════════════════════════════════════════════════
+
+const CONTACT_OTP_TTL_SECONDS = 600;
+const CONTACT_OTP_MAX_ATTEMPTS = 5;
+
+function generateOtp6() {
+  return String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+}
+
+function normalizeIndianPhone(raw) {
+  if (!raw) return null;
+  const digits = String(raw).replace(/[^\d]/g, "");
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith("91")) return `+${digits}`;
+  return null;
+}
+
+/**
+ * PATCH /api/hospitals/me
+ * Non-sensitive profile updates only: hospitalName, address, logo.
+ * Email/phone are handled via the OTP-gated contact-change flow below.
+ */
+export const patchMe = async (req, res) => {
+  const hospitalId = req.hospital?.id;
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  const userAgent = req.headers["user-agent"];
+
+  try {
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+
+    const { hospitalName, address } = req.body || {};
+    const changes = {};
+
+    if (typeof hospitalName === "string" && hospitalName.trim()) {
+      if (hospitalName.trim().length < 3) {
+        return res.status(400).json({ success: false, message: "Hospital name must be at least 3 characters" });
+      }
+      hospital.hospitalName = hospitalName.trim();
+      changes.hospitalName = hospital.hospitalName;
+    }
+
+    if (typeof address === "string") {
+      hospital.address = address.trim();
+      changes.address = hospital.address;
+    }
+
+    if (req.file) {
+      hospital.logoUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+      changes.logoUrl = true;
+    }
+
+    if (Object.keys(changes).length === 0) {
+      return res.status(400).json({ success: false, message: "No valid fields to update" });
+    }
+
+    await hospital.save();
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "PROFILE_PATCHED",
+      status: "SUCCESS",
+      ipAddress,
+      userAgent,
+      details: changes,
+    }).catch((e) => console.error("AuditLog error (profile patch):", e));
+
+    return res.status(200).json({ success: true, message: "Profile updated", data: hospital });
+  } catch (error) {
+    console.error("[patchMe] error:", error);
+    return res.status(500).json({ success: false, message: "Failed to update profile" });
+  }
+};
+
+/**
+ * POST /api/hospitals/me/change-contact/init
+ * Body: { newEmail } OR { newPhone }   (exactly one)
+ *
+ * Validates format + uniqueness, stores the pending change in Redis, and
+ * emails a 6-digit OTP to the hospital's CURRENT email address (proof of
+ * account control). SMS is deferred — phone changes still OTP via email.
+ */
+export const initContactChange = async (req, res) => {
+  const hospitalId = req.hospital?.id;
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  const userAgent = req.headers["user-agent"];
+
+  try {
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const { newEmail, newPhone } = req.body || {};
+    if (!newEmail === !newPhone) {
+      return res.status(400).json({ success: false, message: "Provide exactly one of newEmail or newPhone" });
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+
+    let field, newValue;
+
+    if (newEmail) {
+      const normalized = String(newEmail).toLowerCase().trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+        return res.status(400).json({ success: false, message: "Invalid email format" });
+      }
+      if (normalized === hospital.email) {
+        return res.status(400).json({ success: false, message: "New email is the same as current email" });
+      }
+      const taken = await Hospital.findOne({ email: normalized, _id: { $ne: hospitalId } }).select("_id").lean();
+      if (taken) return res.status(409).json({ success: false, message: "This email is already in use" });
+      field = "email";
+      newValue = normalized;
+    } else {
+      const normalized = normalizeIndianPhone(newPhone);
+      if (!normalized) {
+        return res.status(400).json({ success: false, message: "Phone number must be 10 digits" });
+      }
+      if (normalized === hospital.phone) {
+        return res.status(400).json({ success: false, message: "New phone is the same as current phone" });
+      }
+      const taken = await Hospital.findOne({ phone: normalized, _id: { $ne: hospitalId } }).select("_id").lean();
+      if (taken) return res.status(409).json({ success: false, message: "This phone number is already in use" });
+      field = "phone";
+      newValue = normalized;
+    }
+
+    const otp = generateOtp6();
+    await setContactChangeRequest(hospitalId, field, newValue, otp, CONTACT_OTP_TTL_SECONDS);
+
+    // OTP delivery:
+    //   • Email change → OTP is sent to the NEW email (proves the user
+    //     controls the destination address — standard verification pattern).
+    //   • Phone change → SMS is deferred, so the OTP falls back to the
+    //     CURRENT email. This does NOT prove control of the new phone, but
+    //     the session already proves account control; the unverified-phone
+    //     gap is tracked under the SMS-provider work.
+    const otpRecipient = field === "email" ? newValue : hospital.email;
+    const otpChannel = field === "email" ? "new_email" : "current_email";
+    try {
+      await sendOTPEmail(otpRecipient, otp, "login");
+    } catch (e) {
+      console.error("[initContactChange] OTP email failed:", e.message);
+    }
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "CONTACT_CHANGE_INIT",
+      status: "SUCCESS",
+      ipAddress,
+      userAgent,
+      details: { field, otpChannel },
+    }).catch((e) => console.error("AuditLog error (contact init):", e));
+
+    const maskedRecipient = field === "email"
+      ? newValue.replace(/(.{1,2}).*(@.*)/, "$1***$2")
+      : hospital.email.replace(/(.{1,2}).*(@.*)/, "$1***$2");
+
+    return res.status(200).json({
+      success: true,
+      message: field === "email"
+        ? `OTP sent to the new email (${maskedRecipient}). Verify to complete the change.`
+        : `OTP sent to your registered email (${maskedRecipient}). Verify to complete the change.`,
+      data: { field, otpChannel, otpExpiresInSeconds: CONTACT_OTP_TTL_SECONDS },
+    });
+  } catch (error) {
+    console.error("[initContactChange] error:", error);
+    return res.status(500).json({ success: false, message: "Failed to initiate contact change" });
+  }
+};
+
+/**
+ * POST /api/hospitals/me/change-contact/verify
+ * Body: { otp }
+ * Commits the pending email/phone change stashed by /init.
+ */
+export const verifyContactChange = async (req, res) => {
+  const hospitalId = req.hospital?.id;
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  const userAgent = req.headers["user-agent"];
+
+  try {
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const { otp } = req.body || {};
+    if (!otp || !/^\d{6}$/.test(String(otp))) {
+      return res.status(400).json({ success: false, message: "OTP must be 6 digits" });
+    }
+
+    const result = await verifyContactChangeOtp(hospitalId, String(otp), CONTACT_OTP_MAX_ATTEMPTS);
+    if (!result.valid) {
+      AuditLog.create({
+        userId: hospitalId,
+        action: "CONTACT_CHANGE_FAILED",
+        status: "FAILURE",
+        ipAddress,
+        userAgent,
+        metadata: { failureReason: result.expired ? "expired" : "invalid_otp" },
+      }).catch(() => {});
+      if (result.expired) {
+        return res.status(410).json({ success: false, message: "OTP expired or not found. Please start over." });
+      }
+      if (result.attemptsLeft === 0) {
+        return res.status(400).json({ success: false, message: "Too many incorrect attempts. Please request a new OTP." });
+      }
+      return res.status(400).json({
+        success: false,
+        message: `Invalid OTP. ${result.attemptsLeft} attempt(s) remaining.`,
+        data: { attemptsLeft: result.attemptsLeft },
+      });
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+
+    const { field, newValue } = result.request;
+
+    // Re-check uniqueness at commit time — another hospital may have claimed
+    // the value during the OTP window.
+    const collisionQuery = field === "email" ? { email: newValue } : { phone: newValue };
+    const collision = await Hospital.findOne({ ...collisionQuery, _id: { $ne: hospitalId } }).select("_id").lean();
+    if (collision) {
+      await deleteContactChangeRequest(hospitalId);
+      return res.status(409).json({
+        success: false,
+        message: `This ${field} is already in use. Please start over.`,
+      });
+    }
+
+    const oldValue = hospital[field];
+    hospital[field] = newValue;
+    await hospital.save();
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "CONTACT_CHANGED",
+      status: "SUCCESS",
+      ipAddress,
+      userAgent,
+      details: { field, oldValue, newValue },
+    }).catch((e) => console.error("AuditLog error (contact changed):", e));
+
+    // Security notice emails (fire-and-forget):
+    //   • Email change: notify BOTH the old and the new address so a
+    //     compromise is visible from either end.
+    //   • Phone change: only the current email is reachable (SMS deferred),
+    //     so just one notice goes to that address.
+    if (field === "email") {
+      sendContactChangedNoticeEmail(oldValue, { field, oldValue, newValue, recipient: "old" })
+        .catch((e) => console.error("[contactChanged] old-addr email failed:", e.message));
+      sendContactChangedNoticeEmail(newValue, { field, oldValue, newValue, recipient: "new" })
+        .catch((e) => console.error("[contactChanged] new-addr email failed:", e.message));
+    } else {
+      sendContactChangedNoticeEmail(hospital.email, { field, oldValue, newValue, recipient: "current" })
+        .catch((e) => console.error("[contactChanged] current-email notice failed:", e.message));
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `${field === "email" ? "Email" : "Phone number"} updated successfully.`,
+      data: hospital,
+    });
+  } catch (error) {
+    console.error("[verifyContactChange] error:", error);
+    return res.status(500).json({ success: false, message: "Failed to verify contact change" });
+  }
+};
+
 export default {
   getAllHospitals,
   getCurrentHospital,
   getHospitalById,
   updateHospital,
+  patchMe,
+  initContactChange,
+  verifyContactChange,
 };

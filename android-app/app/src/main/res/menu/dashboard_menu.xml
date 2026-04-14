@@ -6,6 +6,22 @@
         android:title="Sync Pending"
         app:showAsAction="ifRoom" />
     <item
+        android:id="@+id/action_profile"
+        android:title="Profile"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_change_password"
+        android:title="Change Password"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_sessions"
+        android:title="Active Sessions"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_notifications"
+        android:title="Notifications"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_logout"
         android:icon="@drawable/ic_logout"
         android:title="Logout"

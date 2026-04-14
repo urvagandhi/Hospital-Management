@@ -4,11 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.hospital.management.data.repository.AuthRepository
 import com.hospital.management.data.repository.PatientRepository
+import com.hospital.management.data.repository.ProfileRepository
 import com.hospital.management.domain.usecase.*
 
 class ViewModelFactory(
     private val authRepository: AuthRepository? = null,
-    private val patientRepository: PatientRepository? = null
+    private val patientRepository: PatientRepository? = null,
+    private val profileRepository: ProfileRepository? = null
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -21,8 +23,14 @@ class ViewModelFactory(
                 ChangePasswordUseCase(authRepository),
                 LogoutUseCase(authRepository),
                 SaveTokensUseCase(authRepository),
-                SaveHospitalInfoUseCase(authRepository)
+                SaveHospitalInfoUseCase(authRepository),
+                authRepository
             ) as T
+        }
+        if (modelClass.isAssignableFrom(ProfileViewModel::class.java)) {
+            if (profileRepository == null || authRepository == null)
+                throw IllegalArgumentException("ProfileRepository + AuthRepository required for ProfileViewModel")
+            return ProfileViewModel(profileRepository, authRepository) as T
         }
         if (modelClass.isAssignableFrom(PatientViewModel::class.java)) {
             if (patientRepository == null) throw IllegalArgumentException("PatientRepository required for PatientViewModel")

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { persistentLogger } from "../utils/persistentLogger";
+import DocumentViewer from "../components/DocumentViewer";
+import { buildThumbnailUrl, isImageMime } from "../utils/cloudinary";
 
 interface File {
   fileName: string;
@@ -40,6 +42,8 @@ const FolderView: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [zipLoading, setZipLoading] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [thumbFailed, setThumbFailed] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     fetchData();
@@ -285,16 +289,28 @@ const FolderView: React.FC = () => {
 
               {folder.files.map((file, index) => {
                 const fileType = getFileType(file.mimeType);
+                const showThumb = isImageMime(file.mimeType) && !thumbFailed[index];
                 return (
                   <div
                     key={index}
-                    className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 px-6 py-4 hover:bg-blue-50/30 transition-colors border-b border-gray-50 last:border-b-0 items-center"
+                    onClick={() => setViewerIndex(index)}
+                    className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-4 px-6 py-4 hover:bg-blue-50/30 transition-colors border-b border-gray-50 last:border-b-0 items-center cursor-pointer"
                   >
                     {/* File name */}
                     <div className="col-span-6 flex items-center gap-3">
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-xl ${fileType.color} flex items-center justify-center`}>
-                        <span className="text-[10px] font-bold">{fileType.label}</span>
-                      </div>
+                      {showThumb ? (
+                        <img
+                          src={buildThumbnailUrl(file.fileUrl, 80, 80)}
+                          alt=""
+                          loading="lazy"
+                          onError={() => setThumbFailed((s) => ({ ...s, [index]: true }))}
+                          className="flex-shrink-0 w-10 h-10 rounded-xl object-cover bg-gray-100"
+                        />
+                      ) : (
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-xl ${fileType.color} flex items-center justify-center`}>
+                          <span className="text-[10px] font-bold">{fileType.label}</span>
+                        </div>
+                      )}
                       <span className="text-sm font-medium text-gray-900 truncate">{file.fileName}</span>
                     </div>
 
@@ -326,6 +342,15 @@ const FolderView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {viewerIndex !== null && folder.files[viewerIndex] && (
+        <DocumentViewer
+          files={folder.files}
+          index={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+          onIndexChange={setViewerIndex}
+        />
+      )}
     </div>
   );
 };

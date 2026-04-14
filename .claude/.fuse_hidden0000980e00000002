@@ -158,7 +158,18 @@
       "Bash(node scripts/test-login-flow.js)",
       "Bash(./gradlew :app:compileDebugKotlin --no-daemon)",
       "Bash(node src/seed.js --force)",
-      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/java -name \"AuthInterceptor.kt\" -exec cat {} \\\\;)"
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/java -name \"AuthInterceptor.kt\" -exec cat {} \\\\;)",
+      "Bash(git show:*)",
+      "Bash(ls -la .env*)",
+      "Bash(grep -l BREVO src/ -r)",
+      "Bash(curl -sS -m 10 https://hospital-management-8lbf.onrender.com/api/health)",
+      "Bash(lsof -iTCP -sTCP:LISTEN -P)",
+      "Bash(curl -sS -m 15 -o /tmp/sess_list.json -w \"HTTP %{http_code}\\\\n\" https://hospital-management-8lbf.onrender.com/api/auth/session/list)",
+      "Bash(node --check src/middleware/auth.js)",
+      "Bash(node --check src/models/Session.js)",
+      "Bash(curl -sS -m 15 -o /tmp/rev_probe.json -w \"HTTP %{http_code}\\\\n\" -X POST -H \"content-type: application/json\" -d '{}' https://hospital-management-8lbf.onrender.com/api/auth/session/reverify-auth-code)",
+      "Bash(curl -sS -m 10 -o /tmp/notfound.json -w \"HTTP %{http_code}\\\\n\" -X POST -H \"content-type: application/json\" -d '{}' https://hospital-management-8lbf.onrender.com/api/auth/session/totally-fake-endpoint)",
+      "Bash(node --check src/utils/jwt.js)"
     ]
   }
 }

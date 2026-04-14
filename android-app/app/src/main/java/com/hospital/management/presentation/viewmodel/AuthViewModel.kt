@@ -3,6 +3,7 @@ package com.hospital.management.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hospital.management.data.models.Hospital
+import com.hospital.management.data.repository.AuthRepository
 import com.hospital.management.domain.usecase.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +25,8 @@ class AuthViewModel(
     private val changePasswordUseCase: ChangePasswordUseCase,
     private val logoutUseCase: LogoutUseCase,
     private val saveTokensUseCase: SaveTokensUseCase,
-    private val saveHospitalInfoUseCase: SaveHospitalInfoUseCase
+    private val saveHospitalInfoUseCase: SaveHospitalInfoUseCase,
+    private val authRepository: AuthRepository? = null,
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
@@ -142,5 +144,82 @@ class AuthViewModel(
 
     fun resetState() {
         _authState.value = AuthState.Idle
+    }
+
+    // ── Forgot password (Task #27) ──────────────────────────────────────
+    //
+    // Exposed as a separate StateFlow so LoginActivity's collector doesn't
+    // accidentally react to reset-flow progression. Activities for the
+    // forgot-password screens collect _forgotState directly.
+
+    sealed class ForgotState {
+        object Idle : ForgotState()
+        object Loading : ForgotState()
+        data class InitSent(val message: String) : ForgotState()
+        data class Verified(val tempToken: String) : ForgotState()
+        object ResetDone : ForgotState()
+        data class Error(val message: String) : ForgotState()
+    }
+
+    private val _forgotState = MutableStateFlow<ForgotState>(ForgotState.Idle)
+    val forgotState: StateFlow<ForgotState> = _forgotState.asStateFlow()
+
+    fun forgotInit(identifier: String) {
+        val repo = authRepository ?: return run { _forgotState.value = ForgotState.Error("Not configured") }
+        viewModelScope.launch {
+            _forgotState.value = ForgotState.Loading
+            try {
+                val response = repo.forgotPasswordInit(identifier)
+                val body = response.body()
+                if (response.isSuccessful && body?.success == true) {
+                    _forgotState.value = ForgotState.InitSent(body.message)
+                } else {
+                    _forgotState.value = ForgotState.Error(body?.message ?: "Unable to send code")
+                }
+            } catch (e: Exception) {
+                _forgotState.value = ForgotState.Error(e.message ?: "Network error")
+            }
+        }
+    }
+
+    fun forgotVerify(identifier: String, otp: String) {
+        val repo = authRepository ?: return run { _forgotState.value = ForgotState.Error("Not configured") }
+        viewModelScope.launch {
+            _forgotState.value = ForgotState.Loading
+            try {
+                val response = repo.forgotPasswordVerify(identifier, otp)
+                val body = response.body()
+                val token = body?.data?.tempToken
+                if (response.isSuccessful && body?.success == true && !token.isNullOrEmpty()) {
+                    _forgotState.value = ForgotState.Verified(token)
+                } else {
+                    _forgotState.value = ForgotState.Error(body?.message ?: "Invalid or expired code")
+                }
+            } catch (e: Exception) {
+                _forgotState.value = ForgotState.Error(e.message ?: "Network error")
+            }
+        }
+    }
+
+    fun forgotReset(tempToken: String, newPassword: String) {
+        val repo = authRepository ?: return run { _forgotState.value = ForgotState.Error("Not configured") }
+        viewModelScope.launch {
+            _forgotState.value = ForgotState.Loading
+            try {
+                val response = repo.forgotPasswordReset(tempToken, newPassword)
+                val body = response.body()
+                if (response.isSuccessful && body?.success == true) {
+                    _forgotState.value = ForgotState.ResetDone
+                } else {
+                    _forgotState.value = ForgotState.Error(body?.message ?: "Password reset failed")
+                }
+            } catch (e: Exception) {
+                _forgotState.value = ForgotState.Error(e.message ?: "Network error")
+            }
+        }
+    }
+
+    fun resetForgotState() {
+        _forgotState.value = ForgotState.Idle
     }
 }

@@ -145,6 +145,21 @@
                 android:textColor="@color/color_on_surface_variant"
                 android:visibility="gone" />
 
+            <!-- Forgot password -->
+            <TextView
+                android:id="@+id/tvForgotPassword"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="@dimen/space_sm"
+                android:clickable="true"
+                android:focusable="true"
+                android:fontFamily="@font/inter_medium"
+                android:padding="@dimen/space_sm"
+                android:text="Forgot password?"
+                android:textColor="@color/brand_primary"
+                android:textSize="13sp" />
+
             <!-- Register CTA -->
             <TextView
                 android:id="@+id/tvGoToRegister"

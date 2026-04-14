@@ -64,4 +64,25 @@ class AuthRepository(
         tokenManager.clearAll()
         RetrofitClient.clearCookies()
     }
+
+    // ── Forgot password (Task #27) ──────────────────────────────────────
+    suspend fun forgotPasswordInit(identifier: String) =
+        apiService.forgotPasswordInit(mapOf("identifier" to identifier))
+
+    suspend fun forgotPasswordVerify(identifier: String, otp: String) =
+        apiService.forgotPasswordVerify(mapOf("identifier" to identifier, "otp" to otp))
+
+    suspend fun forgotPasswordReset(tempToken: String, newPassword: String) =
+        apiService.forgotPasswordReset("Bearer $tempToken", mapOf("newPassword" to newPassword))
+
+    // ── Settings-based change password (Task #28) ───────────────────────
+    suspend fun changePasswordSettings(currentPassword: String, newPassword: String) =
+        apiService.changePasswordSettings(
+            mapOf("currentPassword" to currentPassword, "newPassword" to newPassword)
+        )
+
+    // ── Sessions ───────────────────────────────────────────────────────
+    suspend fun listSessions() = apiService.listSessions()
+    suspend fun revokeSession(id: String) = apiService.revokeSession(id)
+    suspend fun revokeAllOtherSessions() = apiService.revokeAllOtherSessions()
 }

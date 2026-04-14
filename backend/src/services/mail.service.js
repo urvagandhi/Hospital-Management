@@ -357,6 +357,109 @@ export async function sendSessionRevokedEmail(to, info) {
 }
 
 // ---------------------------------------------------------------------------
+// 4a. sendForgotPasswordOtpEmail
+// ---------------------------------------------------------------------------
+
+/**
+ * Send the 6-digit OTP used to authorize a password reset.
+ * @param {string} to
+ * @param {string} otp
+ */
+export async function sendForgotPasswordOtpEmail(to, otp) {
+  const subject = `Password Reset Code — ${APP_NAME}`;
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Reset your password</h2>
+    <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
+      We received a request to reset your ${APP_NAME} password. Use the code below to continue.
+    </p>
+    <div style="background:#f1f5f9;padding:22px;border-radius:8px;margin-bottom:18px;text-align:center;">
+      <p style="margin:0;font-size:36px;font-family:'Courier New',monospace;letter-spacing:10px;color:#0f172a;font-weight:700;">${escapeHtml(otp)}</p>
+    </div>
+    <p style="margin:0 0 6px;color:#ef4444;font-size:13px;font-weight:600;">Valid for 10 minutes</p>
+    <p style="margin:0;color:#94a3b8;font-size:12px;">If you did not request this reset, ignore this email and your password will stay the same.</p>`;
+  return sendEmail(to, subject, wrapHtml(body));
+}
+
+// ---------------------------------------------------------------------------
+// 4b. sendPasswordResetNoticeEmail
+// ---------------------------------------------------------------------------
+
+/**
+ * Notify the hospital that their password was just reset. Sent to the primary
+ * email after a successful forgot-password or settings-based change.
+ * @param {string} to
+ * @param {'reset'|'changed'} kind
+ */
+export async function sendPasswordResetNoticeEmail(to, kind = "reset") {
+  const headline = kind === "reset" ? "Your password was reset" : "Your password was changed";
+  const subject = `${headline} — ${APP_NAME}`;
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">${headline}</h2>
+    <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
+      All existing sessions have been signed out. You can sign in again with your new password.
+    </p>
+    <div style="background:#fef2f2;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #fee2e2;">
+      <p style="margin:0;font-size:14px;color:#991b1b;"><strong>Didn't do this?</strong></p>
+      <p style="margin:6px 0 0;font-size:13px;color:#b91c1c;">Contact your administrator immediately — your account may be compromised.</p>
+    </div>
+    <p style="margin:0;color:#94a3b8;font-size:12px;">This is an automated security notice.</p>`;
+  return sendEmail(to, subject, wrapHtml(body));
+}
+
+// ---------------------------------------------------------------------------
+// 4c. sendContactChangedNoticeEmail
+// ---------------------------------------------------------------------------
+
+/**
+ * Notify the hospital that their email or phone on file was just changed.
+ * For an email change, the caller sends this to BOTH the old and the new
+ * address (old = security alert; new = confirmation). For a phone change,
+ * there's only the current email on file, so just one recipient.
+ *
+ * @param {string} to
+ * @param {{field:'email'|'phone', oldValue:string, newValue:string, recipient:'old'|'new'|'current'}} info
+ */
+export async function sendContactChangedNoticeEmail(to, info) {
+  const { field, oldValue, newValue, recipient } = info || {};
+  const fieldLabel = field === "email" ? "Email address" : "Phone number";
+  const subject = `${fieldLabel} changed — ${APP_NAME}`;
+
+  const oldSafe = escapeHtml(String(oldValue || ""));
+  const newSafe = escapeHtml(String(newValue || ""));
+
+  let headline, lead;
+  if (recipient === "new") {
+    headline = `Your ${fieldLabel.toLowerCase()} was confirmed`;
+    lead = `This ${fieldLabel.toLowerCase()} is now the primary contact on your ${APP_NAME} account.`;
+  } else {
+    headline = `Your ${fieldLabel.toLowerCase()} was changed`;
+    lead = `The ${fieldLabel.toLowerCase()} on your ${APP_NAME} account was just updated.`;
+  }
+
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">${headline}</h2>
+    <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">${lead}</p>
+    <div style="background:#f1f5f9;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #e2e8f0;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:4px 0;color:#64748b;font-size:13px;width:120px;">Previous</td>
+          <td style="padding:4px 0;font-family:'Courier New',monospace;font-size:13px;color:#0f172a;">${oldSafe}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;color:#64748b;font-size:13px;">New</td>
+          <td style="padding:4px 0;font-family:'Courier New',monospace;font-size:13px;color:#0f172a;font-weight:700;">${newSafe}</td>
+        </tr>
+      </table>
+    </div>
+    <div style="background:#fef2f2;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #fee2e2;">
+      <p style="margin:0;font-size:14px;color:#991b1b;"><strong>Didn't do this?</strong></p>
+      <p style="margin:6px 0 0;font-size:13px;color:#b91c1c;">Contact your administrator immediately — your account may be compromised.</p>
+    </div>
+    <p style="margin:0;color:#94a3b8;font-size:12px;">This is an automated security notice.</p>`;
+  return sendEmail(to, subject, wrapHtml(body));
+}
+
+// ---------------------------------------------------------------------------
 // 5. sendAccountLockedEmail
 // ---------------------------------------------------------------------------
 
@@ -391,4 +494,7 @@ export default {
   sendWelcomeEmail,
   sendSessionRevokedEmail,
   sendAccountLockedEmail,
+  sendForgotPasswordOtpEmail,
+  sendPasswordResetNoticeEmail,
+  sendContactChangedNoticeEmail,
 };

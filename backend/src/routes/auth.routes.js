@@ -27,6 +27,10 @@ import {
   revokeAllOtherSessions,
   reverifyAuthCode,
   storeFcmToken,
+  forgotPasswordInit,
+  forgotPasswordVerify,
+  forgotPasswordReset,
+  changePasswordSettings,
 } from "../controllers/auth.controller.js";
 import { verifyAccessToken, verifyAdmin, verifyTempToken } from "../middleware/auth.js";
 import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
@@ -304,6 +308,91 @@ router.post(
   ],
   handleValidationErrors,
   reverifyAuthCode,
+);
+
+// ═══════════════════════════════════════════════════
+// FORGOT-PASSWORD FLOW (public, 3 endpoints)
+// ═══════════════════════════════════════════════════
+
+/**
+ * POST /api/auth/forgot-password/init
+ * Body: { identifier }  (email or phone)
+ * Always responds 200 with a generic message unless rate-limited.
+ */
+router.post(
+  "/forgot-password/init",
+  authLimiter,
+  [body("identifier").isString().trim().notEmpty().withMessage("Identifier is required")],
+  handleValidationErrors,
+  forgotPasswordInit,
+);
+
+/**
+ * POST /api/auth/forgot-password/verify
+ * Body: { identifier, otp }
+ * Returns a PASSWORD_RESET temp token on success.
+ */
+router.post(
+  "/forgot-password/verify",
+  otpLimiter,
+  [
+    body("identifier").isString().trim().notEmpty().withMessage("Identifier is required"),
+    body("otp").matches(/^\d{6}$/).withMessage("OTP must be 6 digits"),
+  ],
+  handleValidationErrors,
+  forgotPasswordVerify,
+);
+
+/**
+ * POST /api/auth/forgot-password/reset
+ * Headers: Authorization: Bearer <PASSWORD_RESET temp token>
+ * Body: { newPassword }
+ */
+router.post(
+  "/forgot-password/reset",
+  authLimiter,
+  [
+    body("newPassword")
+      .isLength({ min: 8 })
+      .withMessage("Password must be at least 8 characters")
+      .matches(/[A-Z]/)
+      .withMessage("Password must contain at least one uppercase letter")
+      .matches(/[a-z]/)
+      .withMessage("Password must contain at least one lowercase letter")
+      .matches(/[0-9]/)
+      .withMessage("Password must contain at least one number")
+      .matches(/[\W_]/)
+      .withMessage("Password must contain at least one special character"),
+  ],
+  handleValidationErrors,
+  forgotPasswordReset,
+);
+
+/**
+ * POST /api/auth/password/change
+ * Authenticated in-session change password (settings flow).
+ * Body: { currentPassword, newPassword }
+ */
+router.post(
+  "/password/change",
+  authLimiter,
+  verifyAccessToken,
+  [
+    body("currentPassword").isLength({ min: 1 }).withMessage("Current password is required"),
+    body("newPassword")
+      .isLength({ min: 8 })
+      .withMessage("Password must be at least 8 characters")
+      .matches(/[A-Z]/)
+      .withMessage("Password must contain at least one uppercase letter")
+      .matches(/[a-z]/)
+      .withMessage("Password must contain at least one lowercase letter")
+      .matches(/[0-9]/)
+      .withMessage("Password must contain at least one number")
+      .matches(/[\W_]/)
+      .withMessage("Password must contain at least one special character"),
+  ],
+  handleValidationErrors,
+  changePasswordSettings,
 );
 
 // ═══════════════════════════════════════════════════

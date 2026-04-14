@@ -41,13 +41,17 @@ export const generateRefreshToken = (hospitalId) => {
  * Currently supported purposes:
  *   AUTH_CODE       — user has passed password step, must enter 6-digit auth code
  *   PASSWORD_CHANGE — user must change password before proceeding (first login)
+ *   PASSWORD_RESET  — user has verified forgot-password OTP, must set new password
  *
  * @param {string} hospitalId - Hospital ID
- * @param {string} purpose - One of AUTH_CODE | PASSWORD_CHANGE
- * @returns {string} Temporary token valid for 10 minutes
+ * @param {string} purpose - One of AUTH_CODE | PASSWORD_CHANGE | PASSWORD_RESET
+ * @param {string} [expiresIn] - JWT expiresIn override (defaults to 10m;
+ *                               PASSWORD_RESET defaults to 15m)
+ * @returns {string} Temporary token
  */
-export const generateTempToken = (hospitalId, purpose = "AUTH_CODE") => {
+export const generateTempToken = (hospitalId, purpose = "AUTH_CODE", expiresIn) => {
   try {
+    const ttl = expiresIn || (purpose === "PASSWORD_RESET" ? "15m" : "10m");
     const token = jwt.sign(
       {
         id: hospitalId,
@@ -55,7 +59,7 @@ export const generateTempToken = (hospitalId, purpose = "AUTH_CODE") => {
         purpose: purpose  // Single-purpose token
       },
       config.JWT_SECRET,
-      { expiresIn: "10m" }
+      { expiresIn: ttl }
     );
     return token;
   } catch (error) {

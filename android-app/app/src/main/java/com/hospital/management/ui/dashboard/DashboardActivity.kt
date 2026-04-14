@@ -120,12 +120,22 @@ class DashboardActivity : BaseActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.action_logout -> {
-                showLogoutDialog()
+            R.id.action_logout -> { showLogoutDialog(); true }
+            R.id.action_sync -> { startSync(); true }
+            R.id.action_profile -> {
+                startActivity(Intent(this, com.hospital.management.ui.profile.ProfileActivity::class.java))
                 true
             }
-            R.id.action_sync -> {
-                startSync()
+            R.id.action_change_password -> {
+                startActivity(Intent(this, com.hospital.management.ui.profile.ChangePasswordSettingsActivity::class.java))
+                true
+            }
+            R.id.action_sessions -> {
+                startActivity(Intent(this, com.hospital.management.ui.profile.SessionsActivity::class.java))
+                true
+            }
+            R.id.action_notifications -> {
+                startActivity(Intent(this, com.hospital.management.ui.profile.NotificationsActivity::class.java))
                 true
             }
             else -> super.onOptionsItemSelected(item)

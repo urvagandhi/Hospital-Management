@@ -178,6 +178,16 @@ export const Login: React.FC = () => {
           <Button label={state.loading ? "Signing in..." : "Sign In"} type="submit" variant="primary" size="lg" fullWidth disabled={state.loading} loading={state.loading} />
         </form>
 
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => navigate("/forgot-password")}
+            className="text-sm text-blue-600 hover:text-blue-800 underline underline-offset-2"
+          >
+            Forgot password?
+          </button>
+        </div>
+
         <p className="text-center text-xs text-gray-400 mt-6">
           Biometric login available on the Android app
         </p>

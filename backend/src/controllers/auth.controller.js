@@ -8,7 +8,7 @@ import AuditLog from "../models/AuditLog.js";
 import Hospital from "../models/Hospital.js";
 import Session from "../models/Session.js";
 import crypto from "crypto";
-import { sendWelcomeEmail, sendAccountLockedEmail, sendSessionRevokedEmail, sendOTPEmail } from "../services/mail.service.js";
+import { sendWelcomeEmail, sendAccountLockedEmail, sendSessionRevokedEmail, sendOTPEmail, sendForgotPasswordOtpEmail, sendPasswordResetNoticeEmail } from "../services/mail.service.js";
 import {
   setOTP,
   verifyOTP,
@@ -20,11 +20,16 @@ import {
   setBiometricChallenge,
   peekBiometricChallenge,
   consumeBiometricChallenge,
+  setForgotPasswordOtp,
+  verifyForgotPasswordOtp,
+  deleteForgotPasswordOtp,
+  setForgotPasswordLastSent,
+  getForgotPasswordLastSent,
 } from "../services/redis.service.js";
 import { notifyNewLogin, notifySessionRevoked } from "../services/push.service.js";
-import { createSession, invalidateSession, refreshAccessToken } from "../services/token.service.js";
+import { createSession, invalidateSession, invalidateAllSessions, refreshAccessToken } from "../services/token.service.js";
 import { comparePassword, hashPassword } from "../utils/hash.js";
-import { generateTempToken } from "../utils/jwt.js";
+import { generateTempToken, verifyToken } from "../utils/jwt.js";
 
 /**
  * Change Password - used with purpose-scoped temp token (PASSWORD_CHANGE)
@@ -1668,6 +1673,418 @@ export const storeFcmToken = async (req, res) => {
   }
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FORGOT PASSWORD FLOW (public)
+//
+//  Step 1: POST /api/auth/forgot-password/init
+//          → email/phone identifier → always 200 (no enumeration) → OTP via email
+//  Step 2: POST /api/auth/forgot-password/verify
+//          → identifier + otp → returns PASSWORD_RESET temp token (15-min TTL)
+//  Step 3: POST /api/auth/forgot-password/reset
+//          → Bearer temp token + newPassword → updates hash, revokes all
+//            sessions, sends notice email.
+//
+//  Redis keys:   forgot_otp:{hospitalId}, forgot_last_sent:{hospitalId}
+//  Token purpose: PASSWORD_RESET (15 min)
+//  SMS is deferred — OTP is always delivered to the hospital's registered email,
+//  even when the user enters a phone number.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const FORGOT_OTP_TTL_SECONDS = 600;           // 10 minutes
+const FORGOT_OTP_MAX_ATTEMPTS = 5;
+const FORGOT_RESEND_COOLDOWN_SECONDS = 60;
+
+/**
+ * Resolve an identifier (email or phone) to a Hospital, or null.
+ * Mirrors the identifier-parsing rules used by the login controller.
+ */
+async function lookupHospitalByIdentifier(identifier) {
+  const loginId = String(identifier || "").trim();
+  if (!loginId) return null;
+
+  let query;
+  if (loginId.includes("@")) {
+    query = { email: loginId.toLowerCase() };
+  } else if (/^\+?\d{7,15}$/.test(loginId.replace(/[\s\-()]/g, ""))) {
+    const phoneClean = loginId.replace(/[^\d+]/g, "");
+    const phoneDigitsOnly = phoneClean.replace(/[^\d]/g, "");
+    let normalizedPhone = phoneClean;
+    if (phoneDigitsOnly.length === 10) normalizedPhone = `+91${phoneDigitsOnly}`;
+    else if (phoneDigitsOnly.length === 12 && phoneDigitsOnly.startsWith("91")) normalizedPhone = `+${phoneDigitsOnly}`;
+    query = { phone: normalizedPhone };
+  } else {
+    return null;
+  }
+
+  try {
+    return await Hospital.findOne(query);
+  } catch (e) {
+    console.error("[forgotPassword] DB find error:", e.message);
+    return null;
+  }
+}
+
+/**
+ * POST /api/auth/forgot-password/init
+ * Body: { identifier }  (email or phone)
+ *
+ * Always returns a generic success payload to prevent account enumeration.
+ * If the identifier resolves to a real hospital we issue a fresh OTP and email
+ * it. Wrong identifiers silently no-op (but still pretend to work).
+ */
+export const forgotPasswordInit = async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    if (!identifier) {
+      return res.status(400).json({ success: false, message: "Identifier is required" });
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers["user-agent"];
+
+    const hospital = await lookupHospitalByIdentifier(identifier);
+
+    // Enumeration-safe generic response
+    const genericOk = {
+      success: true,
+      message: "If that account exists, we've sent a reset code to the registered email.",
+      data: {
+        otpExpiresInSeconds: FORGOT_OTP_TTL_SECONDS,
+        resendAvailableInSeconds: FORGOT_RESEND_COOLDOWN_SECONDS,
+      },
+    };
+
+    if (!hospital || !hospital.isActive) {
+      try {
+        await AuditLog.create({
+          action: "PASSWORD_RESET_INIT",
+          status: "FAILURE",
+          ipAddress,
+          userAgent,
+          metadata: { identifier: String(identifier), failureReason: hospital ? "inactive" : "not_found" },
+        });
+      } catch (e) {
+        console.error("AuditLog error (forgot init miss):", e);
+      }
+      return res.status(200).json(genericOk);
+    }
+
+    // Enforce 60-second resend cooldown (keyed by hospitalId so attackers
+    // can't reset the clock by switching between email/phone).
+    const lastSentTs = await getForgotPasswordLastSent(hospital._id.toString());
+    if (lastSentTs) {
+      const remainingSec = Math.ceil((FORGOT_RESEND_COOLDOWN_SECONDS * 1000 - (Date.now() - lastSentTs)) / 1000);
+      if (remainingSec > 0) {
+        return res.status(429).json({
+          success: false,
+          message: `Please wait ${remainingSec} second(s) before requesting another code.`,
+          data: { retryAfterSeconds: remainingSec },
+        });
+      }
+    }
+
+    const otp = generateOtp();
+    await setForgotPasswordOtp(hospital._id.toString(), otp, FORGOT_OTP_TTL_SECONDS);
+    await setForgotPasswordLastSent(hospital._id.toString(), FORGOT_RESEND_COOLDOWN_SECONDS);
+
+    try {
+      await sendForgotPasswordOtpEmail(hospital.email, otp);
+      console.log(`✅ Forgot-password OTP sent to: ${hospital.email}`);
+    } catch (mailErr) {
+      console.error("❌ Forgot-password OTP email failed:", mailErr.message);
+      // Don't leak failure — OTP is still in Redis for dev
+    }
+
+    try {
+      await AuditLog.create({
+        userId: hospital._id,
+        action: "PASSWORD_RESET_INIT",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+      });
+    } catch (e) {
+      console.error("AuditLog error (forgot init):", e);
+    }
+
+    return res.status(200).json(genericOk);
+  } catch (error) {
+    console.error("[forgotPasswordInit] error:", error);
+    return res.status(500).json({ success: false, message: "Unable to process request. Please try again later." });
+  }
+};
+
+/**
+ * POST /api/auth/forgot-password/verify
+ * Body: { identifier, otp }
+ *
+ * Verifies the OTP (5-attempt limit) and, on success, issues a 15-minute
+ * temp token bearing purpose=PASSWORD_RESET which the client uses for the
+ * reset step.
+ */
+export const forgotPasswordVerify = async (req, res) => {
+  try {
+    const { identifier, otp } = req.body;
+    if (!identifier || !otp) {
+      return res.status(400).json({ success: false, message: "Identifier and OTP are required" });
+    }
+    if (!/^\d{6}$/.test(String(otp))) {
+      return res.status(400).json({ success: false, message: "OTP must be 6 digits" });
+    }
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers["user-agent"];
+
+    const hospital = await lookupHospitalByIdentifier(identifier);
+    if (!hospital) {
+      // Generic miss — same error shape whether the OTP is wrong or the
+      // identifier doesn't exist, to avoid enumeration.
+      return res.status(400).json({ success: false, message: "Invalid or expired code." });
+    }
+
+    const result = await verifyForgotPasswordOtp(hospital._id.toString(), String(otp), FORGOT_OTP_MAX_ATTEMPTS);
+
+    if (!result.valid) {
+      try {
+        await AuditLog.create({
+          userId: hospital._id,
+          action: "PASSWORD_RESET_FAILED",
+          status: "FAILURE",
+          ipAddress,
+          userAgent,
+          metadata: { failureReason: result.expired ? "expired" : "invalid_otp" },
+        });
+      } catch (e) {
+        console.error("AuditLog error (forgot verify fail):", e);
+      }
+
+      if (result.expired) {
+        return res.status(410).json({ success: false, message: "Code expired or not found. Please request a new one." });
+      }
+      if (result.attemptsLeft === 0) {
+        return res.status(400).json({ success: false, message: "Too many incorrect attempts. Please request a new code." });
+      }
+      return res.status(400).json({
+        success: false,
+        message: `Invalid code. ${result.attemptsLeft} attempt(s) remaining.`,
+        data: { attemptsLeft: result.attemptsLeft },
+      });
+    }
+
+    const tempToken = generateTempToken(hospital._id.toString(), "PASSWORD_RESET");
+
+    try {
+      await AuditLog.create({
+        userId: hospital._id,
+        action: "PASSWORD_RESET_VERIFIED",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+      });
+    } catch (e) {
+      console.error("AuditLog error (forgot verify):", e);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Code verified. You may now set a new password.",
+      data: {
+        tempToken,
+        expiresInSeconds: 15 * 60,
+      },
+    });
+  } catch (error) {
+    console.error("[forgotPasswordVerify] error:", error);
+    return res.status(500).json({ success: false, message: "Unable to verify code. Please try again later." });
+  }
+};
+
+/**
+ * POST /api/auth/forgot-password/reset
+ * Headers: Authorization: Bearer <PASSWORD_RESET temp token>
+ * Body:    { newPassword }
+ *
+ * Sets a new password, revokes ALL sessions on the account, clears any
+ * residual OTP, and emails a security notice. The temp token is single-use
+ * in practice because the reset itself invalidates the session landscape —
+ * but we do not explicitly blacklist it (matches existing PASSWORD_CHANGE
+ * pattern used on first login).
+ */
+export const forgotPasswordReset = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) {
+      return res.status(401).json({ success: false, message: "No token provided" });
+    }
+
+    let decoded;
+    try {
+      decoded = verifyToken(token);
+    } catch (e) {
+      return res.status(401).json({ success: false, message: e.message });
+    }
+    if (decoded.type !== "temp" || decoded.purpose !== "PASSWORD_RESET") {
+      return res.status(401).json({ success: false, message: "Invalid token for password reset" });
+    }
+
+    const { newPassword } = req.body;
+    const pwErr = validatePasswordStrength(newPassword);
+    if (pwErr) {
+      return res.status(400).json({ success: false, message: pwErr });
+    }
+
+    const hospital = await Hospital.findById(decoded.id);
+    if (!hospital) {
+      return res.status(404).json({ success: false, message: "Hospital not found" });
+    }
+
+    // Don't let the user "reset" to the same password they already had —
+    // this is a cheap sanity check, not a full history policy.
+    const sameAsCurrent = await comparePassword(newPassword, hospital.passwordHash);
+    if (sameAsCurrent) {
+      return res.status(400).json({ success: false, message: "New password must be different from the current password" });
+    }
+
+    hospital.passwordHash = await hashPassword(newPassword);
+    hospital.mustChangePassword = false;
+    hospital.failedLoginAttempts = 0;
+    hospital.lockUntil = undefined;
+    await hospital.save();
+
+    // Revoke every session — a password reset is a trust-reset event.
+    try {
+      await invalidateAllSessions(hospital._id);
+      notifySessionRevoked(hospital._id).catch((e) => console.error("[forgotPasswordReset] push notify failed:", e.message));
+    } catch (e) {
+      console.error("[forgotPasswordReset] session invalidation failed:", e.message);
+    }
+
+    // Best-effort cleanup of any stale OTP material.
+    await deleteForgotPasswordOtp(hospital._id.toString());
+
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers["user-agent"];
+    try {
+      await AuditLog.create({
+        userId: hospital._id,
+        action: "PASSWORD_RESET_COMPLETED",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+      });
+    } catch (e) {
+      console.error("AuditLog error (forgot reset):", e);
+    }
+
+    sendPasswordResetNoticeEmail(hospital.email, "reset").catch((e) =>
+      console.error("[forgotPasswordReset] notice email failed:", e.message),
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully. Please sign in with your new password.",
+    });
+  } catch (error) {
+    console.error("[forgotPasswordReset] error:", error);
+    return res.status(500).json({ success: false, message: "Password reset failed. Please try again later." });
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SETTINGS-BASED CHANGE PASSWORD (authenticated)
+//
+//   POST /api/auth/password/change
+//   Auth:  verifyAccessToken (session must be live)
+//   Body:  { currentPassword, newPassword }
+//
+// Differs from the existing /change-password route (first-login flow) in that
+// this one requires a live session + current password, and leaves the caller's
+// session intact while revoking every OTHER session on the account.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const changePasswordSettings = async (req, res) => {
+  const hospitalId = req.hospital?.id;
+  const currentSessionId = req.sessionId;
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  const userAgent = req.headers["user-agent"];
+
+  try {
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: "Current and new passwords are required" });
+    }
+
+    const pwErr = validatePasswordStrength(newPassword);
+    if (pwErr) return res.status(400).json({ success: false, message: pwErr });
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+
+    const ok = await comparePassword(currentPassword, hospital.passwordHash);
+    if (!ok) {
+      try {
+        await AuditLog.create({
+          userId: hospital._id,
+          action: "PASSWORD_CHANGE_FAILED",
+          status: "FAILURE",
+          ipAddress,
+          userAgent,
+          metadata: { failureReason: "invalid_current_password" },
+        });
+      } catch (e) {
+        console.error("AuditLog error (pw change fail):", e);
+      }
+      return res.status(401).json({ success: false, message: "Current password is incorrect" });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ success: false, message: "New password must be different from current password" });
+    }
+
+    hospital.passwordHash = await hashPassword(newPassword);
+    hospital.mustChangePassword = false;
+    await hospital.save();
+
+    // Revoke every other session — the user effectively re-establishes trust.
+    try {
+      await Session.updateMany(
+        { hospitalId, isActive: true, _id: { $ne: currentSessionId } },
+        { isActive: false, revokedReason: "ADMIN_REVOKE" },
+      );
+      notifySessionRevoked(hospitalId).catch((e) => console.error("[changePasswordSettings] push failed:", e.message));
+    } catch (e) {
+      console.error("[changePasswordSettings] revoke others failed:", e.message);
+    }
+
+    try {
+      await AuditLog.create({
+        userId: hospital._id,
+        action: "PASSWORD_CHANGED",
+        status: "SUCCESS",
+        ipAddress,
+        userAgent,
+      });
+    } catch (e) {
+      console.error("AuditLog error (pw change):", e);
+    }
+
+    sendPasswordResetNoticeEmail(hospital.email, "changed").catch((e) =>
+      console.error("[changePasswordSettings] notice email failed:", e.message),
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully. Other sessions have been signed out.",
+    });
+  } catch (error) {
+    console.error("[changePasswordSettings] error:", error);
+    return res.status(500).json({ success: false, message: "Password change failed. Please try again later." });
+  }
+};
+
 export default {
   changePassword,
   registerHospital,
@@ -1689,4 +2106,8 @@ export default {
   revokeAllOtherSessions,
   reverifyAuthCode,
   storeFcmToken,
+  forgotPasswordInit,
+  forgotPasswordVerify,
+  forgotPasswordReset,
+  changePasswordSettings,
 };
