@@ -84,6 +84,12 @@ export const Navbar: React.FC = () => {
                 >
                   Activity
                 </Link>
+                <Link
+                  to="/admin/deletion-requests"
+                  className="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-500 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
+                >
+                  Deletions
+                </Link>
               </div>
             )}
           </div>
@@ -114,25 +120,28 @@ export const Navbar: React.FC = () => {
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
               >
-                <Menu.Items className="origin-top-right absolute right-0 mt-2 w-56 rounded-xl shadow-xl py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50 divide-y divide-gray-100">
-                  <div className="py-1">
+                <Menu.Items className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-xl bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50 divide-y divide-gray-100 overflow-hidden">
+                  {/* Identity card */}
+                  <div>
                     <Menu.Item>
                       {({ active }) => (
                         <button onClick={() => setIsProfileOpen(true)} className={`${active ? "bg-gray-50" : ""} w-full text-left px-4 py-3 group`}>
-                          <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors">{hospital?.hospitalName}</p>
+                          <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">{hospital?.hospitalName}</p>
                           <p className="text-xs text-gray-500 truncate mt-0.5">{hospital?.email}</p>
-                          <p className="text-[10px] text-blue-500 mt-1 uppercase font-semibold tracking-wider">Quick view</p>
+                          <p className="text-[10px] text-blue-500 mt-1 uppercase font-semibold tracking-wider">Quick view →</p>
                         </button>
                       )}
                     </Menu.Item>
                   </div>
 
+                  {/* ACCOUNT */}
                   <div className="py-1">
+                    <p className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Account</p>
                     <Menu.Item>
                       {({ active }) => (
                         <Link to="/profile" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
                           <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                           </svg>
                           Edit Profile
                         </Link>
@@ -140,15 +149,57 @@ export const Navbar: React.FC = () => {
                     </Menu.Item>
                     <Menu.Item>
                       {({ active }) => (
-                        <Link to="/security" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
+                        <Link to="/notifications" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
                           <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                           </svg>
-                          Security Settings
+                          Notifications
                         </Link>
                       )}
                     </Menu.Item>
                   </div>
+
+                  {/* SECURITY */}
+                  <div className="py-1">
+                    <p className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Security</p>
+                    <Menu.Item>
+                      {({ active }) => (
+                        <Link to="/password" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
+                          <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                          </svg>
+                          Password
+                        </Link>
+                      )}
+                    </Menu.Item>
+                    <Menu.Item>
+                      {({ active }) => (
+                        <Link to="/sessions" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
+                          <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          Sessions & Auth Code
+                        </Link>
+                      )}
+                    </Menu.Item>
+                  </div>
+
+                  {/* DANGER — non-admin only */}
+                  {!isAdmin && (
+                    <div className="py-1">
+                      <p className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-red-400">Danger</p>
+                      <Menu.Item>
+                        {({ active }) => (
+                          <Link to="/delete-account" className={`${active ? "bg-red-50" : ""} group flex items-center px-4 py-2 text-sm text-red-700`}>
+                            <svg className="mr-3 h-5 w-5 text-red-400 group-hover:text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V4a1 1 0 011-1h6a1 1 0 011 1v3" />
+                            </svg>
+                            Delete Account
+                          </Link>
+                        )}
+                      </Menu.Item>
+                    </div>
+                  )}
 
                   <div className="py-1">
                     <Menu.Item>

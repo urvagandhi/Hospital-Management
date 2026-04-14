@@ -486,6 +486,78 @@ export async function sendAccountLockedEmail(to, unlockMinutes) {
 }
 
 // ---------------------------------------------------------------------------
+// sendNewLoginAlertEmail — notify hospital when a new device signs in.
+// Gated by notificationPrefs.newLoginAlert at the caller.
+// ---------------------------------------------------------------------------
+export async function sendNewLoginAlertEmail(to, info) {
+  const device = escapeHtml(humanizeUserAgent(info?.userAgent));
+  const ip = escapeHtml(info?.ipAddress || "unknown");
+  const when = info?.when ? new Date(info.when).toLocaleString() : new Date().toLocaleString();
+  const subject = `New sign-in — ${APP_NAME}`;
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">New sign-in to your account</h2>
+    <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
+      A new device just signed in to your ${APP_NAME} account.
+    </p>
+    <div style="background:#eff6ff;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #bfdbfe;">
+      <p style="margin:0 0 6px;font-size:14px;color:#1e3a8a;"><strong>Device:</strong> ${device}</p>
+      <p style="margin:0 0 6px;font-size:14px;color:#1e3a8a;"><strong>IP:</strong> ${ip}</p>
+      <p style="margin:0;font-size:14px;color:#1e3a8a;"><strong>When:</strong> ${escapeHtml(when)}</p>
+    </div>
+    <p style="margin:0 0 8px;color:#475569;font-size:14px;">If this was you, no action is needed.</p>
+    <p style="margin:0;color:#991b1b;font-size:13px;">If you don't recognise this sign-in, change your password immediately and revoke active sessions from Security Settings.</p>`;
+  return sendEmail(to, subject, wrapHtml(body));
+}
+
+// ---------------------------------------------------------------------------
+// sendPasswordChangedEmail — security alert when password is changed.
+// Gated by notificationPrefs.securityAlerts at the caller.
+// ---------------------------------------------------------------------------
+export async function sendPasswordChangedEmail(to, info) {
+  const when = info?.when ? new Date(info.when).toLocaleString() : new Date().toLocaleString();
+  const ip = escapeHtml(info?.ipAddress || "unknown");
+  const subject = `Password changed — ${APP_NAME}`;
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Your password was changed</h2>
+    <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
+      The password for your ${APP_NAME} account was changed. All other devices have been signed out.
+    </p>
+    <div style="background:#f0fdf4;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #bbf7d0;">
+      <p style="margin:0 0 6px;font-size:14px;color:#14532d;"><strong>When:</strong> ${escapeHtml(when)}</p>
+      <p style="margin:0;font-size:14px;color:#14532d;"><strong>IP:</strong> ${ip}</p>
+    </div>
+    <p style="margin:0;color:#991b1b;font-size:13px;">If you didn't change your password, contact your administrator immediately.</p>`;
+  return sendEmail(to, subject, wrapHtml(body));
+}
+
+// ---------------------------------------------------------------------------
+// sendDeletionRequestEmail — notify admin of a new deletion request.
+// Gated by the admin's notificationPrefs.deletionUpdates at the caller.
+// ---------------------------------------------------------------------------
+export async function sendDeletionRequestEmail(to, info) {
+  const name = escapeHtml(info?.hospitalName || "Unknown hospital");
+  const email = escapeHtml(info?.email || "");
+  const reason = escapeHtml(info?.reason || "No reason provided");
+  const when = info?.when ? new Date(info.when).toLocaleString() : new Date().toLocaleString();
+  const scheduledFor = info?.scheduledFor ? new Date(info.scheduledFor).toLocaleString() : "—";
+  const subject = `Account deletion request — ${APP_NAME}`;
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">New deletion request</h2>
+    <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
+      A hospital has requested account deletion and is awaiting your review.
+    </p>
+    <div style="background:#fff7ed;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #fed7aa;">
+      <p style="margin:0 0 6px;font-size:14px;color:#7c2d12;"><strong>Hospital:</strong> ${name}</p>
+      <p style="margin:0 0 6px;font-size:14px;color:#7c2d12;"><strong>Email:</strong> ${email}</p>
+      <p style="margin:0 0 6px;font-size:14px;color:#7c2d12;"><strong>Requested:</strong> ${escapeHtml(when)}</p>
+      <p style="margin:0 0 6px;font-size:14px;color:#7c2d12;"><strong>Scheduled:</strong> ${escapeHtml(scheduledFor)}</p>
+      <p style="margin:0;font-size:14px;color:#7c2d12;"><strong>Reason:</strong> ${reason}</p>
+    </div>
+    <p style="margin:0;color:#475569;font-size:14px;">Review pending requests in the admin dashboard under <strong>Deletions</strong>.</p>`;
+  return sendEmail(to, subject, wrapHtml(body));
+}
+
+// ---------------------------------------------------------------------------
 // Default export
 // ---------------------------------------------------------------------------
 export default {
@@ -497,4 +569,7 @@ export default {
   sendForgotPasswordOtpEmail,
   sendPasswordResetNoticeEmail,
   sendContactChangedNoticeEmail,
+  sendNewLoginAlertEmail,
+  sendPasswordChangedEmail,
+  sendDeletionRequestEmail,
 };

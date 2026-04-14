@@ -131,6 +131,12 @@ router.patch("/:patientId/files/:folderName/:fileId/rename", patientController.r
  */
 router.delete("/:patientId/files/:folderName/:fileId", patientController.deleteFile);
 
+/**
+ * GET /api/patients/:patientId/files/:folderName/:fileId/signed-url
+ * B5: Return short-lived signed URL (or public URL for legacy files).
+ */
+router.get("/:patientId/files/:folderName/:fileId/signed-url", patientController.getFileSignedUrl);
+
 // ═══════════════════════════════════════════════════
 // DOWNLOAD ENDPOINTS
 // ═══════════════════════════════════════════════════

@@ -802,6 +802,21 @@ class FolderDetailsActivity : BaseActivity() {
             Toast.makeText(this, "File URL not available", Toast.LENGTH_SHORT).show()
             return
         }
+        // A3: prefer in-app viewer (signed URL + PdfRenderer/Glide) for remote images and PDFs
+        val fileId = file._id
+        val isRemote = !(fileUrl.startsWith("file://") || fileUrl.startsWith("/"))
+        if (isRemote && !fileId.isNullOrBlank() && (file.isImage || file.isPdf)) {
+            val intent = Intent(this, FileViewerActivity::class.java).apply {
+                putExtra("patientId", patientId)
+                putExtra("folderName", folderName)
+                putExtra("fileId", fileId)
+                putExtra("fileName", file.fileName)
+                putExtra("mimeType", file.mimeType ?: "")
+                putExtra("fileUrl", fileUrl)
+            }
+            startActivity(intent)
+            return
+        }
         try {
             if (fileUrl.startsWith("file://") || fileUrl.startsWith("/")) {
                 val localFile = if (fileUrl.startsWith("file://")) {

@@ -1,0 +1,38 @@
+﻿Name,Dependencies,Description,ID,Notes,Platform,Priority Order,Status,Tier,Title
+Secure file access (pre-signed URLs),File storage layer,Generate secure R2 URLs,13,Critical for document security,Backend,12,Missing,High,Secure file access (pre-signed URLs)
+Activity log system,None,Log collection + retrieval API,10,No audit trail,Backend,9,Missing,High,Activity log system
+App version control API,Android app,/api/version for force updates,11,Needed for rollout control,Backend,10,Missing,High,App version control API
+Account deletion workflow,Admin panel,User request + admin approval system,9,Compliance risk,Backend,8,Missing,High,Account deletion workflow
+Activity log UI,Backend #10,Display logs,23,Blocked,Web,22,Missing,Medium,Activity log UI
+Cloudinary thumbnails UI,Backend #14,Show thumbnails in folders,21,Blocked,Web,20,Missing,Medium,Cloudinary thumbnails UI
+Document viewer,Backend #13,PDF inline + image preview,20,Blocked,Web,19,Missing,Medium,Document viewer
+Account deletion + force update (Android),"Backend #9, #11",Delete flow + version enforcement,29,Blocked,Android,28,Missing,Low,Account deletion + force update (Android)
+Hospital model (T&C + deletion flags),None,"Missing tcAccepted, tcVersion, tcAcceptedAt, DELETION_PENDING",3,Only patientIdCounter implemented,Backend,2,Partial,Critical,Hospital model (T&C + deletion flags)
+Notification preferences + FCM gating,FCM,Preference storage + notification filtering,12,Only token storage exists,Backend,11,Partial,High,Notification preferences + FCM gating
+Cloudinary thumbnails (120x120),Cloudinary,Thumbnail generation + URL field,14,Only publicId stored,Backend,13,Partial,High,Cloudinary thumbnails (120x120)
+Folder download modes,File service,Individual / ZIP / PDF downloads,22,ZIP + PDF done,Web,21,Partial,Medium,Folder download modes
+Admin hospital detail UI,Backend #9,Approve/reject deletion,24,Resend only,Web,23,Partial,Medium,Admin hospital detail UI
+Thumbnails + file viewing (Android),"Backend #13, #14",Display thumbnails + viewer,31,UI exists only,Android,30,Partial,Low,Thumbnails + file viewing (Android)
+Patient model (name + remarks + ID format),None,Patient schema with [INITIALS]-[NNN] format,1,Fully stable,Backend,1,Done,Critical,Patient model (name + remarks + ID format)
+Change password (settings-based),Depends on session system,Requires current password + revoke sessions,7,Completed,Backend,6,Done,Critical,Change password (settings-based)
+Forgot password (OTP flow),Email OTP required (SMS later),3 endpoints with OTP verification,5,Highest risk gap,Backend,4,Done,Critical,Forgot password (OTP flow)
+Session management (2-device limit),None,"Session list, revoke, revoke-all",6,Fully implemented,Backend,5,Done,Critical,Session management (2-device limit)
+Self-service registration (OTP flow),SMS (Deferred),3 endpoints with email OTP,4,SMS intentionally postponed,Backend,3,Done,Critical,Self-service registration (OTP flow)
+KeyPermanentlyInvalidatedException recovery handling,None,Bonus item (outside 33-list) — already implemented,35,Implemented,Android,,Done,High,KeyPermanentlyInvalidatedException recovery handling
+Secure challenge flow (peek/consume separation),None,Bonus item (outside 33-list) — already implemented,36,Implemented,Backend,,Done,High,Secure challenge flow (peek/consume separation)
+Auto refresh on 401 (/refresh-token),None,Bonus item (outside 33-list) — already implemented,39,Implemented,Backend,,Done,High,Auto refresh on 401 (/refresh-token)
+Biometric keystore scoping per hospital,None,Bonus item (outside 33-list) — already implemented,34,Implemented,Android,,Done,High,Biometric keystore scoping per hospital
+365-day inactivity timeout,None,Bonus item (outside 33-list) — already implemented,40,Implemented,Backend,,Done,High,365-day inactivity timeout
+Admin resend credentials,None,Resend login credentials,15,Completed,Backend,14,Done,High,Admin resend credentials
+Profile management (/me + OTP change),Email OTP,Profile updates with OTP verification,8,Implemented,Backend,7,Done,High,Profile management (/me + OTP change)
+Human-readable User-Agent normalization,None,Bonus item (outside 33-list) — already implemented,37,Implemented,Backend,,Done,Medium,Human-readable User-Agent normalization
+Improved email messaging for device limit,None,Bonus item (outside 33-list) — already implemented,38,Implemented,Backend,,Done,Medium,Improved email messaging for device limit
+Login page (forgot password link),Backend #5,Add forgot password entry,25,Completed,Web,24,Done,Medium,Login page (forgot password link)
+Forgot password UI pages,Backend #5,3-page reset flow,16,Completed,Web,15,Done,Medium,Forgot password UI pages
+Profile page with OTP flow,Backend #8,Profile edit + OTP verification,18,Completed,Web,17,Done,Medium,Profile page with OTP flow
+Security settings UI,"Backend #6, #7",Sessions + revoke + password change,19,All Done,Web,18,Done,Medium,Security settings UI
+Simplified patient UI,UI schema,Name + ID + folders,17,Aligned with backend,Web,16,Done,Medium,Simplified patient UI
+Registration flow (Android),Backend #4,Register + OTP activities,26,Stable,Android,25,Done,Low,Registration flow (Android)
+Simplified patient UI (Android),None,Minimal patient view,30,Complete,Android,29,Done,Low,Simplified patient UI (Android)
+Forgot password (Android),Backend #5,3-screen reset flow,27,Completed,Android,26,Done,Low,Forgot password (Android)
+Profile/Security module (Android),"Backend #8, #6, #12",Profile + sessions + notifications,28,Completed,Android,27,Done,Low,Profile/Security module (Android)

@@ -7,7 +7,12 @@ import AuditLog from "../models/AuditLog.js";
 import * as patientService from "../services/patient.service.js";
 import * as pdfService from "../services/pdf.service.js";
 import { setUploadIdempotentResponse } from "../services/redis.service.js";
-import { deleteFile as cloudinaryDeleteFile } from "../services/storage.service.js";
+import {
+  deleteFile as cloudinaryDeleteFile,
+  buildThumbnailUrl,
+  buildSignedUrl,
+  SIGNED_UPLOADS_ENABLED,
+} from "../services/storage.service.js";
 import * as zipService from "../services/zip.service.js";
 
 /** Fire-and-forget audit log — never blocks the response */
@@ -242,6 +247,12 @@ export const uploadFile = async (req, res) => {
     // and the public ID in .public_id or .filename.
     const cloudinaryUrl = file.secure_url || file.path;
     const cloudinaryPublicId = file.public_id || file.filename;
+    const isImage = (file.mimetype || "").startsWith("image/");
+    const resourceType = isImage ? "image" : "raw";
+    const accessMode = SIGNED_UPLOADS_ENABLED ? "signed" : "public";
+    const thumbnailUrl = isImage
+      ? buildThumbnailUrl({ publicId: cloudinaryPublicId, resourceType, accessMode })
+      : null;
 
     console.log("[Patient Controller] File uploaded to Cloudinary:", cloudinaryUrl);
 
@@ -250,6 +261,9 @@ export const uploadFile = async (req, res) => {
       fileName: file.originalname,
       fileUrl: cloudinaryUrl,
       cloudinaryPublicId: cloudinaryPublicId,
+      thumbnailUrl,
+      resourceType,
+      accessMode,
       size: file.size || file.bytes,
       mimeType: file.mimetype,
     });
@@ -351,6 +365,58 @@ export const deleteFile = async (req, res) => {
       success: false,
       message: isNotFound ? error.message : "Failed to delete file",
     });
+  }
+};
+
+/**
+ * GET /api/patients/:patientId/files/:folderName/:fileId/signed-url
+ * B5: Returns a short-lived signed URL for secure file access. Falls back to
+ *     the stored public URL for legacy files (accessMode = 'public').
+ */
+export const getFileSignedUrl = async (req, res) => {
+  try {
+    const { patientId, folderName, fileId } = req.params;
+    const hospitalId = req.hospital?.id;
+    const download = String(req.query.download || "").toLowerCase() === "true";
+
+    const patient = await patientService.getPatientById(hospitalId, patientId);
+    if (!patient) return res.status(404).json({ success: false, message: "Patient not found" });
+
+    const folder = patient.folders.find((f) => f.name === folderName);
+    if (!folder) return res.status(404).json({ success: false, message: "Folder not found" });
+
+    const file = folder.files.id ? folder.files.id(fileId) : folder.files.find((f) => String(f._id) === String(fileId));
+    if (!file) return res.status(404).json({ success: false, message: "File not found" });
+
+    // Legacy public files — return the stored URL unchanged.
+    if (file.accessMode !== "signed") {
+      return res.json({
+        success: true,
+        data: {
+          url: file.fileUrl,
+          expiresIn: null,
+          accessMode: "public",
+        },
+      });
+    }
+
+    const signed = buildSignedUrl({
+      publicId: file.cloudinaryPublicId,
+      resourceType: file.resourceType || "image",
+      ttlSeconds: 300,
+      attachment: download,
+      fileName: download ? file.fileName : null,
+    });
+
+    logAudit(hospitalId, "PATIENT_VIEW", req, { patientId, folderName, fileId, signed: true });
+
+    return res.json({
+      success: true,
+      data: { url: signed, expiresIn: 300, accessMode: "signed" },
+    });
+  } catch (err) {
+    console.error("[Patient Controller] signed-url error:", err);
+    return res.status(500).json({ success: false, message: "Failed to build signed URL" });
   }
 };
 

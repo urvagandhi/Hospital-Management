@@ -14,7 +14,47 @@ data class Hospital(
     @SerializedName("city") val city: String? = null,
     @SerializedName("state") val state: String? = null,
     @SerializedName("zipCode") val zipCode: String? = null,
-    @SerializedName("isActive") val isActive: Boolean = true
+    @SerializedName("isActive") val isActive: Boolean = true,
+    @SerializedName("deletionStatus") val deletionStatus: String? = "active",
+    @SerializedName("deletionScheduledFor") val deletionScheduledFor: String? = null,
+    @SerializedName("notificationPrefs") val notificationPrefs: NotificationPrefs? = null
 ) {
     val isAdmin: Boolean get() = role == "admin"
 }
+
+data class NotificationPrefs(
+    @SerializedName("newLoginAlert") val newLoginAlert: Boolean = true,
+    @SerializedName("deletionUpdates") val deletionUpdates: Boolean = true,
+    @SerializedName("securityAlerts") val securityAlerts: Boolean = true,
+    @SerializedName("marketing") val marketing: Boolean = false
+)
+
+data class AppVersionInfo(
+    @SerializedName("updateRequired") val updateRequired: Boolean = false,
+    @SerializedName("forceUpdate") val forceUpdate: Boolean = false,
+    @SerializedName("latestVersion") val latestVersion: String = "",
+    @SerializedName("minVersion") val minVersion: String = "",
+    @SerializedName("updateUrl") val updateUrl: String = "",
+    @SerializedName("releaseNotes") val releaseNotes: String = ""
+)
+
+data class AppVersionResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: AppVersionInfo
+)
+
+data class NotificationPrefsResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: NotificationPrefs
+)
+
+data class SignedUrlInfo(
+    @SerializedName("url") val url: String,
+    @SerializedName("expiresIn") val expiresIn: Int? = null,
+    @SerializedName("accessMode") val accessMode: String = "public"
+)
+
+data class SignedUrlResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: SignedUrlInfo
+)

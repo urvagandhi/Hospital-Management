@@ -300,7 +300,7 @@ const FolderView: React.FC = () => {
                     <div className="col-span-6 flex items-center gap-3">
                       {showThumb ? (
                         <img
-                          src={buildThumbnailUrl(file.fileUrl, 80, 80)}
+                          src={(file as any).thumbnailUrl || buildThumbnailUrl(file.fileUrl, 80, 80)}
                           alt=""
                           loading="lazy"
                           onError={() => setThumbFailed((s) => ({ ...s, [index]: true }))}
@@ -349,6 +349,8 @@ const FolderView: React.FC = () => {
           index={viewerIndex}
           onClose={() => setViewerIndex(null)}
           onIndexChange={setViewerIndex}
+          patientId={patientId}
+          folderName={folderName}
         />
       )}
     </div>

@@ -7,7 +7,8 @@ import crypto from "crypto";
 import Hospital from "../models/Hospital.js";
 import AuditLog from "../models/AuditLog.js";
 import { hashPassword } from "../utils/hash.js";
-import { sendWelcomeEmail, sendOTPEmail, sendContactChangedNoticeEmail } from "../services/mail.service.js";
+import { sendWelcomeEmail, sendOTPEmail, sendContactChangedNoticeEmail, sendDeletionRequestEmail } from "../services/mail.service.js";
+import { notifyAdminsOfDeletionRequest } from "../services/push.service.js";
 import {
   setContactChangeRequest,
   verifyContactChangeOtp,
@@ -597,6 +598,320 @@ export const verifyContactChange = async (req, res) => {
   }
 };
 
+// ═══════════════════════════════════════════════════
+// B6 — Notification Preferences
+// ═══════════════════════════════════════════════════
+
+const DEFAULT_NOTIFICATION_PREFS = {
+  newLoginAlert: true,
+  deletionUpdates: true,
+  securityAlerts: true,
+  marketing: false,
+};
+
+/** Merge any stored prefs over defaults so UI always sees a full object. */
+function normalizePrefs(stored) {
+  return { ...DEFAULT_NOTIFICATION_PREFS, ...(stored || {}) };
+}
+
+/** GET /api/hospitals/me/notification-preferences */
+export const getNotificationPreferences = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const hospital = await Hospital.findById(hospitalId).select("notificationPrefs").lean();
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+
+    return res.json({ success: true, data: normalizePrefs(hospital.notificationPrefs) });
+  } catch (err) {
+    console.error("[getNotificationPreferences] error:", err);
+    return res.status(500).json({ success: false, message: "Failed to load preferences" });
+  }
+};
+
+/** PUT /api/hospitals/me/notification-preferences */
+export const updateNotificationPreferences = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    // Only accept known boolean keys — silently drop anything else.
+    const allowed = ["newLoginAlert", "deletionUpdates", "securityAlerts", "marketing"];
+    const set = {};
+    for (const k of allowed) {
+      if (typeof req.body?.[k] === "boolean") {
+        set[`notificationPrefs.${k}`] = req.body[k];
+      }
+    }
+    if (Object.keys(set).length === 0) {
+      return res.status(400).json({ success: false, message: "No valid preferences to update" });
+    }
+
+    // Use findByIdAndUpdate with dotted paths so we only touch the prefs
+    // subtree — avoids re-running the full Hospital schema validators
+    // (email/phone regexes) on every toggle.
+    const updated = await Hospital.findByIdAndUpdate(
+      hospitalId,
+      { $set: set },
+      { new: true, runValidators: false },
+    ).select("notificationPrefs").lean();
+
+    if (!updated) return res.status(404).json({ success: false, message: "Hospital not found" });
+
+    AuditLog.create({
+      userId: hospitalId,
+      action: "PROFILE_PATCHED",
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+      details: { notificationPrefs: set },
+    }).catch(() => {});
+
+    return res.json({ success: true, data: normalizePrefs(updated.notificationPrefs) });
+  } catch (err) {
+    console.error("[updateNotificationPreferences] error:", err);
+    return res.status(500).json({ success: false, message: "Failed to update preferences" });
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// B2 — Account Deletion Workflow
+// ═══════════════════════════════════════════════════
+
+const GRACE_DAYS = parseInt(process.env.ACCOUNT_DELETION_GRACE_DAYS || "30", 10);
+
+/** POST /api/hospitals/me/account/deletion-request — user-initiated */
+export const requestAccountDeletion = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    const { password, reason } = req.body || {};
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+    if (hospital.role === "admin") {
+      return res.status(403).json({ success: false, message: "Admin accounts cannot self-delete" });
+    }
+    if (hospital.deletionStatus && hospital.deletionStatus !== "active") {
+      return res.status(409).json({ success: false, message: "Deletion request already pending" });
+    }
+    if (!password) {
+      return res.status(400).json({ success: false, message: "Password is required" });
+    }
+
+    const ok = await hospital.matchPassword(password);
+    if (!ok) {
+      AuditLog.create({
+        userId: hospital._id,
+        action: "PASSWORD_CHANGE_FAILED",
+        status: "FAILURE",
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+        details: { context: "account_deletion_request" },
+      }).catch(() => {});
+      return res.status(401).json({ success: false, message: "Invalid password" });
+    }
+
+    hospital.deletionStatus = "deletion_pending";
+    hospital.deletionRequestedAt = new Date();
+    hospital.deletionScheduledFor = new Date(Date.now() + GRACE_DAYS * 24 * 60 * 60 * 1000);
+    hospital.deletionReason = (reason || "").toString().slice(0, 1000);
+    hospital.deletionRejectedReason = null;
+    hospital.deletionApprovedBy = null;
+    hospital.deletionApprovedAt = null;
+    await hospital.save();
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "PROFILE_PATCHED",
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+      details: { action: "account_deletion_requested", scheduledFor: hospital.deletionScheduledFor },
+    }).catch(() => {});
+
+    // Notify admins who opted-in (notificationPrefs.deletionUpdates) via
+    // email + FCM push. Fire and forget — request succeeds even if
+    // email/push transport is down.
+    (async () => {
+      try {
+        const admins = await Hospital.find({
+          role: "admin",
+          isActive: true,
+          "notificationPrefs.deletionUpdates": { $ne: false },
+        }).select("email").lean();
+        for (const a of admins) {
+          if (a.email) {
+            sendDeletionRequestEmail(a.email, {
+              hospitalName: hospital.hospitalName,
+              email: hospital.email,
+              reason: hospital.deletionReason,
+              when: hospital.deletionRequestedAt,
+              scheduledFor: hospital.deletionScheduledFor,
+            }).catch((e) => console.error("[deletion admin email]", e.message));
+          }
+        }
+      } catch (e) { console.error("[deletion admin notify]", e.message); }
+      notifyAdminsOfDeletionRequest(hospital.hospitalName).catch((e) =>
+        console.error("[deletion admin push]", e.message),
+      );
+    })();
+
+    return res.json({
+      success: true,
+      data: {
+        deletionStatus: hospital.deletionStatus,
+        deletionRequestedAt: hospital.deletionRequestedAt,
+        deletionScheduledFor: hospital.deletionScheduledFor,
+        graceDays: GRACE_DAYS,
+      },
+    });
+  } catch (err) {
+    console.error("[requestAccountDeletion] error:", err);
+    return res.status(500).json({ success: false, message: "Failed to request deletion" });
+  }
+};
+
+/** POST /api/hospitals/me/account/deletion-cancel — user-initiated within grace window */
+export const cancelAccountDeletion = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+    if (hospital.deletionStatus !== "deletion_pending") {
+      return res.status(409).json({ success: false, message: "No pending deletion to cancel" });
+    }
+    hospital.deletionStatus = "active";
+    hospital.deletionRequestedAt = null;
+    hospital.deletionScheduledFor = null;
+    hospital.deletionReason = null;
+    await hospital.save();
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "PROFILE_PATCHED",
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+      details: { action: "account_deletion_cancelled" },
+    }).catch(() => {});
+
+    return res.json({ success: true, data: { deletionStatus: "active" } });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to cancel deletion" });
+  }
+};
+
+/** GET /api/hospitals/deletion-requests — admin */
+export const listDeletionRequests = async (_req, res) => {
+  try {
+    const items = await Hospital.find({ deletionStatus: "deletion_pending" })
+      .select("hospitalName email phone deletionStatus deletionRequestedAt deletionScheduledFor deletionReason createdAt")
+      .sort({ deletionRequestedAt: -1 })
+      .lean();
+    return res.json({ success: true, data: items });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to list deletion requests" });
+  }
+};
+
+/** POST /api/hospitals/:id/deletion/approve — admin; soft-delete (retains audit log) */
+export const approveDeletion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.hospital?.id;
+    const hospital = await Hospital.findById(id);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+    if (hospital.deletionStatus !== "deletion_pending") {
+      return res.status(409).json({ success: false, message: "No pending deletion for this hospital" });
+    }
+
+    // Revoke all sessions for this hospital
+    try {
+      const Session = (await import("../models/Session.js")).default;
+      await Session.updateMany(
+        { hospitalId: hospital._id, isActive: true },
+        { $set: { isActive: false, revokedReason: "ACCOUNT_DELETED" } },
+      );
+    } catch (e) { console.error("[approveDeletion] session revoke failed:", e.message); }
+
+    // Soft-delete: preserve audit log via ObjectId; scrub PII.
+    // Scrubbed values must still satisfy Hospital schema validators:
+    //   email regex:  \w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+
+    //   phone regex:  ^\+?[1-9]\d{1,14}$   (max 15 digits; first digit 1-9)
+    hospital.deletionStatus = "deleted";
+    hospital.deletedAt = new Date();
+    hospital.deletionApprovedBy = adminId;
+    hospital.deletionApprovedAt = new Date();
+    hospital.isActive = false;
+
+    const idHex = String(hospital._id);
+    // Hex-only local part + TLD of 3 chars keeps the email regex happy.
+    hospital.email = `deleted-${idHex}@del.dev`;
+    // Phone: 15 digits max, first must be 1-9. Build "9" + 14 digits derived
+    // from the ObjectId (hex → digits only, left-padded) so each scrubbed
+    // record still satisfies the unique index.
+    const digits = idHex.replace(/\D/g, "").padStart(14, "0").slice(-14);
+    hospital.phone = `+9${digits}`;
+    hospital.hospitalName = `[DELETED ${idHex.slice(-8)}]`;
+    hospital.passwordHash = "deleted";
+    hospital.fcmToken = undefined;
+    hospital.biometricKeys = [];
+    // Bypass validators on save as a belt-and-braces — deletion paths should
+    // not be blocked by stricter future schema changes.
+    await hospital.save({ validateBeforeSave: false });
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "AUTO_DELETE",
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+      details: { approvedBy: adminId, type: "admin_approved_deletion" },
+    }).catch(() => {});
+
+    return res.json({ success: true, message: "Hospital deleted" });
+  } catch (err) {
+    console.error("[approveDeletion] error:", err);
+    return res.status(500).json({ success: false, message: "Failed to approve deletion" });
+  }
+};
+
+/** POST /api/hospitals/:id/deletion/reject — admin */
+export const rejectDeletion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.hospital?.id;
+    const { reason } = req.body || {};
+    const hospital = await Hospital.findById(id);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+    if (hospital.deletionStatus !== "deletion_pending") {
+      return res.status(409).json({ success: false, message: "No pending deletion for this hospital" });
+    }
+
+    hospital.deletionStatus = "active";
+    hospital.deletionRejectedReason = (reason || "").toString().slice(0, 1000);
+    hospital.deletionApprovedBy = adminId;
+    hospital.deletionApprovedAt = new Date();
+    hospital.deletionRequestedAt = null;
+    hospital.deletionScheduledFor = null;
+    await hospital.save();
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "PROFILE_PATCHED",
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+      details: { action: "deletion_rejected_by_admin", adminId, reason: hospital.deletionRejectedReason },
+    }).catch(() => {});
+
+    return res.json({ success: true, message: "Deletion request rejected" });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Failed to reject deletion" });
+  }
+};
+
 export default {
   getAllHospitals,
   getCurrentHospital,
@@ -605,4 +920,11 @@ export default {
   patchMe,
   initContactChange,
   verifyContactChange,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  requestAccountDeletion,
+  cancelAccountDeletion,
+  listDeletionRequests,
+  approveDeletion,
+  rejectDeletion,
 };

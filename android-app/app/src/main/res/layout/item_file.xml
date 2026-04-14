@@ -27,11 +27,20 @@
                 android:background="@drawable/bg_stat_card_icon" />
 
             <ImageView
+                android:id="@+id/ivFileIcon"
                 android:layout_width="22dp"
                 android:layout_height="22dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_file_document"
                 app:tint="@color/brand_primary" />
+
+            <ImageView
+                android:id="@+id/ivThumbnail"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="center"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
         </FrameLayout>
 
         <LinearLayout

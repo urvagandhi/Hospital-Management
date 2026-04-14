@@ -122,10 +122,185 @@ export const verifyContactChange = async (otp: string): Promise<Hospital> => {
     }
 };
 
+// ─────────────────────────────────────────────────────────────
+// Notification preferences (B6)
+// ─────────────────────────────────────────────────────────────
+export interface NotificationPrefs {
+    newLoginAlert: boolean;
+    deletionUpdates: boolean;
+    securityAlerts: boolean;
+    marketing: boolean;
+}
+
+export const getNotificationPrefs = async (): Promise<NotificationPrefs> => {
+    try {
+        const res = await api.get<{ success: boolean; data: NotificationPrefs }>(
+            "/hospitals/me/notification-preferences",
+        );
+        return res.data.data;
+    } catch (err) {
+        throw apiError(err, "Failed to load preferences");
+    }
+};
+
+export const updateNotificationPrefs = async (
+    prefs: Partial<NotificationPrefs>,
+): Promise<NotificationPrefs> => {
+    try {
+        const res = await api.put<{ success: boolean; data: NotificationPrefs }>(
+            "/hospitals/me/notification-preferences",
+            prefs,
+        );
+        return res.data.data;
+    } catch (err) {
+        throw apiError(err, "Failed to save preferences");
+    }
+};
+
+// ─────────────────────────────────────────────────────────────
+// Account deletion (B2) — user self-service
+// ─────────────────────────────────────────────────────────────
+export const requestAccountDeletion = async (password: string, reason: string) => {
+    try {
+        const res = await api.post("/hospitals/me/account/deletion-request", { password, reason });
+        return res.data;
+    } catch (err) {
+        throw apiError(err, "Failed to request deletion");
+    }
+};
+
+export const cancelAccountDeletion = async () => {
+    try {
+        const res = await api.post("/hospitals/me/account/deletion-cancel", {});
+        return res.data;
+    } catch (err) {
+        throw apiError(err, "Failed to cancel deletion");
+    }
+};
+
+// ─────────────────────────────────────────────────────────────
+// Admin: deletion approvals + version management
+// ─────────────────────────────────────────────────────────────
+export interface DeletionRequest {
+    _id: string;
+    hospitalName: string;
+    email: string;
+    phone: string;
+    deletionStatus: "deletion_pending";
+    deletionRequestedAt: string;
+    deletionScheduledFor: string;
+    deletionReason?: string;
+}
+
+export const listDeletionRequests = async (): Promise<DeletionRequest[]> => {
+    try {
+        const res = await api.get<{ success: boolean; data: DeletionRequest[] }>(
+            "/hospitals/deletion-requests",
+        );
+        return res.data.data;
+    } catch (err) {
+        throw apiError(err, "Failed to load deletion requests");
+    }
+};
+
+export const approveDeletion = async (id: string) => {
+    try {
+        const res = await api.post(`/hospitals/${id}/deletion/approve`, {});
+        return res.data;
+    } catch (err) {
+        throw apiError(err, "Failed to approve deletion");
+    }
+};
+
+export const rejectDeletion = async (id: string, reason: string) => {
+    try {
+        const res = await api.post(`/hospitals/${id}/deletion/reject`, { reason });
+        return res.data;
+    } catch (err) {
+        throw apiError(err, "Failed to reject deletion");
+    }
+};
+
+// ─────────────────────────────────────────────────────────────
+// App Version (B3)
+// ─────────────────────────────────────────────────────────────
+export interface AppVersion {
+    _id: string;
+    platform: "android" | "ios";
+    minVersion: string;
+    latestVersion: string;
+    forceUpdate: boolean;
+    updateUrl: string;
+    releaseNotes: string;
+    createdAt: string;
+}
+
+export const listAppVersions = async (platform?: string): Promise<AppVersion[]> => {
+    try {
+        const res = await api.get<{ success: boolean; data: AppVersion[] }>(
+            `/version/all${platform ? `?platform=${platform}` : ""}`,
+        );
+        return res.data.data;
+    } catch (err) {
+        throw apiError(err, "Failed to load versions");
+    }
+};
+
+export const createAppVersion = async (payload: Partial<AppVersion>) => {
+    try {
+        const res = await api.post<{ success: boolean; data: AppVersion }>("/version", payload);
+        return res.data.data;
+    } catch (err) {
+        throw apiError(err, "Failed to create version");
+    }
+};
+
+export const updateAppVersion = async (id: string, payload: Partial<AppVersion>) => {
+    try {
+        const res = await api.put<{ success: boolean; data: AppVersion }>(`/version/${id}`, payload);
+        return res.data.data;
+    } catch (err) {
+        throw apiError(err, "Failed to update version");
+    }
+};
+
+// ─────────────────────────────────────────────────────────────
+// Signed file URL (B5)
+// ─────────────────────────────────────────────────────────────
+export const getFileSignedUrl = async (
+    patientId: string,
+    folderName: string,
+    fileId: string,
+    download = false,
+): Promise<{ url: string; expiresIn: number | null; accessMode: "public" | "signed" }> => {
+    try {
+        const res = await api.get<{
+            success: boolean;
+            data: { url: string; expiresIn: number | null; accessMode: "public" | "signed" };
+        }>(
+            `/patients/${patientId}/files/${encodeURIComponent(folderName)}/${fileId}/signed-url${download ? "?download=true" : ""}`,
+        );
+        return res.data.data;
+    } catch (err) {
+        throw apiError(err, "Failed to get file URL");
+    }
+};
+
 export default {
     getCurrentHospital,
     getHospitalById,
     patchProfile,
     initContactChange,
     verifyContactChange,
+    getNotificationPrefs,
+    updateNotificationPrefs,
+    requestAccountDeletion,
+    cancelAccountDeletion,
+    listDeletionRequests,
+    approveDeletion,
+    rejectDeletion,
+    listAppVersions,
+    createAppVersion,
+    updateAppVersion,
+    getFileSignedUrl,
 };

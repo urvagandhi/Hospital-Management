@@ -290,6 +290,8 @@
     <style name="AlertDialogTheme" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorSecondary">@color/brand_accent</item>
+        <!-- Use elevated, opaque surface to prevent the dialog from blending awkwardly with the activity behind it -->
+        <item name="colorSurface">@color/color_surface_elevated</item>
         <item name="shapeAppearanceOverlay">@style/ShapeAppearance.App.LargeComponent</item>
         <item name="materialAlertDialogBodyTextStyle">@style/Widget.App.AlertDialog.Body.Text</item>
         <item name="materialAlertDialogTitleTextStyle">@style/Widget.App.AlertDialog.Title.Text</item>

@@ -256,4 +256,38 @@ interface ApiService {
     // FCM token registration
     @POST("/api/auth/fcm-token")
     suspend fun postFcmToken(@Body body: Map<String, String>): Response<Map<String, Any>>
+
+    // ── App Version (B3 / A1) — public endpoint ──
+    @GET("/api/version")
+    suspend fun getAppVersion(
+        @Query("platform") platform: String = "android",
+        @Query("currentVersion") currentVersion: String
+    ): Response<com.hospital.management.data.models.AppVersionResponse>
+
+    // ── Notification Preferences (B6 / A4) ──
+    @GET("/api/hospitals/me/notification-preferences")
+    suspend fun getNotificationPreferences(): Response<com.hospital.management.data.models.NotificationPrefsResponse>
+
+    @PUT("/api/hospitals/me/notification-preferences")
+    suspend fun updateNotificationPreferences(
+        @Body body: Map<String, Boolean>
+    ): Response<com.hospital.management.data.models.NotificationPrefsResponse>
+
+    // ── Account Deletion (B2 / A2) ──
+    @POST("/api/hospitals/me/account/deletion-request")
+    suspend fun requestAccountDeletion(
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    @POST("/api/hospitals/me/account/deletion-cancel")
+    suspend fun cancelAccountDeletion(): Response<Map<String, Any>>
+
+    // ── Signed URL (B5 / A3) ──
+    @GET("/api/patients/{patientId}/files/{folderName}/{fileId}/signed-url")
+    suspend fun getFileSignedUrl(
+        @Path("patientId") patientId: String,
+        @Path("folderName") folderName: String,
+        @Path("fileId") fileId: String,
+        @Query("download") download: Boolean = false
+    ): Response<com.hospital.management.data.models.SignedUrlResponse>
 }

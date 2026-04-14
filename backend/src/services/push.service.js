@@ -122,20 +122,75 @@ export async function notifySessionRevoked(userId) {
 
 /**
  * Notify a user that a new login was detected.
- * @param {string} userId - The Hospital _id.
- * @param {string} deviceInfo - Description of the device that logged in.
- * @returns {Promise<{success: boolean}>}
+ * Gated by notificationPrefs.newLoginAlert — if the user opted out, this is a no-op.
  */
 export async function notifyNewLogin(userId, deviceInfo) {
   try {
+    const hospital = await Hospital.findById(userId).select("notificationPrefs").lean();
+    if (hospital?.notificationPrefs && hospital.notificationPrefs.newLoginAlert === false) {
+      return { success: false, reason: "opted_out" };
+    }
     return await sendPushToUser(
       userId,
-      "New Login Detected",
-      `New login detected on ${deviceInfo}`,
+      "New Sign-in",
+      `New sign-in on ${deviceInfo}`,
       { type: "NEW_LOGIN" }
     );
   } catch (error) {
     console.error("[push.service] notifyNewLogin failed:", error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Notify a user that their password was changed.
+ * Gated by notificationPrefs.securityAlerts.
+ */
+export async function notifyPasswordChanged(userId) {
+  try {
+    const hospital = await Hospital.findById(userId).select("notificationPrefs").lean();
+    if (hospital?.notificationPrefs && hospital.notificationPrefs.securityAlerts === false) {
+      return { success: false, reason: "opted_out" };
+    }
+    return await sendPushToUser(
+      userId,
+      "Password Changed",
+      "Your account password was just changed. Other devices have been signed out.",
+      { type: "PASSWORD_CHANGED" }
+    );
+  } catch (error) {
+    console.error("[push.service] notifyPasswordChanged failed:", error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Notify all admins who opted-in about a new deletion request.
+ * Gated by each admin's notificationPrefs.deletionUpdates.
+ */
+export async function notifyAdminsOfDeletionRequest(hospitalName) {
+  try {
+    const admins = await Hospital.find({
+      role: "admin",
+      isActive: true,
+      "notificationPrefs.deletionUpdates": { $ne: false },
+    }).select("_id fcmToken").lean();
+
+    const results = [];
+    for (const admin of admins) {
+      if (admin.fcmToken?.token) {
+        const r = await sendPushToDevice(
+          admin.fcmToken.token,
+          "Deletion Request",
+          `${hospitalName} has requested account deletion`,
+          { type: "DELETION_REQUEST" }
+        );
+        results.push({ adminId: String(admin._id), ...r });
+      }
+    }
+    return { success: true, count: results.length, results };
+  } catch (error) {
+    console.error("[push.service] notifyAdminsOfDeletionRequest failed:", error.message);
     return { success: false, error: error.message };
   }
 }

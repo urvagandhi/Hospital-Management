@@ -15,6 +15,7 @@ import { ErrorMessage } from "../components/ErrorMessage";
 import { OtpInput } from "../components/OtpInput";
 import { TextInput } from "../components/TextInput";
 import { useAuth } from "../hooks/useAuth";
+import { useScrollToHash } from "../hooks/useScrollToHash";
 import {
   getCurrentHospital,
   patchProfile,
@@ -28,6 +29,7 @@ type ContactField = "email" | "phone";
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useAuth();
+  useScrollToHash();
 
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [loading, setLoading] = useState(true);
@@ -257,7 +259,7 @@ const Profile: React.FC = () => {
         </div>
 
         {/* ── Sensitive contact fields (OTP-gated) ───────────────────── */}
-        <div className="bg-white rounded-2xl shadow-xl p-6">
+        <div id="contact-info" className="bg-white rounded-2xl shadow-xl p-6 scroll-mt-24">
           <h2 className="text-lg font-semibold text-gray-800 mb-1">Contact Information</h2>
           <p className="text-sm text-gray-500 mb-4">
             Changing your email or phone requires a one-time code for security.

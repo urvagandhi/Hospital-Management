@@ -26,6 +26,23 @@ const fileSchema = new mongoose.Schema({
   cloudinaryPublicId: {
     type: String,
   },
+  // B4: 120x120 thumbnail URL (images only; null for PDFs)
+  thumbnailUrl: {
+    type: String,
+    default: null,
+  },
+  // B5: Cloudinary resource_type needed to build signed URLs
+  resourceType: {
+    type: String,
+    enum: ["image", "raw", "video", "auto"],
+    default: "image",
+  },
+  // B5: access mode — 'public' (legacy) or 'signed' (new uploads; requires signed URL for access)
+  accessMode: {
+    type: String,
+    enum: ["public", "signed"],
+    default: "public",
+  },
   uploadedAt: {
     type: Date,
     default: Date.now,
@@ -90,7 +107,7 @@ patientSchema.methods.toJSON = function () {
   if (obj.folders) {
     obj.folders = obj.folders.map((folder) => ({
       ...folder,
-      files: (folder.files || []).map(({ cloudinaryPublicId, ...file }) => file),
+      files: (folder.files || []).map(({ cloudinaryPublicId, resourceType, accessMode, ...file }) => file),
     }));
   }
   return obj;

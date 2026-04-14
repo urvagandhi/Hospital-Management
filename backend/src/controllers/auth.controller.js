@@ -8,8 +8,8 @@ import crypto from "crypto";
 import AuditLog from "../models/AuditLog.js";
 import Hospital from "../models/Hospital.js";
 import Session from "../models/Session.js";
-import { sendAccountLockedEmail, sendForgotPasswordOtpEmail, sendOTPEmail, sendPasswordResetNoticeEmail, sendSessionRevokedEmail, sendWelcomeEmail } from "../services/mail.service.js";
-import { notifyNewLogin, notifySessionRevoked } from "../services/push.service.js";
+import { sendAccountLockedEmail, sendForgotPasswordOtpEmail, sendOTPEmail, sendPasswordChangedEmail, sendPasswordResetNoticeEmail, sendSessionRevokedEmail, sendWelcomeEmail } from "../services/mail.service.js";
+import { notifyNewLogin, notifyPasswordChanged, notifySessionRevoked } from "../services/push.service.js";
 import {
   consumeBiometricChallenge,
   deleteForgotPasswordOtp,
@@ -1112,9 +1112,11 @@ export const logout = async (req, res) => {
     const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
 
     let invalidated = false;
+    let sessionDoc = null;
 
     // Try to invalidate by refresh token first
     if (refreshToken) {
+      sessionDoc = await Session.findOne({ refreshToken }).select("hospitalId isMobile").lean();
       invalidated = await invalidateSession(refreshToken);
     }
 
@@ -1127,11 +1129,21 @@ export const logout = async (req, res) => {
           const { verifyToken } = await import("../utils/jwt.js");
           const decoded = verifyToken(accessToken);
           if (decoded.sessionId) {
+            sessionDoc = await Session.findById(decoded.sessionId).select("hospitalId isMobile").lean();
             await Session.updateOne({ _id: decoded.sessionId }, { isActive: false });
             invalidated = true;
           }
         } catch (_) { /* token may be expired, ignore */ }
       }
+    }
+
+    // Clear stored FCM token when a mobile session logs out so we don't
+    // keep pushing to a device that's no longer signed in. Safe to do even
+    // if another mobile device is active — it will re-register its own
+    // token on next app launch via POST /api/auth/fcm-token.
+    if (sessionDoc?.isMobile && sessionDoc.hospitalId) {
+      Hospital.findByIdAndUpdate(sessionDoc.hospitalId, { $unset: { fcmToken: "" } })
+        .catch((e) => console.error("[logout] clear fcmToken failed:", e.message));
     }
 
     // Clear cookies
@@ -2083,6 +2095,14 @@ export const changePasswordSettings = async (req, res) => {
     sendPasswordResetNoticeEmail(hospital.email, "changed").catch((e) =>
       console.error("[changePasswordSettings] notice email failed:", e.message),
     );
+
+    // B6 — security-alert email + push, gated by notificationPrefs.securityAlerts
+    const wantsAlerts = !hospital.notificationPrefs || hospital.notificationPrefs.securityAlerts !== false;
+    if (wantsAlerts) {
+      sendPasswordChangedEmail(hospital.email, { ipAddress, when: new Date() })
+        .catch((e) => console.error("[changePasswordSettings] alert email failed:", e.message));
+      notifyPasswordChanged(hospitalId).catch(() => {});
+    }
 
     return res.status(200).json({
       success: true,

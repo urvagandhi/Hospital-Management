@@ -134,10 +134,31 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
         val title = message.notification?.title ?: message.data["title"] ?: "Hospital Management"
         val body = message.notification?.body ?: message.data["body"] ?: ""
 
+        // Deep-link tap target based on message type. Falls back to launcher.
+        val type = message.data["type"]
+        val launcherIntent = packageManager.getLaunchIntentForPackage(packageName)
+        val targetIntent = when (type) {
+            "NEW_LOGIN", "PASSWORD_CHANGED" ->
+                Intent(this, com.hospital.management.ui.profile.SessionsActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            "DELETION_REQUEST" ->
+                // Admin-only; open dashboard — admin will see the new request there.
+                launcherIntent
+            else -> launcherIntent
+        }
+
+        val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        else PendingIntent.FLAG_UPDATE_CURRENT
+        val contentIntent = PendingIntent.getActivity(
+            this, System.currentTimeMillis().toInt(), targetIntent ?: Intent(), pendingFlags
+        )
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(body)
+            .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()

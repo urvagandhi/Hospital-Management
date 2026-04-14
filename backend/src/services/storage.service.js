@@ -47,11 +47,17 @@ const documentFileFilter = (_req, file, cb) => {
 // ---------------------------------------------------------------------------
 // Cloudinary storage instances
 // ---------------------------------------------------------------------------
+// B5: Opt-in signed uploads via env flag. When true, new uploads go to
+// `type: 'authenticated'` and clients must request signed URLs to access them.
+const SIGNED_UPLOADS_ENABLED = String(process.env.SIGNED_UPLOADS_ENABLED || 'false').toLowerCase() === 'true';
+const uploadType = SIGNED_UPLOADS_ENABLED ? 'authenticated' : 'upload';
+
 const imageStorage = new CloudinaryStorage({
   cloudinary: cloudinaryModule,
   params: {
     folder: 'hospital/images',
-    resource_type: 'auto',
+    resource_type: 'image',
+    type: uploadType,
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
   },
 });
@@ -61,6 +67,7 @@ const documentStorage = new CloudinaryStorage({
   params: {
     folder: 'hospital/documents',
     resource_type: 'raw',
+    type: uploadType,
     allowed_formats: ['pdf'],
   },
 });
@@ -134,6 +141,57 @@ async function uploadBuffer(buffer, options = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// B4: buildThumbnailUrl — 120x120 Cloudinary transformation for images.
+//     For raw (PDF) resources returns null (no server-side thumb supported
+//     without paid add-on).
+// ---------------------------------------------------------------------------
+function buildThumbnailUrl({ publicId, resourceType = 'image', accessMode = 'public' }) {
+  if (!publicId) return null;
+  if (resourceType !== 'image') return null;
+  try {
+    return cloudinary.url(publicId, {
+      resource_type: 'image',
+      type: accessMode === 'signed' ? 'authenticated' : 'upload',
+      sign_url: accessMode === 'signed',
+      secure: true,
+      transformation: [{ width: 120, height: 120, crop: 'fill', quality: 'auto', fetch_format: 'auto' }],
+    });
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// B5: buildSignedUrl — time-limited delivery URL for a private asset.
+//     TTL default: 5 minutes. Caller passes resource_type + public_id.
+// ---------------------------------------------------------------------------
+function buildSignedUrl({ publicId, resourceType = 'image', ttlSeconds = 300, attachment = false, fileName = null }) {
+  if (!publicId) return null;
+  const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+  const options = {
+    resource_type: resourceType,
+    type: 'authenticated',
+    sign_url: true,
+    secure: true,
+    expires_at: expiresAt,
+  };
+  if (attachment) {
+    // Triggers browser download with given filename
+    options.flags = fileName ? `attachment:${encodeURIComponent(fileName)}` : 'attachment';
+  }
+  return cloudinary.url(publicId, options);
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
-export { uploadImage, uploadDocument, deleteFile, uploadBuffer, cloudinary };
+export {
+  uploadImage,
+  uploadDocument,
+  deleteFile,
+  uploadBuffer,
+  cloudinary,
+  buildThumbnailUrl,
+  buildSignedUrl,
+  SIGNED_UPLOADS_ENABLED,
+};

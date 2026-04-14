@@ -263,6 +263,20 @@ class DashboardActivity : BaseActivity() {
                     
                     // Save to cache only if we have valid values to update
                     tokenManager.saveHospitalInfo(hospital._id, name, logoUrl)
+
+                    // B2: surface deletion-pending state — Snackbar with a "Review" action
+                    // that deep-links to DeleteAccountActivity where the user can cancel.
+                    if (hospital.deletionStatus == "deletion_pending") {
+                        try {
+                            com.google.android.material.snackbar.Snackbar
+                                .make(binding.root, "Account deletion pending — tap to review", com.google.android.material.snackbar.Snackbar.LENGTH_INDEFINITE)
+                                .setAction("Review") {
+                                    startActivity(Intent(this@DashboardActivity,
+                                        com.hospital.management.ui.profile.DeleteAccountActivity::class.java))
+                                }
+                                .show()
+                        } catch (_: Exception) { /* UI not ready — ignore */ }
+                    }
                     }
                 } else {
                     // API failed - keep existing cached data

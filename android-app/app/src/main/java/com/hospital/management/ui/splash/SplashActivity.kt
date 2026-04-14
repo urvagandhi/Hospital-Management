@@ -16,6 +16,9 @@ import com.hospital.management.data.local.TokenManager
 import com.hospital.management.ui.auth.LoginActivity
 import com.hospital.management.ui.dashboard.DashboardActivity
 import com.hospital.management.utils.SessionManager
+import android.app.AlertDialog
+import android.content.pm.PackageManager
+import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -40,8 +43,97 @@ class SplashActivity : BaseActivity() {
         // Check session after delay for animation
         lifecycleScope.launch {
             delay(1500) // Show splash for at least 1.5 seconds
+            // A1: check for required/force update before session logic
+            val gate = checkVersionGate()
+            if (gate.shouldBlock) {
+                showForceUpdateDialog(gate)
+                return@launch
+            }
+            if (gate.shouldPrompt) {
+                showSoftUpdateDialog(gate) {
+                    lifecycleScope.launch { checkSessionAndNavigate() }
+                }
+                return@launch
+            }
             checkSessionAndNavigate()
         }
+    }
+
+    private data class VersionGate(
+        val shouldBlock: Boolean,
+        val shouldPrompt: Boolean,
+        val latestVersion: String,
+        val updateUrl: String,
+        val releaseNotes: String,
+    )
+
+    private suspend fun checkVersionGate(): VersionGate {
+        val safeFallback = VersionGate(false, false, "", "", "")
+        return try {
+            val currentVersion = try {
+                packageManager.getPackageInfo(packageName, 0).versionName ?: "0.0.0"
+            } catch (_: PackageManager.NameNotFoundException) { "0.0.0" }
+
+            // 3-second timeout — don't block splash if the server is slow.
+            val resp = kotlinx.coroutines.withTimeoutOrNull(3000L) {
+                withContext(Dispatchers.IO) {
+                    RetrofitClient.getApiService(this@SplashActivity)
+                        .getAppVersion(currentVersion = currentVersion)
+                }
+            } ?: run {
+                Log.w("SplashActivity", "Version check timed out — proceeding without gate")
+                return safeFallback
+            }
+            if (!resp.isSuccessful) return safeFallback
+            val info = resp.body()?.data ?: return safeFallback
+
+            // Guard against the edge case where backend returns forceUpdate=true
+            // but NO updateUrl — would blackhole users in a dialog with no way out.
+            // Treat missing url as soft-prompt so user can still exit/continue.
+            val shouldBlock = info.forceUpdate && info.updateUrl.isNotBlank()
+            val shouldPrompt = info.updateRequired && !shouldBlock
+
+            VersionGate(
+                shouldBlock = shouldBlock,
+                shouldPrompt = shouldPrompt,
+                latestVersion = info.latestVersion,
+                updateUrl = info.updateUrl,
+                releaseNotes = info.releaseNotes,
+            )
+        } catch (e: Exception) {
+            Log.w("SplashActivity", "Version check failed: ${e.message}")
+            safeFallback
+        }
+    }
+
+    private fun openUpdateUrl(url: String) {
+        val target = url.ifBlank { "https://play.google.com/store/apps/details?id=$packageName" }
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+        } catch (_: Exception) { /* no-op */ }
+    }
+
+    private fun showForceUpdateDialog(gate: VersionGate) {
+        AlertDialog.Builder(this)
+            .setTitle("Update Required")
+            .setMessage("A new version (${gate.latestVersion}) is required to continue.\n\n${gate.releaseNotes}")
+            .setCancelable(false)
+            .setPositiveButton("Update") { _, _ ->
+                openUpdateUrl(gate.updateUrl)
+                finish()
+            }
+            .setNegativeButton("Exit") { _, _ -> finish() }
+            .show()
+    }
+
+    private fun showSoftUpdateDialog(gate: VersionGate, onContinue: () -> Unit) {
+        AlertDialog.Builder(this)
+            .setTitle("Update Available")
+            .setMessage("Version ${gate.latestVersion} is available.\n\n${gate.releaseNotes}")
+            .setPositiveButton("Update") { _, _ -> openUpdateUrl(gate.updateUrl); finish() }
+            .setNegativeButton("Later") { d, _ -> d.dismiss(); onContinue() }
+            .setCancelable(true)
+            .show()
     }
 
     private fun startEntranceAnimations() {

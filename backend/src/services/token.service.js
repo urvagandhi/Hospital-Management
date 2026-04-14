@@ -7,8 +7,8 @@ import mongoose from "mongoose";
 import Session from "../models/Session.js";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 import config from "../config/env.js";
-import { notifySessionRevoked } from "./push.service.js";
-import { sendSessionRevokedEmail } from "./mail.service.js";
+import { notifySessionRevoked, notifyNewLogin } from "./push.service.js";
+import { sendSessionRevokedEmail, sendNewLoginAlertEmail } from "./mail.service.js";
 import Hospital from "../models/Hospital.js";
 
 /**
@@ -97,6 +97,36 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
       // Auth Code verification — reset the 7-day clock.
       authCodeVerifiedAt: now,
     });
+
+    // B6 — Fire new-login notification (email + push), gated by user prefs.
+    // Fire-and-forget; never blocks login. Skips if this is the first session
+    // (account creation) by detecting no other active sessions at time of create.
+    (async () => {
+      try {
+        const otherActive = await Session.countDocuments({
+          hospitalId,
+          isActive: true,
+          _id: { $ne: session._id },
+        });
+        if (otherActive === 0) return; // first login after registration; skip alert
+        const hospital = await Hospital.findById(hospitalId)
+          .select("email notificationPrefs")
+          .lean();
+        if (!hospital) return;
+        const optedIn = !hospital.notificationPrefs || hospital.notificationPrefs.newLoginAlert !== false;
+        if (!optedIn) return;
+        if (hospital.email) {
+          sendNewLoginAlertEmail(hospital.email, {
+            userAgent,
+            ipAddress,
+            when: now,
+          }).catch((e) => console.error("[new-login email]", e.message));
+        }
+        notifyNewLogin(hospitalId, userAgent || "a new device").catch(() => {});
+      } catch (e) {
+        console.error("[new-login notify]", e.message);
+      }
+    })();
 
     return {
       accessToken,

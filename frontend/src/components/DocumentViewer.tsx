@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { isImageMime, isPdfMime } from "../utils/cloudinary";
+import { getFileSignedUrl } from "../services/hospitalService";
 
 interface FileItem {
+  _id?: string;
   fileName: string;
   fileUrl: string;
   mimeType: string;
   size: number;
   uploadedAt: string;
+  accessMode?: "public" | "signed";
 }
 
 interface Props {
@@ -14,13 +17,31 @@ interface Props {
   index: number;
   onClose: () => void;
   onIndexChange: (i: number) => void;
+  // B5: when provided, viewer requests short-lived signed URLs before rendering.
+  patientId?: string;
+  folderName?: string;
 }
 
-const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange }) => {
+const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange, patientId, folderName }) => {
   const file = files[index];
   const [zoom, setZoom] = useState(1);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+
+  // Resolve signed URL just-in-time (falls back to stored URL for legacy public files).
+  useEffect(() => {
+    if (!file) { setResolvedUrl(null); return; }
+    if (!patientId || !folderName || !file._id) {
+      setResolvedUrl(file.fileUrl);
+      return;
+    }
+    let cancelled = false;
+    getFileSignedUrl(patientId, folderName, file._id, false)
+      .then((r) => { if (!cancelled) setResolvedUrl(r.url); })
+      .catch(() => { if (!cancelled) setResolvedUrl(file.fileUrl); });
+    return () => { cancelled = true; };
+  }, [file, patientId, folderName]);
 
   // Reset zoom whenever the active file changes.
   useEffect(() => {
@@ -42,7 +63,8 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange 
     let objectUrl: string | null = null;
     setPdfBlobUrl(null);
     setPdfError(null);
-    fetch(file.fileUrl)
+    const pdfUrl = resolvedUrl || file.fileUrl;
+    fetch(pdfUrl)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.blob();
@@ -60,7 +82,7 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange 
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [file?.fileUrl, file?.mimeType]);
+  }, [resolvedUrl, file?.fileUrl, file?.mimeType]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -108,7 +130,7 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange 
             </>
           )}
           <a
-            href={file.fileUrl}
+            href={resolvedUrl || file.fileUrl}
             target="_blank"
             rel="noopener noreferrer"
             download={file.fileName}
@@ -145,7 +167,7 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange 
 
         {isImageMime(file.mimeType) ? (
           <img
-            src={file.fileUrl}
+            src={resolvedUrl || file.fileUrl}
             alt={file.fileName}
             style={{ transform: `scale(${zoom})`, transition: "transform 0.15s" }}
             className="max-w-[90vw] max-h-[80vh] object-contain select-none"
@@ -156,7 +178,7 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange 
             <div className="text-center text-white/80 px-6">
               <p className="mb-4">Could not load PDF: {pdfError}</p>
               <a
-                href={file.fileUrl}
+                href={resolvedUrl || file.fileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block px-4 py-2 text-sm rounded bg-white text-gray-900 hover:bg-gray-100"

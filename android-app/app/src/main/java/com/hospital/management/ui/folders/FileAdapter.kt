@@ -5,8 +5,10 @@ import com.hospital.management.R
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.hospital.management.data.models.FileItem
 
 class FileAdapter(
@@ -19,15 +21,30 @@ class FileAdapter(
         private val tvFileName: TextView = itemView.findViewById(R.id.tvFileName)
         private val tvFileSize: TextView = itemView.findViewById(R.id.tvFileSize)
         private val btnMore: android.widget.ImageButton = itemView.findViewById(R.id.btnMore)
+        private val ivThumbnail: ImageView? = itemView.findViewById(R.id.ivThumbnail)
+        private val ivFileIcon: ImageView? = itemView.findViewById(R.id.ivFileIcon)
 
         fun bind(file: FileItem) {
             tvFileName.text = file.name
             tvFileSize.text = formatFileSize(file.size)
 
+            // A3: show thumbnail for images when backend provided it
+            val thumb = file.thumbnailUrl
+            if (!thumb.isNullOrBlank() && file.isImage) {
+                ivThumbnail?.visibility = View.VISIBLE
+                ivFileIcon?.visibility = View.GONE
+                ivThumbnail?.let {
+                    Glide.with(itemView).load(thumb).centerCrop().into(it)
+                }
+            } else {
+                ivThumbnail?.visibility = View.GONE
+                ivFileIcon?.visibility = View.VISIBLE
+            }
+
             itemView.setOnClickListener {
                 onFileClick(file)
             }
-            
+
             btnMore.setOnClickListener {
                 onOptionClick(it, file)
             }

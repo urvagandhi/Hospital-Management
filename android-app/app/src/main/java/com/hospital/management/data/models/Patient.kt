@@ -26,10 +26,13 @@ data class FileItem(
     val url: String? = null,
     val size: Long = 0,
     val mimeType: String? = null,
-    val uploadedAt: String? = null
+    val uploadedAt: String? = null,
+    val thumbnailUrl: String? = null
 ) {
     val name: String get() = fileName
     val displayUrl: String get() = fileUrl ?: url ?: ""
+    val isImage: Boolean get() = mimeType?.startsWith("image/") == true
+    val isPdf: Boolean get() = mimeType == "application/pdf"
 }
 
 data class PatientsResponse(
