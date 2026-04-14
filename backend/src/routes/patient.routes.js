@@ -4,14 +4,14 @@
  */
 
 import express from "express";
-import { body, param, query } from "express-validator";
+import { body, param } from "express-validator";
 import * as patientController from "../controllers/patient.controller.js";
-import { uploadDocument } from "../services/storage.service.js";
 import { verifyAccessToken } from "../middleware/auth.js";
+import { patientLimiter } from "../middleware/rateLimiter.js";
 import { handleValidationErrors } from "../middleware/validateRequest.js";
 import Hospital from "../models/Hospital.js";
-import { patientLimiter } from "../middleware/rateLimiter.js";
 import { getUploadIdempotentResponse } from "../services/redis.service.js";
+import { uploadDocument } from "../services/storage.service.js";
 
 const router = express.Router();
 
@@ -124,6 +124,12 @@ router.post(
  * Rename a file in a folder
  */
 router.patch("/:patientId/files/:folderName/:fileId/rename", patientController.renameFile);
+
+/**
+ * DELETE /api/patients/:patientId/files/:folderName/:fileId
+ * Delete a file from a folder
+ */
+router.delete("/:patientId/files/:folderName/:fileId", patientController.deleteFile);
 
 // ═══════════════════════════════════════════════════
 // DOWNLOAD ENDPOINTS

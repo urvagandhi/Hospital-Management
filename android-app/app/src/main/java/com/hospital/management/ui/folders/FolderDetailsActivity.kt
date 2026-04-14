@@ -132,7 +132,7 @@ class FolderDetailsActivity : BaseActivity() {
                     is PatientState.Loading -> progressBar.visibility = View.VISIBLE
                     is PatientState.Success -> {
                         progressBar.visibility = View.GONE
-                        
+
                         if (state.message == "PDF Ready" && state.data is okhttp3.ResponseBody) {
                             val safeFolder = folderName.replace(Regex("[^a-zA-Z0-9 ]"), "").trim().replace("\\s+".toRegex(), "_")
                             val fileName = "${safeFolder}.pdf"
@@ -169,9 +169,9 @@ class FolderDetailsActivity : BaseActivity() {
     private fun displayFiles(serverFiles: List<FileItem>) {
         // Combine server files with pending offline files
         val allFiles = pendingOfflineFiles + serverFiles
-        
+
         if (allFiles.isNotEmpty()) {
-            fileAdapter = FileAdapter(allFiles, 
+            fileAdapter = FileAdapter(allFiles,
                 onFileClick = { file ->
                     openFile(file)
                 },
@@ -187,7 +187,7 @@ class FolderDetailsActivity : BaseActivity() {
             tvEmpty.visibility = View.VISIBLE
         }
     }
-    
+
     private fun showFileOptions(view: View, file: FileItem) {
         val popup = androidx.appcompat.widget.PopupMenu(this, view)
         popup.menu.add("Open")
@@ -258,7 +258,7 @@ class FolderDetailsActivity : BaseActivity() {
             }
         }
     }
-    
+
     private fun openFileInDrive(file: FileItem) {
         val fileUrl = file.displayUrl
         if (fileUrl.isEmpty()) return
@@ -267,14 +267,14 @@ class FolderDetailsActivity : BaseActivity() {
             val intent = Intent(Intent.ACTION_VIEW)
             intent.setPackage("com.google.android.apps.docs")
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            
+
             if (fileUrl.startsWith("file://") || fileUrl.startsWith("/")) {
                  val localFile = if (fileUrl.startsWith("file://")) {
                     File(Uri.parse(fileUrl).path ?: "")
                 } else {
                     File(fileUrl)
                 }
-                
+
                 if (localFile.exists()) {
                     val uri = FileProvider.getUriForFile(this, "${packageName}.provider", localFile)
                     intent.setDataAndType(uri, "application/pdf")
@@ -285,7 +285,7 @@ class FolderDetailsActivity : BaseActivity() {
             } else {
                 intent.setDataAndType(Uri.parse(fileUrl), "application/pdf")
             }
-            
+
             try {
                 startActivity(intent)
             } catch (e: android.content.ActivityNotFoundException) {
@@ -301,7 +301,7 @@ class FolderDetailsActivity : BaseActivity() {
 
     private fun downloadFile(file: FileItem) {
         val fileUrl = file.displayUrl
-        
+
         // Handle local private files (pending offline upload)
         if (fileUrl.startsWith("file://") || fileUrl.startsWith("/")) {
             exportLocalFile(file, fileUrl)
@@ -377,11 +377,11 @@ class FolderDetailsActivity : BaseActivity() {
             Toast.makeText(this, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
-    
+
     private fun showDownloadNotification(file: File) {
         val notificationManager = getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         val channelId = "download_channel"
-        
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             val channel = android.app.NotificationChannel(
                 channelId,
@@ -390,19 +390,19 @@ class FolderDetailsActivity : BaseActivity() {
             )
             notificationManager.createNotificationChannel(channel)
         }
-        
+
         val intent = Intent(Intent.ACTION_VIEW)
         val uri = FileProvider.getUriForFile(this, "${packageName}.provider", file)
         intent.setDataAndType(uri, "application/pdf")
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        
+
         val pendingIntent = android.app.PendingIntent.getActivity(
-            this, 
-            0, 
-            intent, 
+            this,
+            0,
+            intent,
             android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
-        
+
         val notification = androidx.core.app.NotificationCompat.Builder(this, channelId)
             .setContentTitle("File Downloaded")
             .setContentText(file.name)
@@ -410,7 +410,7 @@ class FolderDetailsActivity : BaseActivity() {
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
-            
+
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
 
@@ -427,7 +427,7 @@ class FolderDetailsActivity : BaseActivity() {
 
     private fun deleteFile(file: FileItem) {
         val fileUrl = file.displayUrl
-        
+
         // Check if pending offline file
         if (file.fileName.startsWith("[Pending]") || fileUrl.startsWith("file://") || fileUrl.startsWith("/")) {
             lifecycleScope.launch {
@@ -435,13 +435,13 @@ class FolderDetailsActivity : BaseActivity() {
                     // Find doc in DB
                     val pendingDocs = database.documentDao().getPendingForFolder(patientId, folderName)
                     val doc = pendingDocs.find { it.fileUri == fileUrl }
-                    
+
                     if (doc != null) {
                         database.documentDao().delete(doc)
                         // Also delete actual file
                         val localFile = File(Uri.parse(fileUrl).path ?: "")
                         if (localFile.exists()) localFile.delete()
-                        
+
                         Toast.makeText(this@FolderDetailsActivity, "File deleted", Toast.LENGTH_SHORT).show()
                         loadFiles()
                     }
@@ -451,8 +451,26 @@ class FolderDetailsActivity : BaseActivity() {
             }
         } else {
             // Server file
-            // TODO: Implement server delete
-             Toast.makeText(this, "Deleting server files is not supported yet", Toast.LENGTH_SHORT).show()
+            val fileId = file._id
+            if (fileId.isNullOrEmpty()) {
+                Toast.makeText(this, "Cannot delete file: missing server id", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            lifecycleScope.launch {
+                try {
+                    val apiService = RetrofitClient.getApiService(this@FolderDetailsActivity)
+                    val response = apiService.deleteFile(patientId, folderName, fileId)
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@FolderDetailsActivity, "File deleted", Toast.LENGTH_SHORT).show()
+                        loadFiles()
+                    } else {
+                        Toast.makeText(this@FolderDetailsActivity, "Delete failed", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this@FolderDetailsActivity, "Error deleting file", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
@@ -466,7 +484,7 @@ class FolderDetailsActivity : BaseActivity() {
                     val fileSize = if (localFile.exists()) localFile.length() else 0L
                     val fileName = localFile.name
                     val mimeType = if (fileName.endsWith(".pdf")) "application/pdf" else "image/jpeg"
-                    
+
                     FileItem(
                         fileName = "[Pending] $fileName",
                         fileUrl = doc.fileUri,
@@ -475,7 +493,7 @@ class FolderDetailsActivity : BaseActivity() {
                         uploadedAt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(doc.timestamp))
                     )
                 }
-                
+
                 // If we have pending files, show them immediately
                 if (pendingOfflineFiles.isNotEmpty()) {
                     displayFiles(emptyList())
@@ -483,7 +501,7 @@ class FolderDetailsActivity : BaseActivity() {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-            
+
             // Then try to fetch server files (may fail if offline)
             patientViewModel.getFolderFiles(patientId, folderName)
         }
@@ -519,7 +537,7 @@ class FolderDetailsActivity : BaseActivity() {
             patientViewModel.downloadFolderPdf(patientId, folderName)
         }
     }
-    
+
     // ... helper method to sync before download
     private fun syncAndDownload(type: String) {
         val progressDialog = androidx.appcompat.app.AlertDialog.Builder(this)
@@ -549,7 +567,7 @@ class FolderDetailsActivity : BaseActivity() {
                             Toast.makeText(this, "Sync complete. Starting download...", Toast.LENGTH_SHORT).show()
                             // Refresh file list first to ensure UI is up to date (optional)
                             loadFiles()
-                            
+
                             // Trigger actual download
                             if (type == "ZIP") {
                                 patientViewModel.downloadFolderZip(patientId, folderName)
@@ -595,16 +613,16 @@ class FolderDetailsActivity : BaseActivity() {
 
                 val fileName = "${folderName}_local.zip"
                 val zipFile = File(cacheDir, fileName)
-                
+
                 var filesAdded = 0
-                
+
                 FileOutputStream(zipFile).use { fos ->
                     java.util.zip.ZipOutputStream(java.io.BufferedOutputStream(fos)).use { zos ->
                         for (fileItem in pendingOfflineFiles) {
                             try {
                                 val uri = Uri.parse(fileItem.fileUrl)
                                 var inputStream: InputStream? = null
-                                
+
                                 // Try to open input stream based on URI scheme
                                 if (uri.scheme == "content") {
                                     inputStream = contentResolver.openInputStream(uri)
@@ -624,7 +642,7 @@ class FolderDetailsActivity : BaseActivity() {
                                         }
                                     }
                                 }
-                                
+
                                 if (inputStream != null) {
                                     inputStream.use { msg ->
                                         // Clean filename
@@ -642,7 +660,7 @@ class FolderDetailsActivity : BaseActivity() {
                         }
                     }
                 }
-                
+
                 if (filesAdded > 0) {
                     saveLocalFileToMediaStore(zipFile, fileName, "application/zip")
                     zipFile.delete()
@@ -754,7 +772,7 @@ class FolderDetailsActivity : BaseActivity() {
             }
         }
     }
-    
+
     private fun getMimeType(fileName: String): String {
         return when {
             fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"

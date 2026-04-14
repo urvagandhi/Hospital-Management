@@ -4,8 +4,8 @@
  */
 
 import mongoose from "mongoose";
-import Patient from "../models/Patient.js";
 import Hospital from "../models/Hospital.js";
+import Patient from "../models/Patient.js";
 import { deleteFolder } from "./r2.service.js";
 
 /**
@@ -307,6 +307,52 @@ export const renameFile = async (hospitalId, patientId, folderName, fileId, newF
     return patient;
   } catch (error) {
     console.error("[Patient Service] Rename file error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a file inside a patient folder
+ */
+export const deleteFileFromFolder = async (hospitalId, patientId, folderName, fileId) => {
+  try {
+    console.log("[Patient Service] Deleting file:", fileId);
+
+    const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
+
+    const patient = await Patient.findOne({
+      _id: patientId,
+      hospitalId: hospitalObjectId,
+    });
+
+    if (!patient) {
+      throw new Error("Patient not found");
+    }
+
+    const folder = patient.folders.find((f) => f.name === folderName);
+    if (!folder) {
+      throw new Error("Folder not found");
+    }
+
+    const file = folder.files.id(fileId);
+    if (!file) {
+      throw new Error("File not found");
+    }
+
+    const deletedFile = {
+      _id: file._id?.toString(),
+      fileName: file.fileName,
+      fileUrl: file.fileUrl,
+      cloudinaryPublicId: file.cloudinaryPublicId,
+    };
+
+    folder.files.pull(fileId);
+    await patient.save();
+
+    console.log("[Patient Service] File deleted successfully");
+    return { patient, deletedFile };
+  } catch (error) {
+    console.error("[Patient Service] Delete file error:", error);
     throw error;
   }
 };

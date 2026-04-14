@@ -19,11 +19,48 @@ interface Props {
 const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange }) => {
   const file = files[index];
   const [zoom, setZoom] = useState(1);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Reset zoom whenever the active file changes.
   useEffect(() => {
     setZoom(1);
   }, [index]);
+
+  // Cloudinary stores PDFs as resource_type=raw, which serves them with
+  // Content-Disposition: attachment. Browsers download instead of rendering.
+  // Fetch as blob and create a blob URL — blob URLs use the `type` parameter
+  // rather than the server's disposition header, so the browser's native PDF
+  // viewer picks them up.
+  useEffect(() => {
+    if (!file || !isPdfMime(file.mimeType)) {
+      setPdfBlobUrl(null);
+      setPdfError(null);
+      return;
+    }
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setPdfBlobUrl(null);
+    setPdfError(null);
+    fetch(file.fileUrl)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        const pdfBlob = new Blob([blob], { type: "application/pdf" });
+        objectUrl = URL.createObjectURL(pdfBlob);
+        setPdfBlobUrl(objectUrl);
+      })
+      .catch((err) => {
+        if (!cancelled) setPdfError(err.message || "Failed to load PDF");
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [file?.fileUrl, file?.mimeType]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -115,11 +152,27 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange 
             draggable={false}
           />
         ) : isPdfMime(file.mimeType) ? (
-          <iframe
-            src={file.fileUrl}
-            title={file.fileName}
-            className="w-[95vw] h-[85vh] bg-white rounded"
-          />
+          pdfError ? (
+            <div className="text-center text-white/80 px-6">
+              <p className="mb-4">Could not load PDF: {pdfError}</p>
+              <a
+                href={file.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block px-4 py-2 text-sm rounded bg-white text-gray-900 hover:bg-gray-100"
+              >
+                Open in new tab
+              </a>
+            </div>
+          ) : pdfBlobUrl ? (
+            <iframe
+              src={pdfBlobUrl}
+              title={file.fileName}
+              className="w-[95vw] h-[85vh] bg-white rounded"
+            />
+          ) : (
+            <div className="text-white/70 text-sm">Loading PDF…</div>
+          )
         ) : (
           <div className="text-center text-white/80 px-6">
             <p className="mb-4">Preview not available for this file type.</p>

@@ -198,6 +198,13 @@ interface ApiService {
         @Body body: Map<String, String>
     ): Response<Map<String, Any>>
 
+    @DELETE("/api/patients/{patientId}/files/{folderName}/{fileId}")
+    suspend fun deleteFile(
+        @Path("patientId") patientId: String,
+        @Path("folderName") folderName: String,
+        @Path("fileId") fileId: String
+    ): Response<Map<String, Any>>
+
     // ── Download endpoints ──
 
     @GET("/api/patients/{patientId}/download/zip/size-check")

@@ -3,13 +3,12 @@
  * Handles all patient-related operations
  */
 
-import * as patientService from "../services/patient.service.js";
-import * as r2Service from "../services/r2.service.js";
-import { deleteFile as cloudinaryDeleteFile } from "../services/storage.service.js";
-import * as pdfService from "../services/pdf.service.js";
-import * as zipService from "../services/zip.service.js";
 import AuditLog from "../models/AuditLog.js";
+import * as patientService from "../services/patient.service.js";
+import * as pdfService from "../services/pdf.service.js";
 import { setUploadIdempotentResponse } from "../services/redis.service.js";
+import { deleteFile as cloudinaryDeleteFile } from "../services/storage.service.js";
+import * as zipService from "../services/zip.service.js";
 
 /** Fire-and-forget audit log — never blocks the response */
 function logAudit(userId, action, req, details) {
@@ -310,6 +309,47 @@ export const renameFile = async (req, res) => {
     return res.status(isNotFound ? 404 : 500).json({
       success: false,
       message: isNotFound ? error.message : "Failed to rename file",
+    });
+  }
+};
+
+/**
+ * DELETE /api/patients/:patientId/files/:folderName/:fileId
+ * Delete a file in a patient folder
+ */
+export const deleteFile = async (req, res) => {
+  try {
+    const { patientId, folderName, fileId } = req.params;
+    const hospitalId = req.hospital?.id;
+
+    const { patient, deletedFile } = await patientService.deleteFileFromFolder(hospitalId, patientId, folderName, fileId);
+
+    // Best effort remote cleanup; don't fail the API if Cloudinary cleanup fails.
+    if (deletedFile?.cloudinaryPublicId) {
+      const remoteDeleteResult = await cloudinaryDeleteFile(deletedFile.cloudinaryPublicId);
+      if (!remoteDeleteResult.success) {
+        console.warn("[Patient Controller] Cloudinary cleanup failed:", remoteDeleteResult.error);
+      }
+    }
+
+    logAudit(hospitalId, "PATIENT_FILE_DELETE", req, {
+      patientId,
+      folderName,
+      fileId,
+      fileName: deletedFile?.fileName,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: patient,
+      message: "File deleted successfully",
+    });
+  } catch (error) {
+    console.error("[Patient Controller] Delete file error:", error);
+    const isNotFound = error.message.includes("not found");
+    return res.status(isNotFound ? 404 : 500).json({
+      success: false,
+      message: isNotFound ? error.message : "Failed to delete file",
     });
   }
 };
