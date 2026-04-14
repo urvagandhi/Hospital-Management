@@ -106,13 +106,7 @@ class ChangePasswordActivity : BaseActivity() {
                             "Password changed successfully",
                             Toast.LENGTH_SHORT
                         ).show()
-
-                        if (response.body()?.requireTotpSetup == true) {
-                            startActivity(Intent(this@ChangePasswordActivity, TotpSetupActivity::class.java))
-                            finish()
-                        } else {
-                            navigateToDashboard()
-                        }
+                        navigateToDashboard()
                     }
                 } else {
                     val errorMsg = response.body()?.message ?: "Password change failed"

@@ -169,9 +169,10 @@ erDiagram
         String hospitalName
         String email UK
         String phone UK
-        String username UK
+        String authCode UK "6-digit numeric, e.g. 041326"
         String passwordHash
         String role "admin | hospital"
+        Number patientIdCounter "auto-increments for Patient ID"
         Boolean totpEnabled
         String totpSecretEncrypted "AES-256-GCM"
         Boolean mustChangePassword
@@ -360,7 +361,7 @@ graph TB
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/auth/login` | Login with email/phone/username |
+| `POST` | `/api/auth/login` | Login with email or phone |
 | `POST` | `/api/auth/login/totp` | Verify TOTP during login |
 | `POST` | `/api/auth/login/recovery` | Login with backup code |
 | `POST` | `/api/auth/2fa/setup` | Generate TOTP QR code |
@@ -369,6 +370,9 @@ graph TB
 | `POST` | `/api/auth/refresh-token` | Refresh access token |
 | `POST` | `/api/auth/logout` | End session |
 | `POST` | `/api/auth/register-hospital` | Admin: create hospital |
+| `POST` | `/api/auth/register` | Self-service: initiate registration (sends OTP) |
+| `POST` | `/api/auth/register/verify-otp` | Self-service: verify OTP + create account |
+| `POST` | `/api/auth/register/resend-otp` | Self-service: resend OTP (60s cooldown) |
 | `GET`  | `/api/patients` | List patients (paginated) |
 | `POST` | `/api/patients` | Create patient |
 | `GET`  | `/api/patients/:id` | Get patient details |
@@ -394,7 +398,8 @@ See [.env.example](.env.example) for the full list. Critical variables:
 | `MONGODB_URI` | Yes (prod) | MongoDB connection string |
 | `SMTP_HOST/USER/PASS` | Yes | Email delivery configuration |
 | `R2_*` | Optional | Cloudflare R2 for file storage |
-| `REDIS_URL` | Optional | Redis (falls back to in-memory) |
+| `UPSTASH_REDIS_REST_URL` | Optional | Upstash Redis REST URL (falls back to in-memory Map) |
+| `UPSTASH_REDIS_REST_TOKEN` | Optional | Upstash Redis REST token |
 
 ---
 

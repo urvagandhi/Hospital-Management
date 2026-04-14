@@ -12,8 +12,7 @@ import LandingPage from "../pages/LandingPage";
 import Login from "../pages/Login";
 import PatientDetails from "../pages/PatientDetails";
 import SecuritySettings from "../pages/SecuritySettings";
-import TotpSetupMandatory from "../pages/TotpSetupMandatory";
-import TotpVerification from "../pages/TotpVerification";
+import VerifyAuthCode from "../pages/VerifyAuthCode";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -21,35 +20,20 @@ export const AppRoutes: React.FC = () => {
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
-      <Route 
-        path="/register" 
+      <Route
+        path="/register"
         element={
           <AdminRoute>
             <HospitalRegistration />
-          </AdminRoute>}
-      />
-
-      {/* TOTP Verification (for users with 2FA enabled) */}
-      <Route path="/verify-totp" element={<TotpVerification />} />
-
-      {/* Legacy SMS OTP Verification - redirects to TOTP */}
-      <Route path="/verify-otp" element={<TotpVerification />} />
-
-      {/* Mandatory TOTP Setup (after registration) */}
-      <Route path="/setup-2fa" element={<TotpSetupMandatory />} />
-
-      {/* Password change page (first-login) - public route that uses tempToken */}
-      <Route path="/change-password" element={<ChangePassword />} />
-
-      {/* Admin Only Routes */}
-      {/* <Route
-        path="/hospitals"
-        element={
-          <AdminRoute>
-            <HospitalsList />
           </AdminRoute>
         }
-      /> */}
+      />
+
+      {/* Auth Code verification (step 2 of login) */}
+      <Route path="/verify-auth-code" element={<VerifyAuthCode />} />
+
+      {/* Password change (first-login) — uses tempToken */}
+      <Route path="/change-password" element={<ChangePassword />} />
 
       {/* Protected Routes */}
       <Route
@@ -73,10 +57,9 @@ export const AppRoutes: React.FC = () => {
         <Route path="/patients/:patientId/folders/:folderName" element={<FolderView />} />
       </Route>
 
-      {/* Catch all - redirect to dashboard (which will redirect to login if needed) */}
+      {/* Catch all — redirect to dashboard (which redirects to login if needed) */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 };
 export default AppRoutes;
-

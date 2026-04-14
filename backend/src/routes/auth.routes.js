@@ -1,23 +1,21 @@
 /**
  * Authentication Routes
- * Defines all authentication endpoints including TOTP 2FA
+ * Login (email/phone + password → auth code), self-registration, biometric,
+ * session management, change password, FCM token.
  */
 
 import express from "express";
 import { body } from "express-validator";
 import {
   changePassword,
-  disableTotp,
   login,
+  verifyAuthCodeLogin,
   logout,
-  recoveryLogin,
   refreshToken,
   registerHospital,
-  resetTotp,
-  setupTotp,
-  verifyTotpLogin,
-  verifyTotpReset,
-  verifyTotpSetup,
+  registerSelfService,
+  verifyRegistrationOtp,
+  resendRegistrationOtp,
   registerBiometric,
   biometricChallenge,
   verifyBiometric,
@@ -78,25 +76,91 @@ router.post(
     body("phoneNumber")
       .matches(/^\d{10}$/)
       .withMessage("Phone number must be 10 digits"),
-    body("username")
-      .optional()
-      .trim()
-      .isLength({ min: 4, max: 30 })
-      .withMessage("Username must be 4-30 characters")
-      .matches(/^[a-zA-Z0-9_]+$/)
-      .withMessage("Username may only contain letters, numbers, and underscores"),
-    body("address").notEmpty().trim().withMessage("Address is required"),
+    body("address").optional({ values: "falsy" }).trim(),
   ],
   handleValidationErrors,
   registerHospital,
 );
 
-// Note: registration no longer requires TOTP verification (admin-only registration)
+// ═══════════════════════════════════════════════════════════════════════════
+// SELF-REGISTRATION FLOW (Android self-service)
+// No auth middleware — these endpoints are public. Rate-limited instead.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * POST /api/auth/register
+ * Initiate self-service registration: validate + stash in Redis + send OTP.
+ * Accepts multipart form (for optional logo) or JSON.
+ */
+router.post(
+  "/register",
+  authLimiter,
+  (req, res, next) => {
+    // Logo is optional; if not multipart, skip the parser entirely
+    const ct = req.headers["content-type"] || "";
+    if (!ct.includes("multipart/form-data")) return next();
+    uploadSingle("logo")(req, res, (err) => {
+      if (err) {
+        if (err.message && err.message.includes("Only image files")) {
+          return res.status(400).json({ success: false, message: "Only image files are allowed (JPEG, PNG, GIF, WebP)" });
+        }
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ success: false, message: "Logo file size must be less than 2MB" });
+        }
+        return res.status(400).json({ success: false, message: err.message || "File upload failed" });
+      }
+      next();
+    });
+  },
+  [
+    body("hospitalName").notEmpty().trim().withMessage("Hospital name is required"),
+    body("email").isEmail().normalizeEmail({ gmail_remove_dots: false }).withMessage("Invalid email format"),
+    body().custom((v) => {
+      if (!v.phone && !v.phoneNumber) throw new Error("Phone number is required");
+      return true;
+    }),
+    body("password").isLength({ min: 8 }).withMessage("Password must be at least 8 characters"),
+    body("address").optional({ values: "falsy" }).trim(),
+  ],
+  handleValidationErrors,
+  registerSelfService,
+);
+
+/**
+ * POST /api/auth/register/verify-otp
+ * Verify OTP (3-attempt max) and create the Hospital account.
+ */
+router.post(
+  "/register/verify-otp",
+  otpLimiter,
+  [
+    body("email").isEmail().normalizeEmail({ gmail_remove_dots: false }).withMessage("Invalid email format"),
+    body("otp").matches(/^\d{6}$/).withMessage("OTP must be 6 digits"),
+  ],
+  handleValidationErrors,
+  verifyRegistrationOtp,
+);
+
+/**
+ * POST /api/auth/register/resend-otp
+ * Resend registration OTP. Rate-limited to once per 60 seconds.
+ */
+router.post(
+  "/register/resend-otp",
+  otpLimiter,
+  [
+    body("email").isEmail().normalizeEmail({ gmail_remove_dots: false }).withMessage("Invalid email format"),
+  ],
+  handleValidationErrors,
+  resendRegistrationOtp,
+);
 
 /**
  * POST /api/auth/login
- * Login with email and password
- * Returns: { requireTotp: true/false, tempToken/accessToken }
+ * Login with email or phone + password (step 1 of 2).
+ * Returns a temp token for the next step:
+ *   • requireAuthCode: true  (normal path — user must complete /login/verify-auth-code)
+ *   • requirePasswordChange: true  (first login — user must POST /change-password first)
  */
 router.post(
   "/login",
@@ -106,7 +170,7 @@ router.post(
     body("password").isLength({ min: 1 }).withMessage("Password is required"),
     body().custom((value) => {
       if (!value.email && !value.identifier) {
-        throw new Error("Email, phone, or username is required");
+        throw new Error("Email or phone is required");
       }
       return true;
     }),
@@ -154,120 +218,22 @@ router.post(
   changePassword,
 );
 
-// ========================================
-// TOTP 2FA ENDPOINTS
-// ========================================
-
 /**
- * POST /api/auth/2fa/setup
- * Generate TOTP secret and QR code
- * Requires: Access Token (must be logged in)
- */
-router.post("/2fa/setup", verifyAccessToken, setupTotp);
-
-/**
- * POST /api/auth/2fa/verify
- * Verify TOTP setup with first code and enable 2FA
- * Returns backup codes on success
- * Requires: Access Token
+ * POST /api/auth/login/verify-auth-code
+ * Step 2 of password login: validate the hospital's 6-digit authCode.
+ * Requires: Temp Token (purpose=AUTH_CODE) in Authorization header.
  */
 router.post(
-  "/2fa/verify",
-  verifyAccessToken,
-  otpLimiter,
-  [
-    body("token")
-      .matches(/^\d{6}$/)
-      .withMessage("TOTP token must be 6 digits"),
-  ],
-  handleValidationErrors,
-  verifyTotpSetup,
-);
-
-/**
- * POST /api/auth/login/totp
- * Complete login with TOTP verification
- * Requires: Temp Token (purpose=TOTP_LOGIN)
- */
-router.post(
-  "/login/totp",
+  "/login/verify-auth-code",
   otpLimiter,
   verifyTempToken,
   [
-    body("token")
+    body("authCode")
       .matches(/^\d{6}$/)
-      .withMessage("TOTP token must be 6 digits"),
+      .withMessage("Auth code must be 6 digits"),
   ],
   handleValidationErrors,
-  verifyTotpLogin,
-);
-
-/**
- * POST /api/auth/2fa/disable
- * Disable 2FA (requires valid TOTP)
- * Requires: Access Token
- */
-router.post(
-  "/2fa/disable",
-  verifyAccessToken,
-  otpLimiter,
-  [
-    body("token")
-      .matches(/^\d{6}$/)
-      .withMessage("TOTP token must be 6 digits"),
-  ],
-  handleValidationErrors,
-  disableTotp,
-);
-
-/**
- * POST /api/auth/2fa/reset
- * Reset 2FA with Password (for lost devices)
- * Requires: Access Token
- */
-router.post(
-  "/2fa/reset",
-  verifyAccessToken,
-  authLimiter,
-  [
-    body("password").notEmpty().withMessage("Password is required"),
-  ],
-  handleValidationErrors,
-  resetTotp,
-);
-
-/**
- * POST /api/auth/2fa/reset/verify
- * Verify Rotation TOTP
- * Requires: Access Token
- */
-router.post(
-  "/2fa/reset/verify",
-  verifyAccessToken,
-  authLimiter,
-  [
-    body("token").matches(/^\d{6}$/).withMessage("TOTP token must be 6 digits"),
-  ],
-  handleValidationErrors,
-  verifyTotpReset,
-);
-
-/**
- * POST /api/auth/login/recovery
- * Login using backup code when TOTP unavailable
- * Requires: Temp Token (purpose=TOTP_LOGIN)
- */
-router.post(
-  "/login/recovery",
-  otpLimiter,
-  verifyTempToken,
-  [
-    body("code")
-      .matches(/^[A-Z0-9]{4}-?[A-Z0-9]{4}$/i)
-      .withMessage("Invalid backup code format"),
-  ],
-  handleValidationErrors,
-  recoveryLogin,
+  verifyAuthCodeLogin,
 );
 
 /**

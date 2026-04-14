@@ -1,6 +1,6 @@
 /**
  * Login Page
- * Supports login via email, phone, or username (single field auto-detection)
+ * Supports login via email or phone number (single field auto-detection)
  */
 
 import React, { useEffect, useState } from "react";
@@ -12,22 +12,22 @@ import { TextInput } from "../components/TextInput";
 import { useAuth } from "../hooks/useAuth";
 
 /** Detect input type for client-side validation */
-const detectIdentifierType = (value: string): "email" | "phone" | "username" => {
+const detectIdentifierType = (value: string): "email" | "phone" | "unknown" => {
   if (value.includes("@")) return "email";
   const cleaned = value.replace(/[\s\-()]/g, "");
   if (/^\+?\d{7,15}$/.test(cleaned)) return "phone";
-  return "username";
+  return "unknown";
 };
 
 const getIdentifierError = (value: string): string | null => {
-  if (!value.trim()) return "Email, phone, or username is required";
+  if (!value.trim()) return "Email or phone number is required";
   const type = detectIdentifierType(value);
   if (type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Invalid email format";
   if (type === "phone") {
     const cleaned = value.replace(/[\s\-()]/g, "");
     if (!/^\+?[1-9]\d{6,14}$/.test(cleaned)) return "Invalid phone number";
   }
-  if (type === "username" && value.trim().length < 4) return "Username must be at least 4 characters";
+  if (type === "unknown") return "Please enter a valid email or phone number";
   return null;
 };
 
@@ -99,19 +99,12 @@ export const Login: React.FC = () => {
     if (!isValid) return;
 
     try {
-      const loginComplete = await login(formData.identifier.trim(), formData.password);
-
-      if (loginComplete === true) {
-        navigate("/dashboard");
-      } else if (loginComplete === "SETUP_NEEDED") {
-        navigate("/setup-2fa");
-      } else if (loginComplete === "PASSWORD_CHANGE") {
+      const next = await login(formData.identifier.trim(), formData.password);
+      if (next === "PASSWORD_CHANGE") {
         navigate("/change-password");
-      } else if (loginComplete === false) {
-        // TOTP required
-        navigate("/verify-otp");
       } else {
-        navigate("/dashboard");
+        // next === "AUTH_CODE"
+        navigate("/verify-auth-code");
       }
     } catch (error: unknown) {
       const err = error as Error & { response?: { status?: number; data?: { lockUntil?: string } } };
@@ -145,9 +138,9 @@ export const Login: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-6">
           <TextInput
-            label="Email, Phone, or Username"
+            label="Email or Phone"
             type="text"
-            placeholder="admin@hospital.com / +91... / username"
+            placeholder="admin@hospital.com  or  +91..."
             value={formData.identifier}
             onChange={(value) => handleChange("identifier", value)}
             error={errors.identifier}

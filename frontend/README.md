@@ -131,7 +131,7 @@ frontend/
 │   │   └── CountdownTimer.tsx
 │   ├── pages/
 │   │   ├── LandingPage.tsx         # Marketing homepage
-│   │   ├── Login.tsx               # Email/phone/username login
+│   │   ├── Login.tsx               # Email/phone login
 │   │   ├── Dashboard.tsx           # Patient list + search + export
 │   │   ├── TotpVerification.tsx    # 6-digit TOTP during login
 │   │   ├── TotpSetupMandatory.tsx  # QR -> verify -> backup codes
@@ -251,7 +251,7 @@ stateDiagram-v2
 ## Key Features
 
 ### Multi-Step Authentication
-- Unified identifier field (auto-detects email/phone/username)
+- Unified identifier field (auto-detects email or phone)
 - TOTP verification with 6-digit auto-submit input
 - Backup code recovery for lost devices
 - Mandatory 2FA setup after registration

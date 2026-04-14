@@ -27,36 +27,11 @@ interface ApiService {
         @Body body: Map<String, String>
     ): Response<ChangePasswordResponse>
 
-    @POST("/api/auth/2fa/setup")
-    suspend fun setupTotp(): Response<TotpSetupResponse>
-
-    @POST("/api/auth/2fa/verify")
-    suspend fun verifyTotpSetup(
-        @Body body: Map<String, String>
-    ): Response<TotpVerifyResponse>
-
-    @POST("/api/auth/verify-otp")
-    suspend fun verifyOtp(
-        @Header("Authorization") authorization: String,
-        @Body body: Map<String, String>
-    ): Response<Map<String, Any>>
-
-    @POST("/api/auth/resend-otp")
-    suspend fun resendOtp(
-        @Header("Authorization") authorization: String
-    ): Response<Map<String, Any>>
-
-    @POST("/api/auth/login/totp")
-    suspend fun verifyTotpLogin(
-        @Header("Authorization") authorization: String,
-        @Body body: Map<String, String>
-    ): Response<LoginResponse>
-
-    @POST("/api/auth/login/recovery")
-    suspend fun recoveryLogin(
-        @Header("Authorization") authorization: String,
-        @Body body: Map<String, String>
-    ): Response<Map<String, Any>>
+    @POST("/api/auth/login/verify-auth-code")
+    suspend fun verifyAuthCodeLogin(
+        @Header("Authorization") bearer: String,
+        @Body body: AuthCodeVerifyRequest
+    ): Response<AuthCodeVerifyResponse>
 
     // Biometric endpoints
     @POST("/api/auth/biometric/register")

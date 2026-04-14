@@ -1,6 +1,9 @@
 /**
  * Protected Route Component
- * Ensures user is authenticated before accessing protected pages
+ * Ensures the user is authenticated before rendering protected pages.
+ *
+ * If the user is mid-login (has a tempToken in sessionStorage), we route
+ * them to the correct next-step screen based on the token's purpose.
  */
 
 import React from "react";
@@ -16,16 +19,14 @@ const getTempTokenPurpose = (token: string | null): string | null => {
   try {
     const parts = token.split(".");
     if (parts.length < 2) return null;
-    const payload = parts[1];
-    // base64url -> base64
-    const b64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
     const json = JSON.parse(window.atob(b64));
     return json.purpose || null;
-  } catch (e) {
-    // Failed to parse temp token
+  } catch {
     return null;
   }
 };
+
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, state } = useAuth();
 
@@ -35,7 +36,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     if (purpose === "PASSWORD_CHANGE") {
       return <Navigate to="/change-password" replace />;
     }
-    return <Navigate to="/verify-otp" replace />;
+    // Default: AUTH_CODE (or unknown) → send to the auth-code screen
+    return <Navigate to="/verify-auth-code" replace />;
   }
 
   if (state.loading) {
@@ -51,14 +53,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  if (isAuthenticated) {
-    // Enforce Mandatory TOTP: redirect to setup if not enabled
-    if (state.hospital && !state.hospital.totpEnabled) {
-      return <Navigate to={`/setup-2fa?email=${encodeURIComponent(state.hospital.email || "")}`} replace />;
-    }
-
-    return <>{children}</>;
-  }
+  if (isAuthenticated) return <>{children}</>;
 
   return <Navigate to="/login" replace />;
 };

@@ -30,7 +30,6 @@ class TokenManager(private val context: Context) {
         private const val USER_EMAIL = "user_email"
         private const val BIOMETRIC_ENABLED = "biometric_enabled"
         private const val SESSION_TIMESTAMP = "session_timestamp"
-        private const val TOTP_SETUP_PENDING = "totp_setup_pending"
     }
 
     private val prefs: SharedPreferences = createEncryptedPrefs()
@@ -135,7 +134,6 @@ class TokenManager(private val context: Context) {
             remove(HOSPITAL_NAME)
             remove(HOSPITAL_LOGO_URL)
             remove(SESSION_TIMESTAMP)
-            remove(TOTP_SETUP_PENDING)
             apply()
         }
     }
@@ -186,12 +184,5 @@ class TokenManager(private val context: Context) {
         return !prefs.getString(ACCESS_TOKEN, null).isNullOrEmpty()
     }
 
-    fun setTotpSetupPending(isPending: Boolean) {
-        prefs.edit().putBoolean(TOTP_SETUP_PENDING, isPending).apply()
-    }
-
-    fun isTotpSetupPending(): Boolean {
-        return prefs.getBoolean(TOTP_SETUP_PENDING, false)
-    }
 }
 

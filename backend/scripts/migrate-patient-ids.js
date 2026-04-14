@@ -6,7 +6,7 @@
  * 2. Groups them by hospitalId
  * 3. Derives hospital initials from hospital name
  * 4. Assigns sequential patientId values (e.g. SH-001, SH-002)
- * 5. Updates Hospital.patientCounter to reflect the highest assigned number
+ * 5. Updates Hospital.patientIdCounter to reflect the highest assigned number
  *
  * Safe to run multiple times — skips patients that already have a patientId.
  * Does NOT delete any data, documents, or folders.
@@ -63,7 +63,7 @@ async function migrate() {
     }
 
     const initials = hospital.getInitials();
-    let counter = hospital.patientCounter || 0;
+    let counter = hospital.patientIdCounter || 0;
 
     console.log(`Hospital "${hospital.hospitalName}" (${initials}): ${patients.length} patients, current counter: ${counter}`);
 
@@ -76,8 +76,8 @@ async function migrate() {
     }
 
     // Update hospital counter
-    await Hospital.updateOne({ _id: hospitalId }, { $set: { patientCounter: counter } });
-    console.log(`  Updated ${hospital.hospitalName} patientCounter to ${counter}`);
+    await Hospital.updateOne({ _id: hospitalId }, { $set: { patientIdCounter: counter } });
+    console.log(`  Updated ${hospital.hospitalName} patientIdCounter to ${counter}`);
   }
 
   console.log("\nMigration complete!");

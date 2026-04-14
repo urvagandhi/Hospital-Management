@@ -35,14 +35,18 @@ export const generateRefreshToken = (hospitalId) => {
 };
 
 /**
- * Generate temporary token for OTP verification
+ * Generate temporary token for multi-step flows
  * 🔑 [SECURITY] Purpose-Scoped Temp Tokens
  *
+ * Currently supported purposes:
+ *   AUTH_CODE       — user has passed password step, must enter 6-digit auth code
+ *   PASSWORD_CHANGE — user must change password before proceeding (first login)
+ *
  * @param {string} hospitalId - Hospital ID
- * @param {string} purpose - Token purpose (e.g., 'TOTP_LOGIN')
+ * @param {string} purpose - One of AUTH_CODE | PASSWORD_CHANGE
  * @returns {string} Temporary token valid for 10 minutes
  */
-export const generateTempToken = (hospitalId, purpose = "TOTP_LOGIN") => {
+export const generateTempToken = (hospitalId, purpose = "AUTH_CODE") => {
   try {
     const token = jwt.sign(
       {
@@ -64,11 +68,11 @@ export const generateTempToken = (hospitalId, purpose = "TOTP_LOGIN") => {
  * 🔑 [SECURITY] Rejects tokens with mismatched purpose
  *
  * @param {string} token - Temp token to verify
- * @param {string} expectedPurpose - Expected token purpose
+ * @param {string} expectedPurpose - Expected token purpose (AUTH_CODE | PASSWORD_CHANGE)
  * @returns {object} Decoded token payload
  * @throws {Error} If token is invalid or purpose doesn't match
  */
-export const verifyTempTokenPurpose = (token, expectedPurpose = "TOTP_LOGIN") => {
+export const verifyTempTokenPurpose = (token, expectedPurpose = "AUTH_CODE") => {
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET);
 

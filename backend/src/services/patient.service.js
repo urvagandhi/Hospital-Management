@@ -21,7 +21,7 @@ export const createPatient = async (hospitalId, patientData) => {
     // Atomically increment the hospital's patient counter and get initials
     const hospital = await Hospital.findByIdAndUpdate(
       hospitalId,
-      { $inc: { patientCounter: 1 } },
+      { $inc: { patientIdCounter: 1 } },
       { new: true },
     );
 
@@ -30,7 +30,7 @@ export const createPatient = async (hospitalId, patientData) => {
     }
 
     const initials = hospital.getInitials();
-    const counter = String(hospital.patientCounter).padStart(3, "0");
+    const counter = String(hospital.patientIdCounter).padStart(3, "0");
     const patientId = `${initials}-${counter}`;
 
     const patient = new Patient({

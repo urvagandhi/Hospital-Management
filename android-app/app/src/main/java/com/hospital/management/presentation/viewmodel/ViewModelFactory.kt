@@ -17,13 +17,8 @@ class ViewModelFactory(
             if (authRepository == null) throw IllegalArgumentException("AuthRepository required for AuthViewModel")
             return AuthViewModel(
                 LoginUseCase(authRepository),
-                VerifyOtpUseCase(authRepository),
-                ResendOtpUseCase(authRepository),
+                VerifyAuthCodeLoginUseCase(authRepository),
                 ChangePasswordUseCase(authRepository),
-                SetupTotpUseCase(authRepository),
-                VerifyTotpSetupUseCase(authRepository),
-                VerifyTotpLoginUseCase(authRepository),
-                RecoveryLoginUseCase(authRepository),
                 LogoutUseCase(authRepository),
                 SaveTokensUseCase(authRepository),
                 SaveHospitalInfoUseCase(authRepository)

@@ -31,23 +31,10 @@ const config = {
   REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET || "dev-refresh-secret-key",
   REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || "7d",
 
-  // OTP
-  OTP_EXPIRY_MINUTES: parseInt(process.env.OTP_EXPIRY_MINUTES || "5"),
+  // OTP (used by self-registration email OTP)
+  OTP_EXPIRY_MINUTES: parseInt(process.env.OTP_EXPIRY_MINUTES || "10"),
   OTP_LENGTH: parseInt(process.env.OTP_LENGTH || "6"),
   MAX_OTP_ATTEMPTS: parseInt(process.env.MAX_OTP_ATTEMPTS || "3"),
-
-  // TOTP 2FA Configuration
-  TOTP_ENCRYPTION_KEY: process.env.TOTP_ENCRYPTION_KEY,
-  TOTP_ISSUER: process.env.TOTP_ISSUER || "HospitalManagement",
-  TOTP_WINDOW: parseInt(process.env.TOTP_WINDOW || "1"),       // ±1 for login only
-  TOTP_SETUP_WINDOW: 0,                                         // Strict for setup (no drift)
-  MAX_BACKUP_CODES: 10,
-  TOTP_MAX_ATTEMPTS: parseInt(process.env.TOTP_MAX_ATTEMPTS || "5"),
-  TOTP_LOCK_DURATION_MINUTES: parseInt(process.env.TOTP_LOCK_DURATION_MINUTES || "5"),
-
-  // SMS Gateway
-  SMS_GATEWAY_API_KEY: process.env.SMS_GATEWAY_API_KEY,
-  SMS_GATEWAY_SENDER: process.env.SMS_GATEWAY_SENDER || "Hospital",
 
   // SMTP (email)
   SMTP_HOST: process.env.SMTP_HOST,
@@ -56,9 +43,6 @@ const config = {
   SMTP_PASS: process.env.SMTP_PASS,
   SMTP_FROM: process.env.SMTP_FROM,
   SMTP_SECURE: process.env.SMTP_SECURE || "false",
-
-  // Redis
-  REDIS_URL: process.env.REDIS_URL || "",
 
   // CORS
   FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:3000",
@@ -110,12 +94,6 @@ if (config.NODE_ENV === "production") {
   }
   if (!config.REFRESH_TOKEN_SECRET || config.REFRESH_TOKEN_SECRET.includes("dev-")) {
     throw new Error("SECURITY ALERT: REFRESH_TOKEN_SECRET must be set to a secure value in production");
-  }
-  if (!config.TOTP_ENCRYPTION_KEY) {
-    throw new Error("SECURITY ALERT: TOTP_ENCRYPTION_KEY must be set in production");
-  }
-  if (config.TOTP_ENCRYPTION_KEY.length < 32) {
-    throw new Error("SECURITY ALERT: TOTP_ENCRYPTION_KEY must be at least 32 characters long");
   }
   if (!config.MONGODB_URI) {
     throw new Error("MONGODB_URI must be set in production");

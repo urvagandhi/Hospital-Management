@@ -8,7 +8,6 @@ import authService from "../services/authService";
 interface ChangePasswordResponse {
   success: boolean;
   message: string;
-  requireTotpSetup?: boolean;
   data?: {
     accessToken?: string;
     refreshToken?: string;
@@ -55,15 +54,11 @@ const ChangePassword: React.FC = () => {
         authService.storeTokens(body.data.accessToken, body.data.refreshToken || "");
       }
 
-      // Clear temp token
+      // Clear temp token — backend already issued a session via cookies
       sessionStorage.removeItem("tempToken");
 
-      // If backend requires TOTP setup, navigate there; otherwise dashboard
-      if (body.requireTotpSetup) {
-        navigate(`/setup-2fa?email=${encodeURIComponent(body.data?.hospital?.email || "")}`);
-      } else {
-        navigate("/dashboard");
-      }
+      // Password changed → land on the dashboard (session was created by the backend)
+      navigate("/dashboard", { replace: true });
     } catch (err: unknown) {
       const error = err as Error & { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || error.message || "Failed to change password");

@@ -14,7 +14,6 @@ import com.hospital.management.databinding.ActivitySplashBinding
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.ui.auth.LoginActivity
-import com.hospital.management.ui.auth.TotpSetupActivity
 import com.hospital.management.ui.dashboard.DashboardActivity
 import com.hospital.management.utils.SessionManager
 import kotlinx.coroutines.Dispatchers
@@ -98,10 +97,6 @@ class SplashActivity : BaseActivity() {
                 val serverValid = validateSessionWithServer()
 
                 if (serverValid) {
-                    if (tokenManager.isTotpSetupPending()) {
-                        navigateToTotpSetup()
-                        return
-                    }
                     binding.tvLoading.text = "Welcome back!"
                     delay(500)
                     navigateToDashboard()
@@ -113,7 +108,7 @@ class SplashActivity : BaseActivity() {
                     navigateToLogin()
                 }
             } else {
-                // Token exists but session expired — require re-login (enforces TOTP)
+                // Token exists but session expired — require re-login
                 tokenManager.clearAll()
                 binding.tvLoading.text = "Session expired. Please sign in"
                 delay(500)
@@ -145,19 +140,6 @@ class SplashActivity : BaseActivity() {
 
     private fun navigateToDashboard() {
         val intent = Intent(this, DashboardActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
-        @Suppress("DEPRECATION")
-        if (android.os.Build.VERSION.SDK_INT >= 34) {
-            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, android.R.anim.fade_in, android.R.anim.fade_out)
-        } else {
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
-        }
-        finish()
-    }
-
-    private fun navigateToTotpSetup() {
-        val intent = Intent(this, TotpSetupActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         @Suppress("DEPRECATION")

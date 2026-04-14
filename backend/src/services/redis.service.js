@@ -1,10 +1,145 @@
 import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// Redis client with in-memory fallback
+//
+// SRS §2.1 requires "Redis with in-memory fallback" so dev environments and
+// outages don't take down auth flows. We expose a minimal compatible surface
+// (get / set / del / ttl) that every helper in this file uses.
+//
+// Strategy:
+//   • If Upstash env vars are set AND the first write succeeds → use Upstash.
+//   • Otherwise, or after a catastrophic failure, transparently switch to an
+//     in-memory Map-based store with real TTL semantics.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const memStore = new Map();   // key -> { value: string, expiresAt: number|null }
+const memTimers = new Map();  // key -> setTimeout handle (for cleanup)
+
+function memSet(key, value, { ex } = {}) {
+  const expiresAt = ex ? Date.now() + ex * 1000 : null;
+  memStore.set(key, { value: String(value), expiresAt });
+
+  if (memTimers.has(key)) clearTimeout(memTimers.get(key));
+  if (ex) {
+    const h = setTimeout(() => {
+      memStore.delete(key);
+      memTimers.delete(key);
+    }, ex * 1000);
+    if (h.unref) h.unref();
+    memTimers.set(key, h);
+  }
+  return "OK";
+}
+
+function memGet(key) {
+  const rec = memStore.get(key);
+  if (!rec) return null;
+  if (rec.expiresAt && Date.now() > rec.expiresAt) {
+    memStore.delete(key);
+    const h = memTimers.get(key);
+    if (h) clearTimeout(h);
+    memTimers.delete(key);
+    return null;
+  }
+  return rec.value;
+}
+
+function memDel(key) {
+  const existed = memStore.delete(key);
+  const h = memTimers.get(key);
+  if (h) clearTimeout(h);
+  memTimers.delete(key);
+  return existed ? 1 : 0;
+}
+
+function memTtl(key) {
+  const rec = memStore.get(key);
+  if (!rec) return -2;               // key does not exist
+  if (!rec.expiresAt) return -1;     // no expiry
+  const remaining = Math.ceil((rec.expiresAt - Date.now()) / 1000);
+  return remaining > 0 ? remaining : -2;
+}
+
+// ── Select backend at module load ───────────────────────────────────────────
+const hasUpstashCreds = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+let usingInMemory = !hasUpstashCreds;
+const upstash = hasUpstashCreds
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    })
+  : null;
+
+if (!hasUpstashCreds) {
+  console.warn("[redis.service] ⚠️  Upstash credentials missing — using in-memory fallback (dev-only, non-persistent)");
+}
+
+/**
+ * Unified backend. Each method tries Upstash first (if configured) and falls
+ * back to the in-memory store on any error. Once Upstash fails we latch
+ * `usingInMemory = true` so subsequent calls don't keep paying the DNS /
+ * connect timeout.
+ */
+const redis = {
+  async get(key) {
+    if (usingInMemory || !upstash) return memGet(key);
+    try {
+      return await upstash.get(key);
+    } catch (err) {
+      if (!usingInMemory) {
+        console.warn(`[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`);
+        usingInMemory = true;
+      }
+      return memGet(key);
+    }
+  },
+
+  async set(key, value, opts) {
+    if (usingInMemory || !upstash) return memSet(key, value, opts);
+    try {
+      return await upstash.set(key, value, opts);
+    } catch (err) {
+      if (!usingInMemory) {
+        console.warn(`[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`);
+        usingInMemory = true;
+      }
+      return memSet(key, value, opts);
+    }
+  },
+
+  async del(key) {
+    if (usingInMemory || !upstash) return memDel(key);
+    try {
+      return await upstash.del(key);
+    } catch (err) {
+      if (!usingInMemory) {
+        console.warn(`[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`);
+        usingInMemory = true;
+      }
+      return memDel(key);
+    }
+  },
+
+  async ttl(key) {
+    if (usingInMemory || !upstash) return memTtl(key);
+    try {
+      return await upstash.ttl(key);
+    } catch (err) {
+      if (!usingInMemory) {
+        console.warn(`[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`);
+        usingInMemory = true;
+      }
+      return memTtl(key);
+    }
+  },
+};
+
+/** Whether the process is currently using the in-memory fallback. */
+export function isUsingInMemoryStore() {
+  return usingInMemory;
+}
 
 function normalizeIdentifier(identifier) {
   return String(identifier).toLowerCase().trim();
@@ -14,9 +149,37 @@ function hashOTP(otp) {
   return crypto.createHash("sha256").update(String(otp)).digest("hex");
 }
 
-// ---------------------------------------------------------------------------
-// 1. OTP
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+// Redis key patterns used by this app
+//
+//   otp:{email}              OTP hash + attempt counter          TTL: 10 min
+//                            Written by the self-registration flow on /register
+//                            and /register/resend-otp; consumed by
+//                            /register/verify-otp. Burns itself after max
+//                            wrong attempts (configurable per call).
+//
+//   partial_reg:{email}      Pending registration form data      TTL: 30 min
+//                            Hashed password, normalized phone, logo,
+//                            hospital name — everything needed to create the
+//                            Hospital once the user verifies their OTP.
+//                            Deleted explicitly on successful verify; falls
+//                            back to TTL expiry if the user abandons.
+//
+//   last_otp_sent:{email}    Unix-ms timestamp of last OTP send  TTL: 60 sec
+//                            Enforces the 60-second resend cooldown for
+//                            /register/resend-otp.
+//
+//   bio:challenge:{hId}:{dev} Biometric challenge nonce          TTL: 2 min
+//                            Server-issued random nonce that the Android app
+//                            must sign with its device private key. Deleted
+//                            on successful verify (one-shot).
+//
+// Anything else is not used. If you need Redis-backed sessions or per-IP
+// login-attempt counters later, add them here and wire them up in the
+// relevant controller.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── OTP ─────────────────────────────────────────────────────────────────────
 
 export async function setOTP(identifier, otp, ttlSeconds = 600) {
   try {
@@ -28,7 +191,7 @@ export async function setOTP(identifier, otp, ttlSeconds = 600) {
   }
 }
 
-export async function verifyOTP(identifier, providedOtp) {
+export async function verifyOTP(identifier, providedOtp, maxAttempts = 5) {
   try {
     const key = `otp:${normalizeIdentifier(identifier)}`;
     const raw = await redis.get(key);
@@ -48,7 +211,8 @@ export async function verifyOTP(identifier, providedOtp) {
     // Wrong OTP
     record.attempts += 1;
 
-    if (record.attempts >= 5) {
+    if (record.attempts >= maxAttempts) {
+      // Burn the OTP after too many wrong attempts — user must request a new one
       await redis.del(key);
       return { valid: false, expired: false, attemptsLeft: 0 };
     }
@@ -59,7 +223,7 @@ export async function verifyOTP(identifier, providedOtp) {
     return {
       valid: false,
       expired: false,
-      attemptsLeft: 5 - record.attempts,
+      attemptsLeft: maxAttempts - record.attempts,
     };
   } catch (err) {
     console.error("[redis.service] verifyOTP error:", err.message);
@@ -67,9 +231,7 @@ export async function verifyOTP(identifier, providedOtp) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 3-5. Partial Registration
-// ---------------------------------------------------------------------------
+// ── Partial Registration ────────────────────────────────────────────────────
 
 export async function setPartialRegistration(email, data, ttlSeconds = 1800) {
   try {
@@ -104,158 +266,7 @@ export async function deletePartialRegistration(email) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 6-8. Sessions
-// ---------------------------------------------------------------------------
-
-export async function setSession(
-  sessionId,
-  userId,
-  deviceInfo,
-  ttlSeconds = 86400
-) {
-  try {
-    const sessionKey = `session:${sessionId}`;
-    const userSessionKey = `user_session:${userId}`;
-
-    const data = JSON.stringify({
-      userId,
-      deviceInfo,
-      createdAt: Date.now(),
-    });
-
-    await redis.set(sessionKey, data, { ex: ttlSeconds });
-    await redis.set(userSessionKey, sessionId, { ex: ttlSeconds });
-  } catch (err) {
-    console.error("[redis.service] setSession error:", err.message);
-  }
-}
-
-export async function getSession(sessionId) {
-  try {
-    const key = `session:${sessionId}`;
-    const raw = await redis.get(key);
-    if (!raw) return null;
-    return typeof raw === "string" ? JSON.parse(raw) : raw;
-  } catch (err) {
-    console.error("[redis.service] getSession error:", err.message);
-    return null;
-  }
-}
-
-export async function deleteSession(sessionId) {
-  try {
-    const key = `session:${sessionId}`;
-    await redis.del(key);
-  } catch (err) {
-    console.error("[redis.service] deleteSession error:", err.message);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 9. Invalidate User Sessions
-// ---------------------------------------------------------------------------
-
-export async function invalidateUserSessions(userId) {
-  try {
-    const userSessionKey = `user_session:${userId}`;
-    const sessionId = await redis.get(userSessionKey);
-
-    if (sessionId) {
-      await redis.del(`session:${sessionId}`);
-    }
-
-    await redis.del(userSessionKey);
-  } catch (err) {
-    console.error(
-      "[redis.service] invalidateUserSessions error:",
-      err.message
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 10-13. Login Attempts
-// ---------------------------------------------------------------------------
-
-export async function setLoginAttempts(identifier, count, ttlSeconds = 900) {
-  try {
-    const key = `login_attempts:${normalizeIdentifier(identifier)}`;
-    await redis.set(key, String(count), { ex: ttlSeconds });
-  } catch (err) {
-    console.error("[redis.service] setLoginAttempts error:", err.message);
-  }
-}
-
-export async function getLoginAttempts(identifier) {
-  try {
-    const key = `login_attempts:${normalizeIdentifier(identifier)}`;
-    const val = await redis.get(key);
-    return val ? Number(val) : 0;
-  } catch (err) {
-    console.error("[redis.service] getLoginAttempts error:", err.message);
-    return 0;
-  }
-}
-
-export async function incrementLoginAttempts(identifier) {
-  try {
-    const current = await getLoginAttempts(identifier);
-    await setLoginAttempts(identifier, current + 1, 900);
-    return current + 1;
-  } catch (err) {
-    console.error("[redis.service] incrementLoginAttempts error:", err.message);
-    return 0;
-  }
-}
-
-export async function clearLoginAttempts(identifier) {
-  try {
-    const key = `login_attempts:${normalizeIdentifier(identifier)}`;
-    await redis.del(key);
-  } catch (err) {
-    console.error("[redis.service] clearLoginAttempts error:", err.message);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 14-16. OTP Resend Count
-// ---------------------------------------------------------------------------
-
-export async function setOTPResendCount(identifier, count, ttlSeconds = 3600) {
-  try {
-    const key = `otp_resend:${normalizeIdentifier(identifier)}`;
-    await redis.set(key, String(count), { ex: ttlSeconds });
-  } catch (err) {
-    console.error("[redis.service] setOTPResendCount error:", err.message);
-  }
-}
-
-export async function getOTPResendCount(identifier) {
-  try {
-    const key = `otp_resend:${normalizeIdentifier(identifier)}`;
-    const val = await redis.get(key);
-    return val ? Number(val) : 0;
-  } catch (err) {
-    console.error("[redis.service] getOTPResendCount error:", err.message);
-    return 0;
-  }
-}
-
-export async function incrementOTPResendCount(identifier) {
-  try {
-    const current = await getOTPResendCount(identifier);
-    await setOTPResendCount(identifier, current + 1, 3600);
-    return current + 1;
-  } catch (err) {
-    console.error("[redis.service] incrementOTPResendCount error:", err.message);
-    return 0;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 17-18. Last OTP Sent (rate-limiting)
-// ---------------------------------------------------------------------------
+// ── Last-OTP-Sent (60s resend cooldown) ─────────────────────────────────────
 
 export async function setLastOTPSent(identifier, ttlSeconds = 60) {
   try {
@@ -274,5 +285,55 @@ export async function getLastOTPSent(identifier) {
   } catch (err) {
     console.error("[redis.service] getLastOTPSent error:", err.message);
     return null;
+  }
+}
+
+// ── Biometric Challenge (one-shot nonce) ────────────────────────────────────
+
+function bioChallengeKey(hospitalId, deviceId) {
+  return `bio:challenge:${hospitalId}:${deviceId}`;
+}
+
+export async function setBiometricChallenge(hospitalId, deviceId, challenge, ttlSeconds = 120) {
+  try {
+    await redis.set(bioChallengeKey(hospitalId, deviceId), String(challenge), { ex: ttlSeconds });
+  } catch (err) {
+    console.error("[redis.service] setBiometricChallenge error:", err.message);
+  }
+}
+
+/**
+ * Fetch and CONSUME a biometric challenge. Returns null if missing/expired.
+ * The key is deleted as soon as it's read so replay attacks are prevented.
+ */
+export async function getBiometricChallenge(hospitalId, deviceId) {
+  try {
+    const key = bioChallengeKey(hospitalId, deviceId);
+    const val = await redis.get(key);
+    if (val) await redis.del(key);
+    return val ? String(val) : null;
+  } catch (err) {
+    console.error("[redis.service] getBiometricChallenge error:", err.message);
+    return null;
+  }
+}
+
+// ── Health Check ─────────────────────────────────────────────────────────────
+
+/**
+ * Ping the underlying store (Upstash or the in-memory fallback).
+ * Returns { ok: boolean, backend: "upstash" | "memory" }.
+ * Used by /api/health/deep.
+ */
+export async function pingRedis() {
+  try {
+    const token = `ping-${Date.now()}`;
+    await redis.set("health:ping", token, { ex: 10 });
+    const got = await redis.get("health:ping");
+    const ok = got === token;
+    return { ok, backend: usingInMemory ? "memory" : "upstash" };
+  } catch (err) {
+    console.error("[redis.service] pingRedis error:", err.message);
+    return { ok: false, backend: usingInMemory ? "memory" : "upstash", error: err.message };
   }
 }

@@ -11,7 +11,7 @@ import Hospital from "../models/Hospital.js";
  */
 export const getAllHospitals = async (req, res) => {
   try {
-    const hospitals = await Hospital.find().select("-passwordHash -totpSecretEncrypted -totpPendingSecret -fcmToken -biometricKeys -totpFailedAttempts -totpLockedUntil -failedLoginAttempts -lockUntil -__v").sort({ createdAt: -1 });
+    const hospitals = await Hospital.find().select("-passwordHash -fcmToken -biometricKeys -failedLoginAttempts -lockUntil -__v").sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -102,7 +102,7 @@ export const getHospitalById = async (req, res) => {
 export const updateHospital = async (req, res) => {
   try {
     const { id } = req.params;
-    const { hospitalName, email, phone, address, isActive, username } = req.body;
+    const { hospitalName, email, phone, address, isActive } = req.body;
 
     // Validate inputs
     if (!hospitalName || !email || !phone || !address) {
@@ -163,34 +163,11 @@ export const updateHospital = async (req, res) => {
       }
     }
 
-    // Check if username is already taken by another hospital
-    if (username !== undefined) {
-      const usernameVal = username.trim().toLowerCase();
-      if (usernameVal && usernameVal !== (hospital.username || "")) {
-        const existingUsername = await Hospital.findOne({
-          username: usernameVal,
-          _id: { $ne: id },
-        });
-        if (existingUsername) {
-          return res.status(409).json({
-            success: false,
-            message: "This username is already taken",
-          });
-        }
-      }
-    }
-
     // Update hospital
     hospital.hospitalName = hospitalName;
     hospital.email = email.toLowerCase();
     hospital.phone = normalizedPhone;
     hospital.address = address;
-
-    // Update username (allow setting or clearing)
-    if (username !== undefined) {
-      const usernameVal = username.trim().toLowerCase();
-      hospital.username = usernameVal || undefined;
-    }
 
     // Only admins can change isActive status
     if (!req.isSelf && isActive !== undefined) {
@@ -222,8 +199,6 @@ export const updateHospital = async (req, res) => {
         message = "This email address is already registered by another hospital";
       } else if (field === "phone") {
         message = "This phone number is already registered by another hospital";
-      } else if (field === "username") {
-        message = "This username is already taken";
       }
 
       return res.status(409).json({

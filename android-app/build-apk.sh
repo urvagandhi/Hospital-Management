@@ -12,6 +12,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 MODE="${1:-debug}"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # --- Preflight checks ---
 
@@ -56,25 +57,29 @@ case "$MODE" in
         echo ""
         echo "-- Fast debug build --"
         ./gradlew assembleDebug "${GRADLE_OPTS[@]}"
-        APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+        SRC_PATH="app/build/outputs/apk/debug/app-debug.apk"
+        APK_PATH="app/build/outputs/apk/debug/HospitALL_${TIMESTAMP}.apk"
         ;;
     release)
         echo ""
         echo "-- Release build --"
         ./gradlew assembleRelease "${GRADLE_OPTS[@]}"
-        APK_PATH="app/build/outputs/apk/release/app-release-unsigned.apk"
+        SRC_PATH="app/build/outputs/apk/release/app-release-unsigned.apk"
+        APK_PATH="app/build/outputs/apk/release/HospitALL_${TIMESTAMP}.apk"
         ;;
     clean)
         echo ""
         echo "-- Clean + debug build --"
         ./gradlew clean assembleDebug "${GRADLE_OPTS[@]}"
-        APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+        SRC_PATH="app/build/outputs/apk/debug/app-debug.apk"
+        APK_PATH="app/build/outputs/apk/debug/HospitALL_${TIMESTAMP}.apk"
         ;;
     bundle)
         echo ""
         echo "-- App bundle (AAB) build --"
         ./gradlew bundleRelease "${GRADLE_OPTS[@]}"
-        APK_PATH="app/build/outputs/bundle/release/app-release.aab"
+        SRC_PATH="app/build/outputs/bundle/release/app-release.aab"
+        APK_PATH="app/build/outputs/bundle/release/HospitALL_${TIMESTAMP}.aab"
         ;;
     *)
         echo "Usage: ./build-apk.sh [debug|release|clean|bundle]"
@@ -88,6 +93,9 @@ case "$MODE" in
 esac
 
 echo ""
+if [ -f "$SRC_PATH" ]; then
+    mv "$SRC_PATH" "$APK_PATH"
+fi
 if [ -f "$APK_PATH" ]; then
     SIZE=$(du -h "$APK_PATH" | cut -f1)
     echo -e "${GREEN}BUILD SUCCESSFUL${NC}"

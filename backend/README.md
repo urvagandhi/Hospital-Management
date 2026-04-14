@@ -85,8 +85,7 @@ backend/
 ├── src/
 │   ├── config/
 │   │   ├── db.js              # MongoDB connection
-│   │   ├── env.js             # Environment validation
-│   │   └── redis.js           # Redis client + in-memory fallback
+│   │   └── env.js             # Environment validation
 │   ├── controllers/
 │   │   ├── auth.controller.js # Login, TOTP, sessions, password
 │   │   ├── patient.controller.js
@@ -163,7 +162,10 @@ flowchart TD
 | `POST` | `/refresh-token` | Cookie | - | Refresh access token |
 | `POST` | `/logout` | Cookie | - | End session |
 | `POST` | `/change-password` | Temp Token | 5/15min | Reset password (first login) |
-| `POST` | `/register-hospital` | Admin | 5/15min | Create hospital account |
+| `POST` | `/register-hospital` | Admin | 5/15min | Create hospital account (admin flow) |
+| `POST` | `/register` | None | 5/15min | Self-service: initiate registration (sends OTP) |
+| `POST` | `/register/verify-otp` | None | 3/1min | Self-service: verify OTP + create account |
+| `POST` | `/register/resend-otp` | None | 3/1min | Self-service: resend OTP (60s cooldown per email) |
 | `POST` | `/2fa/setup` | Access Token | - | Generate TOTP QR code |
 | `POST` | `/2fa/verify` | Access Token | 3/1min | Complete TOTP setup |
 | `POST` | `/2fa/disable` | Access Token | - | Disable 2FA |
@@ -215,6 +217,29 @@ flowchart TD
 
 ---
 
+## Redis Usage
+
+Redis (Upstash) is used for three ephemeral, TTL-scoped concerns in the
+self-service registration flow. Everything else (sessions, login lockouts,
+audit logs) lives in MongoDB.
+
+| Key | Purpose | TTL | Written By | Read By |
+| --- | --- | --- | --- | --- |
+| `otp:{email}` | SHA-256 hash of the 6-digit OTP + wrong-attempt counter. Burns itself after max attempts. | 10 min | `POST /register`, `POST /register/resend-otp` | `POST /register/verify-otp` |
+| `partial_reg:{email}` | Pending registration form data — hashed password, normalised phone, logo, name, address. Hospital is only created when the OTP is verified. | 30 min | `POST /register` | `POST /register/verify-otp`, `POST /register/resend-otp` |
+| `last_otp_sent:{email}` | Unix-ms timestamp of the last OTP send. Enforces the 60-second resend cooldown. | 60 sec | `POST /register`, `POST /register/resend-otp` | `POST /register/resend-otp` |
+
+**Fallback:** If `UPSTASH_REDIS_REST_URL` / `..._TOKEN` are missing or the
+Upstash endpoint is unreachable, `redis.service.js` transparently latches to
+an in-memory `Map` with real TTL semantics (SRS §2.1). A warning is logged
+once per process. This keeps local development and short outages functional.
+
+**Testing:** Run `node scripts/test-redis.js` for a helper-level sanity check,
+or `node scripts/test-self-registration.js` for a full end-to-end test that
+drives the three endpoints and inspects Redis between steps.
+
+---
+
 ## Data Models
 
 ```mermaid
@@ -230,9 +255,10 @@ erDiagram
         String hospitalName
         String email UK
         String phone UK
-        String username UK
+        String authCode UK "6-digit numeric, e.g. 041326"
         String passwordHash "bcrypt"
         String role "admin | hospital"
+        Number patientIdCounter "auto-increments per-hospital"
         Boolean totpEnabled
         String totpSecretEncrypted "AES-256-GCM"
         Boolean totpVerified
@@ -391,7 +417,8 @@ docker-compose up --build backend
 | `R2_ACCESS_KEY_ID` | - | R2 access key |
 | `R2_SECRET_ACCESS_KEY` | - | R2 secret key |
 | `R2_BUCKET_NAME` | - | R2 bucket name |
-| `REDIS_URL` | - | Redis connection (falls back to in-memory Map) |
+| `UPSTASH_REDIS_REST_URL` | - | Upstash Redis REST URL (auto-falls-back to in-memory Map if missing or unreachable) |
+| `UPSTASH_REDIS_REST_TOKEN` | - | Upstash Redis REST token |
 
 ---
 
@@ -418,7 +445,7 @@ docker-compose up --build backend
 | jsonwebtoken | 9.0.2 | JWT tokens |
 | bcryptjs | 2.4.3 | Password hashing |
 | speakeasy | 2.0.0 | TOTP 2FA generation |
-| ioredis | 5.10.1 | Redis client |
+| @upstash/redis | 1.x | Redis REST client (with in-memory fallback) |
 | @aws-sdk/client-s3 | 3.932.0 | Cloudflare R2 storage |
 | nodemailer | 7.0.12 | Email delivery |
 | pdfkit | 0.17.2 | PDF generation |

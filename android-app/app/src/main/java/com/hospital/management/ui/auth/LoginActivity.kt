@@ -72,10 +72,10 @@ class LoginActivity : BaseActivity() {
             var isValid = true
 
             if (identifier.isEmpty()) {
-                binding.tilEmail.error = "Email, phone, or username is required"
+                binding.tilEmail.error = "Email or phone number is required"
                 isValid = false
             } else {
-                // Validate based on detected type
+                // Validate based on detected type (email or phone only)
                 when {
                     identifier.contains("@") -> {
                         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(identifier).matches()) {
@@ -84,7 +84,6 @@ class LoginActivity : BaseActivity() {
                         }
                     }
                     identifier.startsWith("+") || identifier.all { it.isDigit() } && identifier.length in 7..15 -> {
-                        // Phone - basic check
                         val cleaned = identifier.replace(Regex("[\\s\\-()]"), "")
                         if (!cleaned.matches(Regex("^\\+?[1-9]\\d{6,14}$"))) {
                             binding.tilEmail.error = "Invalid phone number"
@@ -92,11 +91,8 @@ class LoginActivity : BaseActivity() {
                         }
                     }
                     else -> {
-                        // Username
-                        if (identifier.length < 4) {
-                            binding.tilEmail.error = "Username must be at least 4 characters"
-                            isValid = false
-                        }
+                        binding.tilEmail.error = "Please enter a valid email or phone number"
+                        isValid = false
                     }
                 }
             }
@@ -175,10 +171,52 @@ class LoginActivity : BaseActivity() {
                         binding.loadingOverlay.visibility = View.VISIBLE
                         binding.btnLogin.isEnabled = false
                     }
-                    is AuthState.Success -> {
+                    is AuthState.RequireAuthCode -> {
                         binding.loadingOverlay.visibility = View.GONE
                         binding.btnLogin.isEnabled = true
-                        handleSuccessState(state)
+                        val intent = Intent(this@LoginActivity, AuthCodeVerificationActivity::class.java)
+                        intent.putExtra("tempToken", state.tempToken)
+                        startActivity(intent)
+                        finish()
+                    }
+                    is AuthState.RequirePasswordChange -> {
+                        binding.loadingOverlay.visibility = View.GONE
+                        binding.btnLogin.isEnabled = true
+                        val intent = Intent(this@LoginActivity, ChangePasswordActivity::class.java)
+                        intent.putExtra("tempToken", state.tempToken)
+                        startActivity(intent)
+                        finish()
+                    }
+                    is AuthState.LoggedIn -> {
+                        binding.loadingOverlay.visibility = View.GONE
+                        binding.btnLogin.isEnabled = true
+                        SessionManager.startSession(this@LoginActivity)
+
+                        // Save identifier for future logins
+                        val identifier = binding.etHospitalId.text.toString().trim()
+                        if (identifier.isNotEmpty()) tokenManager.saveEmail(identifier)
+
+                        // Register FCM token after successful login
+                        com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                val fcmToken = task.result
+                                lifecycleScope.launch {
+                                    try {
+                                        RetrofitClient.getApiService(this@LoginActivity).postFcmToken(mapOf("fcmToken" to fcmToken))
+                                    } catch (e: Exception) {
+                                        Log.e("LoginActivity", "Failed to register FCM token", e)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if biometric is already enabled or not available
+                        val alreadyEnabled = withContext(Dispatchers.IO) { tokenManager.isBiometricEnabled() }
+                        if (alreadyEnabled || !biometricHelper.isBiometricAvailable()) {
+                            navigateToDashboard()
+                        } else {
+                            showBiometricBindingDialog()
+                        }
                     }
                     is AuthState.Error -> {
                         binding.loadingOverlay.visibility = View.GONE
@@ -190,70 +228,6 @@ class LoginActivity : BaseActivity() {
                         binding.btnLogin.isEnabled = true
                     }
                 }
-            }
-        }
-    }
-
-    private suspend fun handleSuccessState(state: AuthState.Success) {
-        val message = state.message
-        val data = state.data // tempToken or status code or data object
-        Log.d("LoginActivity", "handleSuccessState: message='$message'")
-
-        when (message) {
-            "Password change required" -> {
-                val intent = Intent(this, ChangePasswordActivity::class.java)
-                intent.putExtra("tempToken", data as? String)
-                startActivity(intent)
-                finish()
-            }
-            "TOTP verification required" -> {
-                val intent = Intent(this, TotpVerificationActivity::class.java)
-                intent.putExtra("tempToken", data as? String)
-                startActivity(intent)
-                finish()
-            }
-            "TOTP Setup Required" -> {
-                SessionManager.startSession(this)
-                GlassSnackbar.show(this, "Please setup 2FA", GlassSnackbar.Variant.INFO)
-                startActivity(Intent(this, TotpSetupActivity::class.java))
-                finish()
-            }
-            "Login successful" -> {
-                SessionManager.startSession(this)
-
-                // Save identifier for future logins
-                lifecycleScope.launch {
-                    val identifier = binding.etHospitalId.text.toString().trim()
-                    if (identifier.isNotEmpty()) tokenManager.saveEmail(identifier)
-                }
-
-                // Register FCM token after successful login
-                com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        val fcmToken = task.result
-                        lifecycleScope.launch {
-                            try {
-                                RetrofitClient.getApiService(this@LoginActivity).postFcmToken(mapOf("fcmToken" to fcmToken))
-                            } catch (e: Exception) {
-                                Log.e("LoginActivity", "Failed to register FCM token", e)
-                            }
-                        }
-                    }
-                }
-
-                // Check if biometric is already enabled or not available
-                val alreadyEnabled = withContext(Dispatchers.IO) { tokenManager.isBiometricEnabled() }
-                if (alreadyEnabled || !biometricHelper.isBiometricAvailable()) {
-                    navigateToDashboard()
-                } else {
-                    showBiometricBindingDialog()
-                }
-            }
-            else -> {
-                 // Check if it's just an OTP sent message
-                 if (data is String && data.isNotEmpty()) {
-                     // Assume OTP flow? (Legacy)
-                 }
             }
         }
     }

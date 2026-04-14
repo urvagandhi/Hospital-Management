@@ -6,8 +6,7 @@ data class LoginResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("message") val message: String,
     @SerializedName("requirePasswordChange") val requirePasswordChange: Boolean? = null,
-    @SerializedName("requireTotp") val requireTotp: Boolean? = null,
-    @SerializedName("requireTotpSetup") val requireTotpSetup: Boolean? = null,
+    @SerializedName("requireAuthCode") val requireAuthCode: Boolean? = null,
     @SerializedName("data") val data: LoginData? = null
 )
 
@@ -23,7 +22,6 @@ data class LoginData(
 data class ChangePasswordResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("message") val message: String,
-    @SerializedName("requireTotpSetup") val requireTotpSetup: Boolean? = null,
     @SerializedName("data") val data: PasswordChangeData? = null
 )
 
@@ -33,26 +31,24 @@ data class PasswordChangeData(
     @SerializedName("hospital") val hospital: Hospital
 )
 
-data class TotpSetupResponse(
+// ── Auth Code verification (step 2 of login) ─────────────────────────────────
+
+data class AuthCodeVerifyRequest(
+    @SerializedName("authCode") val authCode: String
+)
+
+data class AuthCodeVerifyResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("message") val message: String,
-    @SerializedName("data") val data: TotpSetupData? = null
+    @SerializedName("data") val data: AuthCodeVerifyData? = null
 )
 
-data class TotpSetupData(
-    @SerializedName("qrCode") val qrCodeUrl: String,
-    @SerializedName("secret") val secret: String,
-    @SerializedName("issuer") val issuer: String? = null
-)
-
-data class TotpVerifyResponse(
-    @SerializedName("success") val success: Boolean,
-    @SerializedName("message") val message: String,
-    @SerializedName("data") val data: TotpVerifyData? = null
-)
-
-data class TotpVerifyData(
-    @SerializedName("backupCodes") val backupCodes: List<String>
+data class AuthCodeVerifyData(
+    @SerializedName("accessToken") val accessToken: String,
+    @SerializedName("refreshToken") val refreshToken: String,
+    @SerializedName("tokenType") val tokenType: String? = null,
+    @SerializedName("expiresIn") val expiresIn: String? = null,
+    @SerializedName("hospital") val hospital: Hospital
 )
 
 data class HospitalResponse(

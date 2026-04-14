@@ -12,9 +12,9 @@ import api from "../services/api";
 interface Hospital {
   _id: string;
   hospitalName: string;
-  username?: string;
   email: string;
   phone: string;
+  authCode?: string;
   address: string;
   logoUrl?: string;
   isActive: boolean;
@@ -34,7 +34,6 @@ export const HospitalsList: React.FC = () => {
   const [editingHospital, setEditingHospital] = useState<Hospital | null>(null);
   const [editForm, setEditForm] = useState({
     hospitalName: "",
-    username: "",
     email: "",
     phone: "",
     address: "",
@@ -71,7 +70,7 @@ export const HospitalsList: React.FC = () => {
       hospital.hospitalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       hospital.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       hospital.phone.includes(searchTerm) ||
-      (hospital.username && hospital.username.toLowerCase().includes(searchTerm.toLowerCase())),
+      (hospital.authCode && hospital.authCode.includes(searchTerm)),
   );
 
   const stats = useMemo(() => {
@@ -89,7 +88,6 @@ export const HospitalsList: React.FC = () => {
     const barePhone = hospital.phone.startsWith("+91") ? hospital.phone.slice(3) : hospital.phone;
     setEditForm({
       hospitalName: hospital.hospitalName,
-      username: hospital.username || "",
       email: hospital.email,
       phone: barePhone,
       address: hospital.address,
@@ -132,7 +130,6 @@ export const HospitalsList: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append("hospitalName", editForm.hospitalName);
-      formData.append("username", editForm.username.trim());
       formData.append("email", editForm.email);
       formData.append("phone", editForm.phone.replace(/[^\d]/g, ""));
       formData.append("address", editForm.address);
@@ -393,14 +390,14 @@ export const HospitalsList: React.FC = () => {
                       </div>
 
                       <div className="space-y-2.5">
-                        {h.username && (
+                        {h.authCode && (
                           <div className="flex items-center gap-2.5 text-sm text-gray-600">
-                            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center">
-                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                               </svg>
                             </div>
-                            <span className="font-mono text-xs bg-gray-100 px-2 py-0.5 rounded">@{h.username}</span>
+                            <span className="font-mono text-xs bg-blue-50 text-blue-700 tracking-widest font-semibold px-2 py-0.5 rounded">{h.authCode}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-2.5 text-sm text-gray-600">
@@ -492,17 +489,6 @@ export const HospitalsList: React.FC = () => {
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, hospitalName: e.target.value })}
                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
                         required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
-                      <input
-                        type="text"
-                        value={editForm.username}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })}
-                        placeholder="e.g. apollo_hospital"
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-                        maxLength={30}
                       />
                     </div>
                   </div>

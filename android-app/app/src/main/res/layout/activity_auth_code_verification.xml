@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/color_background"
-    tools:context=".ui.auth.TotpVerificationActivity">
+    tools:context=".ui.auth.AuthCodeVerificationActivity">
 
     <!-- Gradient blob background -->
     <com.hospital.management.ui.components.GradientBlobBackground
@@ -24,7 +24,7 @@
         android:layout_marginTop="@dimen/space_3xl"
         android:layout_marginEnd="@dimen/space_xl"
         android:fontFamily="@font/inter_bold"
-        android:text="Two-Factor Authentication"
+        android:text="Auth Code Verification"
         android:textColor="@color/color_on_surface"
         android:textSize="28sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -40,7 +40,7 @@
         android:layout_marginEnd="@dimen/space_xl"
         android:fontFamily="@font/inter"
         android:gravity="center"
-        android:text="Enter the 6-digit code from your authenticator app"
+        android:text="Enter the 6-digit Auth Code from your welcome email"
         android:textColor="@color/color_on_surface_variant"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -48,20 +48,20 @@
         app:layout_constraintTop_toBottomOf="@id/tvTitle" />
 
     <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/tilTotpCode"
+        android:id="@+id/tilAuthCode"
         style="@style/Widget.App.TextInputLayout.Glass"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/space_xl"
         android:layout_marginTop="@dimen/space_3xl"
         android:layout_marginEnd="@dimen/space_xl"
-        android:hint="6-digit code"
+        android:hint="6-digit Auth Code"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvSubtitle">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etTotpCode"
+            android:id="@+id/etAuthCode"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="@font/inter"
@@ -86,17 +86,17 @@
         android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tilTotpCode" />
+        app:layout_constraintTop_toBottomOf="@id/tilAuthCode" />
 
     <TextView
-        android:id="@+id/tvBackupCode"
+        android:id="@+id/tvBackToLogin"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/space_base"
         android:clickable="true"
         android:focusable="true"
         android:fontFamily="@font/inter_medium"
-        android:text="Use backup code instead"
+        android:text="Back to Login"
         android:textColor="@color/brand_primary"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -111,6 +111,6 @@
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvBackupCode" />
+        app:layout_constraintTop_toBottomOf="@id/tvBackToLogin" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

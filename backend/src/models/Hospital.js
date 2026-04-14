@@ -4,6 +4,7 @@
  */
 
 import mongoose from "mongoose";
+import crypto from "crypto";
 
 const hospitalSchema = new mongoose.Schema(
   {
@@ -13,15 +14,11 @@ const hospitalSchema = new mongoose.Schema(
       trim: true,
       minlength: [3, "Hospital name must be at least 3 characters"],
     },
-    username: {
+    authCode: {
       type: String,
       unique: true,
-      sparse: true, // Allow null for legacy records
-      lowercase: true,
       trim: true,
-      minlength: [4, "Username must be at least 4 characters"],
-      maxlength: [30, "Username must be at most 30 characters"],
-      match: [/^[a-z0-9_]+$/, "Username may only contain letters, numbers, and underscores"],
+      match: [/^\d{6}$/, "Auth code must be exactly 6 digits"],
     },
     email: {
       type: String,
@@ -82,49 +79,6 @@ const hospitalSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ========================================
-    // TOTP 2FA Fields
-    // ========================================
-    totpEnabled: {
-      type: Boolean,
-      default: false,
-    },
-    totpSecretEncrypted: {
-      type: String, // AES-256-GCM encrypted TOTP secret
-    },
-    totpVerified: {
-      type: Boolean,
-      default: false, // True after first OTP verification during setup
-    },
-    totpPendingSecret: {
-      type: String, // Temporary secret during rotation/reset
-    },
-
-    // 🔐 [SECURITY] TOTP Timestamps for audit compliance & dormancy detection
-    totpSetupAt: {
-      type: Date, // Set on successful /2fa/verify
-    },
-    totpLastUsedAt: {
-      type: Date, // Updated on each successful /login/totp
-    },
-
-    // 🚫 [SECURITY] TOTP Attempt Counters for brute-force protection
-    totpFailedAttempts: {
-      type: Number,
-      default: 0,
-    },
-    totpLockedUntil: {
-      type: Date, // Lock for 5 min after 5 failed attempts
-    },
-
-    // 🧠 [ENTERPRISE] Optional future-proofing fields
-    totpSecretVersion: {
-      type: Number,
-      default: 1, // Allows crypto rotation later
-    },
-    totpIssuer: {
-      type: String, // White-labeling: "HospitalName (YourApp)"
-    },
     // Force hospital admin to change password on first login (set by super-admin)
     mustChangePassword: {
       type: Boolean,
@@ -138,7 +92,7 @@ const hospitalSchema = new mongoose.Schema(
     },
 
     // Auto-incrementing counter for patient ID generation (per hospital)
-    patientCounter: {
+    patientIdCounter: {
       type: Number,
       default: 0,
     },
@@ -158,7 +112,7 @@ const hospitalSchema = new mongoose.Schema(
 // Index for faster queries
 hospitalSchema.index({ email: 1 });
 hospitalSchema.index({ phone: 1 });
-hospitalSchema.index({ username: 1 });
+// authCode already has a unique index via field definition
 
 // Virtual for full address
 hospitalSchema.virtual("fullAddress").get(function () {
@@ -169,12 +123,8 @@ hospitalSchema.virtual("fullAddress").get(function () {
 hospitalSchema.methods.toJSON = function () {
   const {
     passwordHash,
-    totpSecretEncrypted,
-    totpPendingSecret,
     fcmToken,
     biometricKeys,
-    totpFailedAttempts,
-    totpLockedUntil,
     failedLoginAttempts,
     lockUntil,
     ...rest
@@ -200,6 +150,42 @@ hospitalSchema.methods.getInitials = function () {
   }
   return this.hospitalName.slice(0, 2).toUpperCase();
 };
+
+/**
+ * Generate a random 6-digit numeric auth code (OTP-style), e.g. "041326".
+ * Leading zeros are preserved (returned as a zero-padded string).
+ * Uses crypto.randomInt for a uniform distribution.
+ */
+hospitalSchema.statics.generateAuthCode = function () {
+  const n = crypto.randomInt(0, 1_000_000);
+  return String(n).padStart(6, "0");
+};
+
+/**
+ * Generate a unique authCode that doesn't collide with any existing hospital.
+ * Retries up to 10 times in the unlikely case of collision.
+ */
+hospitalSchema.statics.generateUniqueAuthCode = async function () {
+  const Hospital = this;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = Hospital.generateAuthCode();
+    const exists = await Hospital.findOne({ authCode: code }).select("_id").lean();
+    if (!exists) return code;
+  }
+  throw new Error("Failed to generate unique auth code after 10 attempts");
+};
+
+// Auto-generate authCode on creation if not explicitly set
+hospitalSchema.pre("validate", async function (next) {
+  if (this.isNew && !this.authCode) {
+    try {
+      this.authCode = await this.constructor.generateUniqueAuthCode();
+    } catch (err) {
+      return next(err);
+    }
+  }
+  next();
+});
 
 const Hospital = mongoose.model("Hospital", hospitalSchema);
 

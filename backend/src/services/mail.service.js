@@ -204,14 +204,24 @@ export async function sendOTPEmail(to, otp, type) {
 /**
  * @param {string} to
  * @param {string} hospitalName
- * @param {string} username
+ * @param {string} loginId — the email used to log in
  * @param {string} [tempPassword] — temporary password (included if provided)
+ * @param {string} [authCode] — unique 6-char auth code for login verification
  */
-export async function sendWelcomeEmail(to, hospitalName, username, tempPassword) {
+export async function sendWelcomeEmail(to, hospitalName, loginId, tempPassword, authCode) {
   const safeHospital = escapeHtml(hospitalName);
-  const safeUsername = escapeHtml(username);
+  const safeLoginId = escapeHtml(loginId);
   const safeTempPassword = escapeHtml(tempPassword);
+  const safeAuthCode = escapeHtml(authCode || "");
   const subject = `Welcome to ${APP_NAME} — Your Account Details`;
+
+  const authCodeRow = authCode
+    ? `
+        <tr>
+          <td style="padding:4px 0;color:#64748b;font-size:13px;">Auth Code</td>
+          <td style="padding:4px 0;font-family:'Courier New',monospace;font-size:16px;color:#1e40af;font-weight:700;letter-spacing:2px;">${safeAuthCode}</td>
+        </tr>`
+    : "";
 
   const credentialsBlock = tempPassword
     ? `
@@ -219,22 +229,29 @@ export async function sendWelcomeEmail(to, hospitalName, username, tempPassword)
       <p style="margin:0 0 10px;font-size:14px;color:#0f172a;font-weight:700;">Your Login Credentials</p>
       <table style="width:100%;border-collapse:collapse;">
         <tr>
-          <td style="padding:4px 0;color:#64748b;font-size:13px;width:120px;">Email / Username</td>
-          <td style="padding:4px 0;color:#0f172a;font-size:13px;font-weight:600;">${safeUsername}</td>
+          <td style="padding:4px 0;color:#64748b;font-size:13px;width:140px;">Email</td>
+          <td style="padding:4px 0;color:#0f172a;font-size:13px;font-weight:600;">${safeLoginId}</td>
         </tr>
         <tr>
           <td style="padding:4px 0;color:#64748b;font-size:13px;">Temporary Password</td>
           <td style="padding:4px 0;font-family:'Courier New',monospace;font-size:15px;color:#0f172a;font-weight:700;letter-spacing:1px;">${safeTempPassword}</td>
         </tr>
+        ${authCodeRow}
       </table>
     </div>
     <div style="background:#fffbeb;padding:12px;border-radius:8px;margin-bottom:18px;border:1px solid #fde68a;">
       <p style="margin:0;font-size:13px;color:#92400e;">&#9888; You will be asked to change your password on first login.</p>
-    </div>`
+    </div>
+    ${authCode ? `
+    <div style="background:#eff6ff;padding:12px;border-radius:8px;margin-bottom:18px;border:1px solid #bfdbfe;">
+      <p style="margin:0;font-size:13px;color:#1e40af;">&#128274; Your <strong>Auth Code</strong> is required every time you log in. Keep it private and memorize it.</p>
+    </div>` : ""}`
     : `
     <div style="background:#f0fdf4;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #bbf7d0;">
       <p style="margin:0;font-size:14px;color:#166534;"><strong>You're all set!</strong></p>
-      <p style="margin:6px 0 0;font-size:13px;color:#15803d;">You can sign in using your username (<strong>${safeUsername}</strong>) or your email address.</p>
+      <p style="margin:6px 0 0;font-size:13px;color:#15803d;">You can sign in using your email (<strong>${safeLoginId}</strong>) or phone number.</p>
+      ${authCode ? `
+      <p style="margin:10px 0 0;font-size:13px;color:#15803d;">Your Auth Code: <strong style="font-family:'Courier New',monospace;letter-spacing:2px;color:#1e40af;">${safeAuthCode}</strong></p>` : ""}
     </div>`;
 
   const body = `

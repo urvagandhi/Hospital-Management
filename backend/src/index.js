@@ -105,13 +105,13 @@ app.get("/api/health/deep", async (req, res) => {
     } else {
       checks.database = "disconnected";
     }
-    // Check Redis
+    // Check Redis (Upstash, with in-memory fallback)
+    let redisBackend = null;
     try {
-      const { getRedis } = await import("./config/redis.js");
-      const redis = getRedis();
-      await redis.set("health:ping", "pong", "EX", 10);
-      const pong = await redis.get("health:ping");
-      checks.redis = pong === "pong" ? "ok" : "error";
+      const { pingRedis } = await import("./services/redis.service.js");
+      const result = await pingRedis();
+      checks.redis = result.ok ? "ok" : "error";
+      redisBackend = result.backend;
     } catch (e) {
       checks.redis = "unavailable";
     }
@@ -120,6 +120,7 @@ app.get("/api/health/deep", async (req, res) => {
     res.status(allOk ? 200 : 503).json({
       status: allOk ? "ok" : "degraded",
       checks,
+      ...(redisBackend ? { redisBackend } : {}),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

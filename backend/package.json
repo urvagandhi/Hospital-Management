@@ -35,7 +35,6 @@
     "express-validator": "^7.0.0",
     "firebase-admin": "^10.3.0",
     "helmet": "^7.0.0",
-    "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.5.0",
     "multer": "^2.0.2",
@@ -43,9 +42,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.5",
     "pdf-lib": "^1.17.1",
-    "pdfkit": "^0.17.2",
-    "qrcode": "^1.5.4",
-    "speakeasy": "^2.0.0"
+    "pdfkit": "^0.17.2"
   },
   "devDependencies": {
     "jest": "^29.7.0",

@@ -51,19 +51,15 @@
             android:name=".ui.auth.LoginActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
-        <activity android:name=".ui.auth.OtpActivity" android:exported="false" />
         <activity
             android:name=".ui.auth.ChangePasswordActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
         <activity
-            android:name=".ui.auth.TotpSetupActivity"
+            android:name=".ui.auth.AuthCodeVerificationActivity"
             android:exported="false"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name=".ui.auth.TotpVerificationActivity"
-            android:exported="false"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement" />
         <activity android:name=".ui.dashboard.DashboardActivity" android:exported="false" />
         <activity android:name=".ui.admission.AdmissionActivity" android:exported="false" />
         <activity android:name=".ui.scanner.ScannerActivity" android:exported="false" />

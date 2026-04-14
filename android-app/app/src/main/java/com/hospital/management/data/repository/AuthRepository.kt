@@ -3,11 +3,10 @@ package com.hospital.management.data.repository
 import com.hospital.management.data.api.ApiService
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
+import com.hospital.management.data.models.AuthCodeVerifyRequest
+import com.hospital.management.data.models.AuthCodeVerifyResponse
 import com.hospital.management.data.models.ChangePasswordResponse
 import com.hospital.management.data.models.LoginResponse
-import com.hospital.management.data.models.TotpSetupResponse
-import com.hospital.management.data.models.TotpVerifyResponse
-import kotlinx.coroutines.flow.firstOrNull
 import retrofit2.Response
 
 class AuthRepository(
@@ -24,39 +23,13 @@ class AuthRepository(
         return apiService.login(body)
     }
 
-    suspend fun verifyOtp(tempToken: String, otp: String): Response<Map<String, Any>> {
-        val authHeader = "Bearer $tempToken"
-        return apiService.verifyOtp(authHeader, mapOf("otp" to otp))
-    }
-
-    suspend fun resendOtp(tempToken: String): Response<Map<String, Any>> {
-        val authHeader = "Bearer $tempToken"
-        return apiService.resendOtp(authHeader)
+    suspend fun verifyAuthCodeLogin(tempToken: String, authCode: String): Response<AuthCodeVerifyResponse> {
+        return apiService.verifyAuthCodeLogin("Bearer $tempToken", AuthCodeVerifyRequest(authCode))
     }
 
     suspend fun changePassword(tempToken: String, newPassword: String): Response<ChangePasswordResponse> {
-           val authHeader = "Bearer $tempToken"
-           return apiService.changePassword(authHeader, mapOf("newPassword" to newPassword))
-    }
-
-    suspend fun setupTotp(): Response<TotpSetupResponse> {
-        // AuthInterceptor adds the Authorization header automatically
-        return apiService.setupTotp()
-    }
-
-    suspend fun verifyTotpSetup(totp: String): Response<TotpVerifyResponse> {
-        // AuthInterceptor adds the Authorization header automatically
-        return apiService.verifyTotpSetup(mapOf("token" to totp))
-    }
-
-    suspend fun verifyTotpLogin(tempToken: String, totp: String): Response<LoginResponse> {
         val authHeader = "Bearer $tempToken"
-        return apiService.verifyTotpLogin(authHeader, mapOf("token" to totp))
-    }
-
-    suspend fun recoveryLogin(tempToken: String, recoveryCode: String): Response<Map<String, Any>> {
-         val authHeader = "Bearer $tempToken"
-         return apiService.recoveryLogin(authHeader, mapOf("code" to recoveryCode))
+        return apiService.changePassword(authHeader, mapOf("newPassword" to newPassword))
     }
 
     suspend fun saveTempToken(token: String) {

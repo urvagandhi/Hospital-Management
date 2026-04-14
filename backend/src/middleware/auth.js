@@ -75,8 +75,11 @@ export const verifyAccessToken = async (req, res, next) => {
 };
 
 /**
- * Verify temporary token (for TOTP verification)
- * 🔑 [SECURITY] Validates purpose scope for single-use tokens
+ * Verify temporary token (for 2nd-factor Auth Code verification).
+ * 🔑 [SECURITY] Validates purpose scope for single-use tokens.
+ *
+ * Tokens minted by POST /login for the Auth Code step have purpose=AUTH_CODE.
+ * (Legacy purposes like TOTP_LOGIN are rejected — TOTP has been removed.)
  */
 export const verifyTempToken = (req, res, next) => {
   try {
@@ -91,17 +94,14 @@ export const verifyTempToken = (req, res, next) => {
 
     const decoded = verifyToken(token);
 
-    // Verify token type
     if (decoded.type !== "temp") {
       return res.status(401).json({
         success: false,
-        message: "Invalid token type. Use temporary token for TOTP verification.",
+        message: "Invalid token type.",
       });
     }
 
-    // 🔑 [SECURITY] Verify purpose scope
-    // Temp tokens must have purpose=TOTP_LOGIN for login/totp and login/recovery routes
-    if (decoded.purpose && decoded.purpose !== "TOTP_LOGIN") {
+    if (decoded.purpose !== "AUTH_CODE") {
       return res.status(401).json({
         success: false,
         message: "Token purpose mismatch. Invalid token for this operation.",
@@ -109,7 +109,7 @@ export const verifyTempToken = (req, res, next) => {
     }
 
     req.hospital = { id: decoded.id };
-    req.tokenPurpose = decoded.purpose || "TOTP_LOGIN"; // For backward compatibility
+    req.tokenPurpose = decoded.purpose;
     next();
   } catch (error) {
     return res.status(401).json({

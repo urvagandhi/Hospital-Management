@@ -17,7 +17,6 @@ export const HospitalRegistration: React.FC = () => {
 
   const [formData, setFormData] = useState({
     hospitalName: "",
-    username: "",
     email: "",
     phoneNumber: "",
     address: "",
@@ -25,7 +24,6 @@ export const HospitalRegistration: React.FC = () => {
 
   const [errors, setErrors] = useState({
     hospitalName: "",
-    username: "",
     email: "",
     phoneNumber: "",
     address: "",
@@ -35,7 +33,6 @@ export const HospitalRegistration: React.FC = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [invitationSent, setInvitationSent] = useState<boolean>(false);
   const [registeredEmail, setRegisteredEmail] = useState<string>("");
 
@@ -44,21 +41,13 @@ export const HospitalRegistration: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const validateForm = (): boolean => {
-    let usernameError = "";
-    if (formData.username) {
-      if (formData.username.length < 4) usernameError = "Username must be at least 4 characters";
-      else if (formData.username.length > 30) usernameError = "Username must be at most 30 characters";
-      else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) usernameError = "Only letters, numbers, and underscores";
-    }
-
     const phoneDigits = formData.phoneNumber.replace(/[^\d]/g, "");
     const newErrors = {
       hospitalName: !formData.hospitalName ? "Hospital name is required" : "",
-      username: usernameError,
       email: getEmailError(formData.email) || "",
       phoneNumber: !formData.phoneNumber ? "Phone number is required" : phoneDigits.length !== 10 ? "Phone number must be 10 digits" : "",
-      address: !formData.address ? "Address is required" : "",
-      logo: !logoFile ? "Hospital logo is required" : "",
+      address: "", // address is optional
+      logo: "",    // logo is optional
     };
 
     setErrors(newErrors);
@@ -75,12 +64,6 @@ export const HospitalRegistration: React.FC = () => {
         case "hospitalName":
           error = !value ? "Hospital name is required" : "";
           break;
-        case "username":
-          if (value) {
-            if (value.length < 4) error = "Username must be at least 4 characters";
-            else if (!/^[a-zA-Z0-9_]+$/.test(value)) error = "Only letters, numbers, and underscores";
-          }
-          break;
         case "email":
           error = getEmailError(value) || "";
           break;
@@ -90,7 +73,7 @@ export const HospitalRegistration: React.FC = () => {
           break;
         }
         case "address":
-          error = !value ? "Address is required" : "";
+          error = ""; // optional
           break;
         default:
           error = "";
@@ -132,7 +115,6 @@ export const HospitalRegistration: React.FC = () => {
     try {
       const formDataToSend = new FormData();
       formDataToSend.append("hospitalName", formData.hospitalName);
-      if (formData.username.trim()) formDataToSend.append("username", formData.username.trim());
       formDataToSend.append("email", formData.email);
       formDataToSend.append("phoneNumber", formData.phoneNumber.replace(/[^\d]/g, ""));
       formDataToSend.append("address", formData.address);
@@ -147,7 +129,7 @@ export const HospitalRegistration: React.FC = () => {
       setInvitationSent(data.invitationSent || false);
       setRegisteredEmail(formData.email);
 
-      if (data.backupCodes) setBackupCodes(data.backupCodes || []);
+
       setStep(2);
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || "Registration failed";
@@ -170,7 +152,9 @@ export const HospitalRegistration: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left column - Logo */}
         <div className="lg:col-span-2">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Logo</h3>
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+            Logo <span className="text-gray-400 normal-case font-normal text-xs">(optional)</span>
+          </h3>
           {logoPreview ? (
             <div className="flex flex-col items-center p-6 bg-gray-50 rounded-2xl border border-gray-100">
               <div className="w-28 h-28 rounded-2xl overflow-hidden border-2 border-blue-200 shadow-sm mb-3">
@@ -200,7 +184,7 @@ export const HospitalRegistration: React.FC = () => {
           {errors.logo && <p className="text-red-500 text-xs mt-1.5">{errors.logo}</p>}
         </div>
 
-        {/* Right column - Name & Username */}
+        {/* Right column - Name*/}
         <div className="lg:col-span-3 space-y-4">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Hospital Identity</h3>
           <div>
@@ -218,28 +202,6 @@ export const HospitalRegistration: React.FC = () => {
             {errors.hospitalName && <p className="text-red-500 text-xs mt-1">{errors.hospitalName}</p>}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Username
-              <span className="text-gray-400 font-normal ml-1">(optional, for login)</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">@</span>
-              <input
-                type="text"
-                placeholder="apollo_hospital"
-                value={formData.username}
-                onChange={(e) => handleChange("username", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                className={`${inputClass(!!errors.username)} pl-8`}
-                maxLength={30}
-              />
-            </div>
-            {errors.username ? (
-              <p className="text-red-500 text-xs mt-1">{errors.username}</p>
-            ) : formData.username ? (
-              <p className="text-xs text-gray-400 mt-1">Login ID: @{formData.username}</p>
-            ) : null}
-          </div>
         </div>
       </div>
 
@@ -288,7 +250,7 @@ export const HospitalRegistration: React.FC = () => {
 
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Address <span className="text-red-500">*</span>
+              Address <span className="text-gray-400 font-normal text-xs">(optional)</span>
             </label>
             <input
               type="text"
@@ -407,37 +369,18 @@ export const HospitalRegistration: React.FC = () => {
               </div>
               <div className="flex items-center gap-2.5 text-xs text-gray-600">
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold text-[10px]">3</span>
-                Set up two-factor authentication (TOTP)
+                Enter the 6-digit Auth Code (sent in the welcome email) to finish sign-in
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {backupCodes.length > 0 && (
-        <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-          <h4 className="text-sm font-semibold text-amber-900 flex items-center gap-2 mb-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
-            Save Backup Codes
-          </h4>
-          <p className="text-xs text-amber-700 mb-3">
-            These recovery codes can be used if the authenticator device is lost. <strong>They will only be shown once.</strong>
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-white p-3 rounded-lg border border-amber-100">
-            {backupCodes.map((code, index) => (
-              <div key={index} className="text-center font-mono text-xs py-1.5 bg-gray-50 rounded select-all border border-gray-100">
-                {code}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
 
       <div className="flex gap-3">
         <button
-          onClick={() => { setStep(1); setFormData({ hospitalName: "", username: "", email: "", phoneNumber: "", address: "" }); setLogoFile(null); setLogoPreview(null); setSubmitted(false); }}
+          onClick={() => { setStep(1); setFormData({ hospitalName: "", email: "", phoneNumber: "", address: "" }); setLogoFile(null); setLogoPreview(null); setSubmitted(false); }}
           className="flex-1 py-3 px-4 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
