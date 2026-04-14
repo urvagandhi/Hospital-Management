@@ -4,30 +4,30 @@
  * refresh-token, logout, biometric login and session management.
  */
 
+import crypto from "crypto";
 import AuditLog from "../models/AuditLog.js";
 import Hospital from "../models/Hospital.js";
 import Session from "../models/Session.js";
-import crypto from "crypto";
-import { sendWelcomeEmail, sendAccountLockedEmail, sendSessionRevokedEmail, sendOTPEmail, sendForgotPasswordOtpEmail, sendPasswordResetNoticeEmail } from "../services/mail.service.js";
-import {
-  setOTP,
-  verifyOTP,
-  setPartialRegistration,
-  getPartialRegistration,
-  deletePartialRegistration,
-  setLastOTPSent,
-  getLastOTPSent,
-  setBiometricChallenge,
-  peekBiometricChallenge,
-  consumeBiometricChallenge,
-  setForgotPasswordOtp,
-  verifyForgotPasswordOtp,
-  deleteForgotPasswordOtp,
-  setForgotPasswordLastSent,
-  getForgotPasswordLastSent,
-} from "../services/redis.service.js";
+import { sendAccountLockedEmail, sendForgotPasswordOtpEmail, sendOTPEmail, sendPasswordResetNoticeEmail, sendSessionRevokedEmail, sendWelcomeEmail } from "../services/mail.service.js";
 import { notifyNewLogin, notifySessionRevoked } from "../services/push.service.js";
-import { createSession, invalidateSession, invalidateAllSessions, refreshAccessToken } from "../services/token.service.js";
+import {
+  consumeBiometricChallenge,
+  deleteForgotPasswordOtp,
+  deletePartialRegistration,
+  getForgotPasswordLastSent,
+  getLastOTPSent,
+  getPartialRegistration,
+  peekBiometricChallenge,
+  setBiometricChallenge,
+  setForgotPasswordLastSent,
+  setForgotPasswordOtp,
+  setLastOTPSent,
+  setOTP,
+  setPartialRegistration,
+  verifyForgotPasswordOtp,
+  verifyOTP,
+} from "../services/redis.service.js";
+import { createSession, invalidateAllSessions, invalidateSession, refreshAccessToken } from "../services/token.service.js";
 import { comparePassword, hashPassword } from "../utils/hash.js";
 import { generateTempToken, verifyToken } from "../utils/jwt.js";
 
@@ -1187,7 +1187,7 @@ export const registerBiometric = async (req, res) => {
       ipAddress,
       userAgent: req.headers["user-agent"],
       details: { deviceId },
-    }).catch(() => {});
+    }).catch(() => { });
 
     return res.status(200).json({ success: true, message: "Biometric registered successfully" });
   } catch (error) {
@@ -1208,14 +1208,7 @@ export const biometricChallenge = async (req, res) => {
       return res.status(400).json({ success: false, message: "deviceId and identifier are required" });
     }
 
-    // Find user
-    const loginId = identifier.trim();
-    let query;
-    if (loginId.includes("@")) query = { email: loginId.toLowerCase() };
-    else if (/^\+?\d{7,15}$/.test(loginId.replace(/[\s\-()]/g, ""))) query = { phone: loginId.replace(/[^\d+]/g, "") };
-    else return res.status(400).json({ success: false, message: "Please enter a valid email or phone number" });
-
-    const hospital = await Hospital.findOne(query).lean();
+    const hospital = await lookupHospitalByIdentifier(identifier);
     if (!hospital) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
@@ -1316,7 +1309,7 @@ export const verifyBiometric = async (req, res) => {
       ipAddress,
       userAgent,
       details: { method: "BIOMETRIC", deviceId },
-    }).catch(() => {});
+    }).catch(() => { });
 
     const isProduction = process.env.NODE_ENV === "production";
     res.cookie("accessToken", session.accessToken, {
@@ -1360,13 +1353,7 @@ export const checkSessionConflict = async (req, res) => {
     const { identifier } = req.body;
     if (!identifier) return res.status(400).json({ success: false, message: "identifier required" });
 
-    const loginId = identifier.trim();
-    let query;
-    if (loginId.includes("@")) query = { email: loginId.toLowerCase() };
-    else if (/^\+?\d{7,15}$/.test(loginId.replace(/[\s\-()]/g, ""))) query = { phone: loginId.replace(/[^\d+]/g, "") };
-    else return res.status(400).json({ success: false, message: "Please enter a valid email or phone number" });
-
-    const hospital = await Hospital.findOne(query).select("_id role").lean();
+    const hospital = await lookupHospitalByIdentifier(identifier);
     if (!hospital) {
       // Don't reveal if user exists
       return res.status(200).json({ success: true, conflict: false });
@@ -1584,7 +1571,7 @@ export const reverifyAuthCode = async (req, res) => {
         ipAddress: req.ip || req.connection.remoteAddress,
         userAgent: req.headers["user-agent"],
         details: { sessionId: String(sessionId) },
-      }).catch(() => {});
+      }).catch(() => { });
       return res.status(401).json({
         success: false,
         code: "INVALID_AUTH_CODE",
@@ -1604,7 +1591,7 @@ export const reverifyAuthCode = async (req, res) => {
       ipAddress: req.ip || req.connection.remoteAddress,
       userAgent: req.headers["user-agent"],
       details: { sessionId: String(sessionId) },
-    }).catch(() => {});
+    }).catch(() => { });
 
     return res.status(200).json({
       success: true,

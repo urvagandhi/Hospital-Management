@@ -34,6 +34,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
     companion object {
         const val ACTION_SESSION_REVOKED = "com.hospital.management.SESSION_REVOKED"
         const val ACTION_AUTH_CODE_REQUIRED = "com.hospital.management.AUTH_CODE_REQUIRED"
+        const val EXTRA_SESSION_REASON = "session_reason"
         private const val TAG = "AuthInterceptor"
 
         // A single monitor shared across all AuthInterceptor instances so
@@ -83,6 +84,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             // Server has revoked this session (another device logged in or
             // admin-revoke). Refreshing won't help — force logout via UI.
             val intent = Intent(ACTION_SESSION_REVOKED)
+            intent.putExtra(EXTRA_SESSION_REASON, "SESSION_CONFLICT")
             intent.setPackage(context.packageName)
             context.sendBroadcast(intent)
             return response
@@ -114,7 +116,19 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             } else {
                 performRefresh(refreshToken)
             }
-        } ?: return response
+        }
+
+        if (newAccessToken == null) {
+            // If we sent an authenticated request and refresh could not recover,
+            // the session is effectively dead from the app's perspective.
+            if (authed.header("Authorization") != null) {
+                val intent = Intent(ACTION_SESSION_REVOKED)
+                intent.putExtra(EXTRA_SESSION_REASON, "SESSION_EXPIRED")
+                intent.setPackage(context.packageName)
+                context.sendBroadcast(intent)
+            }
+            return response
+        }
 
         // Close the old 401 body before reissuing
         response.close()

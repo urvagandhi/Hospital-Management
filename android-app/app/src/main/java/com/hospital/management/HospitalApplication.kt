@@ -121,7 +121,7 @@ class HospitalApplication : Application() {
 
     private fun registerNetworkCallback() {
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        
+
         networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 super.onAvailable(network)
@@ -175,6 +175,12 @@ class HospitalApplication : Application() {
                         val body = response.errorBody()?.string() ?: ""
                         Log.w(TAG, "Session heartbeat: server rejected session (${response.code()}): $body")
                         val intent = Intent(AuthInterceptor.ACTION_SESSION_REVOKED)
+                        val reason = if (body.contains("SESSION_CONFLICT") || body.contains("another device", ignoreCase = true)) {
+                            "SESSION_CONFLICT"
+                        } else {
+                            "SESSION_EXPIRED"
+                        }
+                        intent.putExtra(AuthInterceptor.EXTRA_SESSION_REASON, reason)
                         intent.setPackage(packageName)
                         sendBroadcast(intent)
                         break // Stop heartbeat after revocation
@@ -197,7 +203,7 @@ class HospitalApplication : Application() {
             try {
                 val database = AppDatabase.getDatabase(this@HospitalApplication)
                 val pendingCount = database.documentDao().getPendingCount()
-                
+
                 if (pendingCount > 0) {
                     // Schedule sync worker with network constraint
                     val constraints = Constraints.Builder()

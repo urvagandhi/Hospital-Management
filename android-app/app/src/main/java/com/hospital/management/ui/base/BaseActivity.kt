@@ -71,9 +71,15 @@ open class BaseActivity : AppCompatActivity() {
             sessionRevokedReceiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context?, intent: Intent?) {
                     runOnUiThread {
+                        val reason = intent?.getStringExtra(AuthInterceptor.EXTRA_SESSION_REASON)
+                        val message = if (reason == "SESSION_CONFLICT") {
+                            "You were logged out because you signed in on another device."
+                        } else {
+                            "Session expired. Please sign in again."
+                        }
                         Toast.makeText(
                             this@BaseActivity,
-                            "You were logged out because you signed in on another device.",
+                            message,
                             Toast.LENGTH_LONG
                         ).show()
                         lifecycleScope.launch {
