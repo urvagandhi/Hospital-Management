@@ -113,9 +113,17 @@ class DashboardActivity : BaseActivity() {
         }
     }
 
+    private var isAdmin = false
+
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.dashboard_menu, menu)
         return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        // Admin can't self-delete (backend blocks it); hide the Danger group entirely.
+        menu.setGroupVisible(R.id.menu_group_danger, !isAdmin)
+        return super.onPrepareOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -136,6 +144,10 @@ class DashboardActivity : BaseActivity() {
             }
             R.id.action_notifications -> {
                 startActivity(Intent(this, com.hospital.management.ui.profile.NotificationsActivity::class.java))
+                true
+            }
+            R.id.action_delete_account -> {
+                startActivity(Intent(this, com.hospital.management.ui.profile.DeleteAccountActivity::class.java))
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -228,6 +240,9 @@ class DashboardActivity : BaseActivity() {
                     
                     if (responseBody.data != null) {
                         val hospital = responseBody.data
+                        // Track admin status so overflow menu hides Danger group for admins.
+                        isAdmin = hospital.role == "admin"
+                        invalidateOptionsMenu()
                         
                         // Get current cached values to preserve if API returns empty
                         val cachedName = tokenManager.getHospitalName()

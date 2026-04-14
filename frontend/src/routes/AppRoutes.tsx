@@ -20,6 +20,8 @@ import ActivityLog from "../pages/ActivityLog";
 import DeletionRequests from "../pages/DeletionRequests";
 import NotificationSettings from "../pages/NotificationSettings";
 import DeleteAccount from "../pages/DeleteAccount";
+import Terms from "../pages/Terms";
+import Privacy from "../pages/Privacy";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -44,6 +46,10 @@ export const AppRoutes: React.FC = () => {
 
       {/* Forgot password flow (public, 3-step single route) */}
       <Route path="/forgot-password" element={<ForgotPassword />} />
+
+      {/* Public legal pages — linked from registration + footers */}
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
 
       {/* Protected Routes */}
       <Route

@@ -110,8 +110,7 @@
                     style="@style/Widget.App.TextInputLayout.Glass"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="@dimen/space_md"
-                    android:hint="Password (8+ chars, mixed)"
+                    android:hint="Password"
                     app:endIconMode="password_toggle">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -123,6 +122,16 @@
                         android:maxLines="1"
                         android:textColor="@color/color_on_surface" />
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_xs"
+                    android:layout_marginBottom="@dimen/space_md"
+                    android:fontFamily="@font/inter"
+                    android:text="• At least 8 characters\n• Uppercase + lowercase letters\n• At least one number and one special character"
+                    android:textColor="@color/color_on_surface_muted"
+                    android:textSize="11sp" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilAddress"
@@ -141,6 +150,16 @@
                         android:maxLines="3"
                         android:textColor="@color/color_on_surface" />
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <androidx.appcompat.widget.AppCompatCheckBox
+                    android:id="@+id/cbTerms"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="@dimen/space_md"
+                    android:fontFamily="@font/inter"
+                    android:text="I agree to the Terms &amp; Conditions and Privacy Policy"
+                    android:textColor="@color/color_on_surface"
+                    android:textSize="13sp" />
 
                 <Button
                     android:id="@+id/btnRegister"

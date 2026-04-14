@@ -1287,12 +1287,45 @@ export const verifyBiometric = async (req, res) => {
       });
     }
 
-    // Verify signature using the stored public key
-    const verifier = crypto.createVerify("SHA256");
-    verifier.update(challenge);
-    const isValid = verifier.verify(biometricKey.publicKey, signature, "base64");
+    // Android sends the public key as base64-encoded DER (X.509 SubjectPublicKeyInfo),
+    // which Node's crypto.verify() cannot parse without PEM framing. Wrap it on
+    // the fly so existing stored keys keep working without a migration.
+    let publicKeyPem;
+    try {
+      const raw = String(biometricKey.publicKey).trim();
+      if (raw.includes("-----BEGIN")) {
+        publicKeyPem = raw; // already PEM
+      } else {
+        // Import as DER then re-export as PEM — robust against stray whitespace/newlines.
+        const derBuf = Buffer.from(raw.replace(/\s+/g, ""), "base64");
+        const keyObject = crypto.createPublicKey({ key: derBuf, format: "der", type: "spki" });
+        publicKeyPem = keyObject.export({ format: "pem", type: "spki" });
+      }
+    } catch (e) {
+      console.error("[verifyBiometric] public key parse failed:", e.message);
+      return res.status(401).json({
+        success: false,
+        code: "KEY_PARSE_FAILED",
+        message: "Stored biometric key is invalid. Please re-enroll.",
+      });
+    }
+
+    // Verify signature. Both sides sign/verify the UTF-8 bytes of the base64
+    // challenge string — Android's challenge.toByteArray() and Node's
+    // verifier.update(string) agree because the challenge is pure ASCII.
+    let isValid = false;
+    try {
+      const verifier = crypto.createVerify("SHA256");
+      verifier.update(challenge, "utf8");
+      verifier.end();
+      isValid = verifier.verify(publicKeyPem, signature, "base64");
+    } catch (e) {
+      console.error("[verifyBiometric] verify threw:", e.message);
+      isValid = false;
+    }
 
     if (!isValid) {
+      console.warn(`[verifyBiometric] signature invalid for hospital=${hospitalId} device=${deviceId}`);
       // Do NOT consume the challenge — let the client retry within TTL.
       return res.status(401).json({
         success: false,

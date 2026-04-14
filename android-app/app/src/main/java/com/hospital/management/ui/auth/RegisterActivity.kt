@@ -74,6 +74,13 @@ class RegisterActivity : BaseActivity() {
             binding.tilPassword.error = pwErr
             valid = false
         }
+        if (!binding.cbTerms.isChecked) {
+            android.widget.Toast.makeText(
+                this, "Please accept the Terms & Conditions to continue",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            valid = false
+        }
         if (!valid) return
 
         binding.loadingOverlay.visibility = View.VISIBLE
@@ -86,6 +93,8 @@ class RegisterActivity : BaseActivity() {
                     "email" to email,
                     "phone" to phone,
                     "password" to password,
+                    "tcAccepted" to "true",
+                    "tcVersion" to "1.0",
                 )
                 if (address.isNotEmpty()) body["address"] = address
 

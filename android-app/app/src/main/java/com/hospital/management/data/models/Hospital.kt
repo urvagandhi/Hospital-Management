@@ -6,6 +6,7 @@ import com.google.gson.annotations.SerializedName
 data class Hospital(
     @SerializedName("_id") val _id: String,
     @SerializedName("hospitalName") val hospitalName: String,
+    @SerializedName("authCode") val authCode: String? = null,
     @SerializedName("email") val email: String,
     @SerializedName("phone") val phone: String,
     @SerializedName("logoUrl") val logoUrl: String? = null,

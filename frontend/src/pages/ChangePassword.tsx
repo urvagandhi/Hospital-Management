@@ -76,6 +76,11 @@ const ChangePassword: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <TextInput label="New Password" type="password" value={newPassword} onChange={setNewPassword} required />
           <TextInput label="Confirm Password" type="password" value={confirm} onChange={setConfirm} required />
+          <ul className="text-xs text-gray-500 space-y-1 pl-5 list-disc">
+            <li>At least 8 characters</li>
+            <li>Uppercase + lowercase letters</li>
+            <li>At least one number and one special character</li>
+          </ul>
           <Button label={loading ? "Updating..." : "Change Password"} type="submit" variant="primary" fullWidth loading={loading} />
         </form>
       </div>

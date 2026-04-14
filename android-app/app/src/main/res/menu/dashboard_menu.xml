@@ -1,29 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Always-visible toolbar actions -->
     <item
         android:id="@+id/action_sync"
         android:icon="@drawable/ic_sync"
         android:title="Sync Pending"
         app:showAsAction="ifRoom" />
-    <item
-        android:id="@+id/action_profile"
-        android:title="Profile"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_change_password"
-        android:title="Change Password"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_sessions"
-        android:title="Active Sessions"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_notifications"
-        android:title="Notifications"
-        app:showAsAction="never" />
+
+    <!-- ═══════════════  ACCOUNT  ═══════════════ -->
+    <group android:id="@+id/menu_group_account">
+        <item
+            android:id="@+id/action_profile"
+            android:title="Edit Profile"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_notifications"
+            android:title="Notifications"
+            app:showAsAction="never" />
+    </group>
+
+    <!-- ═══════════════  SECURITY  ═══════════════ -->
+    <group android:id="@+id/menu_group_security">
+        <item
+            android:id="@+id/action_change_password"
+            android:title="Password"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_sessions"
+            android:title="Sessions &amp; Auth Code"
+            app:showAsAction="never" />
+    </group>
+
+    <!-- ═══════════════  DANGER (non-admin only)  ═══════════════ -->
+    <group android:id="@+id/menu_group_danger">
+        <item
+            android:id="@+id/action_delete_account"
+            android:title="Delete Account"
+            app:showAsAction="never" />
+    </group>
+
+    <!-- Sign Out stays as a toolbar icon (showAsAction=always),
+         NOT inside the overflow popup. This is the same icon you
+         see beside the hamburger — not a duplicate. -->
     <item
         android:id="@+id/action_logout"
         android:icon="@drawable/ic_logout"
-        android:title="Logout"
+        android:title="Sign Out"
         app:showAsAction="always" />
 </menu>

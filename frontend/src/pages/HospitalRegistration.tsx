@@ -38,6 +38,7 @@ export const HospitalRegistration: React.FC = () => {
 
   const [submitted, setSubmitted] = useState(false);
   const [displayError, setDisplayError] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const validateForm = (): boolean => {
@@ -118,6 +119,8 @@ export const HospitalRegistration: React.FC = () => {
       formDataToSend.append("email", formData.email);
       formDataToSend.append("phoneNumber", formData.phoneNumber.replace(/[^\d]/g, ""));
       formDataToSend.append("address", formData.address);
+      formDataToSend.append("tcAccepted", "true");
+      formDataToSend.append("tcVersion", "1.0");
       if (logoFile) formDataToSend.append("logo", logoFile);
 
       const response = await api.post("/auth/register-hospital", formDataToSend, {
@@ -275,10 +278,30 @@ export const HospitalRegistration: React.FC = () => {
         </p>
       </div>
 
+      {/* T&C */}
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={termsAccepted}
+          onChange={(e) => setTermsAccepted(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        <span className="text-gray-700">
+          I confirm the hospital accepts our{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            Terms &amp; Conditions
+          </a>{" "}
+          and{" "}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+            Privacy Policy
+          </a>.
+        </span>
+      </label>
+
       {/* Submit */}
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !termsAccepted}
         className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/25 transition-all duration-200 hover:shadow-blue-500/40 active:scale-[0.99] flex items-center justify-center gap-2"
       >
         {loading ? (

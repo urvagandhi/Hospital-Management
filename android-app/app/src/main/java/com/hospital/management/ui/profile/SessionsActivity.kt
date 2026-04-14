@@ -17,7 +17,9 @@ import com.hospital.management.presentation.viewmodel.ProfileViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.ui.base.BaseActivity
 import com.hospital.management.ui.components.GlassSnackbar
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Active sessions screen (Task #28). Lists every session tied to the
@@ -29,6 +31,8 @@ class SessionsActivity : BaseActivity() {
     private lateinit var binding: ActivitySessionsBinding
     private lateinit var vm: ProfileViewModel
     private lateinit var adapter: SessionsAdapter
+    private var authCode: String? = null
+    private var codeRevealed: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,8 +68,34 @@ class SessionsActivity : BaseActivity() {
                 .show()
         }
 
+        // Auth Code card — tap toggle to reveal/hide the 6-digit code
+        binding.tvAuthCodeToggle.setOnClickListener {
+            codeRevealed = !codeRevealed
+            renderAuthCode()
+        }
+        loadAuthCode()
+
         observe()
         vm.loadSessions()
+    }
+
+    private fun loadAuthCode() {
+        lifecycleScope.launch {
+            try {
+                val resp = withContext(Dispatchers.IO) {
+                    RetrofitClient.getApiService(this@SessionsActivity).getCurrentHospital()
+                }
+                authCode = resp.body()?.data?.authCode
+            } catch (_: Exception) { /* keep null → masked */ }
+            renderAuthCode()
+        }
+    }
+
+    private fun renderAuthCode() {
+        val code = authCode
+        val masked = if (!code.isNullOrEmpty()) code.take(2) + "••••" else "••••••"
+        binding.tvAuthCode.text = if (codeRevealed && !code.isNullOrEmpty()) code else masked
+        binding.tvAuthCodeToggle.text = if (codeRevealed) "Hide" else "Reveal"
     }
 
     override fun onSupportNavigateUp(): Boolean {

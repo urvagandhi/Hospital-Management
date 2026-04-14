@@ -1,95 +1,54 @@
 package com.hospital.management.ui.profile
 
-import android.content.Intent
 import android.os.Bundle
-import android.text.InputType
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import android.view.View
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.hospital.management.R
 import com.hospital.management.data.api.RetrofitClient
-import com.hospital.management.data.local.TokenManager
-import com.hospital.management.ui.auth.LoginActivity
+import com.hospital.management.databinding.ActivityDeleteAccountBinding
 import com.hospital.management.ui.base.BaseActivity
+import com.hospital.management.ui.components.GlassSnackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * A2 — Account deletion request/cancel flow. Minimal programmatic UI
- * (no XML layout) to avoid churn; screen is secondary/rare-use.
+ * A2 — Account deletion request/cancel flow. Mirrors web DeleteAccount.tsx.
+ * Hidden from admin via menu gating; backend also blocks admin self-delete.
  */
 class DeleteAccountActivity : BaseActivity() {
 
-    private lateinit var statusText: TextView
-    private lateinit var passwordEdit: EditText
-    private lateinit var reasonEdit: EditText
-    private lateinit var submitBtn: Button
-    private lateinit var cancelBtn: Button
+    private lateinit var binding: ActivityDeleteAccountBinding
     private var currentStatus: String = "active"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        binding = ActivityDeleteAccountBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = "Delete Account"
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 48, 48, 48)
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            )
+        // "Request Account Deletion" → expand form
+        binding.btnRequestInitial.setOnClickListener {
+            binding.btnRequestInitial.visibility = View.GONE
+            binding.formContainer.visibility = View.VISIBLE
         }
-
-        statusText = TextView(this).apply {
-            text = "Loading…"
-            textSize = 14f
+        binding.btnFormCancel.setOnClickListener {
+            binding.formContainer.visibility = View.GONE
+            binding.btnRequestInitial.visibility = View.VISIBLE
+            binding.etPassword.setText("")
+            binding.etReason.setText("")
         }
-        root.addView(statusText)
+        binding.btnFormSubmit.setOnClickListener { confirmAndSubmit() }
+        binding.btnCancelDeletion.setOnClickListener { confirmAndCancelDeletion() }
 
-        val warn = TextView(this).apply {
-            text = "Submitting a deletion request will schedule your account for deletion. An admin will review your request. You can cancel during the grace period."
-            textSize = 13f
-            setPadding(0, 24, 0, 24)
-        }
-        root.addView(warn)
-
-        passwordEdit = EditText(this).apply {
-            hint = "Current password"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
-        root.addView(passwordEdit)
-
-        reasonEdit = EditText(this).apply {
-            hint = "Reason (optional)"
-            minLines = 2
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-        }
-        root.addView(reasonEdit)
-
-        submitBtn = Button(this).apply {
-            text = "Request Account Deletion"
-            setOnClickListener { confirmAndSubmit() }
-        }
-        root.addView(submitBtn)
-
-        cancelBtn = Button(this).apply {
-            text = "Cancel Deletion Request"
-            visibility = android.view.View.GONE
-            setOnClickListener { doCancel() }
-        }
-        root.addView(cancelBtn)
-
-        setContentView(root)
         refreshStatus()
     }
 
     private fun refreshStatus() {
+        binding.progress.visibility = View.VISIBLE
         lifecycleScope.launch {
             try {
                 val resp = withContext(Dispatchers.IO) {
@@ -98,39 +57,44 @@ class DeleteAccountActivity : BaseActivity() {
                 val h = resp.body()?.data
                 currentStatus = h?.deletionStatus ?: "active"
                 if (currentStatus == "deletion_pending") {
-                    val when_ = h?.deletionScheduledFor ?: ""
-                    statusText.text = "Deletion pending. Scheduled for: $when_"
-                    submitBtn.visibility = android.view.View.GONE
-                    passwordEdit.visibility = android.view.View.GONE
-                    reasonEdit.visibility = android.view.View.GONE
-                    cancelBtn.visibility = android.view.View.VISIBLE
+                    binding.cardPending.visibility = View.VISIBLE
+                    binding.cardRequest.visibility = View.GONE
+                    val scheduled = h?.deletionScheduledFor
+                    binding.tvPendingInfo.text = if (!scheduled.isNullOrEmpty()) {
+                        "Your account is scheduled for deletion on $scheduled. An admin will review your request."
+                    } else {
+                        "Your account is scheduled for deletion. An admin will review your request."
+                    }
                 } else {
-                    statusText.text = "Account status: $currentStatus"
-                    submitBtn.visibility = android.view.View.VISIBLE
-                    cancelBtn.visibility = android.view.View.GONE
+                    binding.cardPending.visibility = View.GONE
+                    binding.cardRequest.visibility = View.VISIBLE
                 }
             } catch (e: Exception) {
-                statusText.text = "Failed to load: ${e.message}"
+                GlassSnackbar.show(this@DeleteAccountActivity,
+                    "Failed to load: ${e.message}", GlassSnackbar.Variant.ERROR)
+            } finally {
+                binding.progress.visibility = View.GONE
             }
         }
     }
 
     private fun confirmAndSubmit() {
-        val pw = passwordEdit.text.toString()
+        val pw = binding.etPassword.text?.toString().orEmpty()
         if (pw.isEmpty()) {
-            Toast.makeText(this, "Password is required", Toast.LENGTH_SHORT).show()
+            GlassSnackbar.show(this, "Password is required", GlassSnackbar.Variant.ERROR)
             return
         }
-        AlertDialog.Builder(this)
-            .setTitle("Confirm Deletion Request")
-            .setMessage("Your account will be scheduled for deletion. Proceed?")
-            .setPositiveButton("Submit") { _, _ -> doSubmit(pw, reasonEdit.text.toString()) }
+        MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
+            .setTitle("Request Account Deletion?")
+            .setMessage("Your account will be scheduled for deletion and reviewed by an admin. You can cancel this request anytime during the grace period.")
+            .setPositiveButton("Yes, submit") { _, _ -> doSubmit(pw, binding.etReason.text?.toString().orEmpty()) }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
     private fun doSubmit(password: String, reason: String) {
-        submitBtn.isEnabled = false
+        binding.progress.visibility = View.VISIBLE
+        binding.btnFormSubmit.isEnabled = false
         lifecycleScope.launch {
             try {
                 val resp = withContext(Dispatchers.IO) {
@@ -138,38 +102,49 @@ class DeleteAccountActivity : BaseActivity() {
                         .requestAccountDeletion(mapOf("password" to password, "reason" to reason))
                 }
                 if (resp.isSuccessful) {
-                    Toast.makeText(this@DeleteAccountActivity,
-                        "Deletion request submitted", Toast.LENGTH_LONG).show()
+                    GlassSnackbar.show(this@DeleteAccountActivity,
+                        "Deletion request submitted", GlassSnackbar.Variant.SUCCESS)
                     refreshStatus()
                 } else {
-                    Toast.makeText(this@DeleteAccountActivity,
-                        "Failed: ${resp.code()}", Toast.LENGTH_LONG).show()
+                    val msg = resp.errorBody()?.string()?.take(200) ?: "Failed (${resp.code()})"
+                    GlassSnackbar.show(this@DeleteAccountActivity, msg, GlassSnackbar.Variant.ERROR)
                 }
             } catch (e: Exception) {
-                Toast.makeText(this@DeleteAccountActivity,
-                    "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                GlassSnackbar.show(this@DeleteAccountActivity,
+                    "Error: ${e.message}", GlassSnackbar.Variant.ERROR)
             } finally {
-                submitBtn.isEnabled = true
+                binding.progress.visibility = View.GONE
+                binding.btnFormSubmit.isEnabled = true
             }
         }
     }
 
-    private fun doCancel() {
-        cancelBtn.isEnabled = false
+    private fun confirmAndCancelDeletion() {
+        MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
+            .setTitle("Cancel Deletion Request?")
+            .setMessage("Your account will remain active and the pending deletion request will be withdrawn.")
+            .setPositiveButton("Yes, cancel") { _, _ -> doCancelDeletion() }
+            .setNegativeButton("Keep pending", null)
+            .show()
+    }
+
+    private fun doCancelDeletion() {
+        binding.progress.visibility = View.VISIBLE
+        binding.btnCancelDeletion.isEnabled = false
         lifecycleScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    RetrofitClient.getApiService(this@DeleteAccountActivity)
-                        .cancelAccountDeletion()
+                    RetrofitClient.getApiService(this@DeleteAccountActivity).cancelAccountDeletion()
                 }
-                Toast.makeText(this@DeleteAccountActivity,
-                    "Deletion request cancelled", Toast.LENGTH_SHORT).show()
+                GlassSnackbar.show(this@DeleteAccountActivity,
+                    "Deletion request cancelled", GlassSnackbar.Variant.SUCCESS)
                 refreshStatus()
             } catch (e: Exception) {
-                Toast.makeText(this@DeleteAccountActivity,
-                    "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                GlassSnackbar.show(this@DeleteAccountActivity,
+                    "Error: ${e.message}", GlassSnackbar.Variant.ERROR)
             } finally {
-                cancelBtn.isEnabled = true
+                binding.progress.visibility = View.GONE
+                binding.btnCancelDeletion.isEnabled = true
             }
         }
     }
