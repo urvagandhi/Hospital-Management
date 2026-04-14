@@ -10,7 +10,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 object SessionManager {
-    private const val SESSION_TIMEOUT_MS = 15 * 60 * 1000L // 15 minutes
+    // Align client-side inactivity timeout with the server's 7-day session TTL.
+    // The previous 15-minute value aggressively logged users out any time they
+    // backgrounded the app for more than 15 minutes, even though the server
+    // session was still valid. Auto-refresh-on-401 in AuthInterceptor covers
+    // access-token expiry transparently, so we only force logout when the
+    // server-side session actually ends.
+    private const val SESSION_TIMEOUT_MS = 7L * 24 * 60 * 60 * 1000 // 7 days
 
     @Volatile
     private var _isSessionActive = false

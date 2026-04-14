@@ -56,7 +56,13 @@ class SyncDocumentsWorker(
                         val file = getFileFromUri(context, uri)
 
                         if (file != null && file.exists()) {
-                           val result = repository.uploadDocument(doc.patientId, doc.folderName, file)
+                           // Legacy rows (pre-migration) have no key — backfill one so subsequent
+                           // retries within this run dedupe against each other via the header.
+                           val key = doc.idempotencyKey.ifEmpty { repository.newIdempotencyKey() }
+                           if (key != doc.idempotencyKey) {
+                               documentDao.update(doc.copy(idempotencyKey = key))
+                           }
+                           val result = repository.uploadDocument(doc.patientId, doc.folderName, file, key)
                            if (result.isSuccess) {
                                Log.d(TAG, "Successfully uploaded document")
 

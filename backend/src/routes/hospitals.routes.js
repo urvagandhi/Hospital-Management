@@ -4,7 +4,7 @@
  */
 
 import express from "express";
-import { getAllHospitals, getCurrentHospital, getHospitalById, updateHospital } from "../controllers/hospitals.controller.js";
+import { getAllHospitals, getCurrentHospital, getHospitalById, updateHospital, resendWelcomeEmail } from "../controllers/hospitals.controller.js";
 import { verifyAccessToken, verifyAdmin, verifyAdminOrSelf } from "../middleware/auth.js";
 import { uploadSingle } from "../middleware/upload.js";
 
@@ -36,5 +36,12 @@ router.get("/:id", verifyAdminOrSelf, getHospitalById);
  * Update hospital details (admin or own hospital; only admin can change isActive)
  */
 router.put("/:id", verifyAdminOrSelf, uploadSingle("logo"), updateHospital);
+
+/**
+ * POST /api/hospitals/:id/resend-welcome
+ * Resend the welcome email (new temp password) to an admin-created hospital
+ * that has not yet changed its password. Admin only.
+ */
+router.post("/:id/resend-welcome", verifyAdmin, resendWelcomeEmail);
 
 export default router;

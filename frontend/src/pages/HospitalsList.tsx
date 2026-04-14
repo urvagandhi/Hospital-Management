@@ -19,6 +19,9 @@ interface Hospital {
   logoUrl?: string;
   isActive: boolean;
   createdAt: string;
+  // true until the hospital logs in and sets their own password. While true,
+  // the admin can resend the welcome email (issues a new temp password).
+  mustChangePassword?: boolean;
 }
 
 export const HospitalsList: React.FC = () => {
@@ -44,6 +47,26 @@ export const HospitalsList: React.FC = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState<{ id: string; text: string; ok: boolean } | null>(null);
+
+  const handleResendWelcome = async (h: Hospital) => {
+    if (!window.confirm(
+      `Resend welcome email to ${h.email}?\n\nThis generates a NEW temporary password and overwrites the current one. Only use if the hospital hasn't received the original email.`
+    )) return;
+    setResendingId(h._id);
+    setResendMessage(null);
+    try {
+      await api.post(`/hospitals/${h._id}/resend-welcome`);
+      setResendMessage({ id: h._id, text: "Welcome email resent successfully.", ok: true });
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || "Failed to resend welcome email";
+      setResendMessage({ id: h._id, text: msg, ok: false });
+    } finally {
+      setResendingId(null);
+      setTimeout(() => setResendMessage((m) => (m && m.id === h._id ? null : m)), 4000);
+    }
+  };
 
   useEffect(() => {
     document.title = "Hospitals - Hospital Management";
@@ -429,20 +452,43 @@ export const HospitalsList: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Resend status message (only for this card) */}
+                      {resendMessage?.id === h._id && (
+                        <div className={`mt-3 text-xs px-3 py-2 rounded-lg ${resendMessage.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                          {resendMessage.text}
+                        </div>
+                      )}
+
                       {/* Footer */}
-                      <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                      <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-2">
                         <span className="text-xs text-gray-400">
                           Registered {new Date(h.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                         </span>
-                        <button
-                          onClick={() => handleEditClick(h)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                          Edit
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {/* Only show resend while the hospital hasn't changed their admin-set password */}
+                          {isAdmin && h.mustChangePassword && (
+                            <button
+                              onClick={() => handleResendWelcome(h)}
+                              disabled={resendingId === h._id}
+                              title="Hospital hasn't logged in yet — resend the welcome email with a new temporary password"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors duration-200 disabled:opacity-60 disabled:cursor-wait"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                              {resendingId === h._id ? "Sending…" : "Resend Email"}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleEditClick(h)}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            Edit
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

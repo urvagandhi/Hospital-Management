@@ -22,22 +22,45 @@ import Hospital from "../models/Hospital.js";
  */
 export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, isMobile = false, { forceCreate = false } = {}) => {
   try {
-    // SINGLE DEVICE POLICY:
-    // Mobile (Android): only ONE active mobile session per user.
-    //   → Invalidate all other mobile sessions on new mobile login.
-    // Web: multiple concurrent sessions allowed (read-only portal).
+    // MOBILE SESSION LIMIT: 2 concurrent mobile sessions per user.
+    //   → If the hospital already has 2+ active mobile sessions, revoke the
+    //     OLDEST (by createdAt) so there's room for this new one — leaving
+    //     the previous device logged in alongside the new one.
+    //   Web: multiple concurrent sessions allowed (read-only portal).
+    const MOBILE_SESSION_LIMIT = 2;
     if (isMobile) {
-      const revoked = await Session.updateMany(
-        { hospitalId, isMobile: true, isActive: true },
-        { isActive: false, revokedReason: "SESSION_CONFLICT" },
-      );
+      const activeMobile = await Session.find({
+        hospitalId,
+        isMobile: true,
+        isActive: true,
+        expiresAt: { $gt: new Date() },
+      })
+        .sort({ createdAt: 1 })
+        .select("_id")
+        .lean();
 
-      // If sessions were revoked, notify the user (fire-and-forget)
-      if (revoked.modifiedCount > 0) {
+      // Before inserting the new one, keep at most (LIMIT - 1) existing sessions.
+      const toRevokeCount = Math.max(0, activeMobile.length - (MOBILE_SESSION_LIMIT - 1));
+      if (toRevokeCount > 0) {
+        // Re-fetch the session docs we're about to kick so we can show the
+        // actual old-device UA in the revocation email (not the new UA).
+        const idsToRevoke = activeMobile.slice(0, toRevokeCount).map((s) => s._id);
+        const revokedDocs = await Session.find({ _id: { $in: idsToRevoke } })
+          .select("userAgent")
+          .lean();
+        const oldDeviceUA = revokedDocs[0]?.userAgent || null;
+
+        await Session.updateMany(
+          { _id: { $in: idsToRevoke } },
+          { isActive: false, revokedReason: "SESSION_LIMIT_EXCEEDED" },
+        );
         notifySessionRevoked(hospitalId).catch(console.error);
-        // Send email about session revocation
         Hospital.findById(hospitalId).select("email").lean()
-          .then((h) => h?.email && sendSessionRevokedEmail(h.email, userAgent))
+          .then((h) => h?.email && sendSessionRevokedEmail(h.email, {
+            oldDevice: oldDeviceUA,
+            newDevice: userAgent,
+            reason: "SESSION_LIMIT_EXCEEDED",
+          }))
           .catch((e) => console.error("[Token] session-revoked email failed:", e.message));
       }
     }

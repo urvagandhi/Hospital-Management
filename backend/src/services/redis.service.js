@@ -303,18 +303,95 @@ export async function setBiometricChallenge(hospitalId, deviceId, challenge, ttl
 }
 
 /**
- * Fetch and CONSUME a biometric challenge. Returns null if missing/expired.
- * The key is deleted as soon as it's read so replay attacks are prevented.
+ * PEEK at a biometric challenge without deleting it. Returns null if missing/expired.
+ * Use this during verification so that transient failures (wrong signature,
+ * user cancels) don't burn the challenge — letting the client retry within TTL.
  */
-export async function getBiometricChallenge(hospitalId, deviceId) {
+export async function peekBiometricChallenge(hospitalId, deviceId) {
   try {
     const key = bioChallengeKey(hospitalId, deviceId);
     const val = await redis.get(key);
-    if (val) await redis.del(key);
     return val ? String(val) : null;
   } catch (err) {
-    console.error("[redis.service] getBiometricChallenge error:", err.message);
+    console.error("[redis.service] peekBiometricChallenge error:", err.message);
     return null;
+  }
+}
+
+/**
+ * Delete the biometric challenge (one-shot consume). Call this ONLY after a
+ * signature has verified successfully — replay prevention.
+ */
+export async function consumeBiometricChallenge(hospitalId, deviceId) {
+  try {
+    await redis.del(bioChallengeKey(hospitalId, deviceId));
+  } catch (err) {
+    console.error("[redis.service] consumeBiometricChallenge error:", err.message);
+  }
+}
+
+/**
+ * @deprecated Use peekBiometricChallenge + consumeBiometricChallenge.
+ * Kept for any legacy caller; reads AND deletes atomically.
+ */
+export async function getBiometricChallenge(hospitalId, deviceId) {
+  const val = await peekBiometricChallenge(hospitalId, deviceId);
+  if (val) await consumeBiometricChallenge(hospitalId, deviceId);
+  return val;
+}
+
+// ── Upload Idempotency (dedupe retries of the same upload) ─────────────────
+
+function uploadIdemKey(hospitalId, key) {
+  return `upload:idem:${hospitalId}:${key}`;
+}
+
+/**
+ * Look up a previously-stored response for this idempotency key.
+ * Returns the parsed response object, or null if not found / expired.
+ */
+export async function getUploadIdempotentResponse(hospitalId, key) {
+  try {
+    const raw = await redis.get(uploadIdemKey(hospitalId, key));
+    if (!raw) return null;
+    return typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch (err) {
+    console.error("[redis.service] getUploadIdempotentResponse error:", err.message);
+    return null;
+  }
+}
+
+/**
+ * Atomically claim an idempotency key. Returns true if this caller won the race
+ * and should perform the upload; false if another request already started.
+ * Caller that wins must later call setUploadIdempotentResponse with the final body.
+ */
+export async function claimUploadIdempotencyKey(hospitalId, key, ttlSeconds = 86400) {
+  const k = uploadIdemKey(hospitalId, key);
+  const placeholder = JSON.stringify({ pending: true });
+  try {
+    if (usingInMemory || !upstash) {
+      if (memGet(k)) return false;
+      memSet(k, placeholder, { ex: ttlSeconds });
+      return true;
+    }
+    const res = await upstash.set(k, placeholder, { ex: ttlSeconds, nx: true });
+    return res === "OK";
+  } catch (err) {
+    console.error("[redis.service] claimUploadIdempotencyKey error:", err.message);
+    return true; // fail-open: better a duplicate than a blocked user
+  }
+}
+
+/**
+ * Store the final response body for an idempotency key so retries return the same result.
+ * TTL defaults to 24h — long enough for offline retries but short enough not to leak storage.
+ */
+export async function setUploadIdempotentResponse(hospitalId, key, body, ttlSeconds = 86400) {
+  try {
+    await redis.set(uploadIdemKey(hospitalId, key), JSON.stringify(body), { ex: ttlSeconds });
+  } catch (err) {
+    console.error("[redis.service] setUploadIdempotentResponse error:", err.message);
   }
 }
 

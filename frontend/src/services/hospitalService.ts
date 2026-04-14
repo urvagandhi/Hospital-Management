@@ -16,7 +16,6 @@ export interface Hospital {
     city?: string;
     state?: string;
     zipCode?: string;
-    department?: string;
     isActive: boolean;
     createdAt: string;
     updatedAt: string;

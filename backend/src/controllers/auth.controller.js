@@ -18,7 +18,8 @@ import {
   setLastOTPSent,
   getLastOTPSent,
   setBiometricChallenge,
-  getBiometricChallenge,
+  peekBiometricChallenge,
+  consumeBiometricChallenge,
 } from "../services/redis.service.js";
 import { notifyNewLogin, notifySessionRevoked } from "../services/push.service.js";
 import { createSession, invalidateSession, refreshAccessToken } from "../services/token.service.js";
@@ -1253,16 +1254,27 @@ export const verifyBiometric = async (req, res) => {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
-    // Fetch + consume stored challenge (one-shot — deleted on read to prevent replay)
-    const challenge = await getBiometricChallenge(hospitalId, deviceId);
+    // Peek at the stored challenge — we only CONSUME it once the signature
+    // verifies. If verification fails (transient biometric hiccup, wrong
+    // signature), the client can retry within the 2-minute TTL instead of
+    // having to go back to /challenge.
+    const challenge = await peekBiometricChallenge(hospitalId, deviceId);
     if (!challenge) {
-      return res.status(401).json({ success: false, message: "Challenge expired or invalid" });
+      return res.status(401).json({
+        success: false,
+        code: "CHALLENGE_EXPIRED",
+        message: "Biometric challenge expired. Please try again.",
+      });
     }
 
     // Find biometric key for device
     const biometricKey = (hospital.biometricKeys || []).find((k) => k.deviceId === deviceId);
     if (!biometricKey) {
-      return res.status(401).json({ success: false, message: "No biometric key for this device" });
+      return res.status(401).json({
+        success: false,
+        code: "NO_BIOMETRIC_KEY",
+        message: "Biometric not enrolled on this device",
+      });
     }
 
     // Verify signature using the stored public key
@@ -1270,12 +1282,17 @@ export const verifyBiometric = async (req, res) => {
     verifier.update(challenge);
     const isValid = verifier.verify(biometricKey.publicKey, signature, "base64");
 
-    // Clean up challenge (single-use)
-    await redis.del(`bio:challenge:${hospitalId}:${deviceId}`);
-
     if (!isValid) {
-      return res.status(401).json({ success: false, message: "Invalid biometric signature" });
+      // Do NOT consume the challenge — let the client retry within TTL.
+      return res.status(401).json({
+        success: false,
+        code: "INVALID_SIGNATURE",
+        message: "Invalid biometric signature",
+      });
     }
+
+    // Signature valid → consume the challenge (one-shot replay prevention).
+    await consumeBiometricChallenge(hospitalId, deviceId);
 
     // Create session (biometric login bypasses the auth-code step)
     const ipAddress = req.ip || req.connection.remoteAddress;
@@ -1394,6 +1411,134 @@ export const validateSession = async (req, res) => {
 };
 
 /**
+ * List all active sessions for the current hospital.
+ * GET /api/auth/session/list
+ * Marks the caller's own session with isCurrent:true so the client can
+ * render a "This device" badge and disable its own revoke button.
+ */
+export const listActiveSessions = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    const currentSessionId = req.sessionId;
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const sessions = await Session.find({
+      hospitalId,
+      isActive: true,
+      expiresAt: { $gt: new Date() },
+    })
+      .select("_id platform isMobile userAgent ipAddress lastSeenAt lastSeenIp createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const data = sessions.map((s) => ({
+      id: String(s._id),
+      platform: s.platform || "unknown",
+      isMobile: !!s.isMobile,
+      userAgent: s.userAgent,
+      ipAddress: s.ipAddress,
+      lastSeenAt: s.lastSeenAt,
+      lastSeenIp: s.lastSeenIp,
+      createdAt: s.createdAt,
+      isCurrent: currentSessionId && String(s._id) === String(currentSessionId),
+    }));
+
+    return res.status(200).json({ success: true, data, count: data.length });
+  } catch (error) {
+    console.error("List sessions error:", error);
+    return res.status(500).json({ success: false, message: "Failed to list sessions" });
+  }
+};
+
+/**
+ * Revoke a specific session by id (the caller's own sessions only).
+ * POST /api/auth/session/revoke/:id
+ * Refuses to revoke the caller's current session — use /logout for that.
+ */
+export const revokeSessionById = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    const currentSessionId = req.sessionId;
+    const { id } = req.params;
+
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!id || !id.match(/^[a-f0-9]{24}$/i)) {
+      return res.status(400).json({ success: false, message: "Invalid session id" });
+    }
+    if (String(id) === String(currentSessionId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot revoke your current session. Use /logout instead.",
+      });
+    }
+
+    // Capture the revoked session's UA before flipping it, so the email
+    // can show the actual device that was signed out.
+    const revokedDoc = await Session.findOne({ _id: id, hospitalId, isActive: true })
+      .select("userAgent").lean();
+    if (!revokedDoc) {
+      return res.status(404).json({ success: false, message: "Session not found or already revoked" });
+    }
+
+    await Session.updateOne(
+      { _id: id, hospitalId, isActive: true },
+      { isActive: false, revokedReason: "ADMIN_REVOKE" },
+    );
+
+    notifySessionRevoked(hospitalId).catch(console.error);
+    Hospital.findById(hospitalId).select("email").lean()
+      .then((h) => h?.email && sendSessionRevokedEmail(h.email, {
+        oldDevice: revokedDoc.userAgent,
+        newDevice: req.headers["user-agent"],
+        reason: "ADMIN_REVOKE",
+      }))
+      .catch((e) => console.error("[Auth] session-revoked email failed:", e.message));
+
+    return res.status(200).json({ success: true, message: "Session revoked" });
+  } catch (error) {
+    console.error("Revoke session error:", error);
+    return res.status(500).json({ success: false, message: "Failed to revoke session" });
+  }
+};
+
+/**
+ * Revoke every session for the current hospital except the caller's own.
+ * POST /api/auth/session/revoke-all-others
+ */
+export const revokeAllOtherSessions = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    const currentSessionId = req.sessionId;
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const result = await Session.updateMany(
+      { hospitalId, isActive: true, _id: { $ne: currentSessionId } },
+      { isActive: false, revokedReason: "ADMIN_REVOKE" },
+    );
+
+    if (result.modifiedCount > 0) {
+      notifySessionRevoked(hospitalId).catch(console.error);
+      Hospital.findById(hospitalId).select("email").lean()
+        .then((h) => h?.email && sendSessionRevokedEmail(h.email, {
+          oldDevice: null,
+          newDevice: req.headers["user-agent"],
+          reason: "ADMIN_REVOKE",
+        }))
+        .catch((e) => console.error("[Auth] session-revoked email failed:", e.message));
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Other sessions revoked",
+      revokedCount: result.modifiedCount || 0,
+    });
+  } catch (error) {
+    console.error("Revoke all others error:", error);
+    return res.status(500).json({ success: false, message: "Failed to revoke sessions" });
+  }
+};
+
+/**
  * Force logout from another device (resolve conflict)
  * POST /api/auth/session/force-logout
  */
@@ -1413,7 +1558,11 @@ export const forceLogoutOtherSessions = async (req, res) => {
     // Fire-and-forget push + email notification for revoked sessions
     notifySessionRevoked(hospitalId).catch(console.error);
     Hospital.findById(hospitalId).select("email").lean()
-      .then((h) => h?.email && sendSessionRevokedEmail(h.email, req.headers["user-agent"]))
+      .then((h) => h?.email && sendSessionRevokedEmail(h.email, {
+        oldDevice: null,
+        newDevice: req.headers["user-agent"],
+        reason: "SESSION_CONFLICT",
+      }))
       .catch((e) => console.error("[Auth] session-revoked email failed:", e.message));
 
     return res.status(200).json({ success: true, message: "Other sessions terminated" });
@@ -1462,5 +1611,8 @@ export default {
   checkSessionConflict,
   validateSession,
   forceLogoutOtherSessions,
+  listActiveSessions,
+  revokeSessionById,
+  revokeAllOtherSessions,
   storeFcmToken,
 };

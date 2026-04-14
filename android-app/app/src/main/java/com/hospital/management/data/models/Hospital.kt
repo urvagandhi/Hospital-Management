@@ -10,7 +10,6 @@ data class Hospital(
     @SerializedName("phone") val phone: String,
     @SerializedName("logoUrl") val logoUrl: String? = null,
     @SerializedName("role") val role: String? = "hospital",
-    @SerializedName("department") val department: String? = null,
     @SerializedName("address") val address: String? = null,
     @SerializedName("city") val city: String? = null,
     @SerializedName("state") val state: String? = null,

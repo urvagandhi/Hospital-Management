@@ -270,23 +270,88 @@ export async function sendWelcomeEmail(to, hospitalName, loginId, tempPassword, 
 // ---------------------------------------------------------------------------
 
 /**
- * @param {string} to
- * @param {string} deviceInfo — e.g. "Chrome on Windows"
+ * Humanize a raw User-Agent into a short readable device label.
+ * Falls back to the raw UA (trimmed) if no pattern matches, so nothing
+ * disappears silently.
  */
-export async function sendSessionRevokedEmail(to, deviceInfo) {
-  const safeDevice = escapeHtml(deviceInfo || "Unknown");
+function humanizeUserAgent(ua) {
+  if (!ua || typeof ua !== "string") return "Unknown device";
+  const s = ua.trim();
+
+  // Our custom Android UA, e.g.
+  //   "HospitalHMS-Android/1.0.0 (Android 14; samsung SM-G991B)"
+  const ours = s.match(/HospitalHMS-Android\/[\w.+-]+\s*\(Android\s*([\w.]+);\s*([^)]+)\)/i);
+  if (ours) return `${ours[2].trim()} (Android ${ours[1]})`;
+
+  if (/okhttp/i.test(s)) return "Android app";
+  if (/CFNetwork|Darwin|iPhone|iPad|iOS/i.test(s)) return "iOS device";
+
+  let browser = null;
+  if (/Edg\//.test(s)) browser = "Edge";
+  else if (/OPR\//.test(s)) browser = "Opera";
+  else if (/Chrome\//.test(s)) browser = "Chrome";
+  else if (/Firefox\//.test(s)) browser = "Firefox";
+  else if (/Safari\//.test(s)) browser = "Safari";
+
+  let os = null;
+  if (/Windows NT/.test(s)) os = "Windows";
+  else if (/Mac OS X/.test(s)) os = "macOS";
+  else if (/Android/.test(s)) os = "Android";
+  else if (/Linux/.test(s)) os = "Linux";
+
+  if (browser && os) return `${browser} on ${os}`;
+  if (browser) return browser;
+  if (os) return os;
+  return s.length > 60 ? s.slice(0, 57) + "…" : s;
+}
+
+/**
+ * Send a "session ended" email.
+ * @param {string} to
+ * @param {string|object} info — either a raw UA string (legacy) OR
+ *   { oldDevice, newDevice, reason } where reason is one of
+ *   "SESSION_LIMIT_EXCEEDED" | "ADMIN_REVOKE" | "SESSION_CONFLICT".
+ */
+export async function sendSessionRevokedEmail(to, info) {
+  const parsed = typeof info === "string"
+    ? { oldDevice: info, newDevice: null, reason: null }
+    : (info || {});
+  const oldLabel = escapeHtml(humanizeUserAgent(parsed.oldDevice));
+  const newLabel = parsed.newDevice ? escapeHtml(humanizeUserAgent(parsed.newDevice)) : null;
+  const reason = parsed.reason || null;
+
   const subject = `Session ended — ${APP_NAME}`;
 
-  const body = `
-    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">You've Been Logged Out</h2>
-    <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
-      You have been logged out of ${APP_NAME} on <strong>${safeDevice}</strong> because you signed in on a new device.
-    </p>
+  let headline;
+  let explainer;
+  if (reason === "SESSION_LIMIT_EXCEEDED") {
+    headline = "A device was signed out to make room";
+    explainer = newLabel
+      ? `A new sign-in on <strong>${newLabel}</strong> exceeded your 2-device mobile limit, so the oldest session on <strong>${oldLabel}</strong> was ended.`
+      : `A new sign-in exceeded your 2-device mobile limit, so the oldest session on <strong>${oldLabel}</strong> was ended.`;
+  } else if (reason === "ADMIN_REVOKE") {
+    headline = "A session was ended";
+    explainer = `The session on <strong>${oldLabel}</strong> was ended from another of your devices.`;
+  } else {
+    // Fallback / SESSION_CONFLICT / legacy string call
+    headline = "You've been signed out";
+    explainer = newLabel
+      ? `You've been signed out of ${APP_NAME} on <strong>${oldLabel}</strong> because you signed in on <strong>${newLabel}</strong>.`
+      : `You've been signed out of ${APP_NAME} on <strong>${oldLabel}</strong>.`;
+  }
+
+  const previousBlock = `
     <div style="background:#fffbeb;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #fde68a;">
-      <p style="margin:0;font-size:14px;color:#92400e;"><strong>Previous device:</strong> ${safeDevice}</p>
-    </div>
+      <p style="margin:0 0 4px;font-size:14px;color:#92400e;"><strong>Signed-out device:</strong> ${oldLabel}</p>
+      ${newLabel ? `<p style="margin:0;font-size:14px;color:#92400e;"><strong>New device:</strong> ${newLabel}</p>` : ""}
+    </div>`;
+
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">${headline}</h2>
+    <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">${explainer}</p>
+    ${previousBlock}
     <p style="margin:0 0 8px;color:#475569;font-size:14px;">If this wasn't you, please change your password immediately and contact your administrator.</p>
-    <p style="margin:0;color:#94a3b8;font-size:12px;">Only one mobile session is allowed at a time for security.</p>`;
+    <p style="margin:0;color:#94a3b8;font-size:12px;">Up to 2 mobile devices can stay signed in at the same time for security.</p>`;
 
   return sendEmail(to, subject, wrapHtml(body));
 }

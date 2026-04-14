@@ -11,6 +11,7 @@ import { verifyAccessToken } from "../middleware/auth.js";
 import { handleValidationErrors } from "../middleware/validateRequest.js";
 import Hospital from "../models/Hospital.js";
 import { patientLimiter } from "../middleware/rateLimiter.js";
+import { getUploadIdempotentResponse } from "../services/redis.service.js";
 
 const router = express.Router();
 
@@ -91,11 +92,32 @@ router.post("/:patientId/folders", patientController.createFolder);
  */
 router.get("/:patientId/files/:folderName", patientController.getFolderFiles);
 
+// Short-circuits duplicate uploads (e.g. offline-sync retry after network drop)
+// by returning the cached response before multer re-uploads bytes to Cloudinary.
+const uploadIdempotencyGuard = async (req, res, next) => {
+  const key = req.header("Idempotency-Key");
+  if (!key) return next();
+  try {
+    const cached = await getUploadIdempotentResponse(req.hospital.id, key);
+    if (cached && !cached.pending) {
+      return res.status(cached.status || 200).json(cached.body);
+    }
+  } catch (err) {
+    console.error("[uploadIdempotencyGuard]", err.message);
+  }
+  next();
+};
+
 /**
  * POST /api/patients/:patientId/files/:folderName
  * Upload file to folder
  */
-router.post("/:patientId/files/:folderName", uploadDocument.single("file"), patientController.uploadFile);
+router.post(
+  "/:patientId/files/:folderName",
+  uploadIdempotencyGuard,
+  uploadDocument.single("file"),
+  patientController.uploadFile,
+);
 
 /**
  * PATCH /api/patients/:patientId/files/:folderName/:fileId/rename

@@ -22,6 +22,9 @@ import {
   checkSessionConflict,
   validateSession,
   forceLogoutOtherSessions,
+  listActiveSessions,
+  revokeSessionById,
+  revokeAllOtherSessions,
   storeFcmToken,
 } from "../controllers/auth.controller.js";
 import { verifyAccessToken, verifyAdmin, verifyTempToken } from "../middleware/auth.js";
@@ -273,6 +276,15 @@ router.get("/session/validate", verifyAccessToken, validateSession);
 
 /** Force logout other sessions (requires auth) */
 router.post("/session/force-logout", verifyAccessToken, forceLogoutOtherSessions);
+
+/** List every active session for the caller (mobile + web, with isCurrent flag) */
+router.get("/session/list", verifyAccessToken, listActiveSessions);
+
+/** Revoke a specific session by id (cannot revoke your own current session) */
+router.post("/session/revoke/:id", verifyAccessToken, revokeSessionById);
+
+/** Revoke all sessions except the caller's current one */
+router.post("/session/revoke-all-others", verifyAccessToken, revokeAllOtherSessions);
 
 // ═══════════════════════════════════════════════════
 // FCM TOKEN ENDPOINT

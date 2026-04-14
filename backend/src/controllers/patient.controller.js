@@ -9,6 +9,7 @@ import { deleteFile as cloudinaryDeleteFile } from "../services/storage.service.
 import * as pdfService from "../services/pdf.service.js";
 import * as zipService from "../services/zip.service.js";
 import AuditLog from "../models/AuditLog.js";
+import { setUploadIdempotentResponse } from "../services/redis.service.js";
 
 /** Fire-and-forget audit log — never blocks the response */
 function logAudit(userId, action, req, details) {
@@ -254,11 +255,22 @@ export const uploadFile = async (req, res) => {
       mimeType: file.mimetype,
     });
 
-    return res.status(200).json({
+    const responseBody = {
       success: true,
       data: patient,
       message: "File uploaded successfully",
-    });
+    };
+
+    // Cache the response against the client's Idempotency-Key so an offline-sync
+    // retry for the *same* logical upload returns the original result instead of
+    // creating a duplicate file entry on the patient record.
+    const idemKey = req.header("Idempotency-Key");
+    if (idemKey) {
+      setUploadIdempotentResponse(hospitalId, idemKey, { status: 200, body: responseBody })
+        .catch((e) => console.error("[Patient Controller] idem cache failed:", e.message));
+    }
+
+    return res.status(200).json(responseBody);
   } catch (error) {
     console.error("[Patient Controller] Upload error:", error);
     return res.status(error.message === "Patient not found" || error.message === "Folder not found" ? 404 : 500).json({

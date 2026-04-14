@@ -145,6 +145,21 @@
                 android:textColor="@color/color_on_surface_variant"
                 android:visibility="gone" />
 
+            <!-- Register CTA -->
+            <TextView
+                android:id="@+id/tvGoToRegister"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="@dimen/space_md"
+                android:clickable="true"
+                android:focusable="true"
+                android:fontFamily="@font/inter_medium"
+                android:padding="@dimen/space_sm"
+                android:text="New hospital? Create an account"
+                android:textColor="@color/brand_primary"
+                android:textSize="14sp" />
+
         </LinearLayout>
     </com.hospital.management.ui.components.GlassCardView>
 

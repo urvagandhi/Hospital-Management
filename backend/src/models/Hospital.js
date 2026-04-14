@@ -58,10 +58,6 @@ const hospitalSchema = new mongoose.Schema(
     lockUntil: {
       type: Date,
     },
-    department: {
-      type: String,
-      default: "General",
-    },
     address: {
       type: String,
       trim: true,

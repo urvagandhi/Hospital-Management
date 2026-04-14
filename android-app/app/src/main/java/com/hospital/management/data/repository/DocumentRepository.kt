@@ -11,6 +11,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.net.UnknownHostException
+import java.util.UUID
 
 class DocumentRepository(
     private val apiService: ApiService,
@@ -21,7 +22,8 @@ class DocumentRepository(
     suspend fun uploadDocument(
         patientId: String,
         folderName: String,
-        file: File
+        file: File,
+        idempotencyKey: String
     ): Result<Boolean> {
         return try {
             val mediaType = when {
@@ -32,7 +34,7 @@ class DocumentRepository(
             val requestFile = file.asRequestBody(mediaType.toMediaTypeOrNull())
             val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
 
-            val response = apiService.uploadFile(patientId, folderName, body)
+            val response = apiService.uploadFile(patientId, folderName, body, idempotencyKey)
             if (response.isSuccessful) {
                 Result.success(true)
             } else {
@@ -43,16 +45,23 @@ class DocumentRepository(
         }
     }
 
+    /** Generates a fresh idempotency key. Caller must persist it if the upload
+     *  may be retried later — the same key must be reused for every retry so
+     *  the server can dedupe. */
+    fun newIdempotencyKey(): String = UUID.randomUUID().toString()
+
     suspend fun saveOffline(
         patientId: String,
         folderName: String,
-        fileUri: String
+        fileUri: String,
+        idempotencyKey: String = newIdempotencyKey()
     ): Long {
         val document = OfflineDocument(
             patientId = patientId,
             folderName = folderName,
             fileUri = fileUri,
-            status = SyncStatus.PENDING
+            status = SyncStatus.PENDING,
+            idempotencyKey = idempotencyKey
         )
         return documentDao.insert(document)
     }

@@ -10,7 +10,6 @@ export interface Hospital {
   authCode?: string;
   logoUrl: string;
   role?: "admin" | "hospital";
-  department?: string;
   address?: string;
   city?: string;
   state?: string;

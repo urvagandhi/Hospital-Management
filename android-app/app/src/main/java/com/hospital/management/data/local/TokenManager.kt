@@ -150,14 +150,65 @@ class TokenManager(private val context: Context) {
         return prefs.getString(HOSPITAL_LOGO_URL, null)
     }
 
-    suspend fun setBiometricEnabled(enabled: Boolean) {
+    // ── Biometric enrollment state (per-hospital) ───────────────────────────
+    // The flag, the enrolled email, and the keystore alias are all scoped by
+    // hospitalId so multiple hospital accounts on the same device enrol
+    // independently — critical for dev/testing with multiple accounts and for
+    // production where a device might be shared across staff.
+    //
+    // Legacy (global) keys remain for migration but new code must pass hospitalId.
+
+    private fun bioEnabledKey(hospitalId: String) = "biometric_enabled_$hospitalId"
+    private fun bioEmailKey(hospitalId: String) = "biometric_email_$hospitalId"
+    private const val LAST_BIOMETRIC_HOSPITAL_ID = "last_biometric_hospital_id"
+
+    suspend fun setBiometricEnabled(hospitalId: String, enabled: Boolean) {
         prefs.edit().apply {
-            putBoolean(BIOMETRIC_ENABLED, enabled)
+            if (enabled) {
+                putBoolean(bioEnabledKey(hospitalId), true)
+                putString(LAST_BIOMETRIC_HOSPITAL_ID, hospitalId)
+            } else {
+                remove(bioEnabledKey(hospitalId))
+                // If we're disabling the last-used one, drop the pointer too
+                if (prefs.getString(LAST_BIOMETRIC_HOSPITAL_ID, null) == hospitalId) {
+                    remove(LAST_BIOMETRIC_HOSPITAL_ID)
+                }
+            }
             apply()
         }
     }
 
-    suspend fun isBiometricEnabled(): Boolean = prefs.getBoolean(BIOMETRIC_ENABLED, false)
+    suspend fun isBiometricEnabled(hospitalId: String): Boolean =
+        prefs.getBoolean(bioEnabledKey(hospitalId), false)
+
+    /** Email remembered against a specific hospital's biometric enrolment. */
+    suspend fun saveBiometricEmail(hospitalId: String, email: String) {
+        prefs.edit().putString(bioEmailKey(hospitalId), email).apply()
+    }
+
+    suspend fun getBiometricEmail(hospitalId: String): String? =
+        prefs.getString(bioEmailKey(hospitalId), null)
+
+    /**
+     * The hospitalId that enrolled biometric most recently — used by the login
+     * screen to decide which account's biometric button to surface on a fresh
+     * app launch (before any account is selected).
+     */
+    suspend fun getLastBiometricHospitalId(): String? =
+        prefs.getString(LAST_BIOMETRIC_HOSPITAL_ID, null)
+
+    /** Wipe all per-hospital biometric state for this hospital (used on key
+     *  invalidation recovery — user re-enrols fresh). */
+    suspend fun clearBiometricForHospital(hospitalId: String) {
+        prefs.edit().apply {
+            remove(bioEnabledKey(hospitalId))
+            remove(bioEmailKey(hospitalId))
+            if (prefs.getString(LAST_BIOMETRIC_HOSPITAL_ID, null) == hospitalId) {
+                remove(LAST_BIOMETRIC_HOSPITAL_ID)
+            }
+            apply()
+        }
+    }
 
     suspend fun getEmail(): String? = prefs.getString(USER_EMAIL, null)
 

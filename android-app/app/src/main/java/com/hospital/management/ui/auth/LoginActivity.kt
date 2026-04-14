@@ -48,6 +48,15 @@ class LoginActivity : BaseActivity() {
         setupListeners()
         setupBiometricLogin()
 
+        // Pre-fill identifier after self-registration hands off here.
+        intent.getStringExtra("prefillEmail")?.takeIf { it.isNotBlank() }?.let {
+            binding.etHospitalId.setText(it)
+        }
+
+        binding.tvGoToRegister.setOnClickListener {
+            startActivity(Intent(this, RegisterActivity::class.java))
+        }
+
         // Attach press-scale animation to buttons
         DesignAnimations.attachPressScale(binding.btnLogin)
         DesignAnimations.attachPressScale(binding.btnBiometric)
@@ -210,12 +219,18 @@ class LoginActivity : BaseActivity() {
                             }
                         }
 
-                        // Check if biometric is already enabled or not available
-                        val alreadyEnabled = withContext(Dispatchers.IO) { tokenManager.isBiometricEnabled() }
-                        if (alreadyEnabled || !biometricHelper.isBiometricAvailable()) {
+                        // Check if biometric is already enabled for THIS hospital (per-account)
+                        // or not available on this device.
+                        val currentHospitalId = withContext(Dispatchers.IO) { tokenManager.getHospitalId() }
+                        val alreadyEnabled = if (currentHospitalId.isNullOrEmpty()) false
+                            else withContext(Dispatchers.IO) { tokenManager.isBiometricEnabled(currentHospitalId) }
+                        val keyStillValid = currentHospitalId != null && biometricHelper.hasKeyPair(currentHospitalId)
+                        if ((alreadyEnabled && keyStillValid) || !biometricHelper.isBiometricAvailable() || currentHospitalId.isNullOrEmpty()) {
                             navigateToDashboard()
                         } else {
-                            showBiometricBindingDialog()
+                            // Either never enrolled for this hospital, or a previous key was wiped —
+                            // prompt fresh enrolment.
+                            showBiometricBindingDialog(currentHospitalId)
                         }
                     }
                     is AuthState.Error -> {
@@ -240,19 +255,24 @@ class LoginActivity : BaseActivity() {
     }
 
     /**
-     * Show dialog asking user if they want to enable biometric login.
-     * On Yes → verify fingerprint/face → register with server → enable.
-     * On Skip → proceed to dashboard without biometric.
+     * Show dialog asking the just-logged-in hospital whether to enable
+     * biometric login. Keypair + flag are scoped to hospitalId so each
+     * account enrols independently.
      */
-    private fun showBiometricBindingDialog() {
+    private fun showBiometricBindingDialog(hospitalId: String) {
         AlertDialog.Builder(this)
             .setTitle("Enable Biometric Login")
             .setMessage("Would you like to use fingerprint or face unlock for faster login next time?")
             .setPositiveButton("Enable") { _, _ ->
                 lifecycleScope.launch {
                     try {
-                        // Generate a real RSA key pair in Android Keystore
-                        val publicKey = biometricHelper.generateKeyPair()
+                        // If a stale alias already exists for this hospital (e.g. server
+                        // and local drifted), wipe it before generating a fresh one.
+                        if (biometricHelper.hasKeyPair(hospitalId)) {
+                            biometricHelper.deleteKeyPair(hospitalId)
+                        }
+
+                        val publicKey = biometricHelper.generateKeyPair(hospitalId)
                         if (publicKey == null) {
                             GlassSnackbar.show(this@LoginActivity, "Failed to generate biometric key", GlassSnackbar.Variant.ERROR)
                             navigateToDashboard()
@@ -263,7 +283,6 @@ class LoginActivity : BaseActivity() {
                             contentResolver, android.provider.Settings.Secure.ANDROID_ID
                         ) ?: "unknown"
 
-                        // Register the real public key with the server
                         val apiService = RetrofitClient.getApiService(this@LoginActivity)
                         val response = withContext(Dispatchers.IO) {
                             apiService.registerBiometric(
@@ -272,18 +291,22 @@ class LoginActivity : BaseActivity() {
                         }
 
                         if (response.isSuccessful) {
+                            val identifier = binding.etHospitalId.text.toString().trim()
                             withContext(Dispatchers.IO) {
-                                tokenManager.setBiometricEnabled(true)
+                                tokenManager.setBiometricEnabled(hospitalId, true)
                                 tokenManager.saveDeviceId(deviceId)
+                                if (identifier.isNotEmpty()) {
+                                    tokenManager.saveBiometricEmail(hospitalId, identifier)
+                                }
                             }
-                            GlassSnackbar.show(this@LoginActivity, "Biometric login enabled", GlassSnackbar.Variant.ERROR)
+                            GlassSnackbar.show(this@LoginActivity, "Biometric login enabled", GlassSnackbar.Variant.SUCCESS)
                         } else {
-                            biometricHelper.deleteKeyPair()
+                            biometricHelper.deleteKeyPair(hospitalId)
                             GlassSnackbar.show(this@LoginActivity, "Failed to register biometric with server", GlassSnackbar.Variant.ERROR)
                         }
                     } catch (e: Exception) {
                         Log.e("LoginActivity", "Biometric registration failed", e)
-                        biometricHelper.deleteKeyPair()
+                        biometricHelper.deleteKeyPair(hospitalId)
                         GlassSnackbar.show(this@LoginActivity, "Biometric setup failed", GlassSnackbar.Variant.ERROR)
                     }
                     navigateToDashboard()
@@ -296,39 +319,64 @@ class LoginActivity : BaseActivity() {
             .show()
     }
 
+    /**
+     * Decide whether to show the biometric button on the login screen.
+     * We offer biometric for the HOSPITAL that enrolled it most recently on
+     * this device (getLastBiometricHospitalId). The button is hidden if:
+     *   - no hospital has enrolled on this device, OR
+     *   - that hospital's flag is off, OR
+     *   - the keystore alias for that hospital is missing (wiped / invalidated).
+     */
     private fun setupBiometricLogin() {
         lifecycleScope.launch {
-            val biometricEnabled = withContext(Dispatchers.IO) { tokenManager.isBiometricEnabled() }
-            val hasKeyPair = biometricHelper.hasKeyPair()
+            val hospitalId = withContext(Dispatchers.IO) { tokenManager.getLastBiometricHospitalId() }
+            if (hospitalId.isNullOrEmpty()) return@launch
 
-            if (biometricEnabled && hasKeyPair && biometricHelper.isBiometricAvailable()) {
-                val email = withContext(Dispatchers.IO) { tokenManager.getEmail() }
-                if (!email.isNullOrEmpty()) {
-                    binding.etHospitalId.setText(email)
+            val enabled = withContext(Dispatchers.IO) { tokenManager.isBiometricEnabled(hospitalId) }
+            val hasKey = biometricHelper.hasKeyPair(hospitalId)
+
+            if (!enabled || !hasKey || !biometricHelper.isBiometricAvailable()) {
+                // If the flag says enabled but the key is gone, clean up so we don't
+                // show a broken button next time.
+                if (enabled && !hasKey) {
+                    withContext(Dispatchers.IO) { tokenManager.clearBiometricForHospital(hospitalId) }
                 }
-                binding.btnBiometric.visibility = View.VISIBLE
-                binding.btnBiometric.setOnClickListener {
-                    performBiometricLogin()
-                }
+                return@launch
+            }
+
+            val email = withContext(Dispatchers.IO) { tokenManager.getBiometricEmail(hospitalId) }
+            if (!email.isNullOrEmpty()) {
+                binding.etHospitalId.setText(email)
+            }
+            binding.btnBiometric.visibility = View.VISIBLE
+            binding.btnBiometric.setOnClickListener {
+                performBiometricLogin(hospitalId)
             }
         }
     }
 
     /**
-     * Full server-verified biometric login flow:
+     * Full server-verified biometric login flow for a SPECIFIC hospital.
      * 1. Get challenge from server
-     * 2. Show biometric prompt with CryptoObject to sign the challenge
+     * 2. Sign challenge with that hospital's per-account keystore key
      * 3. Send signature to server for verification
      * 4. Receive fresh tokens and navigate to dashboard
+     *
+     * If the keystore key has been permanently invalidated (new fingerprint
+     * enrolled, etc.), we wipe the per-hospital biometric state and tell the
+     * user to log in with password + re-enrol.
      */
-    private fun performBiometricLogin() {
+    private fun performBiometricLogin(hospitalId: String) {
         binding.loadingOverlay.visibility = View.VISIBLE
         binding.btnBiometric.isEnabled = false
         binding.btnLogin.isEnabled = false
 
         lifecycleScope.launch {
             try {
-                val identifier = withContext(Dispatchers.IO) { tokenManager.getEmail() } ?: ""
+                val identifier = withContext(Dispatchers.IO) { tokenManager.getBiometricEmail(hospitalId) } ?: ""
+                if (identifier.isEmpty()) {
+                    throw Exception("No email saved for biometric login. Please log in with password.")
+                }
                 val deviceId = android.provider.Settings.Secure.getString(
                     contentResolver, android.provider.Settings.Secure.ANDROID_ID
                 ) ?: "unknown"
@@ -347,14 +395,24 @@ class LoginActivity : BaseActivity() {
                 val data = challengeResponse.body()?.get("data") as? Map<*, *>
                 val challenge = data?.get("challenge") as? String
                     ?: throw Exception("Invalid challenge response")
-                val hospitalId = data["hospitalId"] as? String
+                val serverHospitalId = data["hospitalId"] as? String
                     ?: throw Exception("Invalid hospital ID in challenge")
+
+                // Sanity: the server's resolved hospitalId should match the one our
+                // keystore alias is bound to. If not, the saved email now resolves
+                // to a different hospital on the server — wipe local biometric state.
+                if (serverHospitalId != hospitalId) {
+                    withContext(Dispatchers.IO) { tokenManager.clearBiometricForHospital(hospitalId) }
+                    biometricHelper.deleteKeyPair(hospitalId)
+                    throw Exception("Biometric is linked to a different account. Please log in with password to re-enable.")
+                }
 
                 binding.loadingOverlay.visibility = View.GONE
 
                 // Step 2: Show biometric prompt to sign the challenge
                 biometricHelper.showBiometricPromptForSigning(
                     activity = this@LoginActivity,
+                    hospitalId = hospitalId,
                     challenge = challenge,
                     onSuccess = { signature ->
                         // Step 3: Verify signature with server
@@ -408,6 +466,26 @@ class LoginActivity : BaseActivity() {
                         binding.btnLogin.isEnabled = true
                         if (errorMsg.isNotEmpty()) {
                             GlassSnackbar.show(this@LoginActivity, errorMsg, GlassSnackbar.Variant.ERROR)
+                        }
+                    },
+                    onKeyInvalidated = {
+                        // OS invalidated the key (new fingerprint enrolled, credential
+                        // changed, etc.). Wipe local state + hide the biometric button
+                        // so the user logs in with password and re-enrols.
+                        lifecycleScope.launch {
+                            withContext(Dispatchers.IO) {
+                                tokenManager.clearBiometricForHospital(hospitalId)
+                            }
+                            biometricHelper.deleteKeyPair(hospitalId)
+                            binding.loadingOverlay.visibility = View.GONE
+                            binding.btnBiometric.visibility = View.GONE
+                            binding.btnBiometric.isEnabled = true
+                            binding.btnLogin.isEnabled = true
+                            GlassSnackbar.show(
+                                this@LoginActivity,
+                                "Biometric was reset on this device. Please log in with password to re-enable.",
+                                GlassSnackbar.Variant.INFO
+                            )
                         }
                     }
                 )

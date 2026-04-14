@@ -39,7 +39,6 @@ const hospitals = [
     email: "admin@citymedical.com",
     phone: "+919876543210",
     role: "admin",
-    department: "Multi-Specialty",
     address: "42 MG Road",
     city: "Mumbai",
     state: "Maharashtra",
@@ -51,7 +50,6 @@ const hospitals = [
     email: "admin@sunrisehealth.in",
     phone: "+919876543211",
     role: "hospital",
-    department: "General Medicine",
     address: "15 Nehru Nagar",
     city: "Delhi",
     state: "Delhi",
@@ -63,7 +61,6 @@ const hospitals = [
     email: "admin@lifecare.org",
     phone: "+919876543212",
     role: "hospital",
-    department: "Cardiology",
     address: "78 Park Street",
     city: "Kolkata",
     state: "West Bengal",
@@ -75,7 +72,6 @@ const hospitals = [
     email: "admin@greenvalley.com",
     phone: "+919876543213",
     role: "hospital",
-    department: "Pediatrics",
     address: "3 Residency Road",
     city: "Bangalore",
     state: "Karnataka",
@@ -87,7 +83,6 @@ const hospitals = [
     email: "admin@apollocare.in",
     phone: "+919876543214",
     role: "hospital",
-    department: "Orthopedics",
     address: "101 Anna Salai",
     city: "Chennai",
     state: "Tamil Nadu",
@@ -203,7 +198,7 @@ async function seed() {
 
     // ── Create hospitals ──
     const createdHospitals = [];
-    const patientCounts = [15, 12, 10, 8, 9]; // patients per hospital
+    const patientCounts = [2, 1, 2, 1, 2]; // patients per hospital
     const hospitalInitials = ["CMC", "SHC", "LCH", "GVM", "ACI"];
 
     for (let i = 0; i < hospitals.length; i++) {
@@ -247,9 +242,9 @@ async function seed() {
     console.log(`  Hospitals: ${createdHospitals.length}`);
     console.log(`  Patients:  ${totalPatients}`);
     console.log(`  Password:  ${PASSWORD} (all accounts)`);
-    console.log(`  TOTP:      Disabled (ready for setup on first mobile login)`);
-    console.log(`\n  Login as admin:  admin@citymedical.com / city_medical / +919876543210`);
-    console.log(`  Login as hospital: admin@sunrisehealth.in / sunrise_health / +919876543211\n`);
+    console.log(`  AuthCode:  Auto-generated per hospital (printed above — required as 2nd factor on login)`);
+    console.log(`\n  Login as admin:    admin@citymedical.com   | +919876543210`);
+    console.log(`  Login as hospital: admin@sunrisehealth.in   | +919876543211\n`);
 
   } catch (error) {
     console.error("[Seed] Error:", error);

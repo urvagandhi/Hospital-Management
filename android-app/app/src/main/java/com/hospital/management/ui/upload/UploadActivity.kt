@@ -267,29 +267,32 @@ class UploadActivity : BaseActivity() {
                 }
 
                 val isOnline = isNetworkAvailable()
-                
+                // One key per logical upload. Reused on offline save so the worker's
+                // retry dedupes server-side if the original request already succeeded.
+                val idempotencyKey = docRepository.newIdempotencyKey()
+
                 if (isOnline) {
                     binding.tvUploadProgress.text = "Uploading PDF..."
-                    val result = docRepository.uploadDocument(patientId, folderName, pdfFile)
-                    
+                    val result = docRepository.uploadDocument(patientId, folderName, pdfFile, idempotencyKey)
+
                     binding.progressBar.visibility = View.GONE
                     binding.btnUpload.isEnabled = true
                     binding.tvUploadProgress.visibility = View.GONE
-                    
+
                     if (result.isSuccess) {
                         // Delete local PDF after successful upload
                         pdfFile.delete()
                         Toast.makeText(this@UploadActivity, "PDF uploaded successfully!", Toast.LENGTH_SHORT).show()
                         finish()
                     } else {
-                        // Upload failed, save offline
-                        docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString())
+                        // Upload failed, save offline with SAME key so any retry hits idempotency cache
+                        docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), idempotencyKey)
                         Toast.makeText(this@UploadActivity, "Upload failed. Saved offline.", Toast.LENGTH_LONG).show()
                         finish()
                     }
                 } else {
-                    // Offline - save PDF locally
-                    docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString())
+                    // Offline - save PDF locally with its key
+                    docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), idempotencyKey)
                     
                     binding.progressBar.visibility = View.GONE
                     binding.btnUpload.isEnabled = true

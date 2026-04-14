@@ -60,6 +60,16 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.HospitalManagement" />
+        <activity
+            android:name=".ui.auth.RegisterActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement" />
+        <activity
+            android:name=".ui.auth.RegisterOtpActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.HospitalManagement" />
         <activity android:name=".ui.dashboard.DashboardActivity" android:exported="false" />
         <activity android:name=".ui.admission.AdmissionActivity" android:exported="false" />
         <activity android:name=".ui.scanner.ScannerActivity" android:exported="false" />

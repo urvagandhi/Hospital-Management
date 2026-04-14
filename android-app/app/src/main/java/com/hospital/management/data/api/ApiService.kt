@@ -21,6 +21,22 @@ interface ApiService {
     @JvmSuppressWildcards
     suspend fun login(@Body body: Map<String, Any>): Response<LoginResponse>
 
+    // ── Self-service registration ──
+    @POST("/api/auth/register")
+    suspend fun registerSelfService(
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    @POST("/api/auth/register/verify-otp")
+    suspend fun verifyRegistrationOtp(
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    @POST("/api/auth/register/resend-otp")
+    suspend fun resendRegistrationOtp(
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
     @POST("/api/auth/change-password")
     suspend fun changePassword(
         @Header("Authorization") authorization: String,
@@ -110,7 +126,8 @@ interface ApiService {
     suspend fun uploadFile(
         @Path("patientId") patientId: String,
         @Path("folderName") folderName: String,
-        @Part file: MultipartBody.Part
+        @Part file: MultipartBody.Part,
+        @Header("Idempotency-Key") idempotencyKey: String
     ): Response<Map<String, Any>>
 
     @PATCH("/api/patients/{patientId}/files/{folderName}/{fileId}/rename")
