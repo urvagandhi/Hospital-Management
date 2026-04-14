@@ -41,9 +41,7 @@ router.post(
   "/",
   [
     body("patientName").notEmpty().trim().withMessage("Patient name is required"),
-    body("email").optional({ values: "falsy" }).isEmail().withMessage("Invalid email format"),
-    body("phone").optional({ values: "falsy" }).trim(),
-    body("medicalRecordNumber").optional({ values: "falsy" }).trim(),
+    body("remarks").optional({ values: "falsy" }).trim().isLength({ max: 500 }).withMessage("Remarks must be 500 characters or less"),
   ],
   handleValidationErrors,
   patientController.createPatient,
@@ -75,9 +73,7 @@ router.put(
   [
     param("patientId").isMongoId().withMessage("Invalid patient ID"),
     body("patientName").optional().notEmpty().trim().withMessage("Patient name cannot be empty"),
-    body("email").optional({ values: "falsy" }).isEmail().withMessage("Invalid email format"),
-    body("phone").optional({ values: "falsy" }).trim(),
-    body("medicalRecordNumber").optional({ values: "falsy" }).trim(),
+    body("remarks").optional({ values: "falsy" }).trim().isLength({ max: 500 }).withMessage("Remarks must be 500 characters or less"),
   ],
   handleValidationErrors,
   patientController.updatePatient,

@@ -3,18 +3,12 @@ package com.hospital.management.ui.patients
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import com.hospital.management.ui.base.BaseActivity
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.repository.PatientRepository
 import com.hospital.management.databinding.ActivityPatientDetailsBinding
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -114,22 +108,21 @@ class PatientDetailsActivity : BaseActivity() {
     }
 
     private fun displayPatientInfo(patient: Patient) {
+        binding.tvTitle.text = patient.patientName
+        binding.tvPatientId.text = patient.patientId
         binding.etPatientName.setText(patient.patientName)
-        binding.etEmail.setText(patient.email ?: "")
-        binding.etPhone.setText(patient.phone)
-        binding.etDateOfBirth.setText(formatDate(patient.dateOfBirth))
-        binding.etMrn.setText(patient.medicalRecordNumber)
-        binding.etNotes.setText("") // Placeholder as notes not in model yet
+        binding.etRemarks.setText(patient.remarks ?: "")
 
         // Setup Folders RecyclerView
         val folders = patient.folders
         if (folders.isNotEmpty()) {
             val folderAdapter = FolderAdapter(folders) { folder ->
-                // Navigate to folder details
                 val intent = android.content.Intent(this, FolderDetailsActivity::class.java)
                 intent.putExtra("PATIENT_ID", patient._id)
                 intent.putExtra("FOLDER_NAME", folder.name)
                 intent.putExtra("FILE_COUNT", folder.fileCount)
+                intent.putExtra("PATIENT_NAME", patient.patientName)
+                intent.putExtra("PATIENT_DISPLAY_ID", patient.patientId)
                 startActivity(intent)
             }
             binding.rvFolders.layoutManager = androidx.recyclerview.widget.GridLayoutManager(this, 2)
@@ -137,19 +130,6 @@ class PatientDetailsActivity : BaseActivity() {
             binding.rvFolders.visibility = View.VISIBLE
         } else {
             binding.rvFolders.visibility = View.GONE
-            // Optionally show "No folders" text if added to layout
-        }
-    }
-
-    private fun formatDate(dateString: String): String {
-        if (dateString.isEmpty()) return ""
-        return try {
-            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-            val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-            val date = inputFormat.parse(dateString)
-            date?.let { outputFormat.format(it) } ?: dateString.substringBefore("T")
-        } catch (e: Exception) {
-            dateString.substringBefore("T")
         }
     }
 
@@ -157,31 +137,19 @@ class PatientDetailsActivity : BaseActivity() {
         isEditMode = true
         binding.btnEdit.text = "Save"
         binding.etPatientName.isEnabled = true
-        binding.etEmail.isEnabled = true
-        binding.etPhone.isEnabled = true
-        binding.etDateOfBirth.isEnabled = true
-        binding.etMrn.isEnabled = true
-        binding.etNotes.isEnabled = true
+        binding.etRemarks.isEnabled = true
     }
 
     private fun disableEditMode() {
         isEditMode = false
         binding.btnEdit.text = "Edit"
         binding.etPatientName.isEnabled = false
-        binding.etEmail.isEnabled = false
-        binding.etPhone.isEnabled = false
-        binding.etDateOfBirth.isEnabled = false
-        binding.etMrn.isEnabled = false
-        binding.etNotes.isEnabled = false
+        binding.etRemarks.isEnabled = false
     }
 
     private fun savePatientDetails() {
-        val patientName = binding.etPatientName.text.toString()
-        val email = binding.etEmail.text.toString()
-        val phone = binding.etPhone.text.toString()
-        val dateOfBirth = binding.etDateOfBirth.text.toString()
-        val mrn = binding.etMrn.text.toString()
-        val notes = binding.etNotes.text.toString()
+        val patientName = binding.etPatientName.text.toString().trim()
+        val remarks = binding.etRemarks.text.toString().trim()
 
         if (patientName.isBlank()) {
             Toast.makeText(this, "Patient name is required", Toast.LENGTH_SHORT).show()
@@ -190,11 +158,7 @@ class PatientDetailsActivity : BaseActivity() {
 
         val requestBody = mapOf(
             "patientName" to patientName,
-            "email" to email,
-            "phone" to phone,
-            "dateOfBirth" to dateOfBirth,
-            "medicalRecordNumber" to mrn,
-            "notes" to notes
+            "remarks" to remarks
         )
 
         patientViewModel.updatePatient(patientId, requestBody)

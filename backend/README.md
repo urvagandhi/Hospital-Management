@@ -256,9 +256,9 @@ erDiagram
 
     Patient {
         ObjectId hospitalId FK
+        String patientId "auto [INITIALS]-[NNN] e.g. SH-001"
         String patientName
-        String medicalRecordNumber "sparse unique"
-        String status "active | inactive | archived"
+        String remarks "optional, max 500 chars"
     }
 
     BackupCode {

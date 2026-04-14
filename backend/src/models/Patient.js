@@ -1,6 +1,7 @@
 /**
  * Patient Model
- * Stores patient information with folder structure for files
+ * Simplified: patientName + remarks + auto-generated patientId
+ * All documents/folders preserved via embedded folder schema.
  */
 
 import mongoose from "mongoose";
@@ -51,23 +52,18 @@ const patientSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    patientId: {
+      type: String,
+      required: true,
+      index: true,
+    },
     patientName: {
       type: String,
       required: true,
     },
-    email: {
+    remarks: {
       type: String,
-    },
-    phone: {
-      type: String,
-    },
-    dateOfBirth: {
-      type: Date,
-    },
-    medicalRecordNumber: {
-      type: String,
-      unique: true,
-      sparse: true,
+      maxlength: 500,
     },
     folders: {
       type: [folderSchema],
@@ -81,14 +77,6 @@ const patientSchema = new mongoose.Schema(
         { name: "medical prescription & bills" },
         { name: "consent" },
       ],
-    },
-    notes: {
-      type: String,
-    },
-    status: {
-      type: String,
-      enum: ["active", "inactive", "archived"],
-      default: "active",
     },
   },
   {
@@ -111,5 +99,7 @@ patientSchema.methods.toJSON = function () {
 // Index for auto-deletion queries
 patientSchema.index({ createdAt: 1 });
 patientSchema.index({ hospitalId: 1, createdAt: 1 });
+// Unique patient ID per hospital
+patientSchema.index({ hospitalId: 1, patientId: 1 }, { unique: true });
 
 export default mongoose.model("Patient", patientSchema);

@@ -119,7 +119,7 @@ export const generateFolderPdf = async (patient, folderName, res) => {
       `Generated: ${new Date().toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" })}`,
       `Files: ${folder.files.length}`,
       `Total size: ${formatFileSize(folder.files.reduce((s, f) => s + (f.size || 0), 0))}`,
-      patient.medicalRecordNumber ? `MRN: ${patient.medicalRecordNumber}` : "",
+      patient.patientId ? `ID: ${patient.patientId}` : "",
     ].filter(Boolean),
   );
 

@@ -61,8 +61,7 @@ class FolderDetailsActivity : BaseActivity() {
         patientId = intent.getStringExtra("PATIENT_ID") ?: ""
         folderName = intent.getStringExtra("FOLDER_NAME") ?: ""
         patientName = intent.getStringExtra("PATIENT_NAME") ?: ""
-        val patientMrn = intent.getStringExtra("PATIENT_MRN") ?: ""
-        val patientPhone = intent.getStringExtra("PATIENT_PHONE") ?: ""
+        val patientDisplayId = intent.getStringExtra("PATIENT_DISPLAY_ID") ?: ""
 
         // Fetch hospital name for download folder hierarchy
         lifecycleScope.launch {
@@ -71,8 +70,7 @@ class FolderDetailsActivity : BaseActivity() {
 
         // Populate patient info row
         findViewById<android.widget.TextView>(R.id.tvPatientName).text = patientName
-        findViewById<android.widget.TextView>(R.id.tvPatientMrn).text = if (patientMrn.isNotEmpty()) "MRN: $patientMrn" else ""
-        findViewById<android.widget.TextView>(R.id.tvPatientPhone).text = patientPhone
+        findViewById<android.widget.TextView>(R.id.tvPatientId).text = patientDisplayId
 
         setupViews()
         setupObservers()

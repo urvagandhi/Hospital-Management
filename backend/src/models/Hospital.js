@@ -137,6 +137,12 @@ const hospitalSchema = new mongoose.Schema(
       updatedAt: { type: Date },
     },
 
+    // Auto-incrementing counter for patient ID generation (per hospital)
+    patientCounter: {
+      type: Number,
+      default: 0,
+    },
+
     // Biometric binding — stores public keys per device
     biometricKeys: [{
       deviceId: { type: String, required: true },
@@ -180,6 +186,19 @@ hospitalSchema.methods.toJSON = function () {
 hospitalSchema.methods.matchPassword = async function (enteredPassword) {
   const { comparePassword } = await import("../utils/hash.js");
   return await comparePassword(enteredPassword, this.passwordHash);
+};
+
+/**
+ * Derive hospital initials from name for Patient/Folder ID generation.
+ * Multi-word: first letter of each word, e.g. "Sunrise Hospital" → "SH"
+ * Single-word: first two letters, e.g. "Apollo" → "AP"
+ */
+hospitalSchema.methods.getInitials = function () {
+  const words = this.hospitalName.trim().split(/\s+/);
+  if (words.length >= 2) {
+    return words.map((w) => w[0]).join("").toUpperCase();
+  }
+  return this.hospitalName.slice(0, 2).toUpperCase();
 };
 
 const Hospital = mongoose.model("Hospital", hospitalSchema);

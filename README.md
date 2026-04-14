@@ -192,11 +192,9 @@ erDiagram
     Patient {
         ObjectId _id
         ObjectId hospitalId FK
+        String patientId "auto [INITIALS]-[NNN] e.g. SH-001"
         String patientName
-        String email
-        String phone
-        String medicalRecordNumber
-        String status "active | inactive | archived"
+        String remarks "optional, max 500 chars"
     }
 
     Folder {

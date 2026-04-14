@@ -37,7 +37,7 @@
         android:id="@+id/tvTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Patient Profile"
+        android:text="Patient"
         android:textColor="@color/color_on_surface"
         android:textSize="20sp"
         android:fontFamily="@font/inter_semibold"
@@ -62,7 +62,7 @@
             android:orientation="vertical"
             android:padding="@dimen/space_xl">
 
-            <!-- Personal Info Card -->
+            <!-- Patient Info Card -->
             <com.hospital.management.ui.components.GlassCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
@@ -73,19 +73,26 @@
                     android:orientation="vertical"
                     android:padding="@dimen/space_xl">
 
+                    <!-- Patient ID Badge -->
                     <TextView
+                        android:id="@+id/tvPatientId"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Personal Information"
-                        style="@style/TextAppearance.App.Subtitle"
-                        android:layout_marginBottom="@dimen/space_xl" />
+                        android:text="SH-001"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter_semibold"
+                        android:textColor="@color/brand_primary"
+                        android:background="@drawable/bg_badge"
+                        android:paddingHorizontal="@dimen/space_md"
+                        android:paddingVertical="@dimen/space_xs"
+                        android:layout_marginBottom="@dimen/space_base" />
 
                     <!-- Name -->
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/Widget.App.TextInputLayout.Glass"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Full Name"
+                        android:hint="Patient Name"
                         android:layout_marginBottom="@dimen/space_base">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -97,99 +104,23 @@
                             android:textColor="@color/color_on_surface" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- MRN & DOB Row -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:baselineAligned="false"
-                        android:layout_marginBottom="@dimen/space_base">
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            style="@style/Widget.App.TextInputLayout.Glass"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:hint="MRN"
-                            android:layout_marginEnd="@dimen/space_sm">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/etMrn"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:enabled="false"
-                                android:textColor="@color/color_on_surface" />
-                        </com.google.android.material.textfield.TextInputLayout>
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            style="@style/Widget.App.TextInputLayout.Glass"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:hint="Date of Birth"
-                            android:layout_marginStart="@dimen/space_sm">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/etDateOfBirth"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="date"
-                                android:enabled="false"
-                                android:textColor="@color/color_on_surface" />
-                        </com.google.android.material.textfield.TextInputLayout>
-                    </LinearLayout>
-
-                    <!-- Contact Info -->
+                    <!-- Remarks -->
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/Widget.App.TextInputLayout.Glass"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Phone Number"
-                        android:layout_marginBottom="@dimen/space_base"
-                        app:startIconDrawable="@drawable/ic_phone"
-                        app:startIconTint="@color/brand_primary">
+                        android:hint="Remarks"
+                        app:counterEnabled="true"
+                        app:counterMaxLength="500">
 
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/etPhone"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="phone"
-                            android:enabled="false"
-                            android:textColor="@color/color_on_surface" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.App.TextInputLayout.Glass"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Email Address"
-                        android:layout_marginBottom="@dimen/space_base"
-                        app:startIconDrawable="@drawable/ic_email"
-                        app:startIconTint="@color/brand_primary">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/etEmail"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="textEmailAddress"
-                            android:enabled="false"
-                            android:textColor="@color/color_on_surface" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <!-- Notes -->
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.App.TextInputLayout.Glass"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Medical Notes">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/etNotes"
+                            android:id="@+id/etRemarks"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="textMultiLine"
-                            android:minLines="3"
+                            android:minLines="2"
                             android:gravity="top"
+                            android:maxLength="500"
                             android:enabled="false"
                             android:textColor="@color/color_on_surface" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -231,7 +162,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/space_xl"
-        android:text="Edit Profile"
+        android:text="Edit"
         android:textColor="@android:color/white"
         android:fontFamily="@font/inter_medium"
         app:icon="@drawable/ic_edit_pencil"

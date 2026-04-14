@@ -29,17 +29,13 @@ function logAudit(userId, action, req, details) {
 export const createPatient = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
-    const { patientName, email, phone, dateOfBirth, medicalRecordNumber, notes } = req.body;
+    const { patientName, remarks } = req.body;
 
     console.log("[Patient Controller] Creating patient:", patientName);
 
     const patient = await patientService.createPatient(hospitalId, {
       patientName,
-      email,
-      phone,
-      dateOfBirth,
-      medicalRecordNumber,
-      notes,
+      remarks,
     });
 
     return res.status(201).json({
@@ -131,17 +127,13 @@ export const updatePatient = async (req, res) => {
   try {
     const { patientId } = req.params;
     const hospitalId = req.hospital?.id;
-    const { patientName, email, phone, dateOfBirth, medicalRecordNumber, notes } = req.body;
+    const { patientName, remarks } = req.body;
 
     console.log("[Patient Controller] Updating patient:", patientId);
 
     const patient = await patientService.updatePatient(hospitalId, patientId, {
       patientName,
-      email,
-      phone,
-      dateOfBirth,
-      medicalRecordNumber,
-      notes,
+      remarks,
     });
 
     return res.status(200).json({

@@ -63,7 +63,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:iconifiedByDefault="false"
-            app:queryHint="Search patients by name or MRN"
+            app:queryHint="Search patients by name or PatientID"
             android:background="@null" />
     </com.hospital.management.ui.components.GlassCardView>
 

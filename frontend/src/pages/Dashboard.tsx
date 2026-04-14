@@ -6,10 +6,9 @@ import { persistentLogger } from "../utils/persistentLogger";
 
 interface Patient {
   _id: string;
+  patientId: string;
   patientName: string;
-  medicalRecordNumber: string;
-  dateOfBirth: string;
-  status: string;
+  remarks?: string;
   createdAt: string;
 }
 
@@ -90,11 +89,10 @@ const Dashboard: React.FC = () => {
   };
 
   const stats = useMemo(() => {
-    const activeCount = patients.filter((p) => p.status === "active").length;
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const recentCount = patients.filter((p) => new Date(p.createdAt) >= weekAgo).length;
-    return { activeCount, recentCount };
+    return { recentCount };
   }, [patients]);
 
   const greeting = useMemo(() => {
@@ -198,12 +196,12 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center gap-4">
               <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Active Patients</p>
-                <p className="text-2xl font-bold text-gray-900">{loading ? "-" : stats.activeCount}</p>
+                <p className="text-sm font-medium text-gray-500">Current Page</p>
+                <p className="text-2xl font-bold text-gray-900">{loading ? "-" : patients.length}</p>
               </div>
             </div>
             <div className="absolute -right-3 -bottom-3 w-20 h-20 rounded-full bg-emerald-50/50" />
@@ -244,7 +242,7 @@ const Dashboard: React.FC = () => {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search by name, MRN..."
+                  placeholder="Search by name or patient ID..."
                   className="w-full sm:w-72 pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all duration-200"
                   value={search}
                   onChange={handleSearch}
@@ -259,10 +257,8 @@ const Dashboard: React.FC = () => {
               <thead>
                 <tr className="bg-gray-50/80">
                   <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Patient</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">MRN</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date of Birth</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Registered</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Patient ID</th>
+                  <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
                   <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
@@ -279,15 +275,13 @@ const Dashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 rounded" /></td>
                       <td className="px-6 py-4"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
-                      <td className="px-6 py-4"><div className="h-5 w-16 bg-gray-200 rounded-full" /></td>
-                      <td className="px-6 py-4"><div className="h-4 w-20 bg-gray-200 rounded" /></td>
                       <td className="px-6 py-4"><div className="h-4 w-4 bg-gray-200 rounded ml-auto" /></td>
                     </tr>
                   ))
                 ) : patients.length === 0 ? (
                   // Empty state
                   <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center">
+                    <td colSpan={4} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center">
                         <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                           <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,23 +313,8 @@ const Dashboard: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-600 font-mono">{patient.medicalRecordNumber || "-"}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-gray-600">
-                          {patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "-"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${
-                            patient.status === "active"
-                              ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
-                              : "bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-500/10"
-                          }`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${patient.status === "active" ? "bg-emerald-500" : "bg-gray-400"}`} />
-                          {patient.status}
+                        <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold font-mono bg-blue-50 text-blue-700 rounded-md ring-1 ring-inset ring-blue-600/20">
+                          {patient.patientId || "-"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

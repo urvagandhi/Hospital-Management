@@ -96,26 +96,11 @@
                 android:layout_marginHorizontal="@dimen/space_sm" />
 
             <TextView
-                android:id="@+id/tvPatientMrn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="MRN: --"
-                android:textColor="@color/color_on_surface_muted"
-                android:textSize="12sp"
-                android:fontFamily="@font/inter" />
-
-            <View
-                android:layout_width="1dp"
-                android:layout_height="14dp"
-                android:background="@color/color_divider"
-                android:layout_marginHorizontal="@dimen/space_sm" />
-
-            <TextView
-                android:id="@+id/tvPatientPhone"
+                android:id="@+id/tvPatientId"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text=""
+                android:text="--"
                 android:textColor="@color/color_on_surface_muted"
                 android:textSize="12sp"
                 android:fontFamily="@font/inter"

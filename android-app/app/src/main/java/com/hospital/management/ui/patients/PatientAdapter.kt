@@ -5,10 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.hospital.management.data.models.Patient
-import com.hospital.management.R
 import com.hospital.management.databinding.ItemPatientBinding
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 class PatientAdapter(
     private var patients: List<Patient>,
@@ -34,7 +31,7 @@ class PatientAdapter(
                 } else {
                     patients.filter { row ->
                         row.patientName.lowercase().contains(charString.lowercase()) ||
-                            row.medicalRecordNumber.contains(charString)
+                            row.patientId.lowercase().contains(charString.lowercase())
                     }
                 }
                 val filterResults = FilterResults()
@@ -69,8 +66,7 @@ class PatientAdapter(
 
         fun bind(patient: Patient) {
             binding.tvPatientName.text = patient.patientName
-            binding.tvMrn.text = "MRN: ${patient.medicalRecordNumber}"
-            binding.tvPhone.text = patient.phone
+            binding.tvPatientId.text = patient.patientId
 
             // Two-letter initials: first letter of first name + first letter of last name
             val parts = patient.patientName.trim().split("\\s+".toRegex())

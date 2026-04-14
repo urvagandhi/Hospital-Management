@@ -18,12 +18,9 @@ async function main() {
 
   const patient = new Patient({
     hospitalId,
+    patientId: "TEST-001",
     patientName: "Test Patient",
-    email: "testpatient@example.com",
-    phone: "+911234567890",
-    dateOfBirth: "1990-01-01",
-    medicalRecordNumber: "MRN12345",
-    status: "active",
+    remarks: "Seeded test patient",
     folders: [],
     createdAt: new Date(),
   });

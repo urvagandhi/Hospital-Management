@@ -2,14 +2,11 @@ package com.hospital.management.data.models
 
 data class Patient(
     val _id: String,
+    val patientId: String,
     val patientName: String,
-    val email: String?,
-    val phone: String,
-    val dateOfBirth: String,
-    val medicalRecordNumber: String,
+    val remarks: String? = null,
     val hospitalId: String,
     val folders: List<Folder>,
-    val status: String,
     val createdAt: String
 )
 

@@ -124,21 +124,11 @@ const lastNames = [
   "Malhotra", "Chopra", "Banerjee", "Mukherjee", "Sinha",
 ];
 
-const statuses = ["active", "active", "active", "active", "inactive", "archived"];
-
 function randomDate(start, end) {
   return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 }
 
-function randomPhone() {
-  return "+91" + (7000000000 + Math.floor(Math.random() * 2999999999));
-}
-
-function randomDob() {
-  return randomDate(new Date(1950, 0, 1), new Date(2010, 11, 31));
-}
-
-function generatePatients(hospitalId, count, mrnPrefix) {
+function generatePatients(hospitalId, count, initials) {
   const patients = [];
   // Spread createdAt over last 2 years
   const now = new Date();
@@ -153,12 +143,8 @@ function generatePatients(hospitalId, count, mrnPrefix) {
     patients.push({
       hospitalId,
       patientName: `${first} ${last}`,
-      email: `${first.toLowerCase()}.${last.toLowerCase()}${Math.floor(Math.random() * 99)}@email.com`,
-      phone: randomPhone(),
-      dateOfBirth: randomDob(),
-      medicalRecordNumber: `${mrnPrefix}-${String(i + 1).padStart(4, "0")}`,
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      notes: i % 3 === 0 ? "Regular checkup patient" : i % 5 === 0 ? "Follow-up required" : "",
+      patientId: `${initials}-${String(i + 1).padStart(3, "0")}`,
+      remarks: i % 3 === 0 ? "Regular checkup patient" : i % 5 === 0 ? "Follow-up required" : undefined,
       createdAt,
       updatedAt: createdAt,
     });
@@ -195,7 +181,7 @@ async function seed() {
     // ── Create hospitals ──
     const createdHospitals = [];
     const patientCounts = [15, 12, 10, 8, 9]; // patients per hospital
-    const mrnPrefixes = ["CMC", "SHC", "LCH", "GVM", "ACI"];
+    const hospitalInitials = ["CMC", "SHC", "LCH", "GVM", "ACI"];
 
     for (let i = 0; i < hospitals.length; i++) {
       const h = hospitals[i];
@@ -234,13 +220,16 @@ async function seed() {
     for (let i = 0; i < createdHospitals.length; i++) {
       const hospital = createdHospitals[i];
       const count = patientCounts[i];
-      const prefix = mrnPrefixes[i];
-      const patients = generatePatients(hospital._id, count, prefix);
+      const initials = hospitalInitials[i];
+      const patients = generatePatients(hospital._id, count, initials);
 
       await Patient.insertMany(patients);
       totalPatients += count;
 
-      console.log(`  [Patients] ${hospital.hospitalName}: ${count} patients (MRN: ${prefix}-XXXX)`);
+      // Keep hospital patientCounter in sync with seeded patient count
+      await Hospital.updateOne({ _id: hospital._id }, { $set: { patientCounter: count } });
+
+      console.log(`  [Patients] ${hospital.hospitalName}: ${count} patients (ID: ${initials}-XXX)`);
     }
 
     console.log(`\n=== Seed Complete ===`);

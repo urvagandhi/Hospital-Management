@@ -86,30 +86,32 @@ const seedDatabase = async () => {
 
     let totalPatients = 0;
     for (const hospital of created) {
+      // Derive hospital initials: multi-word → first letter of each word; single-word → first two letters
+      const words = hospital.hospitalName.trim().split(/\s+/);
+      const initials = words.length >= 2
+        ? words.map((w) => w[0]).join("").toUpperCase()
+        : hospital.hospitalName.slice(0, 2).toUpperCase();
+
       const samplePatients = [
         {
           hospitalId: hospital._id,
+          patientId: `${initials}-001`,
           patientName: "John Doe",
-          email: "john.doe@example.com",
-          phone: "+919999999999",
-          dateOfBirth: new Date("1990-01-01"),
-          medicalRecordNumber: `MRN-${hospital.hospitalName.replace(/\s/g, "").toUpperCase()}-001`,
-          notes: "Diabetic patient. Needs regular checkups.",
-          status: "active",
+          remarks: "Diabetic patient. Needs regular checkups.",
         },
         {
           hospitalId: hospital._id,
+          patientId: `${initials}-002`,
           patientName: "Jane Smith",
-          email: "jane.smith@example.com",
-          phone: "+919888888888",
-          dateOfBirth: new Date("1985-05-15"),
-          medicalRecordNumber: `MRN-${hospital.hospitalName.replace(/\s/g, "").toUpperCase()}-002`,
-          notes: "Allergic to penicillin.",
-          status: "active",
+          remarks: "Allergic to penicillin.",
         },
       ];
       const createdPatients = await Patient.insertMany(samplePatients);
       totalPatients += createdPatients.length;
+
+      // Update hospital patientCounter to match
+      await Hospital.updateOne({ _id: hospital._id }, { $set: { patientCounter: samplePatients.length } });
+
       console.log(`✓ Created ${createdPatients.length} sample patients for hospital: ${hospital.hospitalName}`);
     }
     console.log(`✓ Total patients seeded: ${totalPatients}`);

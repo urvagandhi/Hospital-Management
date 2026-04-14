@@ -109,7 +109,24 @@
       "Bash(npx --yes mongosh --version)",
       "Bash(timeout 15 node -e \":*)",
       "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app -path */src/main/java/com/hospital/management/*.kt -o -path */src/main/java/com/hospital/management/*.java)",
-      "Bash(ls -1 /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/java/com/hospital/management/ui/**/*.kt)"
+      "Bash(ls -1 /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/src/main/java/com/hospital/management/ui/**/*.kt)",
+      "Bash(find /media/urva/Personal/Technical/Project/Urva/Hospital-Management/backend -name serviceAccountKey.json -o -name .env* -o -name secrets*)",
+      "Bash(node --check src/middleware/errorHandler.js)",
+      "Bash(node --check src/models/Patient.js)",
+      "Bash(node --check src/services/mail.service.js)",
+      "Bash(node --check src/services/email.service.js)",
+      "Bash(node --check src/controllers/hospitals.controller.js)",
+      "Bash(openssl s_client -servername hospital-management-8lbf.onrender.com -connect hospital-management-8lbf.onrender.com:443)",
+      "Bash(openssl s_client -servername hospital-management-8lbf.onrender.com -connect hospital-management-8lbf.onrender.com:443 -showcerts)",
+      "Read(//BEGIN CERTIFICATE/,/**)",
+      "Bash(awk 'BEGIN{n=0} /BEGIN CERTIFICATE/{n++} n==2')",
+      "Bash(chmod +x gradlew)",
+      "Bash(./gradlew assembleRelease --parallel --build-cache)",
+      "Bash(./gradlew assembleDebug --parallel --build-cache)",
+      "Bash(openssl crl2pkcs7:*)",
+      "Bash(openssl pkcs7:*)",
+      "Bash(awk '/BEGIN CERTIFICATE/{n++} n==3{print}' /tmp/chain.pem)",
+      "Bash(awk '/BEGIN CERTIFICATE/{n++} n==2{print}' /tmp/chain.pem)"
     ]
   }
 }

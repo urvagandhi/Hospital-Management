@@ -74,11 +74,20 @@
                     android:text="Patient Information"
                     android:layout_marginBottom="@dimen/space_base" />
 
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="A unique Patient ID will be generated automatically."
+                    android:textSize="12sp"
+                    android:textColor="@color/color_on_surface_muted"
+                    android:fontFamily="@font/inter"
+                    android:layout_marginBottom="@dimen/space_base" />
+
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.App.TextInputLayout.Glass"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Patient Name"
+                    android:hint="Patient Name *"
                     app:placeholderText="e.g. Rahul Sharma">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -94,78 +103,19 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/space_md"
-                    android:hint="Date of Birth"
-                    app:placeholderText="YYYY-MM-DD">
+                    android:hint="Remarks (Optional)"
+                    app:placeholderText="Any notes about the patient"
+                    app:counterEnabled="true"
+                    app:counterMaxLength="500">
 
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etDob"
+                        android:id="@+id/etRemarks"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="date"
-                        android:textColor="@color/color_on_surface" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.App.TextInputLayout.Glass"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_md"
-                    android:hint="Medical Record Number (MRN)"
-                    app:placeholderText="e.g. MRN-2024-001">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etMrn"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="text"
-                        android:textColor="@color/color_on_surface" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <!-- Divider -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/color_divider"
-                    android:layout_marginVertical="@dimen/space_lg" />
-
-                <!-- Section: Contact -->
-                <TextView
-                    style="@style/TextAppearance.App.SectionHeader"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Contact Details"
-                    android:layout_marginBottom="@dimen/space_base" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.App.TextInputLayout.Glass"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Phone Number"
-                    app:prefixText="+91"
-                    app:placeholderText="e.g. 9876543210">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etPhone"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="phone"
-                        android:maxLength="10"
-                        android:textColor="@color/color_on_surface" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.App.TextInputLayout.Glass"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/space_md"
-                    android:hint="Email (Optional)"
-                    app:placeholderText="e.g. patient@example.com">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etEmail"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textEmailAddress"
+                        android:inputType="textMultiLine"
+                        android:minLines="3"
+                        android:gravity="top"
+                        android:maxLength="500"
                         android:textColor="@color/color_on_surface" />
                 </com.google.android.material.textfield.TextInputLayout>
 

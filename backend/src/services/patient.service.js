@@ -5,26 +5,43 @@
 
 import mongoose from "mongoose";
 import Patient from "../models/Patient.js";
+import Hospital from "../models/Hospital.js";
 import { deleteFolder } from "./r2.service.js";
 
 /**
- * Create a new patient
+ * Create a new patient with auto-generated patientId
  * @param {string} hospitalId
- * @param {Object} patientData - {patientName, email, phone, dateOfBirth, medicalRecordNumber, notes}
+ * @param {Object} patientData - {patientName, remarks}
  * @returns {Promise<Object>}
  */
 export const createPatient = async (hospitalId, patientData) => {
   try {
     console.log("[Patient Service] Creating patient for hospital:", hospitalId);
 
+    // Atomically increment the hospital's patient counter and get initials
+    const hospital = await Hospital.findByIdAndUpdate(
+      hospitalId,
+      { $inc: { patientCounter: 1 } },
+      { new: true },
+    );
+
+    if (!hospital) {
+      throw new Error("Hospital not found");
+    }
+
+    const initials = hospital.getInitials();
+    const counter = String(hospital.patientCounter).padStart(3, "0");
+    const patientId = `${initials}-${counter}`;
+
     const patient = new Patient({
       hospitalId,
-      ...patientData,
-      // folders will be auto-populated by default in schema
+      patientId,
+      patientName: patientData.patientName,
+      remarks: patientData.remarks || undefined,
     });
 
     await patient.save();
-    console.log("[Patient Service] Patient created:", patient._id);
+    console.log("[Patient Service] Patient created:", patient._id, "patientId:", patientId);
     return patient;
   } catch (error) {
     console.error("[Patient Service] Create error:", error);
@@ -35,33 +52,31 @@ export const createPatient = async (hospitalId, patientData) => {
 /**
  * Get all patients for a hospital
  * @param {string} hospitalId
- * @param {Object} options - {limit, skip, status}
+ * @param {Object} options - {limit, skip, search}
  * @returns {Promise<Array>}
  */
 export const getPatients = async (hospitalId, options = {}) => {
   try {
-    const { limit = 20, skip = 0, status = "active", search } = options;
+    const { limit = 20, skip = 0, search } = options;
     console.log("[Patient Service] Fetching patients for hospital:", hospitalId);
     console.log("[Patient Service] Options - limit:", limit, "skip:", skip, "search:", search);
 
-    // Convert hospitalId string to ObjectId for proper MongoDB comparison
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
-    console.log("[Patient Service] Converted hospitalId to ObjectId:", hospitalObjectId);
-
     const query = { hospitalId: hospitalObjectId };
-    if (status) query.status = status;
 
     if (search && search.trim()) {
-      // Escape regex special characters to prevent ReDoS attacks
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      query.$or = [{ patientName: { $regex: escapedSearch, $options: "i" } }, { medicalRecordNumber: { $regex: escapedSearch, $options: "i" } }, { phone: { $regex: escapedSearch, $options: "i" } }];
+      query.$or = [
+        { patientName: { $regex: escapedSearch, $options: "i" } },
+        { patientId: { $regex: escapedSearch, $options: "i" } },
+      ];
     }
 
     const patients = await Patient.find(query)
       .limit(limit)
       .skip(skip)
-      .select("-folders.files.fileUrl") // Don't send R2 URLs in list
+      .select("-folders.files.fileUrl")
       .sort({ createdAt: -1 });
 
     const total = await Patient.countDocuments(query);
@@ -77,14 +92,13 @@ export const getPatients = async (hospitalId, options = {}) => {
 /**
  * Get single patient with folder structure
  * @param {string} hospitalId
- * @param {string} patientId
+ * @param {string} patientId - MongoDB _id
  * @returns {Promise<Object>}
  */
 export const getPatientById = async (hospitalId, patientId) => {
   try {
     console.log("[Patient Service] Fetching patient:", patientId);
 
-    // Convert hospitalId string to ObjectId for proper MongoDB comparison
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
     const patient = await Patient.findOne({
@@ -105,10 +119,10 @@ export const getPatientById = async (hospitalId, patientId) => {
 };
 
 /**
- * Update patient details
+ * Update patient details (only patientName and remarks are editable)
  * @param {string} hospitalId
  * @param {string} patientId
- * @param {Object} updateData - Fields to update
+ * @param {Object} updateData - {patientName, remarks}
  * @returns {Promise<Object>}
  */
 export const updatePatient = async (hospitalId, patientId, updateData) => {
@@ -117,12 +131,17 @@ export const updatePatient = async (hospitalId, patientId, updateData) => {
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
+    // Only allow updating name and remarks
+    const allowedUpdates = {};
+    if (updateData.patientName !== undefined) allowedUpdates.patientName = updateData.patientName;
+    if (updateData.remarks !== undefined) allowedUpdates.remarks = updateData.remarks;
+
     const patient = await Patient.findOneAndUpdate(
       {
         _id: patientId,
         hospitalId: hospitalObjectId,
       },
-      { $set: updateData },
+      { $set: allowedUpdates },
       { new: true, runValidators: true },
     );
 
@@ -255,12 +274,6 @@ export const getFolderFiles = async (hospitalId, patientId, folderName) => {
 
 /**
  * Rename a file inside a patient folder
- * @param {string} hospitalId
- * @param {string} patientId
- * @param {string} folderName
- * @param {string} fileId
- * @param {string} newFileName
- * @returns {Promise<Object>}
  */
 export const renameFile = async (hospitalId, patientId, folderName, fileId, newFileName) => {
   try {
@@ -300,9 +313,6 @@ export const renameFile = async (hospitalId, patientId, folderName, fileId, newF
 
 /**
  * Delete patient and all associated files from R2
- * @param {string} hospitalId
- * @param {string} patientId
- * @returns {Promise<void>}
  */
 export const deletePatient = async (hospitalId, patientId) => {
   try {
@@ -319,11 +329,9 @@ export const deletePatient = async (hospitalId, patientId) => {
       throw new Error("Patient not found");
     }
 
-    // Delete all files from R2
     const prefix = `${hospitalId}/${patientId}/`;
     await deleteFolder(prefix);
 
-    // Delete from database
     await Patient.deleteOne({
       _id: patientId,
       hospitalId: hospitalObjectId,
@@ -338,9 +346,6 @@ export const deletePatient = async (hospitalId, patientId) => {
 
 /**
  * Delete patients older than X days.
- * Processes per-hospital to ensure scoped deletion and auditability.
- * @param {number} days - Days threshold
- * @returns {Promise<{deletedCount: number, filesDeleted: number}>}
  */
 export const deleteOldPatients = async (days = 90) => {
   try {
@@ -353,7 +358,6 @@ export const deleteOldPatients = async (days = 90) => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
-    // Process per-hospital for scoped deletion and traceability
     const oldPatients = await Patient.find({
       createdAt: { $lt: cutoffDate },
     }).select("_id hospitalId folders");
@@ -375,12 +379,10 @@ export const deleteOldPatients = async (days = 90) => {
         patientIds.push(patient._id);
       } catch (error) {
         console.error("[Patient Service] Error deleting R2 files for patient:", patient._id, error);
-        // Still mark for DB deletion — storage cleanup can be retried
         patientIds.push(patient._id);
       }
     }
 
-    // Delete only the specific patients we processed (by _id, not by date re-query)
     const result = await Patient.deleteMany({
       _id: { $in: patientIds },
     });

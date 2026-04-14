@@ -259,7 +259,7 @@
             android:layout_height="wrap_content"
             app:iconifiedByDefault="false"
             app:queryBackground="@android:color/transparent"
-            app:queryHint="Search by name or MRN..."
+            app:queryHint="Search by name or PatientID..."
             android:background="@null" />
     </com.hospital.management.ui.components.GlassCardView>
 

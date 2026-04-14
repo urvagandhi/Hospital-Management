@@ -17,11 +17,9 @@ interface Folder {
 }
 
 interface PatientInfo {
+  patientId: string;
   patientName: string;
-  medicalRecordNumber: string;
-  phone: string;
-  email: string;
-  dateOfBirth: string;
+  remarks?: string;
 }
 
 const fileTypeIcons: Record<string, { color: string; label: string }> = {
@@ -65,11 +63,9 @@ const FolderView: React.FC = () => {
       setFolder(folderRes.data.data);
       const p = patientRes.data.data;
       setPatientInfo({
+        patientId: p.patientId,
         patientName: p.patientName,
-        medicalRecordNumber: p.medicalRecordNumber,
-        phone: p.phone,
-        email: p.email,
-        dateOfBirth: p.dateOfBirth,
+        remarks: p.remarks,
       });
     } catch (error) {
       console.error("Failed to fetch folder:", error);
@@ -205,19 +201,7 @@ const FolderView: React.FC = () => {
                 <span className="text-sm font-semibold text-gray-900">{patientInfo.patientName}</span>
               </div>
               <span className="text-xs text-gray-400">|</span>
-              <span className="text-xs text-gray-500">MRN: <span className="font-mono text-gray-700">{patientInfo.medicalRecordNumber || "N/A"}</span></span>
-              {patientInfo.phone && (
-                <>
-                  <span className="text-xs text-gray-400">|</span>
-                  <span className="text-xs text-gray-500">{patientInfo.phone}</span>
-                </>
-              )}
-              {patientInfo.email && (
-                <>
-                  <span className="text-xs text-gray-400">|</span>
-                  <span className="text-xs text-gray-500">{patientInfo.email}</span>
-                </>
-              )}
+              <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold font-mono bg-blue-50 text-blue-700 rounded-md ring-1 ring-inset ring-blue-600/20">{patientInfo.patientId}</span>
             </div>
           )}
 

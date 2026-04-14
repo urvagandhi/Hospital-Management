@@ -19,11 +19,9 @@ interface Folder {
 
 interface Patient {
   _id: string;
+  patientId: string;
   patientName: string;
-  email: string;
-  phone: string;
-  dateOfBirth: string;
-  medicalRecordNumber: string;
+  remarks?: string;
   folders: Folder[];
   createdAt: string;
 }
@@ -279,7 +277,7 @@ const PatientDetails: React.FC = () => {
                       </svg>
                     </button>
                   </h1>
-                  <p className="text-blue-100 text-sm">MRN: {patient.medicalRecordNumber || "N/A"}</p>
+                  <p className="text-blue-100 text-sm">{patient.patientId}</p>
                 </div>
               </div>
               <div className="hidden sm:flex items-center gap-2">
@@ -311,31 +309,17 @@ const PatientDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Patient details row */}
+          {/* Patient info row */}
           <div className="px-6 sm:px-8 py-4 flex flex-wrap gap-x-8 gap-y-3 border-b border-gray-100">
-            <div className="flex items-center gap-2 text-sm">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="text-gray-500">DOB:</span>
-              <span className="text-gray-900 font-medium">
-                {patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "N/A"}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              <span className="text-gray-500">Phone:</span>
-              <span className="text-gray-900 font-medium">{patient.phone || "N/A"}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              <span className="text-gray-500">Email:</span>
-              <span className="text-gray-900 font-medium">{patient.email || "N/A"}</span>
-            </div>
+            {patient.remarks && (
+              <div className="flex items-center gap-2 text-sm">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                </svg>
+                <span className="text-gray-500">Remarks:</span>
+                <span className="text-gray-900 font-medium">{patient.remarks}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-sm ml-auto">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full ring-1 ring-inset ring-blue-600/20">
                 {totalFileCount} file{totalFileCount !== 1 ? "s" : ""} in {foldersWithFiles} folder{foldersWithFiles !== 1 ? "s" : ""}

@@ -17,13 +17,10 @@ const TABLE_RIGHT = PAGE_W - MARGIN;
 
 // Column definitions: [label, x, width, align]
 const COLUMNS = [
-  { label: "#",        x: MARGIN,      w: 24,  align: "left"  },
-  { label: "Patient Name", x: MARGIN + 24, w: 140, align: "left"  },
-  { label: "MRN",      x: 204,         w: 80,  align: "left"  },
-  { label: "DOB",      x: 284,         w: 68,  align: "left"  },
-  { label: "Status",   x: 352,         w: 55,  align: "left"  },
-  { label: "Phone",    x: 407,         w: 90,  align: "left"  },
-  { label: "Registered", x: 497,       w: 75,  align: "left"  },
+  { label: "#",           x: MARGIN,       w: 30,  align: "left" },
+  { label: "Patient Name", x: MARGIN + 30, w: 260, align: "left" },
+  { label: "Patient ID",  x: MARGIN + 290, w: 120, align: "left" },
+  { label: "Created",     x: MARGIN + 410, w: 122, align: "left" },
 ];
 
 const ROW_H = 22;
@@ -85,34 +82,16 @@ function drawTableRow(doc, y, data, index) {
   doc.text(String(data.index), COLUMNS[0].x + 5, textY, { width: COLUMNS[0].w - 10 });
 
   // Patient name
-  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(COLORS.textDark);
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(COLORS.textDark);
   doc.text(data.name, COLUMNS[1].x + 5, textY, { width: COLUMNS[1].w - 10, lineBreak: false });
 
-  // MRN
+  // Patient ID
+  doc.font("Helvetica").fontSize(8.5).fillColor(COLORS.primary);
+  doc.text(data.patientId, COLUMNS[2].x + 5, textY, { width: COLUMNS[2].w - 10, lineBreak: false });
+
+  // Created date
   doc.font("Helvetica").fontSize(8).fillColor(COLORS.textMuted);
-  doc.text(data.mrn, COLUMNS[2].x + 5, textY, { width: COLUMNS[2].w - 10, lineBreak: false });
-
-  // DOB
-  doc.text(data.dob, COLUMNS[3].x + 5, textY, { width: COLUMNS[3].w - 10, lineBreak: false });
-
-  // Status badge
-  const statusColor = data.status === "active" ? COLORS.active : data.status === "archived" ? COLORS.archived : COLORS.inactive;
-  const statusText = data.status.charAt(0).toUpperCase() + data.status.slice(1);
-  const badgeW = doc.widthOfString(statusText) + 10;
-  const badgeX = COLUMNS[4].x + 5;
-  const badgeY = y + (ROW_H - 12) / 2;
-
-  // Badge background
-  doc.save().roundedRect(badgeX, badgeY, badgeW, 12, 3).fill(statusColor + "18").restore();
-  doc.font("Helvetica-Bold").fontSize(7).fillColor(statusColor);
-  doc.text(statusText, badgeX, badgeY + 2.5, { width: badgeW, align: "center" });
-
-  // Phone
-  doc.font("Helvetica").fontSize(7.5).fillColor(COLORS.textMuted);
-  doc.text(data.phone, COLUMNS[5].x + 5, textY, { width: COLUMNS[5].w - 10, lineBreak: false });
-
-  // Registered date
-  doc.text(data.registered, COLUMNS[6].x + 5, textY, { width: COLUMNS[6].w - 10, lineBreak: false });
+  doc.text(data.registered, COLUMNS[3].x + 5, textY, { width: COLUMNS[3].w - 10, lineBreak: false });
 
   return y + ROW_H;
 }
@@ -187,7 +166,7 @@ export const exportPatientsPdf = async (req, res) => {
 
     // Fetch all patients first for accurate count
     const allPatients = await Patient.find({ hospitalId })
-      .select("patientName email phone medicalRecordNumber dateOfBirth status createdAt")
+      .select("patientId patientName remarks createdAt")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -213,15 +192,14 @@ export const exportPatientsPdf = async (req, res) => {
     }
 
     // Summary cards row
-    const activeCount = allPatients.filter((p) => p.status === "active").length;
-    const inactiveCount = allPatients.filter((p) => p.status === "inactive").length;
-    const archivedCount = allPatients.filter((p) => p.status === "archived").length;
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const recentCount = allPatients.filter((p) => new Date(p.createdAt) >= weekAgo).length;
 
-    const cardW = (CONTENT_W - 16) / 3;
+    const cardW = (CONTENT_W - 16) / 2;
     const cards = [
       { label: "Total Patients", value: totalPatients, color: COLORS.primary },
-      { label: "Active", value: activeCount, color: COLORS.active },
-      { label: "Inactive / Archived", value: `${inactiveCount} / ${archivedCount}`, color: COLORS.archived },
+      { label: "Added This Week", value: recentCount, color: COLORS.active },
     ];
 
     for (let i = 0; i < cards.length; i++) {
@@ -255,17 +233,10 @@ export const exportPatientsPdf = async (req, res) => {
         y = drawTableHeader(doc, y);
       }
 
-      const dob = p.dateOfBirth
-        ? new Date(p.dateOfBirth).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })
-        : "—";
-
       y = drawTableRow(doc, y, {
         index: i + 1,
         name: p.patientName,
-        mrn: p.medicalRecordNumber || "—",
-        dob,
-        status: p.status || "active",
-        phone: p.phone || "—",
+        patientId: p.patientId || "—",
         registered: new Date(p.createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" }),
       }, i);
     }
@@ -370,7 +341,7 @@ async function generateModulePdf(moduleName, hospitalId, hospitalName) {
       switch (moduleName.toLowerCase()) {
         case "patients": {
           const patients = await Patient.find({ hospitalId })
-            .select("patientName email phone medicalRecordNumber status createdAt")
+            .select("patientId patientName remarks createdAt")
             .sort({ createdAt: -1 })
             .lean();
 
@@ -383,7 +354,7 @@ async function generateModulePdf(moduleName, hospitalId, hospitalName) {
             if (doc.y > 700) doc.addPage();
             doc.fontSize(11).text(p.patientName, { continued: true });
             doc.fontSize(9).fillColor("grey").text(
-              `  MRN: ${p.medicalRecordNumber || "N/A"} | Status: ${p.status || "active"} | Created: ${new Date(p.createdAt).toLocaleDateString()}`,
+              `  ID: ${p.patientId || "N/A"} | Created: ${new Date(p.createdAt).toLocaleDateString()}`,
             );
             doc.fillColor("black");
             if (p.email) doc.fontSize(9).text(`  Email: ${p.email}`);

@@ -94,7 +94,7 @@
                             android:includeFontPadding="false" />
                     </com.google.android.material.card.MaterialCardView>
 
-                    <!-- Name + MRN -->
+                    <!-- Name + PatientID -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -114,10 +114,10 @@
                             android:ellipsize="end" />
 
                         <TextView
-                            android:id="@+id/tvMrn"
+                            android:id="@+id/tvPatientId"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="MRN: --"
+                            android:text="--"
                             android:textColor="@android:color/white"
                             android:alpha="0.8"
                             android:textSize="13sp"
@@ -136,29 +136,11 @@
                         android:padding="@dimen/space_sm" />
                 </LinearLayout>
 
-                <!-- Details row below gradient -->
-                <LinearLayout
+                <!-- Spacer below gradient -->
+                <View
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:background="@color/color_surface_elevated"
-                    android:paddingHorizontal="@dimen/space_base"
-                    android:paddingVertical="@dimen/space_md"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:id="@+id/tvPhone"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Phone: --"
-                        android:textColor="@color/color_on_surface_variant"
-                        android:textSize="13sp"
-                        android:fontFamily="@font/inter"
-                        android:drawablePadding="6dp"
-                        android:maxLines="1"
-                        android:ellipsize="end" />
-                </LinearLayout>
+                    android:layout_height="@dimen/space_sm"
+                    android:background="@color/color_surface_elevated" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>

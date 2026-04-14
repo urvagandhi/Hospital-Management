@@ -46,11 +46,13 @@ object NetworkMonitor {
         val hasInternet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         _status.value = if (hasInternet) NetworkStatus.ONLINE else NetworkStatus.OFFLINE
 
-        // Verify with actual ping if we think we're online
+        // Verify with actual ping if we think we're online.
+        // Retry a few times before flipping to OFFLINE so a single transient
+        // failure (cold TLS handshake, DNS miss) doesn't surface a bogus
+        // "You are offline" banner right after login.
         if (hasInternet) {
             CoroutineScope(Dispatchers.IO).launch {
-                val ok = pingHealth()
-                if (!ok) _status.value = NetworkStatus.OFFLINE
+                if (!pingHealthWithRetry()) _status.value = NetworkStatus.OFFLINE
             }
         }
 
@@ -62,12 +64,11 @@ object NetworkMonitor {
         connectivityManager.registerNetworkCallback(request, object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 // Set ONLINE immediately if connectivity reports available,
-                // then verify in background
+                // then verify in background (with retries)
                 _status.value = NetworkStatus.ONLINE
                 CoroutineScope(Dispatchers.IO).launch {
                     delay(1000)
-                    val ok = pingHealth()
-                    if (!ok) _status.value = NetworkStatus.OFFLINE
+                    if (!pingHealthWithRetry()) _status.value = NetworkStatus.OFFLINE
                 }
             }
 
@@ -82,16 +83,31 @@ object NetworkMonitor {
             }
         })
 
-        // Periodic health ping every 30s when online
+        // Adaptive health ping: 2s when offline (fast reconnect detection), 30s when online
         healthCheckJob = CoroutineScope(Dispatchers.IO).launch {
             while (isActive) {
-                delay(30_000)
-                if (_status.value == NetworkStatus.ONLINE) {
-                    val ok = pingHealth()
-                    if (!ok) _status.value = NetworkStatus.OFFLINE
+                val interval = if (_status.value == NetworkStatus.OFFLINE) 2_000L else 30_000L
+                delay(interval)
+                if (_status.value == NetworkStatus.OFFLINE) {
+                    _status.value = NetworkStatus.RECONNECTING
+                    if (pingHealth()) {
+                        _status.value = NetworkStatus.ONLINE
+                    } else {
+                        _status.value = NetworkStatus.OFFLINE
+                    }
+                } else {
+                    if (!pingHealth()) _status.value = NetworkStatus.OFFLINE
                 }
             }
         }
+    }
+
+    private suspend fun pingHealthWithRetry(attempts: Int = 3, delayMs: Long = 1500): Boolean {
+        repeat(attempts) { i ->
+            if (pingHealth()) return true
+            if (i < attempts - 1) delay(delayMs)
+        }
+        return false
     }
 
     private fun pingHealth(): Boolean {

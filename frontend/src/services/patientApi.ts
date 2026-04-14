@@ -7,10 +7,9 @@ import api from "./api";
 
 export interface Patient {
   _id: string;
+  patientId: string;
   patientName: string;
-  email?: string;
-  phone?: string;
-  medicalRecordNumber?: string;
+  remarks?: string;
   createdAt: string;
   folders?: Folder[];
 }

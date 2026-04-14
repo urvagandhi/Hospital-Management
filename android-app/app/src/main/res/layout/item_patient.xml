@@ -54,12 +54,12 @@
             app:layout_constraintTop_toTopOf="@id/cvAvatar"
             app:layout_constraintEnd_toStartOf="@id/ivChevron" />
 
-        <!-- MRN Badge -->
+        <!-- Patient ID Badge -->
         <TextView
-            android:id="@+id/tvMrn"
+            android:id="@+id/tvPatientId"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="MRN: 12345"
+            android:text="SH-001"
             android:textSize="11sp"
             android:fontFamily="@font/inter"
             android:textColor="@color/color_on_surface_variant"
@@ -68,20 +68,6 @@
             android:paddingVertical="2dp"
             android:layout_marginTop="@dimen/space_xs"
             app:layout_constraintStart_toStartOf="@id/tvPatientName"
-            app:layout_constraintTop_toBottomOf="@id/tvPatientName" />
-
-        <!-- Phone -->
-        <TextView
-            android:id="@+id/tvPhone"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="+91..."
-            android:textSize="11sp"
-            android:fontFamily="@font/inter"
-            android:textColor="@color/color_on_surface_muted"
-            android:layout_marginStart="@dimen/space_sm"
-            android:layout_marginTop="@dimen/space_xs"
-            app:layout_constraintStart_toEndOf="@id/tvMrn"
             app:layout_constraintTop_toBottomOf="@id/tvPatientName" />
 
         <!-- Chevron -->

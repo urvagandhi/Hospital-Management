@@ -84,8 +84,6 @@ class FolderViewActivity : BaseActivity() {
         progressBar = findViewById(R.id.progressBar)
         tvEmpty = findViewById(R.id.tvEmpty)
         val tvPatientName = findViewById<android.widget.TextView>(R.id.tvPatientName)
-        findViewById<android.widget.TextView>(R.id.tvMrn)
-        findViewById<android.widget.TextView>(R.id.tvPhone)
 
         // Set initial data (might be empty initially)
         tvPatientName.text = patientName
@@ -136,8 +134,8 @@ class FolderViewActivity : BaseActivity() {
                     is PatientState.Error -> {
                         progressBar.visibility = View.GONE
                         val msg = state.message
-                        if (msg.contains("duplicate key error") || msg.contains("medicalRecordNumber")) {
-                             showErrorDialog("Update Failed", "A patient with this Medical Record Number (MRN) already exists.\nPlease use a unique MRN.")
+                        if (msg.contains("duplicate key error")) {
+                             showErrorDialog("Update Failed", "An error occurred while updating the patient.")
                         } else {
                              Toast.makeText(this@FolderViewActivity, msg, Toast.LENGTH_SHORT).show()
                         }
@@ -152,8 +150,7 @@ class FolderViewActivity : BaseActivity() {
                 if (patient != null && patient._id == patientId) {
                     // Update UI with patient details
                     findViewById<android.widget.TextView>(R.id.tvPatientName).text = patient.patientName
-                    findViewById<android.widget.TextView>(R.id.tvMrn).text = "MRN: ${patient.medicalRecordNumber}"
-                    findViewById<android.widget.TextView>(R.id.tvPhone).text = "Phone: ${patient.phone}"
+                    findViewById<android.widget.TextView>(R.id.tvPatientId)?.text = patient.patientId
 
                     // Update folder list with current pending counts
                     updateFolderList(patient)
@@ -193,8 +190,7 @@ class FolderViewActivity : BaseActivity() {
                     intent.putExtra("FOLDER_NAME", folder.name)
                     intent.putExtra("FILE_COUNT", folder.fileCount)
                     intent.putExtra("PATIENT_NAME", patient.patientName)
-                    intent.putExtra("PATIENT_MRN", patient.medicalRecordNumber)
-                    intent.putExtra("PATIENT_PHONE", patient.phone)
+                    intent.putExtra("PATIENT_DISPLAY_ID", patient.patientId)
                     startActivity(intent)
                 }
                 rvFolders.adapter = folderAdapter
@@ -277,58 +273,42 @@ class FolderViewActivity : BaseActivity() {
         tilName.addView(etName)
         container.addView(tilName)
 
-        // MRN field
-        val tilMrn = TextInputLayout(this, null, com.google.android.material.R.attr.textInputStyle).apply {
-            hint = "Medical Record Number"
+        // Remarks field
+        val tilRemarks = TextInputLayout(this, null, com.google.android.material.R.attr.textInputStyle).apply {
+            hint = "Remarks"
             boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
-            val lp = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.bottomMargin = fieldSpacing
-            layoutParams = lp
-        }
-        val etMrn = TextInputEditText(tilMrn.context).apply {
-            setText(patient.medicalRecordNumber)
-            inputType = InputType.TYPE_CLASS_TEXT
-        }
-        tilMrn.addView(etMrn)
-        container.addView(tilMrn)
-
-        // Phone field
-        val tilPhone = TextInputLayout(this, null, com.google.android.material.R.attr.textInputStyle).apply {
-            hint = "Phone Number"
-            boxBackgroundMode = TextInputLayout.BOX_BACKGROUND_OUTLINE
+            isCounterEnabled = true
+            counterMaxLength = 500
             val lp = android.widget.LinearLayout.LayoutParams(
                 android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
             )
             layoutParams = lp
         }
-        val etPhone = TextInputEditText(tilPhone.context).apply {
-            setText(patient.phone)
-            inputType = InputType.TYPE_CLASS_PHONE
+        val etRemarks = TextInputEditText(tilRemarks.context).apply {
+            setText(patient.remarks ?: "")
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            minLines = 2
+            gravity = Gravity.TOP
         }
-        tilPhone.addView(etPhone)
-        container.addView(tilPhone)
+        tilRemarks.addView(etRemarks)
+        container.addView(tilRemarks)
 
         MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
             .setTitle("Edit Patient Details")
             .setView(container)
             .setPositiveButton("Update") { _, _ ->
                 val name = etName.text.toString().trim()
-                val mrn = etMrn.text.toString().trim()
-                val phone = etPhone.text.toString().trim()
+                val remarks = etRemarks.text.toString().trim()
 
-                if (name.isNotEmpty() && mrn.isNotEmpty()) {
+                if (name.isNotEmpty()) {
                     val updateData = mapOf(
                         "patientName" to name,
-                        "medicalRecordNumber" to mrn,
-                        "phone" to phone
+                        "remarks" to remarks
                     )
                     patientViewModel.updatePatient(patientId, updateData)
                 } else {
-                    Toast.makeText(this, "Name and MRN are required", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Patient name is required", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("Cancel", null)
