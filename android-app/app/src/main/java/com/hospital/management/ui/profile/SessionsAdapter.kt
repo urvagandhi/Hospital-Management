@@ -14,7 +14,7 @@ import java.util.Date
 /** Simple adapter for the Sessions screen (Task #28). */
 class SessionsAdapter(
     private var items: List<SessionItem> = emptyList(),
-    private val onRevoke: (String) -> Unit,
+    private val onRevoke: (String?) -> Unit,
 ) : RecyclerView.Adapter<SessionsAdapter.VH>() {
 
     class VH(view: View) : RecyclerView.ViewHolder(view) {
@@ -31,11 +31,14 @@ class SessionsAdapter(
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val s = items[position]
+        val sessionId = s.id?.trim().orEmpty()
         holder.tvDevice.text = humanizeUA(s.userAgent)
-        val ip = s.ipAddress ?: ""
+        val ip = s.lastSeenIp ?: s.ipAddress ?: ""
+        val sessionKey = s.sessionKey?.takeIf { it.isNotBlank() } ?: sessionId.takeLast(6).uppercase().takeIf { it.isNotBlank() }
         val seen = s.lastSeenAt ?: s.createdAt
         val when_ = seen?.let { runCatching { DateFormat.getDateTimeInstance().format(Date(parseIso(it))) }.getOrNull() } ?: ""
         holder.tvDetail.text = listOfNotNull(
+            sessionKey?.let { "session $it" },
             ip.takeIf { it.isNotEmpty() },
             when_.takeIf { it.isNotEmpty() }?.let { "last seen $it" },
         ).joinToString(" • ")
@@ -45,8 +48,10 @@ class SessionsAdapter(
             holder.btnRevoke.visibility = View.GONE
         } else {
             holder.tvCurrentBadge.visibility = View.GONE
-            holder.btnRevoke.visibility = View.VISIBLE
-            holder.btnRevoke.setOnClickListener { onRevoke(s.id) }
+            holder.btnRevoke.visibility = if (sessionId.isNotEmpty()) View.VISIBLE else View.GONE
+            holder.btnRevoke.setOnClickListener {
+                if (sessionId.isNotEmpty()) onRevoke(sessionId)
+            }
         }
     }
 

@@ -19,7 +19,9 @@ import { useAuth } from "../hooks/useAuth";
 import authService from "../services/authService";
 
 interface SessionItem {
-  _id: string;
+  id?: string;
+  _id?: string;
+  sessionKey?: string;
   platform?: string;
   isMobile?: boolean;
   userAgent?: string;
@@ -65,6 +67,17 @@ function formatTime(iso?: string): string {
   } catch {
     return iso;
   }
+}
+
+function getSessionId(session: SessionItem): string {
+  return (session.id || session._id || "").trim();
+}
+
+function getSessionKey(session: SessionItem): string {
+  const explicit = (session.sessionKey || "").trim();
+  if (explicit) return explicit;
+  const id = getSessionId(session);
+  return id ? id.slice(-6).toUpperCase() : "";
 }
 
 export const SecuritySettings: React.FC = () => {
@@ -152,10 +165,14 @@ export const SecuritySettings: React.FC = () => {
 
   // ── Session revoke handlers ──────────────────────────────────────────
   const revokeOne = async (id: string) => {
+    if (!id) {
+      setSessionsError("Session ID missing. Please refresh and try again.");
+      return;
+    }
     setRevoking(id);
     try {
       await authService.revokeSession(id);
-      setSessions((list) => list.filter((s) => s._id !== id));
+      setSessions((list) => list.filter((s) => getSessionId(s) !== id));
     } catch (err: any) {
       setSessionsError(err?.message || "Failed to revoke session");
     } finally {
@@ -267,7 +284,7 @@ export const SecuritySettings: React.FC = () => {
                 variant="danger"
                 size="sm"
                 onClick={revokeAll}
-                disabled={bulkRevoking || sessions.filter((s) => !s.isCurrent).length === 0}
+                disabled={bulkRevoking || sessions.filter((s) => !s.isCurrent && !!getSessionId(s)).length === 0}
                 loading={bulkRevoking}
               />
             </div>
@@ -286,7 +303,7 @@ export const SecuritySettings: React.FC = () => {
           ) : (
             <ul className="divide-y divide-gray-100">
               {sessions.map((s) => (
-                <li key={s._id} className="py-3 flex items-center justify-between gap-4">
+                <li key={getSessionId(s) || `${s.userAgent || "unknown"}-${s.createdAt || ""}`} className="py-3 flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-gray-800 truncate">
@@ -304,17 +321,19 @@ export const SecuritySettings: React.FC = () => {
                       )}
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {s.ipAddress ? `${s.ipAddress} • ` : ""}Last seen {formatTime(s.lastSeenAt || s.createdAt)}
+                      {getSessionKey(s) ? `Session ${getSessionKey(s)} • ` : ""}
+                      {s.ipAddress ? `${s.ipAddress} • ` : ""}
+                      Last seen {formatTime(s.lastSeenAt || s.createdAt)}
                     </p>
                   </div>
-                  {!s.isCurrent && (
+                  {!s.isCurrent && !!getSessionId(s) && (
                     <Button
-                      label={revoking === s._id ? "Revoking..." : "Revoke"}
+                      label={revoking === getSessionId(s) ? "Revoking..." : "Revoke"}
                       variant="danger"
                       size="sm"
-                      onClick={() => void revokeOne(s._id)}
-                      disabled={revoking === s._id}
-                      loading={revoking === s._id}
+                      onClick={() => void revokeOne(getSessionId(s))}
+                      disabled={revoking === getSessionId(s)}
+                      loading={revoking === getSessionId(s)}
                     />
                   )}
                 </li>

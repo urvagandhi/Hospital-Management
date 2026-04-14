@@ -1419,12 +1419,15 @@ export const listActiveSessions = async (req, res) => {
       isActive: true,
       expiresAt: { $gt: new Date() },
     })
-      .select("_id platform isMobile userAgent ipAddress lastSeenAt lastSeenIp createdAt")
+      .select("_id deviceId platform isMobile userAgent ipAddress lastSeenAt lastSeenIp createdAt")
       .sort({ createdAt: -1 })
       .lean();
 
     const data = sessions.map((s) => ({
       id: String(s._id),
+      _id: String(s._id),
+      sessionKey: String(s._id).slice(-6).toUpperCase(),
+      deviceId: s.deviceId || null,
       platform: s.platform || "unknown",
       isMobile: !!s.isMobile,
       userAgent: s.userAgent,

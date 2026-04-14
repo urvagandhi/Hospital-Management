@@ -44,7 +44,13 @@ class SessionsActivity : BaseActivity() {
         val factory = ViewModelFactory(authRepository = authRepo, profileRepository = profileRepo)
         vm = ViewModelProvider(this, factory)[ProfileViewModel::class.java]
 
-        adapter = SessionsAdapter(onRevoke = { id -> confirmRevoke(id) })
+        adapter = SessionsAdapter(onRevoke = { id ->
+            if (id.isNullOrBlank()) {
+                GlassSnackbar.show(this, "Session ID missing. Please refresh and try again.", GlassSnackbar.Variant.ERROR)
+            } else {
+                confirmRevoke(id)
+            }
+        })
         binding.rvSessions.layoutManager = LinearLayoutManager(this)
         binding.rvSessions.adapter = adapter
 

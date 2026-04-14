@@ -61,12 +61,14 @@ data class SessionListResponse(
 )
 
 data class SessionItem(
-    @SerializedName("_id") val id: String,
+    @SerializedName(value = "id", alternate = ["_id"]) val id: String? = null,
+    @SerializedName("sessionKey") val sessionKey: String? = null,
     @SerializedName("platform") val platform: String? = null,
     @SerializedName("isMobile") val isMobile: Boolean? = null,
     @SerializedName("userAgent") val userAgent: String? = null,
     @SerializedName("ipAddress") val ipAddress: String? = null,
     @SerializedName("lastSeenAt") val lastSeenAt: String? = null,
+    @SerializedName("lastSeenIp") val lastSeenIp: String? = null,
     @SerializedName("createdAt") val createdAt: String? = null,
     @SerializedName("isCurrent") val isCurrent: Boolean? = null
 )
