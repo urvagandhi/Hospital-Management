@@ -72,13 +72,14 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
     const accessToken = generateAccessToken(hospitalId, sessionId);
     const refreshToken = generateRefreshToken(hospitalId);
 
-    // Calculate expiry (7 days for refresh token)
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Refresh-token / DB session lifetime: 365 days. Security on mobile is
+    // enforced by the 7-day Auth Code re-verification in middleware/auth.js,
+    // not by forcing a full re-login.
+    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
 
-    // Determine platform
     const platform = isMobile ? "android" : "web";
+    const now = new Date();
 
-    // Create session
     const session = await Session.create({
       _id: sessionId,
       hospitalId,
@@ -90,8 +91,11 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
       platform,
       expiresAt,
       isActive: true,
-      lastSeenAt: new Date(),
+      lastSeenAt: now,
       lastSeenIp: ipAddress,
+      // Fresh login through password+AuthCode (or biometric) counts as an
+      // Auth Code verification — reset the 7-day clock.
+      authCodeVerifiedAt: now,
     });
 
     return {

@@ -30,6 +30,7 @@ class TokenManager(private val context: Context) {
         private const val USER_EMAIL = "user_email"
         private const val BIOMETRIC_ENABLED = "biometric_enabled"
         private const val SESSION_TIMESTAMP = "session_timestamp"
+        private const val LAST_BIOMETRIC_HOSPITAL_ID = "last_biometric_hospital_id"
     }
 
     private val prefs: SharedPreferences = createEncryptedPrefs()
@@ -160,7 +161,6 @@ class TokenManager(private val context: Context) {
 
     private fun bioEnabledKey(hospitalId: String) = "biometric_enabled_$hospitalId"
     private fun bioEmailKey(hospitalId: String) = "biometric_email_$hospitalId"
-    private const val LAST_BIOMETRIC_HOSPITAL_ID = "last_biometric_hospital_id"
 
     suspend fun setBiometricEnabled(hospitalId: String, enabled: Boolean) {
         prefs.edit().apply {

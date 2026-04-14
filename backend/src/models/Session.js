@@ -54,9 +54,18 @@ const sessionSchema = new mongoose.Schema(
       type: String,
     },
     revokedReason: {
-      type: String, // "SESSION_CONFLICT", "ADMIN_REVOKE", "SUSPICIOUS_ACTIVITY"
+      type: String, // "SESSION_CONFLICT", "ADMIN_REVOKE", "SUSPICIOUS_ACTIVITY", "SESSION_LIMIT_EXCEEDED"
     },
     lastAccessedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    // Last time the user re-verified their 6-digit hospital Auth Code on
+    // THIS session. Mobile sessions are required to re-verify every 7 days
+    // (see middleware/auth.js) so the device keeps proving it's the same
+    // user holding the hospital code — without forcing a full re-login.
+    // Biometric verification counts as a refresh too.
+    authCodeVerifiedAt: {
       type: Date,
       default: Date.now,
     },

@@ -75,6 +75,9 @@ interface ApiService {
     @POST("/api/auth/session/force-logout")
     suspend fun forceLogoutOtherSessions(): Response<Map<String, Any>>
 
+    @POST("/api/auth/session/reverify-auth-code")
+    suspend fun reverifyAuthCode(@Body body: Map<String, String>): Response<Map<String, Any>>
+
     // Health check
     @GET("/api/health")
     suspend fun healthCheck(): Response<Map<String, Any>>

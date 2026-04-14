@@ -84,7 +84,7 @@ export const changePassword = async (req, res) => {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year — long-lived refresh cookie; security gate is 7-day AuthCode re-verify
     });
 
     return res.status(200).json({
@@ -867,7 +867,7 @@ export const login = async (req, res) => {
         httpOnly: true,
         secure: isProduction,
         sameSite: isProduction ? "none" : "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year — long-lived refresh cookie; security gate is 7-day AuthCode re-verify
       });
 
       return res.status(200).json({
@@ -1030,7 +1030,7 @@ export const verifyAuthCodeLogin = async (req, res) => {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year — long-lived refresh cookie; security gate is 7-day AuthCode re-verify
     });
 
     return res.status(200).json({
@@ -1324,7 +1324,7 @@ export const verifyBiometric = async (req, res) => {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year — long-lived refresh cookie; security gate is 7-day AuthCode re-verify
     });
 
     return res.status(200).json({
@@ -1539,6 +1539,79 @@ export const revokeAllOtherSessions = async (req, res) => {
 };
 
 /**
+ * Re-verify the 6-digit hospital Auth Code for a mobile session that has
+ * passed the 7-day freshness window.
+ *
+ * POST /api/auth/session/reverify-auth-code
+ *   Auth: valid access token (middleware allows this route through even
+ *         when authCodeVerifiedAt is stale).
+ *   Body: { authCode: "######" }
+ *
+ * On success, bumps session.authCodeVerifiedAt so the user stays logged in
+ * for another 7 days without re-entering their password.
+ */
+export const reverifyAuthCode = async (req, res) => {
+  try {
+    const hospitalId = req.hospital?.id;
+    const sessionId = req.sessionId;
+    const { authCode } = req.body || {};
+
+    if (!hospitalId || !sessionId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    if (!authCode || !/^\d{6}$/.test(String(authCode))) {
+      return res.status(400).json({
+        success: false,
+        message: "authCode must be a 6-digit string",
+      });
+    }
+
+    const hospital = await Hospital.findById(hospitalId).select("authCode").lean();
+    if (!hospital) {
+      return res.status(404).json({ success: false, message: "Hospital not found" });
+    }
+
+    if (String(hospital.authCode) !== String(authCode)) {
+      AuditLog.create({
+        userId: hospitalId,
+        action: "AUTH_CODE_REVERIFY_FAILED",
+        status: "FAILURE",
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.headers["user-agent"],
+        details: { sessionId: String(sessionId) },
+      }).catch(() => {});
+      return res.status(401).json({
+        success: false,
+        code: "INVALID_AUTH_CODE",
+        message: "Invalid Auth Code. Please try again.",
+      });
+    }
+
+    await Session.updateOne(
+      { _id: sessionId, hospitalId, isActive: true },
+      { authCodeVerifiedAt: new Date() },
+    );
+
+    AuditLog.create({
+      userId: hospitalId,
+      action: "AUTH_CODE_REVERIFIED",
+      status: "SUCCESS",
+      ipAddress: req.ip || req.connection.remoteAddress,
+      userAgent: req.headers["user-agent"],
+      details: { sessionId: String(sessionId) },
+    }).catch(() => {});
+
+    return res.status(200).json({
+      success: true,
+      message: "Auth Code re-verified. You're good for another 7 days.",
+    });
+  } catch (error) {
+    console.error("reverifyAuthCode error:", error);
+    return res.status(500).json({ success: false, message: "Re-verification failed" });
+  }
+};
+
+/**
  * Force logout from another device (resolve conflict)
  * POST /api/auth/session/force-logout
  */
@@ -1614,5 +1687,6 @@ export default {
   listActiveSessions,
   revokeSessionById,
   revokeAllOtherSessions,
+  reverifyAuthCode,
   storeFcmToken,
 };

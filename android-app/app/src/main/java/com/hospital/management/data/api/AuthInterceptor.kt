@@ -33,6 +33,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
 
     companion object {
         const val ACTION_SESSION_REVOKED = "com.hospital.management.SESSION_REVOKED"
+        const val ACTION_AUTH_CODE_REQUIRED = "com.hospital.management.AUTH_CODE_REQUIRED"
         private const val TAG = "AuthInterceptor"
 
         // A single monitor shared across all AuthInterceptor instances so
@@ -82,6 +83,17 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             // Server has revoked this session (another device logged in or
             // admin-revoke). Refreshing won't help — force logout via UI.
             val intent = Intent(ACTION_SESSION_REVOKED)
+            intent.setPackage(context.packageName)
+            context.sendBroadcast(intent)
+            return response
+        }
+
+        if (body.contains("AUTH_CODE_REQUIRED") || body.contains("AUTH_CODE_STALE")) {
+            // Session is alive but the 7-day Auth Code freshness window
+            // lapsed. Don't refresh the access token — the user needs to
+            // re-verify the hospital's 6-digit Auth Code. UI layer picks up
+            // this broadcast and launches AuthCodeReverifyActivity.
+            val intent = Intent(ACTION_AUTH_CODE_REQUIRED)
             intent.setPackage(context.packageName)
             context.sendBroadcast(intent)
             return response

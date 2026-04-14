@@ -56,6 +56,30 @@ export const verifyAccessToken = async (req, res, next) => {
       });
     }
 
+    // 3. Mobile-only: enforce 7-day Auth Code re-verification. Users stay
+    //    logged in indefinitely via long-lived refresh cookie, but every 7
+    //    days they must prove same-device by re-entering the hospital's
+    //    6-digit Auth Code. Biometric login and /session/reverify-auth-code
+    //    both refresh this timestamp.
+    //
+    //    The reverify endpoint itself bypasses this check so the user can
+    //    actually satisfy it.
+    const AUTH_CODE_FRESH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+    const reverifyPath = "/session/reverify-auth-code";
+    const isReverifyCall = (req.originalUrl || "").includes(reverifyPath);
+    if (session.isMobile && !isReverifyCall) {
+      const lastVerified = session.authCodeVerifiedAt || session.createdAt;
+      const age = Date.now() - new Date(lastVerified).getTime();
+      if (age > AUTH_CODE_FRESH_WINDOW_MS) {
+        return res.status(401).json({
+          success: false,
+          code: "AUTH_CODE_REQUIRED",
+          reason: "AUTH_CODE_STALE",
+          message: "Please re-verify your 6-digit Auth Code to continue.",
+        });
+      }
+    }
+
     // Update lastSeenAt on every authenticated request (non-blocking)
     const ipAddress = req.ip || req.connection.remoteAddress;
     Session.updateOne(

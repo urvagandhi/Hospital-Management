@@ -25,6 +25,7 @@ import {
   listActiveSessions,
   revokeSessionById,
   revokeAllOtherSessions,
+  reverifyAuthCode,
   storeFcmToken,
 } from "../controllers/auth.controller.js";
 import { verifyAccessToken, verifyAdmin, verifyTempToken } from "../middleware/auth.js";
@@ -285,6 +286,25 @@ router.post("/session/revoke/:id", verifyAccessToken, revokeSessionById);
 
 /** Revoke all sessions except the caller's current one */
 router.post("/session/revoke-all-others", verifyAccessToken, revokeAllOtherSessions);
+
+/**
+ * Re-verify the 6-digit hospital Auth Code for the current session.
+ * The verifyAccessToken middleware lets this route through even when the
+ * session's authCodeVerifiedAt is stale — otherwise the user could never
+ * satisfy the check they're being asked to satisfy.
+ */
+router.post(
+  "/session/reverify-auth-code",
+  otpLimiter,
+  verifyAccessToken,
+  [
+    body("authCode")
+      .matches(/^\d{6}$/)
+      .withMessage("Auth code must be 6 digits"),
+  ],
+  handleValidationErrors,
+  reverifyAuthCode,
+);
 
 // ═══════════════════════════════════════════════════
 // FCM TOKEN ENDPOINT

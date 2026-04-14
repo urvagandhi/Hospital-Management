@@ -40,6 +40,8 @@ const auditLogSchema = new mongoose.Schema(
         "PATIENT_VIEW",
         "PATIENT_EXPORT_PDF",
         "PATIENT_EXPORT_ZIP",
+        "AUTH_CODE_REVERIFIED",
+        "AUTH_CODE_REVERIFY_FAILED",
       ],
     },
     status: {

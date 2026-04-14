@@ -29,7 +29,10 @@ const config = {
   JWT_SECRET: process.env.JWT_SECRET || "dev-secret-key-change-in-production",
   JWT_EXPIRY: process.env.JWT_EXPIRY || "24h",
   REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET || "dev-refresh-secret-key",
-  REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || "7d",
+  // "Always logged in" on mobile: refresh tokens and DB sessions live for a
+  // year. Real security gate is the 7-day Auth Code re-verification enforced
+  // in middleware/auth.js, not the refresh expiry.
+  REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || "365d",
 
   // OTP (used by self-registration email OTP)
   OTP_EXPIRY_MINUTES: parseInt(process.env.OTP_EXPIRY_MINUTES || "10"),
