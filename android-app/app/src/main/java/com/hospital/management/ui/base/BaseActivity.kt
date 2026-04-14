@@ -21,6 +21,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.hospital.management.R
 import com.hospital.management.data.api.AuthInterceptor
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.utils.SessionManager
@@ -146,7 +148,7 @@ open class BaseActivity : AppCompatActivity() {
             )
         }
 
-        val dialog = AlertDialog.Builder(this)
+        val dialog = MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
             .setTitle("Re-verify your Auth Code")
             .setMessage(
                 "For your security, please re-enter your hospital's 6-digit " +

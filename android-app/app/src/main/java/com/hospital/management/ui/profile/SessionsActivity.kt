@@ -2,10 +2,11 @@ package com.hospital.management.ui.profile
 
 import android.os.Bundle
 import android.view.View
-import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.hospital.management.R
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.repository.AuthRepository
@@ -55,7 +56,7 @@ class SessionsActivity : BaseActivity() {
         binding.rvSessions.adapter = adapter
 
         binding.btnRevokeAll.setOnClickListener {
-            AlertDialog.Builder(this)
+            MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
                 .setTitle("Sign out all other devices?")
                 .setMessage("Your current session will stay signed in.")
                 .setPositiveButton("Sign out others") { _, _ -> vm.revokeAllOthers() }
@@ -73,7 +74,7 @@ class SessionsActivity : BaseActivity() {
     }
 
     private fun confirmRevoke(id: String) {
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
             .setTitle("Revoke this session?")
             .setMessage("The device will be signed out immediately.")
             .setPositiveButton("Revoke") { _, _ -> vm.revokeSession(id) }

@@ -1364,17 +1364,34 @@ export const checkSessionConflict = async (req, res) => {
       return res.status(200).json({ success: true, conflict: false });
     }
 
-    const activeSessions = await Session.find({
-      hospitalId: hospital._id,
-      isActive: true,
-      expiresAt: { $gt: new Date() },
-    }).select("platform lastSeenAt lastSeenIp userAgent").lean();
+    const isMobileLogin = String(req.headers["x-client-type"] || "")
+      .toLowerCase()
+      .includes("android");
 
-    if (activeSessions.length === 0) {
+    // Web sessions are currently multi-session by design.
+    if (!isMobileLogin) {
       return res.status(200).json({ success: true, conflict: false });
     }
 
-    const activeDevice = activeSessions[0];
+    // Keep this in sync with token.service.js createSession() logic.
+    const MOBILE_SESSION_LIMIT = 2;
+
+    const activeMobileSessions = await Session.find({
+      hospitalId: hospital._id,
+      isMobile: true,
+      isActive: true,
+      expiresAt: { $gt: new Date() },
+    })
+      .select("platform lastSeenAt lastSeenIp userAgent createdAt")
+      .sort({ createdAt: 1 })
+      .lean();
+
+    // No conflict until this login would exceed mobile limit and revoke one.
+    if (activeMobileSessions.length < MOBILE_SESSION_LIMIT) {
+      return res.status(200).json({ success: true, conflict: false });
+    }
+
+    const activeDevice = activeMobileSessions[0];
     return res.status(200).json({
       success: true,
       conflict: true,
@@ -1383,6 +1400,8 @@ export const checkSessionConflict = async (req, res) => {
         lastSeen: activeDevice.lastSeenAt,
         ip: activeDevice.lastSeenIp,
       },
+      sessionCount: activeMobileSessions.length,
+      sessionLimit: MOBILE_SESSION_LIMIT,
     });
   } catch (error) {
     console.error("Session conflict check error:", error);

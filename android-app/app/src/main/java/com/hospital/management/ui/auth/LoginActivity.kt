@@ -8,6 +8,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.hospital.management.R
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.models.LoginResponse
@@ -146,12 +148,14 @@ class LoginActivity : BaseActivity() {
                     if (hasConflict) {
                         val activeDevice = body?.get("activeDevice") as? Map<*, *>
                         val platform = activeDevice?.get("platform") as? String ?: "another device"
+                        val sessionLimit = (body?.get("sessionLimit") as? Number)?.toInt() ?: 2
 
-                        AlertDialog.Builder(this@LoginActivity)
+                        MaterialAlertDialogBuilder(this@LoginActivity, R.style.AlertDialogTheme)
                             .setTitle("Active Session Found")
                             .setMessage(
-                                "You are already logged in on $platform. " +
-                                "Continuing will sign you out of that device."
+                                "You're already signed in on $platform. " +
+                                "This account allows up to $sessionLimit mobile sessions. " +
+                                "Continuing will sign out the oldest mobile session."
                             )
                             .setPositiveButton("Continue Login") { _, _ ->
                                 authViewModel.login(identifier, password)

@@ -17,7 +17,6 @@
         android:layout_height="64dp"
         android:contentDescription="App Logo"
         android:src="@drawable/ic_splash_logo"
-        app:tint="@color/brand_primary"
         app:layout_constraintBottom_toTopOf="@id/glassCard"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

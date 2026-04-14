@@ -54,23 +54,27 @@
         <item name="materialButtonStyle">@style/Widget.App.Button.Primary</item>
         <item name="textInputStyle">@style/Widget.App.TextInputLayout.Glass</item>
         <item name="materialCardViewStyle">@style/Widget.App.Card.Glass</item>
+        <item name="materialAlertDialogTheme">@style/AlertDialogTheme</item>
 
         <!-- Disable all-caps globally on buttons -->
         <item name="android:textAllCaps">false</item>
     </style>
 
     <!-- ── Shape Appearances ── -->
-    <style name="ShapeAppearance.App.SmallComponent" parent="ShapeAppearance.Material3.SmallComponent">
+    <style name="ShapeAppearance.App.SmallComponent"
+        parent="ShapeAppearance.Material3.SmallComponent">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">@dimen/radius_sm</item>
     </style>
 
-    <style name="ShapeAppearance.App.MediumComponent" parent="ShapeAppearance.Material3.MediumComponent">
+    <style name="ShapeAppearance.App.MediumComponent"
+        parent="ShapeAppearance.Material3.MediumComponent">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">@dimen/radius_md</item>
     </style>
 
-    <style name="ShapeAppearance.App.LargeComponent" parent="ShapeAppearance.Material3.LargeComponent">
+    <style name="ShapeAppearance.App.LargeComponent"
+        parent="ShapeAppearance.Material3.LargeComponent">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">@dimen/radius_lg</item>
     </style>
@@ -193,7 +197,8 @@
          TEXT INPUT STYLES
          ══════════════════════════════════════════════════════════════════ -->
 
-    <style name="Widget.App.TextInputLayout.Glass" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+    <style name="Widget.App.TextInputLayout.Glass"
+        parent="Widget.Material3.TextInputLayout.OutlinedBox">
         <item name="boxCornerRadiusTopStart">@dimen/radius_md</item>
         <item name="boxCornerRadiusTopEnd">@dimen/radius_md</item>
         <item name="boxCornerRadiusBottomStart">@dimen/radius_md</item>
@@ -288,19 +293,39 @@
         <item name="shapeAppearanceOverlay">@style/ShapeAppearance.App.LargeComponent</item>
         <item name="materialAlertDialogBodyTextStyle">@style/Widget.App.AlertDialog.Body.Text</item>
         <item name="materialAlertDialogTitleTextStyle">@style/Widget.App.AlertDialog.Title.Text</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.App.AlertDialog.Button.Positive</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.App.AlertDialog.Button.Negative</item>
     </style>
 
     <style name="Widget.App.AlertDialog.Body.Text" parent="MaterialAlertDialog.Material3.Body.Text">
-        <item name="android:textSize">14sp</item>
+        <item name="android:textSize">13sp</item>
         <item name="android:fontFamily">@font/inter</item>
         <item name="android:textColor">@color/color_on_surface</item>
+        <item name="android:lineSpacingExtra">1dp</item>
     </style>
 
-    <style name="Widget.App.AlertDialog.Title.Text" parent="MaterialAlertDialog.Material3.Title.Text">
-        <item name="android:textSize">20sp</item>
+    <style name="Widget.App.AlertDialog.Title.Text"
+        parent="MaterialAlertDialog.Material3.Title.Text">
+        <item name="android:textSize">18sp</item>
         <item name="android:fontFamily">@font/inter_semibold</item>
         <item name="android:letterSpacing">-0.01</item>
         <item name="android:textColor">@color/color_on_surface</item>
+    </style>
+
+    <style name="Widget.App.AlertDialog.Button.Positive"
+        parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">@font/inter_semibold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minHeight">40dp</item>
+    </style>
+
+    <style name="Widget.App.AlertDialog.Button.Negative"
+        parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">@font/inter_medium</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minHeight">40dp</item>
     </style>
 
     <!-- ══════════════════════════════════════════════════════════════════

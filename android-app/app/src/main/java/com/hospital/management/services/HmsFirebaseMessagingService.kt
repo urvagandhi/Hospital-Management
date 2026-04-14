@@ -92,18 +92,30 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun handleSessionRevoked() {
-        Log.d(TAG, "Session revoked by server")
+        Log.d(TAG, "Session revoke push received; validating current session before logout")
 
         serviceScope.launch {
-            val tokenManager = TokenManager(applicationContext)
-            tokenManager.clearAll()
-        }
+            try {
+                val tokenManager = TokenManager(applicationContext)
+                if (!tokenManager.hasValidToken()) {
+                    Log.d(TAG, "No active local token; ignoring session revoke push")
+                    return@launch
+                }
 
-        // Use system broadcast with the same action constant as AuthInterceptor
-        // so DashboardActivity's registerReceiver picks it up
-        val intent = Intent(com.hospital.management.data.api.AuthInterceptor.ACTION_SESSION_REVOKED)
-        intent.setPackage(applicationContext.packageName)
-        applicationContext.sendBroadcast(intent)
+                // IMPORTANT: SESSION_REVOKED push is account-scoped (not per-session).
+                // Validate this device's own session first; AuthInterceptor handles
+                // 401 broadcasts only when this session is actually invalid.
+                val apiService = RetrofitClient.getApiService(applicationContext)
+                val response = apiService.validateSession()
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Current session is still valid; ignoring revoke push for another device")
+                } else {
+                    Log.w(TAG, "Current session is invalid after revoke push: code=${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Session validation after revoke push failed: ${e.message}")
+            }
+        }
     }
 
     private fun showNotification(message: RemoteMessage) {

@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputLayout
 import com.hospital.management.R
 import com.hospital.management.data.api.RetrofitClient
@@ -105,16 +106,16 @@ class ProfileActivity : BaseActivity() {
 
         val currentValue = if (field == "email") hospital.email else hospital.phone
         tv.text = if (field == "email")
-            "Current: $currentValue\n\nWe'll email a verification code to the NEW email address to confirm it."
+            "Current: $currentValue\n\nWe'll send a verification code to your new email."
         else
-            "Current: $currentValue\n\nWe'll email a verification code to your current email. (SMS to the new number is coming soon.)"
+            "Current: $currentValue\n\nWe'll send a verification code to your current email."
 
         til.hint = if (field == "email") "New Email" else "New Phone (10 digits)"
         et.inputType = if (field == "email")
             android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
         else android.text.InputType.TYPE_CLASS_PHONE
 
-        val dialog = AlertDialog.Builder(this)
+        val dialog = MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
             .setTitle(if (field == "email") "Change Email" else "Change Phone")
             .setView(view)
             .setPositiveButton("Send Code", null)
@@ -153,7 +154,7 @@ class ProfileActivity : BaseActivity() {
 
         tv.text = message
 
-        val dialog = AlertDialog.Builder(this)
+        val dialog = MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
             .setTitle(if (field == "email") "Verify new email" else "Verify phone change")
             .setView(view)
             .setPositiveButton("Verify & Save", null)
