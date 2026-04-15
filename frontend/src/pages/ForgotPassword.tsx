@@ -163,7 +163,7 @@ export const ForgotPassword: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 sm:p-8 animate-fadeIn">
-        <LogoHeader hospitalName="Hospital Management" subtitle="Reset Your Password" />
+        <LogoHeader subtitle="Reset Your Password" />
 
         {error && <ErrorMessage message={error} type="error" onClose={() => setError(null)} />}
         {info && !error && (

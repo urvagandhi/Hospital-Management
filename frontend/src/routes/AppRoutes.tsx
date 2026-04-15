@@ -20,6 +20,7 @@ import ActivityLog from "../pages/ActivityLog";
 import NotificationSettings from "../pages/NotificationSettings";
 import Terms from "../pages/Terms";
 import Privacy from "../pages/Privacy";
+import ComponentsPreview from "../pages/ComponentsPreview";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -48,6 +49,9 @@ export const AppRoutes: React.FC = () => {
       {/* Public legal pages — linked from registration + footers */}
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
+
+      {/* HMS Design System showcase — public, no auth needed */}
+      <Route path="/components-preview" element={<ComponentsPreview />} />
 
       {/* Protected Routes */}
       <Route

@@ -95,7 +95,7 @@ export const VerifyAuthCode: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 sm:p-8 animate-fadeIn">
-        <LogoHeader hospitalName="Hospital Management" subtitle="Enter Auth Code" />
+        <LogoHeader subtitle="Enter Auth Code" />
 
         <p className="text-sm text-gray-600 text-center mt-6 mb-4">
           Enter the <strong>6-digit Auth Code</strong> from your welcome email to finish signing in.

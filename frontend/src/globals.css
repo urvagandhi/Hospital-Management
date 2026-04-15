@@ -10,6 +10,30 @@ body {
   @apply bg-white text-gray-900 font-sans;
 }
 
+/* HMS Design System — Shimmer skeleton animation */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #F1F5F9 25%, #F8FAFC 50%, #F1F5F9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+  border-radius: 8px;
+}
+
+/* HMS Design System — Heading letter-spacing (Apple-inspired: tight tracking at all display sizes) */
+.font-heading {
+  letter-spacing: -0.025em;
+}
+
+/* HMS Design System — Page background */
+.hms-page-bg {
+  background-color: #F0F6FF;
+  min-height: 100vh;
+}
+
 /* Animations */
 @keyframes slideIn {
   from {
@@ -114,4 +138,10 @@ a {
 
 .animation-delay-500 {
   animation-delay: 0.5s;
+}
+
+/* HMS Toast — auto-dismiss progress bar */
+@keyframes toastProgress {
+  from { width: 100%; }
+  to   { width: 0%;   }
 }
