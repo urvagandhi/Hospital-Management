@@ -17,6 +17,7 @@ import com.hospital.management.R
 import com.hospital.management.databinding.ActivityDashboardBinding
 import com.hospital.management.ui.admission.AdmissionActivity
 import com.hospital.management.ui.auth.LoginActivity
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -118,9 +119,10 @@ class DashboardActivity : BaseActivity() {
         super.onResume()
         SessionManager.updateLastInteractionTime(this)
         setupHospitalInfo() // Always load cached hospital info
+        // Always call getPatients — ViewModel falls back to Room cache when offline
+        patientViewModel.getPatients()
         if (isNetworkAvailable()) {
             fetchAndDisplayHospitalInfo()
-            patientViewModel.getPatients()
         }
     }
 
@@ -166,11 +168,18 @@ class DashboardActivity : BaseActivity() {
         }
 
         Toast.makeText(this, "Starting sync...", Toast.LENGTH_SHORT).show()
+        // Use the same unique name as the auto-sync so only one worker ever runs at a time.
+        // REPLACE cancels any enqueued auto-sync and starts a fresh one immediately.
         val syncWorkRequest = OneTimeWorkRequestBuilder<SyncDocumentsWorker>().build()
-        WorkManager.getInstance(this).enqueue(syncWorkRequest)
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            "auto_sync_documents",
+            ExistingWorkPolicy.REPLACE,
+            syncWorkRequest
+        )
 
-        WorkManager.getInstance(this).getWorkInfoByIdLiveData(syncWorkRequest.id)
-            .observe(this) { workInfo ->
+        WorkManager.getInstance(this).getWorkInfosForUniqueWorkLiveData("auto_sync_documents")
+            .observe(this) { workInfos ->
+                val workInfo = workInfos?.firstOrNull()
                 if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
                     Toast.makeText(this, "Sync completed successfully!", Toast.LENGTH_SHORT).show()
                 } else if (workInfo != null && workInfo.state == WorkInfo.State.FAILED) {
@@ -208,7 +217,10 @@ class DashboardActivity : BaseActivity() {
     private fun setupViewModels() {
         val apiService = RetrofitClient.getApiService(this)
         val authRepository = AuthRepository(apiService, tokenManager)
-        val patientRepository = PatientRepository(apiService, tokenManager)
+        val patientRepository = PatientRepository(
+            apiService, tokenManager,
+            com.hospital.management.data.local.AppDatabase.getDatabase(this).patientCacheDao()
+        )
         val factory = ViewModelFactory(authRepository = authRepository, patientRepository = patientRepository)
         authViewModel = ViewModelProvider(this, factory)[AuthViewModel::class.java]
         patientViewModel = ViewModelProvider(this, factory)[com.hospital.management.presentation.viewmodel.PatientViewModel::class.java]

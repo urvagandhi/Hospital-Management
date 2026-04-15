@@ -29,7 +29,7 @@ type ContactField = "email" | "phone";
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const { state } = useAuth();
+  const { state, updateHospital } = useAuth();
   useScrollToHash();
 
   const [hospital, setHospital] = useState<Hospital | null>(null);
@@ -113,6 +113,7 @@ const Profile: React.FC = () => {
     try {
       const updated = await patchProfile(fields, logoFile);
       setHospital(updated);
+      updateHospital(updated); // sync logo/name into global auth context → Navbar updates instantly
       setLogoFile(null);
       setLogoPreview(null);
       setSuccess("Profile updated");

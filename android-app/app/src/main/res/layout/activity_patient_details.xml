@@ -35,15 +35,19 @@
 
     <TextView
         android:id="@+id/tvTitle"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Patient"
         android:textColor="@color/color_on_surface"
         android:textSize="20sp"
         android:fontFamily="@font/inter_semibold"
         android:letterSpacing="-0.01"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginEnd="@dimen/space_base"
         app:layout_constraintBottom_toBottomOf="@id/btnBack"
         app:layout_constraintStart_toEndOf="@id/btnBack"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/btnBack" />
 
     <!-- Scrollable Content -->
@@ -52,7 +56,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:clipToPadding="false"
-        android:paddingBottom="88dp"
+        android:paddingBottom="@dimen/fab_clearance"
         app:layout_constraintTop_toBottomOf="@id/btnBack"
         app:layout_constraintBottom_toBottomOf="parent">
 

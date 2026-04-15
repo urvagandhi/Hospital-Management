@@ -127,7 +127,6 @@ export const verifyContactChange = async (otp: string): Promise<Hospital> => {
 // ─────────────────────────────────────────────────────────────
 export interface NotificationPrefs {
     newLoginAlert: boolean;
-    deletionUpdates: boolean;
     securityAlerts: boolean;
     marketing: boolean;
 }

@@ -31,11 +31,14 @@
 
                 <TextView
                     android:id="@+id/tvDevice"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:fontFamily="@font/inter_medium"
                     android:textColor="@color/color_on_surface"
                     android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
                     tools:text="Chrome on Windows" />
 
                 <TextView
@@ -45,22 +48,24 @@
                     android:layout_marginStart="@dimen/space_xs"
                     android:background="@drawable/bg_badge_primary"
                     android:fontFamily="@font/inter_medium"
-                    android:paddingHorizontal="8dp"
-                    android:paddingVertical="2dp"
+                    android:paddingHorizontal="@dimen/space_sm"
+                    android:paddingVertical="@dimen/space_xs"
                     android:text="CURRENT"
                     android:textColor="@android:color/white"
-                    android:textSize="9sp"
+                    android:textSize="10sp"
                     android:visibility="gone" />
             </LinearLayout>
 
             <TextView
                 android:id="@+id/tvDetail"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:fontFamily="@font/inter"
                 android:textColor="@color/color_on_surface_muted"
-                android:textSize="11sp"
+                android:textSize="12sp"
+                android:maxLines="2"
+                android:ellipsize="end"
                 tools:text="192.168.1.5 • last seen 10:34 AM" />
         </LinearLayout>
 
@@ -71,6 +76,6 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/inter_medium"
             android:text="Revoke"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

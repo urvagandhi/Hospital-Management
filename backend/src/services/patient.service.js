@@ -6,7 +6,7 @@
 import mongoose from "mongoose";
 import Hospital from "../models/Hospital.js";
 import Patient from "../models/Patient.js";
-import { deleteFolder } from "./r2.service.js";
+import { cloudinary } from "./storage.service.js";
 
 /**
  * Create a new patient with auto-generated patientId
@@ -418,15 +418,21 @@ export const deleteOldPatients = async (days = 90) => {
     const patientIds = [];
 
     for (const patient of oldPatients) {
-      try {
-        const prefix = `${patient.hospitalId}/${patient._id}/`;
-        const deletedFiles = await deleteFolder(prefix);
-        filesDeleted += deletedFiles;
-        patientIds.push(patient._id);
-      } catch (error) {
-        console.error("[Patient Service] Error deleting R2 files for patient:", patient._id, error);
-        patientIds.push(patient._id);
+      let patientFilesDeleted = 0;
+      for (const folder of patient.folders || []) {
+        for (const file of folder.files || []) {
+          if (!file.cloudinaryPublicId) continue;
+          try {
+            const resourceType = file.resourceType || "image";
+            await cloudinary.uploader.destroy(file.cloudinaryPublicId, { resource_type: resourceType });
+            patientFilesDeleted++;
+          } catch (err) {
+            console.warn("[Patient Service] Cloudinary delete failed for", file.cloudinaryPublicId, err.message);
+          }
+        }
       }
+      filesDeleted += patientFilesDeleted;
+      patientIds.push(patient._id);
     }
 
     const result = await Patient.deleteMany({

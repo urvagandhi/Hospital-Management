@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
@@ -31,6 +32,12 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
         private const val CHANNEL_NAME = "Hospital Notifications"
         private const val PENDING_FCM_TOKEN_KEY = "pending_fcm_token"
         const val ACTION_SESSION_REVOKED = "ACTION_SESSION_REVOKED"
+
+        // Fixed notification IDs so same-type alerts replace each other
+        private const val NOTIF_ID_SESSION_REVOKED = 2001
+        private const val NOTIF_ID_PASSWORD_CHANGED = 2002
+        private const val NOTIF_ID_LOGIN_SUMMARY = 2000
+        private const val NOTIF_GROUP_LOGINS = "hospital_new_logins"
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -129,16 +136,18 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Security alerts for your hospital account"
+                enableVibration(true)
+            }
             notificationManager.createNotificationChannel(channel)
         }
 
         val title = message.notification?.title ?: message.data["title"] ?: "Hospital Management"
         val body = message.notification?.body ?: message.data["body"] ?: ""
-
-        // Deep-link tap target based on message type. Falls back to launcher.
         val type = message.data["type"]
+
         val launcherIntent = packageManager.getLaunchIntentForPackage(packageName)
         val targetIntent = when (type) {
             "NEW_LOGIN", "PASSWORD_CHANGED" ->
@@ -150,19 +159,78 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
         val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         else PendingIntent.FLAG_UPDATE_CURRENT
-        val contentIntent = PendingIntent.getActivity(
-            this, System.currentTimeMillis().toInt(), targetIntent ?: Intent(), pendingFlags
-        )
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+        val brandColor = ContextCompat.getColor(this, R.color.primary)
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(brandColor)
             .setContentTitle(title)
             .setContentText(body)
-            .setContentIntent(contentIntent)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
 
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+        when (type) {
+            "NEW_LOGIN" -> {
+                val notifId = System.currentTimeMillis().toInt()
+                val contentIntent = PendingIntent.getActivity(
+                    this, notifId, targetIntent ?: Intent(), pendingFlags
+                )
+                notificationManager.notify(
+                    notifId,
+                    builder.setGroup(NOTIF_GROUP_LOGINS).setContentIntent(contentIntent).build()
+                )
+                // Group summary so stacked login alerts collapse neatly
+                val summaryIntent = PendingIntent.getActivity(
+                    this, NOTIF_ID_LOGIN_SUMMARY,
+                    Intent(this, com.hospital.management.ui.profile.SessionsActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                    pendingFlags
+                )
+                notificationManager.notify(
+                    NOTIF_ID_LOGIN_SUMMARY,
+                    NotificationCompat.Builder(this, CHANNEL_ID)
+                        .setSmallIcon(R.drawable.ic_notification)
+                        .setColor(brandColor)
+                        .setContentTitle("New Sign-in Alerts")
+                        .setContentText("Multiple new sign-ins detected")
+                        .setGroup(NOTIF_GROUP_LOGINS)
+                        .setGroupSummary(true)
+                        .setAutoCancel(true)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setContentIntent(summaryIntent)
+                        .build()
+                )
+            }
+            "SESSION_REVOKED" -> {
+                val contentIntent = PendingIntent.getActivity(
+                    this, NOTIF_ID_SESSION_REVOKED, launcherIntent ?: Intent(), pendingFlags
+                )
+                notificationManager.notify(
+                    NOTIF_ID_SESSION_REVOKED,
+                    builder.setContentIntent(contentIntent).build()
+                )
+            }
+            "PASSWORD_CHANGED" -> {
+                val contentIntent = PendingIntent.getActivity(
+                    this, NOTIF_ID_PASSWORD_CHANGED, targetIntent ?: Intent(), pendingFlags
+                )
+                notificationManager.notify(
+                    NOTIF_ID_PASSWORD_CHANGED,
+                    builder.setContentIntent(contentIntent).build()
+                )
+            }
+            else -> {
+                val notifId = System.currentTimeMillis().toInt()
+                val contentIntent = PendingIntent.getActivity(
+                    this, notifId, launcherIntent ?: Intent(), pendingFlags
+                )
+                notificationManager.notify(
+                    notifId,
+                    builder.setContentIntent(contentIntent).build()
+                )
+            }
+        }
     }
 }

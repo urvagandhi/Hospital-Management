@@ -2,26 +2,22 @@ package com.hospital.management.ui.scanner
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import com.hospital.management.ui.base.BaseActivity
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_JPEG
-import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_FULL
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_BASE
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
-import com.hospital.management.databinding.ActivityScannerBinding
 import com.hospital.management.ui.upload.UploadActivity
 
 class ScannerActivity : BaseActivity() {
 
-    private lateinit var binding: ActivityScannerBinding
     private lateinit var scannerLauncher: ActivityResultLauncher<IntentSenderRequest>
 
     companion object {
@@ -31,13 +27,8 @@ class ScannerActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityScannerBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
         setupScannerLauncher()
-        setupClickListeners()
-
-        // Auto-start scanner when activity opens
         startDocumentScanner()
     }
 
@@ -86,23 +77,12 @@ class ScannerActivity : BaseActivity() {
         }
     }
 
-    private fun setupClickListeners() {
-        binding.btnStartScan.setOnClickListener {
-            startDocumentScanner()
-        }
-
-        binding.btnCancel.setOnClickListener {
-            finish()
-        }
-    }
-
     private fun startDocumentScanner() {
-        // Configure the scanner options
         val options = GmsDocumentScannerOptions.Builder()
             .setGalleryImportAllowed(true)       // Allow importing from gallery
             .setPageLimit(20)                     // Allow up to 20 pages
             .setResultFormats(RESULT_FORMAT_JPEG) // Get JPEG images
-            .setScannerMode(SCANNER_MODE_FULL)    // Full mode with all features
+            .setScannerMode(SCANNER_MODE_BASE)  // No auto-enhancement applied
             .build()
 
         val scanner = GmsDocumentScanning.getClient(options)

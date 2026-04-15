@@ -1,6 +1,40 @@
 import admin from "firebase-admin";
 import Hospital from "../models/Hospital.js";
 
+/**
+ * Parse a raw User-Agent string into a human-readable device description.
+ * e.g. "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ... Chrome/135..." → "Chrome on Windows 10"
+ */
+export function parseDeviceInfo(userAgent) {
+  if (!userAgent) return "Unknown Device";
+  const ua = userAgent;
+
+  let browser = "Browser";
+  if (/SamsungBrowser/i.test(ua)) browser = "Samsung Browser";
+  else if (/Edg\//i.test(ua)) browser = "Edge";
+  else if (/OPR\/|Opera/i.test(ua)) browser = "Opera";
+  else if (/Firefox\/\d/i.test(ua)) browser = "Firefox";
+  else if (/Chrome\/\d/i.test(ua) && !/Chromium/i.test(ua)) browser = "Chrome";
+  else if (/Safari\/\d/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
+  else if (/Chromium/i.test(ua)) browser = "Chromium";
+
+  let platform = "Unknown Device";
+  if (/iPhone/i.test(ua)) platform = "iPhone";
+  else if (/iPad/i.test(ua)) platform = "iPad";
+  else if (/Android/i.test(ua)) {
+    const match = ua.match(/\(Linux; Android [^;]+;\s*([^)]+)\)/);
+    platform = match ? match[1].trim() : "Android";
+  } else if (/Windows NT 10\.0/i.test(ua)) platform = "Windows 10";
+  else if (/Windows NT 11\.0/i.test(ua)) platform = "Windows 11";
+  else if (/Windows NT 6\.3/i.test(ua)) platform = "Windows 8.1";
+  else if (/Windows NT 6\.1/i.test(ua)) platform = "Windows 7";
+  else if (/Windows/i.test(ua)) platform = "Windows";
+  else if (/Macintosh|Mac OS X/i.test(ua)) platform = "Mac";
+  else if (/Linux/i.test(ua)) platform = "Linux";
+
+  return `${browser} on ${platform}`;
+}
+
 // Singleton Firebase initialization — skip if credentials missing
 let firebaseEnabled = false;
 
@@ -119,9 +153,12 @@ export async function sendPushToUser(userId, title, body, data = {}) {
  */
 export async function notifySessionRevoked(userId) {
   try {
-    return await sendPushToUser(userId, "Session Ended", "You have been signed in elsewhere", {
-      type: "SESSION_REVOKED",
-    });
+    return await sendPushToUser(
+      userId,
+      "Session Ended",
+      "You've been signed out on this device because you signed in elsewhere.",
+      { type: "SESSION_REVOKED" }
+    );
   } catch (error) {
     console.error(
       "[push.service] notifySessionRevoked failed:",
@@ -141,10 +178,11 @@ export async function notifyNewLogin(userId, deviceInfo) {
     if (hospital?.notificationPrefs && hospital.notificationPrefs.newLoginAlert === false) {
       return { success: false, reason: "opted_out" };
     }
+    const device = parseDeviceInfo(deviceInfo);
     return await sendPushToUser(
       userId,
-      "New Sign-in",
-      `New sign-in on ${deviceInfo}`,
+      "New Sign-in Detected",
+      `Your account was accessed from ${device}. If this wasn't you, review your active sessions.`,
       { type: "NEW_LOGIN" }
     );
   } catch (error) {

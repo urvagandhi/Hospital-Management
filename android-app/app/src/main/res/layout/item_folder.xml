@@ -48,7 +48,9 @@
                 android:textColor="@color/color_on_surface_muted"
                 android:background="@drawable/bg_badge"
                 android:paddingHorizontal="@dimen/space_sm"
-                android:paddingVertical="2dp" />
+                android:paddingVertical="@dimen/space_xs"
+                android:maxLines="1"
+                android:ellipsize="end" />
         </LinearLayout>
 
         <!-- Folder Name -->

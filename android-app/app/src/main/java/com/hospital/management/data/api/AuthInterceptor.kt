@@ -5,6 +5,7 @@ import android.content.Intent
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.hospital.management.utils.FileLogger
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -43,17 +44,25 @@ class AuthInterceptor(private val context: Context) : Interceptor {
     }
 
     private val prefs by lazy {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-
-        EncryptedSharedPreferences.create(
-            context,
-            "secure_hospital_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+        try {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            EncryptedSharedPreferences.create(
+                context,
+                "secure_hospital_prefs",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            ).also {
+                FileLogger.i(TAG, "EncryptedSharedPreferences initialised successfully")
+            }
+        } catch (e: Exception) {
+            // Log the full stack trace — this is a critical init failure that would
+            // cause every network request to be sent without auth headers.
+            FileLogger.e(TAG, "CRITICAL: EncryptedSharedPreferences init FAILED — requests will have no auth headers. ${e.javaClass.name}: ${e.message}", e)
+            throw e
+        }
     }
 
     /** Bare OkHttpClient used for the refresh-token call itself. Intentionally
@@ -69,7 +78,9 @@ class AuthInterceptor(private val context: Context) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
         val authed = attachAuthHeaders(original)
-        var response = chain.proceed(authed)
+        val response = chain.proceed(authed)
+
+        FileLogger.d(TAG, "→ ${original.method} ${original.url} — HTTP ${response.code}")
 
         if (response.code != 401) return response
 
@@ -80,9 +91,10 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             ""
         }
 
+        FileLogger.w(TAG, "401 received for ${original.url} — body preview: $body")
+
         if (body.contains("SESSION_CONFLICT") || body.contains("signed in on another device")) {
-            // Server has revoked this session (another device logged in or
-            // admin-revoke). Refreshing won't help — force logout via UI.
+            FileLogger.w(TAG, "401 reason: SESSION_CONFLICT — broadcasting revoke")
             val intent = Intent(ACTION_SESSION_REVOKED)
             intent.putExtra(EXTRA_SESSION_REASON, "SESSION_CONFLICT")
             intent.setPackage(context.packageName)
@@ -90,11 +102,17 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             return response
         }
 
+        if (body.contains("ACCOUNT_DISABLED")) {
+            FileLogger.w(TAG, "401 reason: ACCOUNT_DISABLED — broadcasting revoke")
+            val intent = Intent(ACTION_SESSION_REVOKED)
+            intent.putExtra(EXTRA_SESSION_REASON, "ACCOUNT_DISABLED")
+            intent.setPackage(context.packageName)
+            context.sendBroadcast(intent)
+            return response
+        }
+
         if (body.contains("AUTH_CODE_REQUIRED") || body.contains("AUTH_CODE_STALE")) {
-            // Session is alive but the 7-day Auth Code freshness window
-            // lapsed. Don't refresh the access token — the user needs to
-            // re-verify the hospital's 6-digit Auth Code. UI layer picks up
-            // this broadcast and launches AuthCodeReverifyActivity.
+            FileLogger.w(TAG, "401 reason: AUTH_CODE_REQUIRED/STALE — broadcasting reverify")
             val intent = Intent(ACTION_AUTH_CODE_REQUIRED)
             intent.setPackage(context.packageName)
             context.sendBroadcast(intent)
@@ -103,8 +121,12 @@ class AuthInterceptor(private val context: Context) : Interceptor {
 
         // Otherwise, assume access token expired → try to refresh once.
         val refreshToken = prefs.getString("refresh_token", null)
-        if (refreshToken.isNullOrEmpty()) return response
+        if (refreshToken.isNullOrEmpty()) {
+            FileLogger.w(TAG, "401 but no refresh_token stored — cannot recover")
+            return response
+        }
 
+        FileLogger.i(TAG, "401 — attempting token refresh")
         val newAccessToken = synchronized(refreshLock) {
             // Double-check: maybe another in-flight 401 already refreshed the
             // token while we were waiting on the lock. If so, use the fresh
@@ -112,6 +134,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             val current = prefs.getString("access_token", null)
             val sentBearer = authed.header("Authorization")
             if (!current.isNullOrEmpty() && sentBearer != "Bearer $current") {
+                FileLogger.d(TAG, "Token already refreshed by another thread — reusing")
                 current
             } else {
                 performRefresh(refreshToken)
@@ -119,8 +142,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
         }
 
         if (newAccessToken == null) {
-            // If we sent an authenticated request and refresh could not recover,
-            // the session is effectively dead from the app's perspective.
+            FileLogger.w(TAG, "Token refresh failed — session dead")
             if (authed.header("Authorization") != null) {
                 val intent = Intent(ACTION_SESSION_REVOKED)
                 intent.putExtra(EXTRA_SESSION_REASON, "SESSION_EXPIRED")
@@ -129,6 +151,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             }
             return response
         }
+        FileLogger.i(TAG, "Token refresh succeeded — retrying original request")
 
         // Close the old 401 body before reissuing
         response.close()
@@ -149,7 +172,8 @@ class AuthInterceptor(private val context: Context) : Interceptor {
         val builder = request.newBuilder()
         try {
             val accessToken = prefs.getString("access_token", null)
-            if (!accessToken.isNullOrEmpty()) {
+            val hasToken = !accessToken.isNullOrEmpty()
+            if (hasToken) {
                 builder.header("Authorization", "Bearer $accessToken")
             }
             val hospitalId = prefs.getString("hospital_id", null)
@@ -157,7 +181,10 @@ class AuthInterceptor(private val context: Context) : Interceptor {
                 builder.header("X-Hospital-Id", hospitalId)
             }
             builder.header("X-Client-Type", "Android")
+            FileLogger.d(TAG, "attachAuthHeaders — hasToken=$hasToken hospitalId=${hospitalId?.take(6)}…")
         } catch (e: Exception) {
+            // Log full exception — if EncryptedSharedPreferences is broken this fires on every request
+            FileLogger.e(TAG, "attachAuthHeaders FAILED — requests sent without auth. ${e.javaClass.name}: ${e.message}", e)
             e.printStackTrace()
         }
         return builder.build()
@@ -177,27 +204,38 @@ class AuthInterceptor(private val context: Context) : Interceptor {
                 .post(payload.toRequestBody("application/json".toMediaTypeOrNull()))
                 .build()
 
+            FileLogger.d(TAG, "performRefresh → POST /api/auth/refresh-token")
             refreshClient.newCall(request).execute().use { resp ->
                 if (!resp.isSuccessful) {
+                    FileLogger.w(TAG, "performRefresh HTTP ${resp.code} — refresh rejected by server")
                     Log.w(TAG, "Refresh failed with code ${resp.code}")
                     return null
                 }
                 val bodyStr = resp.body?.string() ?: return null
                 val json = JSONObject(bodyStr)
-                if (!json.optBoolean("success", false)) return null
+                if (!json.optBoolean("success", false)) {
+                    FileLogger.w(TAG, "performRefresh success=false — body: ${bodyStr.take(200)}")
+                    return null
+                }
                 val data = json.optJSONObject("data") ?: return null
                 val newAccess = data.optString("accessToken", "")
                 val newRefresh = data.optString("refreshToken", "")
-                if (newAccess.isEmpty()) return null
+                if (newAccess.isEmpty()) {
+                    FileLogger.w(TAG, "performRefresh — server returned empty accessToken")
+                    return null
+                }
 
                 val editor = prefs.edit().putString("access_token", newAccess)
                 if (newRefresh.isNotEmpty()) {
                     editor.putString("refresh_token", newRefresh)
                 }
                 editor.apply()
+                FileLogger.i(TAG, "performRefresh — new tokens saved successfully")
                 newAccess
             }
         } catch (e: Exception) {
+            // Full stack trace logged — tells us if it's a network error, SSL error, JSON parse error, etc.
+            FileLogger.e(TAG, "performRefresh EXCEPTION — ${e.javaClass.name}: ${e.message}", e)
             Log.w(TAG, "Refresh-token call threw: ${e.message}")
             null
         }

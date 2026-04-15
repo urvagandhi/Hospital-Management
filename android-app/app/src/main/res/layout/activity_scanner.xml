@@ -63,9 +63,10 @@
     <!-- Feature Chips -->
     <LinearLayout
         android:id="@+id/featurePills"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/space_xl"
+        android:layout_marginHorizontal="@dimen/space_xl"
         android:orientation="horizontal"
         android:gravity="center"
         app:layout_constraintTop_toBottomOf="@id/tvSubtitle"

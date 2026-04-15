@@ -2,6 +2,7 @@ package com.hospital.management.utils
 
 import android.content.Context
 import android.util.Log
+import com.hospital.management.BuildConfig
 import java.io.File
 import java.io.FileWriter
 import java.io.PrintWriter
@@ -36,6 +37,9 @@ object FileLogger {
     private var logDir: File? = null
 
     fun init(context: Context, maxDaysToKeep: Int = MAX_DAYS_TO_KEEP) {
+        // File logging is only active in release builds.
+        // In debug, Android Studio Logcat is always attached — no file needed.
+        if (BuildConfig.DEBUG) return
         val dir = File(context.getExternalFilesDir(null), LOG_DIR)
         if (!dir.exists()) dir.mkdirs()
         logDir = dir
@@ -60,6 +64,12 @@ object FileLogger {
     fun e(tag: String, message: String, throwable: Throwable? = null) {
         if (throwable != null) Log.e(tag, message, throwable) else Log.e(tag, message)
         writeLog("E", tag, message, throwable)
+    }
+
+    /** Critical / unexpected failures — always written even if logDir not set (app crash path). */
+    fun wtf(tag: String, message: String, throwable: Throwable? = null) {
+        if (throwable != null) Log.wtf(tag, message, throwable) else Log.wtf(tag, message)
+        writeLog("WTF", tag, message, throwable)
     }
 
     private fun writeLog(level: String, tag: String, message: String, throwable: Throwable? = null) {

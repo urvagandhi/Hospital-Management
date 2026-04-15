@@ -71,7 +71,10 @@ class FolderViewActivity : BaseActivity() {
 
     private fun setupViewModel() {
         val apiService = RetrofitClient.getApiService(this)
-        val patientRepository = PatientRepository(apiService, tokenManager)
+        val patientRepository = PatientRepository(
+            apiService, tokenManager,
+            com.hospital.management.data.local.AppDatabase.getDatabase(this).patientCacheDao()
+        )
         val factory = ViewModelFactory(patientRepository = patientRepository)
         patientViewModel = ViewModelProvider(this, factory)[PatientViewModel::class.java]
     }

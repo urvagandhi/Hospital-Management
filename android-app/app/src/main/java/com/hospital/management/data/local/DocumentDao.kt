@@ -5,10 +5,12 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DocumentDao {
-    @Query("SELECT * FROM offline_documents WHERE status != 'COMPLETED' ORDER BY timestamp ASC")
+    // Only PENDING and FAILED (not UPLOADING) so concurrent workers don't double-upload the same doc
+    @Query("SELECT * FROM offline_documents WHERE status IN ('PENDING', 'FAILED') ORDER BY timestamp ASC")
     suspend fun getPendingDocuments(): List<OfflineDocument>
 
     @Insert
@@ -28,10 +30,18 @@ interface DocumentDao {
     
     @Query("SELECT * FROM offline_documents WHERE patientId = :patientId AND folderName = :folderName AND status != 'COMPLETED' ORDER BY timestamp DESC")
     suspend fun getPendingForFolder(patientId: String, folderName: String): List<OfflineDocument>
-    
+
+    // Real-time Flow — emits whenever pending docs for this folder change (e.g. sync deletes a doc)
+    @Query("SELECT * FROM offline_documents WHERE patientId = :patientId AND folderName = :folderName AND status != 'COMPLETED' ORDER BY timestamp DESC")
+    fun observePendingForFolder(patientId: String, folderName: String): Flow<List<OfflineDocument>>
+
     @Query("SELECT COUNT(*) FROM offline_documents WHERE patientId = :patientId AND folderName = :folderName AND status != 'COMPLETED'")
     suspend fun getPendingCountForFolder(patientId: String, folderName: String): Int
-    
+
     @Query("SELECT * FROM offline_documents WHERE patientId = :patientId AND status != 'COMPLETED'")
     suspend fun getPendingForPatient(patientId: String): List<OfflineDocument>
+
+    // Reset any docs stuck in UPLOADING (e.g. from a crashed worker) back to PENDING so they're retried
+    @Query("UPDATE offline_documents SET status = 'PENDING' WHERE status = 'UPLOADING'")
+    suspend fun resetStuckUploading()
 }

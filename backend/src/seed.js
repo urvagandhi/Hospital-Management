@@ -117,15 +117,15 @@ function randomDate(start, end) {
 
 function generatePatients(hospitalId, count, initials) {
   const patients = [];
-  // Spread createdAt over last 2 years
+  // Spread createdAt over last 7 days
   const now = new Date();
-  const twoYearsAgo = new Date(now);
-  twoYearsAgo.setFullYear(now.getFullYear() - 2);
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(now.getDate() - 7);
 
   for (let i = 0; i < count; i++) {
     const first = firstNames[Math.floor(Math.random() * firstNames.length)];
     const last = lastNames[Math.floor(Math.random() * lastNames.length)];
-    const createdAt = randomDate(twoYearsAgo, now);
+    const createdAt = randomDate(sevenDaysAgo, now);
 
     patients.push({
       hospitalId,
@@ -143,38 +143,10 @@ function generatePatients(hospitalId, count, initials) {
 
 async function seed() {
   console.log("\n=== Hospital Management — Seed Script ===\n");
+  console.log("[Seed] Non-destructive mode: existing hospitals/patients are left untouched.\n");
 
-  // ── SAFETY GATE ──────────────────────────────────────────────────────────
-  // This script is DESTRUCTIVE — it wipes every hospital, patient, session
-  // and audit-log document. We refuse to run unless:
-  //   • NODE_ENV !== "production", AND
-  //   • The caller passes either --force or sets SEED_CONFIRM=yes-wipe-everything
-  //
-  // A previous accidental run wiped live user data. Don't remove this gate
-  // without adding a MongoDB snapshot / mongodump first.
-  const forceFlag = process.argv.includes("--force") || process.env.SEED_CONFIRM === "yes-wipe-everything";
   if (process.env.NODE_ENV === "production") {
     console.error("✗ Refusing to run seed in production (NODE_ENV=production).");
-    process.exit(1);
-  }
-  if (!forceFlag) {
-    console.error("\n" + "━".repeat(72));
-    console.error("⚠  DESTRUCTIVE OPERATION BLOCKED");
-    console.error("━".repeat(72));
-    console.error("This script will DELETE every document from:");
-    console.error("    • hospitals");
-    console.error("    • patients");
-    console.error("    • sessions");
-    console.error("    • auditlogs");
-    console.error("...and replace them with demo data.");
-    console.error("");
-    console.error("If you really intend to wipe the database, re-run with one of:");
-    console.error("    node src/seed.js --force");
-    console.error("    SEED_CONFIRM=yes-wipe-everything node src/seed.js");
-    console.error("");
-    console.error("Before doing that, take a backup:");
-    console.error("    mongodump --uri=\"$MONGODB_URI\" --out=./backup-$(date +%F)");
-    console.error("━".repeat(72) + "\n");
     process.exit(1);
   }
 
@@ -182,67 +154,77 @@ async function seed() {
     await mongoose.connect(MONGO_URI);
     console.log("[DB] Connected to", MONGO_URI.replace(/:([^@]+)@/, ":****@"));
 
-    // ── Confirm destructive action ──
-    console.log("[Seed] Dropping existing data (hospitals / patients / sessions / audit logs)...");
-    await Promise.all([
-      Hospital.deleteMany({}),
-      Patient.deleteMany({}),
-      Session.deleteMany({}),
-      AuditLog.deleteMany({}),
-    ]);
-    console.log("[Seed] All collections cleared.\n");
-
     // ── Hash password once ──
     const passwordHash = await hashPassword(PASSWORD);
-    console.log(`[Seed] Password for all accounts: ${PASSWORD}\n`);
+    console.log(`[Seed] Password for new accounts: ${PASSWORD}\n`);
 
-    // ── Create hospitals ──
-    const createdHospitals = [];
-    const patientCounts = [2, 1, 2, 1, 2]; // patients per hospital
+    // ── Create hospitals (skip if already exists by email) ──
+    const resolvedHospitals = [];
+    const patientCounts = [2, 1, 2, 1, 2];
     const hospitalInitials = ["CMC", "SHC", "LCH", "GVM", "ACI"];
 
     for (let i = 0; i < hospitals.length; i++) {
       const h = hospitals[i];
-      const hospital = await Hospital.create({
-        ...h,
-        passwordHash,
-        isActive: true,
-        mustChangePassword: false,
-        failedLoginAttempts: 0,
-        lockUntil: null,
-        biometricKeys: [],
-      });
-      createdHospitals.push(hospital);
+      let hospital = await Hospital.findOne({ email: h.email });
 
-      const emoji = h.role === "admin" ? "(ADMIN)" : "       ";
-      console.log(`  [Hospital] ${emoji} ${h.hospitalName}`);
-      console.log(`             Login: ${h.email} | ${h.phone}  (AuthCode: ${hospital.authCode})`);
+      if (hospital) {
+        const emoji = h.role === "admin" ? "(ADMIN)" : "       ";
+        console.log(`  [Hospital] ${emoji} ${h.hospitalName} — already exists, skipped`);
+      } else {
+        hospital = await Hospital.create({
+          ...h,
+          passwordHash,
+          isActive: true,
+          mustChangePassword: false,
+          failedLoginAttempts: 0,
+          lockUntil: null,
+          biometricKeys: [],
+        });
+        const emoji = h.role === "admin" ? "(ADMIN)" : "       ";
+        console.log(`  [Hospital] ${emoji} ${h.hospitalName} — created`);
+        console.log(`             Login: ${h.email} | ${h.phone}  (AuthCode: ${hospital.authCode})`);
+      }
+
+      resolvedHospitals.push(hospital);
     }
 
     console.log("");
 
-    // ── Create patients for each hospital ──
-    let totalPatients = 0;
-    for (let i = 0; i < createdHospitals.length; i++) {
-      const hospital = createdHospitals[i];
+    // ── Create patients (skip if patientId already exists for that hospital) ──
+    let created = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < resolvedHospitals.length; i++) {
+      const hospital = resolvedHospitals[i];
       const count = patientCounts[i];
       const initials = hospitalInitials[i];
       const patients = generatePatients(hospital._id, count, initials);
 
-      await Patient.insertMany(patients);
-      totalPatients += count;
+      let hospitalCreated = 0;
+      for (const p of patients) {
+        const exists = await Patient.findOne({ hospitalId: hospital._id, patientId: p.patientId });
+        if (exists) {
+          skipped++;
+        } else {
+          await Patient.create(p);
+          hospitalCreated++;
+          created++;
+        }
+      }
 
-      // Keep hospital patientIdCounter in sync with seeded patient count
-      await Hospital.updateOne({ _id: hospital._id }, { $set: { patientIdCounter: count } });
+      // Sync patientIdCounter only if new patients were added
+      if (hospitalCreated > 0) {
+        const total = await Patient.countDocuments({ hospitalId: hospital._id });
+        await Hospital.updateOne({ _id: hospital._id }, { $set: { patientIdCounter: total } });
+      }
 
-      console.log(`  [Patients] ${hospital.hospitalName}: ${count} patients (ID: ${initials}-XXX)`);
+      console.log(`  [Patients] ${hospital.hospitalName}: ${hospitalCreated} added, ${count - hospitalCreated} skipped`);
     }
 
     console.log(`\n=== Seed Complete ===`);
-    console.log(`  Hospitals: ${createdHospitals.length}`);
-    console.log(`  Patients:  ${totalPatients}`);
-    console.log(`  Password:  ${PASSWORD} (all accounts)`);
-    console.log(`  AuthCode:  Auto-generated per hospital (printed above — required as 2nd factor on login)`);
+    console.log(`  Hospitals: ${resolvedHospitals.length} processed`);
+    console.log(`  Patients:  ${created} created, ${skipped} already existed`);
+    console.log(`  Password:  ${PASSWORD} (new accounts only)`);
     console.log(`\n  Login as admin:    admin@citymedical.com   | +919876543210`);
     console.log(`  Login as hospital: admin@sunrisehealth.in   | +919876543211\n`);
 

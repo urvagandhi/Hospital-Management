@@ -39,13 +39,17 @@
 
             <TextView
                 android:id="@+id/tvTitle"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="Patient Folders"
                 android:textColor="@color/color_on_surface"
                 android:textSize="20sp"
                 android:fontFamily="@font/inter_semibold"
-                android:letterSpacing="-0.01" />
+                android:letterSpacing="-0.01"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:layout_marginEnd="@dimen/space_base" />
         </LinearLayout>
 
         <!-- Patient Info Card - Gradient Header -->
@@ -115,14 +119,16 @@
 
                         <TextView
                             android:id="@+id/tvPatientId"
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="--"
                             android:textColor="@android:color/white"
                             android:alpha="0.8"
                             android:textSize="13sp"
                             android:fontFamily="@font/inter_medium"
-                            android:layout_marginTop="2dp" />
+                            android:layout_marginTop="2dp"
+                            android:maxLines="1"
+                            android:ellipsize="end" />
                     </LinearLayout>
 
                     <!-- Edit Button -->
@@ -183,9 +189,9 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="@dimen/space_sm"
-        android:paddingHorizontal="10dp"
+        android:paddingHorizontal="@dimen/space_md"
         android:paddingTop="@dimen/space_xs"
-        android:paddingBottom="88dp"
+        android:paddingBottom="@dimen/fab_clearance"
         android:clipToPadding="false"
         app:layout_constraintTop_toBottomOf="@id/layoutTopSection"
         app:layout_constraintBottom_toBottomOf="parent" />

@@ -1,14 +1,17 @@
 package com.hospital.management.ui.profile
 
+import android.net.Uri
 import android.os.Bundle
 import android.util.Patterns
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputLayout
 import com.hospital.management.R
@@ -24,20 +27,42 @@ import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.ui.base.BaseActivity
 import com.hospital.management.ui.components.GlassSnackbar
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * Profile Activity (Task #28).
  *
- *  • View + edit non-sensitive fields (hospitalName, address) via PATCH /me.
+ *  • View + edit non-sensitive fields (hospitalName, address, logo) via PATCH /me.
+ *  • Logo: tap avatar → system image picker → preview + upload on Save.
  *  • Change email / phone via OTP dialog:
  *      1) /me/change-contact/init → backend sends OTP (new email | current email for phone)
  *      2) /me/change-contact/verify → commits
+ *  • On save/contact-change, syncs TokenManager so Dashboard header updates instantly on resume.
  */
 class ProfileActivity : BaseActivity() {
 
     private lateinit var binding: ActivityProfileBinding
     private lateinit var vm: ProfileViewModel
+    private lateinit var tokenManager: TokenManager
     private var currentHospital: Hospital? = null
+
+    /** Temp file created from the picked Uri; null if user hasn't selected a new logo. */
+    private var selectedLogoFile: File? = null
+
+    private val pickImageLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri ?: return@registerForActivityResult
+        val file = uriToTempFile(uri) ?: run {
+            GlassSnackbar.show(this, "Failed to read image", GlassSnackbar.Variant.ERROR)
+            return@registerForActivityResult
+        }
+        selectedLogoFile = file
+        // Show preview immediately
+        binding.ivLogoImage.visibility = View.VISIBLE
+        binding.tvLogoInitials.visibility = View.GONE
+        Glide.with(this).load(file).circleCrop().into(binding.ivLogoImage)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,13 +72,14 @@ class ProfileActivity : BaseActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = "Profile"
 
-        val tokenManager = TokenManager(this)
+        tokenManager = TokenManager(this)
         val apiService = RetrofitClient.getApiService(this)
         val authRepo = AuthRepository(apiService, tokenManager)
         val profileRepo = ProfileRepository(apiService)
         val factory = ViewModelFactory(authRepository = authRepo, profileRepository = profileRepo)
         vm = ViewModelProvider(this, factory)[ProfileViewModel::class.java]
 
+        binding.layoutLogoContainer.setOnClickListener { pickImageLauncher.launch("image/*") }
         binding.btnSave.setOnClickListener { saveBasic() }
         binding.btnChangeEmail.setOnClickListener { showContactChangeDialog("email") }
         binding.btnChangePhone.setOnClickListener { showContactChangeDialog("phone") }
@@ -80,12 +106,13 @@ class ProfileActivity : BaseActivity() {
         val cur = currentHospital
         val sendName = if (cur != null && name != cur.hospitalName) name else null
         val sendAddr = if (cur != null && address != (cur.address ?: "")) address else null
+        val logoToSend = selectedLogoFile
 
-        if (sendName == null && sendAddr == null) {
+        if (sendName == null && sendAddr == null && logoToSend == null) {
             GlassSnackbar.show(this, "Nothing to update", GlassSnackbar.Variant.INFO)
             return
         }
-        vm.saveProfile(sendName, sendAddr, null)
+        vm.saveProfile(sendName, sendAddr, logoToSend)
     }
 
     private fun bind(hospital: Hospital) {
@@ -94,9 +121,54 @@ class ProfileActivity : BaseActivity() {
         binding.etAddress.setText(hospital.address ?: "")
         binding.tvCurrentEmail.text = hospital.email
         binding.tvCurrentPhone.text = hospital.phone
+        updateLogoDisplay(hospital)
     }
 
-    // ── Contact change flow ────────────────────────────────────────────
+    /**
+     * Refresh the avatar widget. Skipped when the user has a pending logo selection
+     * (we keep showing the local preview until after the save completes).
+     */
+    private fun updateLogoDisplay(hospital: Hospital) {
+        if (selectedLogoFile != null) return
+        val logoUrl = hospital.logoUrl
+        val isPlaceholder = logoUrl.isNullOrEmpty() ||
+                logoUrl.contains("placeholder", ignoreCase = true)
+        if (!isPlaceholder) {
+            binding.ivLogoImage.visibility = View.VISIBLE
+            binding.tvLogoInitials.visibility = View.GONE
+            Glide.with(this).load(logoUrl).circleCrop().into(binding.ivLogoImage)
+        } else {
+            binding.ivLogoImage.visibility = View.GONE
+            binding.tvLogoInitials.visibility = View.VISIBLE
+            binding.tvLogoInitials.text = hospitalInitials(hospital.hospitalName)
+        }
+    }
+
+    private fun hospitalInitials(name: String): String {
+        val parts = name.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }
+        return when {
+            parts.size >= 2 -> "${parts.first().first()}${parts[1].first()}".uppercase()
+            parts.isNotEmpty() -> parts[0].take(2).uppercase()
+            else -> "H"
+        }
+    }
+
+    /** Copies a content Uri into a cache-dir temp file so Retrofit can read it. */
+    private fun uriToTempFile(uri: Uri): File? {
+        return try {
+            val ext = contentResolver.getType(uri)?.substringAfterLast("/") ?: "jpg"
+            val tmp = File(cacheDir, "logo_${System.currentTimeMillis()}.$ext")
+            contentResolver.openInputStream(uri)?.use { input ->
+                tmp.outputStream().use { out -> input.copyTo(out) }
+            } ?: return null
+            tmp
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    // ── Contact change flow ────────────────────────────────────────────────
+
     private fun showContactChangeDialog(field: String) {
         val hospital = currentHospital ?: return
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_contact_change_enter, null)
@@ -176,6 +248,8 @@ class ProfileActivity : BaseActivity() {
         dialog.show()
     }
 
+    // ── State observation ──────────────────────────────────────────────────
+
     private fun observe() {
         lifecycleScope.launch {
             vm.event.collect { state ->
@@ -187,7 +261,15 @@ class ProfileActivity : BaseActivity() {
                     }
                     is ProfileEvent.Saved -> {
                         binding.loadingOverlay.visibility = View.GONE
+                        // Clean up temp file; null first so updateLogoDisplay shows new URL
+                        selectedLogoFile?.delete()
+                        selectedLogoFile = null
                         bind(state.hospital)
+                        tokenManager.saveHospitalInfo(
+                            state.hospital._id,
+                            state.hospital.hospitalName,
+                            state.hospital.logoUrl ?: "",
+                        )
                         GlassSnackbar.show(this@ProfileActivity, state.message, GlassSnackbar.Variant.SUCCESS)
                         vm.reset()
                     }
@@ -199,6 +281,11 @@ class ProfileActivity : BaseActivity() {
                     is ProfileEvent.ContactChanged -> {
                         binding.loadingOverlay.visibility = View.GONE
                         bind(state.hospital)
+                        tokenManager.saveHospitalInfo(
+                            state.hospital._id,
+                            state.hospital.hospitalName,
+                            state.hospital.logoUrl ?: "",
+                        )
                         GlassSnackbar.show(this@ProfileActivity, "Contact updated", GlassSnackbar.Variant.SUCCESS)
                         vm.reset()
                     }

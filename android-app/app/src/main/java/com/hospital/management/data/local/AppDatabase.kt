@@ -7,9 +7,14 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [OfflineDocument::class], version = 3, exportSchema = true)
+@Database(
+    entities = [OfflineDocument::class, CachedPatient::class, CachedFileItem::class],
+    version = 4,
+    exportSchema = true
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun documentDao(): DocumentDao
+    abstract fun patientCacheDao(): PatientCacheDao
 
     companion object {
         @Volatile
@@ -27,6 +32,39 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `cached_patients` (
+                        `id` TEXT NOT NULL,
+                        `patientId` TEXT NOT NULL,
+                        `patientName` TEXT NOT NULL,
+                        `remarks` TEXT,
+                        `hospitalId` TEXT NOT NULL,
+                        `createdAt` TEXT NOT NULL,
+                        `folderCount` INTEGER NOT NULL DEFAULT 0,
+                        `cachedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )"""
+                )
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `cached_file_items` (
+                        `fileId` TEXT NOT NULL,
+                        `patientId` TEXT NOT NULL,
+                        `folderName` TEXT NOT NULL,
+                        `fileName` TEXT NOT NULL,
+                        `fileUrl` TEXT,
+                        `thumbnailUrl` TEXT,
+                        `mimeType` TEXT,
+                        `size` INTEGER NOT NULL DEFAULT 0,
+                        `uploadedAt` TEXT,
+                        `cachedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`fileId`, `patientId`, `folderName`)
+                    )"""
+                )
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -34,7 +72,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "hospital_management_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

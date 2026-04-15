@@ -28,15 +28,19 @@
 
     <TextView
         android:id="@+id/tvTitle"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Patients Directory"
         android:textColor="@color/color_on_surface"
         android:textSize="20sp"
         android:fontFamily="@font/inter_semibold"
         android:letterSpacing="-0.01"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginEnd="@dimen/space_base"
         app:layout_constraintBottom_toBottomOf="@id/btnBack"
         app:layout_constraintStart_toEndOf="@id/btnBack"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/btnBack" />
 
     <!-- Invisible header anchor for constraint compat -->
@@ -86,7 +90,7 @@
                 android:layout_height="match_parent"
                 android:paddingHorizontal="@dimen/space_lg"
                 android:paddingTop="@dimen/space_sm"
-                android:paddingBottom="88dp"
+                android:paddingBottom="@dimen/fab_clearance"
                 android:clipToPadding="false" />
 
             <LinearLayout

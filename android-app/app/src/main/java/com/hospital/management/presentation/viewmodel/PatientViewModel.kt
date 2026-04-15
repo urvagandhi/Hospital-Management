@@ -8,6 +8,7 @@ import com.hospital.management.data.models.FileItem
 import com.hospital.management.data.models.Folder
 import com.hospital.management.data.models.Patient
 import com.hospital.management.data.models.PatientRequest
+import com.hospital.management.data.repository.PatientRepository
 import com.hospital.management.domain.usecase.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +35,8 @@ class PatientViewModel(
     private val downloadAllPdfUseCase: DownloadAllPdfUseCase,
     private val downloadFolderZipUseCase: DownloadFolderZipUseCase,
     private val downloadAllZipUseCase: DownloadAllZipUseCase,
-    private val updatePatientUseCase: UpdatePatientUseCase
+    private val updatePatientUseCase: UpdatePatientUseCase,
+    private val patientRepository: PatientRepository? = null
 ) : ViewModel() {
 
     private val _patientState = MutableStateFlow<PatientState>(PatientState.Idle)
@@ -59,17 +61,29 @@ class PatientViewModel(
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     if (body.success) {
-                        _patients.value = body.data.patients
+                        val patients = body.data.patients
+                        _patients.value = patients
+                        patientRepository?.cachePatients(patients)
                         _patientState.value = PatientState.Success("Patients loaded")
                     } else {
-                        _patientState.value = PatientState.Error(body.message ?: "Failed to fetch patients")
+                        loadPatientsFromCache(body.message ?: "Failed to fetch patients")
                     }
                 } else {
-                    _patientState.value = PatientState.Error("Failed to fetch patients")
+                    loadPatientsFromCache("Failed to fetch patients")
                 }
             } catch (e: Exception) {
-                _patientState.value = PatientState.Error(e.message ?: "Network error")
+                loadPatientsFromCache(e.message ?: "Network error")
             }
+        }
+    }
+
+    private suspend fun loadPatientsFromCache(reason: String) {
+        val cached = patientRepository?.getCachedPatients() ?: emptyList()
+        if (cached.isNotEmpty()) {
+            _patients.value = cached
+            _patientState.value = PatientState.Success("Patients loaded")
+        } else {
+            _patientState.value = PatientState.Error(reason)
         }
     }
 
@@ -164,38 +178,48 @@ class PatientViewModel(
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     val data = body["data"]
-                     if (data != null) {
-                        try {
-                            val json = gson.toJson(data)
-                            // Backend returns a folder object with 'files' array, not a direct list
-                            // Try parsing as Folder first
-                            val folder: Folder = gson.fromJson(json, Folder::class.java)
-                            _currentFolderFiles.value = folder.files
-                            _patientState.value = PatientState.Success("Files loaded")
-                        } catch (e: Exception) {
-                            // Fallback: try parsing as direct list
-                            try {
-                                val json = gson.toJson(data)
-                                val listType = object : TypeToken<List<FileItem>>() {}.type
-                                val files: List<FileItem> = gson.fromJson(json, listType)
-                                _currentFolderFiles.value = files
-                                _patientState.value = PatientState.Success("Files loaded")
-                            } catch (e2: Exception) {
-                                // Both failed - show empty
-                                _currentFolderFiles.value = emptyList()
-                                _patientState.value = PatientState.Success("Files loaded")
-                            }
-                        }
-                     } else {
-                         _currentFolderFiles.value = emptyList()
-                         _patientState.value = PatientState.Success("Files loaded")
-                     }
+                    if (data != null) {
+                        val files = parseFolderFiles(data)
+                        _currentFolderFiles.value = files
+                        patientRepository?.cacheFolderFiles(patientId, folderName, files)
+                        _patientState.value = PatientState.Success("Files loaded")
+                    } else {
+                        _currentFolderFiles.value = emptyList()
+                        _patientState.value = PatientState.Success("Files loaded")
+                    }
                 } else {
-                    _patientState.value = PatientState.Error(response.body()?.get("message") as? String ?: "Failed to fetch files")
+                    loadFolderFilesFromCache(patientId, folderName,
+                        response.body()?.get("message") as? String ?: "Failed to fetch files")
                 }
             } catch (e: Exception) {
-                _patientState.value = PatientState.Error(e.message ?: "Network error")
+                loadFolderFilesFromCache(patientId, folderName, e.message ?: "Network error")
             }
+        }
+    }
+
+    private fun parseFolderFiles(data: Any): List<FileItem> {
+        return try {
+            val json = gson.toJson(data)
+            val folder: Folder = gson.fromJson(json, Folder::class.java)
+            folder.files
+        } catch (e: Exception) {
+            try {
+                val json = gson.toJson(data)
+                val listType = object : TypeToken<List<FileItem>>() {}.type
+                gson.fromJson(json, listType)
+            } catch (e2: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    private suspend fun loadFolderFilesFromCache(patientId: String, folderName: String, reason: String) {
+        val cached = patientRepository?.getCachedFolderFiles(patientId, folderName) ?: emptyList()
+        if (cached.isNotEmpty()) {
+            _currentFolderFiles.value = cached
+            _patientState.value = PatientState.Success("Files loaded")
+        } else {
+            _patientState.value = PatientState.Error(reason)
         }
     }
 

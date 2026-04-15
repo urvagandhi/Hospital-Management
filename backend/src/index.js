@@ -18,6 +18,7 @@ import patientRoutes from "./routes/patient.routes.js";
 import exportRoutes from "./routes/export.routes.js";
 import auditRoutes from "./routes/audit.routes.js";
 import appVersionRoutes from "./routes/appVersion.routes.js";
+import notificationsRoutes from "./routes/notifications.routes.js";
 
 const app = express();
 
@@ -89,6 +90,7 @@ app.use("/api/hospitals", hospitalsRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/audits", auditRoutes);
 app.use("/api/version", appVersionRoutes);
+app.use("/api/notifications", notificationsRoutes);
 
 // ============ HEALTH CHECK ============
 app.get("/api/health", (req, res) => {

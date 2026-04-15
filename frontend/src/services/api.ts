@@ -76,9 +76,23 @@ class ApiService {
 
         // Handle 401 Unauthorized
         if (error.response?.status === 401 && originalRequest && !originalRequest.url?.includes("/auth/login")) {
+          // Account disabled by admin — skip refresh, force logout immediately
+          const responseData = error.response?.data as any;
+          if (
+            responseData?.reason === "ACCOUNT_DISABLED" ||
+            String(responseData?.message ?? "").includes("ACCOUNT_DISABLED")
+          ) {
+            sessionStorage.removeItem("accessToken");
+            sessionStorage.removeItem("tempToken");
+            localStorage.removeItem("hospital");
+            window.location.href = "/login";
+            return Promise.reject(error);
+          }
+
           // Avoid infinite loop if refresh itself fails
           if (originalRequest.url?.includes("/auth/refresh-token")) {
             if (window.location.pathname !== "/login") {
+              sessionStorage.removeItem("accessToken");
               sessionStorage.removeItem("tempToken");
               localStorage.removeItem("hospital");
               window.location.href = "/login";
@@ -112,6 +126,7 @@ class ApiService {
             return this.api(originalRequest);
           } catch (refreshError) {
             this.refreshSubscribers = [];
+            sessionStorage.removeItem("accessToken");
             sessionStorage.removeItem("tempToken");
             localStorage.removeItem("hospital");
             window.location.href = "/login";

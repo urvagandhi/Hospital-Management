@@ -22,6 +22,7 @@ import com.hospital.management.presentation.viewmodel.PatientState
 import com.hospital.management.presentation.viewmodel.PatientViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.data.models.FileItem
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileInputStream
@@ -74,17 +75,22 @@ class FolderDetailsActivity : BaseActivity() {
 
         setupViews()
         setupObservers()
+        setupPendingDocsObserver()
         loadFiles()
     }
 
     override fun onResume() {
         super.onResume()
-        loadFiles()
+        // Only fetch from server on resume; pending docs are kept live via the Flow observer
+        patientViewModel.getFolderFiles(patientId, folderName)
     }
 
     private fun setupViewModel() {
         val apiService = RetrofitClient.getApiService(this)
-        val patientRepository = PatientRepository(apiService, tokenManager)
+        val patientRepository = PatientRepository(
+            apiService, tokenManager,
+            database.patientCacheDao()
+        )
         val factory = ViewModelFactory(patientRepository = patientRepository)
         patientViewModel = ViewModelProvider(this, factory)[PatientViewModel::class.java]
     }
@@ -151,8 +157,8 @@ class FolderDetailsActivity : BaseActivity() {
                         if (pendingOfflineFiles.isEmpty()) {
                             Toast.makeText(this@FolderDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
                         }
-                        // Still display any pending offline files even on error
-                        displayFiles(emptyList())
+                        // Use whatever server files we already have in memory (offline fallback)
+                        displayFiles(patientViewModel.currentFolderFiles.value)
                     }
                     else -> progressBar.visibility = View.GONE
                 }
@@ -299,10 +305,25 @@ class FolderDetailsActivity : BaseActivity() {
         }
     }
 
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun showOfflineDialog(message: String = "You are currently offline. Please connect to the internet and try again.") {
+        AlertDialog.Builder(this)
+            .setTitle("No Internet Connection")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
     private fun downloadFile(file: FileItem) {
         val fileUrl = file.displayUrl
 
-        // Handle local private files (pending offline upload)
+        // Handle local private files (pending offline upload) — no internet needed
         if (fileUrl.startsWith("file://") || fileUrl.startsWith("/")) {
             exportLocalFile(file, fileUrl)
             return
@@ -310,6 +331,11 @@ class FolderDetailsActivity : BaseActivity() {
 
         if (fileUrl.isEmpty()) {
             Toast.makeText(this, "File URL invalid", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (!isNetworkAvailable()) {
+            showOfflineDialog("This file is stored on the server. Connect to the internet to download it.")
             return
         }
 
@@ -474,37 +500,48 @@ class FolderDetailsActivity : BaseActivity() {
         }
     }
 
-    private fun loadFiles() {
-        // First, load pending offline files from local database
+    /**
+     * Observes pending offline docs for this folder via a Room Flow.
+     * When the sync worker deletes a doc (upload succeeded), the Flow emits the updated list,
+     * [Pending] items disappear from the UI, and server files are refreshed automatically.
+     */
+    private fun setupPendingDocsObserver() {
         lifecycleScope.launch {
-            try {
-                val pendingDocs = database.documentDao().getPendingForFolder(patientId, folderName)
-                pendingOfflineFiles = pendingDocs.map { doc ->
-                    val localFile = File(Uri.parse(doc.fileUri).path ?: "")
-                    val fileSize = if (localFile.exists()) localFile.length() else 0L
-                    val fileName = localFile.name
-                    val mimeType = if (fileName.endsWith(".pdf")) "application/pdf" else "image/jpeg"
+            var prevCount = -1
+            database.documentDao().observePendingForFolder(patientId, folderName)
+                .distinctUntilChangedBy { it.size }
+                .collect { pendingDocs ->
+                    pendingOfflineFiles = pendingDocs.map { doc ->
+                        val localFile = File(Uri.parse(doc.fileUri).path ?: "")
+                        val fileSize = if (localFile.exists()) localFile.length() else 0L
+                        val fileName = localFile.name
+                        val mimeType = if (fileName.endsWith(".pdf")) "application/pdf" else "image/jpeg"
+                        FileItem(
+                            fileName = "[Pending] $fileName",
+                            fileUrl = doc.fileUri,
+                            size = fileSize,
+                            mimeType = mimeType,
+                            uploadedAt = java.text.SimpleDateFormat(
+                                "yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault()
+                            ).format(java.util.Date(doc.timestamp))
+                        )
+                    }
+                    // Refresh display with current server files
+                    displayFiles(patientViewModel.currentFolderFiles.value)
 
-                    FileItem(
-                        fileName = "[Pending] $fileName",
-                        fileUrl = doc.fileUri,
-                        size = fileSize,
-                        mimeType = mimeType,
-                        uploadedAt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(doc.timestamp))
-                    )
+                    // When sync finishes (pending count drops to 0), re-fetch server files
+                    // so newly-uploaded files appear without the user navigating away
+                    if (prevCount > 0 && pendingDocs.isEmpty()) {
+                        patientViewModel.getFolderFiles(patientId, folderName)
+                    }
+                    prevCount = pendingDocs.size
                 }
-
-                // If we have pending files, show them immediately
-                if (pendingOfflineFiles.isNotEmpty()) {
-                    displayFiles(emptyList())
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            // Then try to fetch server files (may fail if offline)
-            patientViewModel.getFolderFiles(patientId, folderName)
         }
+    }
+
+    private fun loadFiles() {
+        // Fetch server files (Flow observer handles pending docs independently)
+        patientViewModel.getFolderFiles(patientId, folderName)
     }
 
     private fun showDownloadOptionsDialog() {
@@ -531,6 +568,10 @@ class FolderDetailsActivity : BaseActivity() {
             Toast.makeText(this, "No files to download", Toast.LENGTH_SHORT).show()
             return
         }
+        if (!isNetworkAvailable() && pendingOfflineFiles.isEmpty()) {
+            showOfflineDialog("Connect to the internet to download this folder.")
+            return
+        }
         if (pendingOfflineFiles.isNotEmpty()) {
             syncAndDownload("PDF")
         } else {
@@ -549,54 +590,42 @@ class FolderDetailsActivity : BaseActivity() {
             })
             .show()
 
-        // Create OneTimeWorkRequest
+        // Use the same unique name as auto-sync so only one worker runs at a time
         val syncRequest = androidx.work.OneTimeWorkRequest.Builder(com.hospital.management.worker.SyncDocumentsWorker::class.java)
             .setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
 
-        // Enqueue
-        androidx.work.WorkManager.getInstance(this).enqueue(syncRequest)
+        androidx.work.WorkManager.getInstance(this).enqueueUniqueWork(
+            "auto_sync_documents",
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            syncRequest
+        )
 
-        // Observe
-        androidx.work.WorkManager.getInstance(this).getWorkInfoByIdLiveData(syncRequest.id)
-            .observe(this) { workInfo ->
-                if (workInfo != null) {
-                    when (workInfo.state) {
-                        androidx.work.WorkInfo.State.SUCCEEDED -> {
-                            progressDialog.dismiss()
-                            Toast.makeText(this, "Sync complete. Starting download...", Toast.LENGTH_SHORT).show()
-                            // Refresh file list first to ensure UI is up to date (optional)
-                            loadFiles()
-
-                            // Trigger actual download
-                            if (type == "ZIP") {
-                                patientViewModel.downloadFolderZip(patientId, folderName)
-                            } else {
-                                patientViewModel.downloadFolderPdf(patientId, folderName)
-                            }
-                        }
-                        androidx.work.WorkInfo.State.FAILED -> {
-                            progressDialog.dismiss()
-                            Toast.makeText(this, "Sync failed. Generating local file...", Toast.LENGTH_SHORT).show()
-                            if (type == "ZIP") {
-                                generateLocalZip()
-                            } else {
-                                generateLocalPdf()
-                            }
-                        }
-                        androidx.work.WorkInfo.State.CANCELLED -> {
-                            progressDialog.dismiss()
-                            Toast.makeText(this, "Sync cancelled. Generating local file...", Toast.LENGTH_SHORT).show()
-                            if (type == "ZIP") {
-                                generateLocalZip()
-                            } else {
-                                generateLocalPdf()
-                            }
-                        }
-                        else -> {
-                            // running/enqueued
+        androidx.work.WorkManager.getInstance(this)
+            .getWorkInfosForUniqueWorkLiveData("auto_sync_documents")
+            .observe(this) { workInfos ->
+                val workInfo = workInfos?.firstOrNull() ?: return@observe
+                when (workInfo.state) {
+                    androidx.work.WorkInfo.State.SUCCEEDED -> {
+                        progressDialog.dismiss()
+                        Toast.makeText(this, "Sync complete. Starting download...", Toast.LENGTH_SHORT).show()
+                        if (type == "ZIP") {
+                            patientViewModel.downloadFolderZip(patientId, folderName)
+                        } else {
+                            patientViewModel.downloadFolderPdf(patientId, folderName)
                         }
                     }
+                    androidx.work.WorkInfo.State.FAILED -> {
+                        progressDialog.dismiss()
+                        Toast.makeText(this, "Sync failed. Generating local file...", Toast.LENGTH_SHORT).show()
+                        if (type == "ZIP") generateLocalZip() else generateLocalPdf()
+                    }
+                    androidx.work.WorkInfo.State.CANCELLED -> {
+                        progressDialog.dismiss()
+                        Toast.makeText(this, "Sync cancelled. Generating local file...", Toast.LENGTH_SHORT).show()
+                        if (type == "ZIP") generateLocalZip() else generateLocalPdf()
+                    }
+                    else -> { /* running/enqueued — wait */ }
                 }
             }
     }
@@ -805,6 +834,10 @@ class FolderDetailsActivity : BaseActivity() {
         // A3: prefer in-app viewer (signed URL + PdfRenderer/Glide) for remote images and PDFs
         val fileId = file._id
         val isRemote = !(fileUrl.startsWith("file://") || fileUrl.startsWith("/"))
+        if (isRemote && !isNetworkAvailable()) {
+            showOfflineDialog("This file is stored on the server. Connect to the internet to open it.")
+            return
+        }
         if (isRemote && !fileId.isNullOrBlank() && (file.isImage || file.isPdf)) {
             val intent = Intent(this, FileViewerActivity::class.java).apply {
                 putExtra("patientId", patientId)
@@ -885,6 +918,10 @@ class FolderDetailsActivity : BaseActivity() {
     private fun downloadFolderZip() {
         if (isFolderEmpty()) {
             Toast.makeText(this, "No files to download", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!isNetworkAvailable() && pendingOfflineFiles.isEmpty()) {
+            showOfflineDialog("Connect to the internet to download this folder.")
             return
         }
         if (pendingOfflineFiles.isNotEmpty()) {

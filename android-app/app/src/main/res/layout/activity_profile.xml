@@ -38,6 +38,56 @@
                 android:textColor="@color/color_on_surface_variant"
                 android:textSize="14sp" />
 
+            <!-- ── Logo picker ────────────────────────────────────── -->
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_xl"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <FrameLayout
+                    android:id="@+id/layoutLogoContainer"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackgroundBorderless">
+
+                    <TextView
+                        android:id="@+id/tvLogoInitials"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_avatar_initials"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:fontFamily="@font/inter_bold"
+                        android:textColor="@android:color/white"
+                        android:textSize="28sp"
+                        android:text="H" />
+
+                    <de.hdodenhof.circleimageview.CircleImageView
+                        android:id="@+id/ivLogoImage"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone"
+                        app:civ_border_width="@dimen/glass_stroke_width"
+                        app:civ_border_color="@color/color_glass_stroke" />
+
+                </FrameLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_xs"
+                    android:fontFamily="@font/inter"
+                    android:text="Tap to change logo"
+                    android:textColor="@color/brand_primary"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
             <!-- ── Basic fields ─────────────────────────────────────── -->
 
             <com.google.android.material.textfield.TextInputLayout

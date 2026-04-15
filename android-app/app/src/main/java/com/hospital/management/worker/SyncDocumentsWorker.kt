@@ -33,6 +33,10 @@ class SyncDocumentsWorker(
 
         return withContext(Dispatchers.IO) {
             try {
+                // Reset any docs stuck in UPLOADING (e.g. from a prior crashed worker run)
+                // so they're retried rather than silently skipped
+                documentDao.resetStuckUploading()
+
                 val pendingDocs = repository.getPendingDocuments()
                 if (pendingDocs.isEmpty()) {
                     Log.d(TAG, "No pending documents to sync")

@@ -112,7 +112,10 @@
             android:theme="@style/Theme.HospitalManagement" />
         <activity android:name=".ui.dashboard.DashboardActivity" android:exported="false" />
         <activity android:name=".ui.admission.AdmissionActivity" android:exported="false" />
-        <activity android:name=".ui.scanner.ScannerActivity" android:exported="false" />
+        <activity
+            android:name=".ui.scanner.ScannerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HospitalManagement.Transparent" />
         <activity android:name=".ui.upload.UploadActivity" android:exported="false" />
         <activity android:name=".ui.patients.PatientListActivity" android:exported="false" />
         <activity android:name=".ui.patients.PatientDetailsActivity" android:exported="false" />

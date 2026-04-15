@@ -45,4 +45,24 @@
     <dimen name="bottom_sheet_handle_height">4dp</dimen>
     <dimen name="otp_box_width">48dp</dimen>
     <dimen name="otp_box_height">56dp</dimen>
+
+    <!-- ══════════════════════════════════════════════════════════
+         RESPONSIVE COMPONENT SIZES
+         ══════════════════════════════════════════════════════════ -->
+    <!-- Stat cards: wrap_content height but respect this minimum -->
+    <dimen name="stat_card_min_height">120dp</dimen>
+    <!-- Avatar / initials containers -->
+    <dimen name="avatar_size_sm">36dp</dimen>
+    <dimen name="avatar_size_md">44dp</dimen>
+    <dimen name="avatar_size_lg">48dp</dimen>
+    <!-- Icon containers (the colored circle behind the icon) -->
+    <dimen name="icon_container_sm">36dp</dimen>
+    <dimen name="icon_container_md">44dp</dimen>
+    <!-- Upload preview: minimum visible height, can grow with content -->
+    <dimen name="preview_min_height">180dp</dimen>
+    <!-- Page thumbnail card in multi-page scanner -->
+    <dimen name="thumbnail_card_width">88dp</dimen>
+    <dimen name="thumbnail_image_height">70dp</dimen>
+    <!-- Bottom padding to clear the FAB (56dp FAB + 16dp above + 16dp content) -->
+    <dimen name="fab_clearance">88dp</dimen>
 </resources>

@@ -33,14 +33,14 @@
             android:background="@android:color/transparent">
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
                 <FrameLayout
-                    android:layout_width="36dp"
-                    android:layout_height="36dp">
+                    android:layout_width="@dimen/avatar_size_sm"
+                    android:layout_height="@dimen/avatar_size_sm">
 
                     <TextView
                         android:id="@+id/tvToolbarInitials"
@@ -66,13 +66,17 @@
 
                 <TextView
                     android:id="@+id/tvToolbarHospitalName"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="Hospital"
                     android:textColor="@color/color_on_surface"
                     android:textSize="17sp"
                     android:fontFamily="@font/inter_semibold"
-                    android:layout_marginStart="@dimen/space_md" />
+                    android:layout_marginStart="@dimen/space_md"
+                    android:layout_marginEnd="@dimen/space_xl"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
             </LinearLayout>
         </androidx.appcompat.widget.Toolbar>
 
@@ -89,7 +93,7 @@
             <com.hospital.management.ui.components.GlassCardView
                 android:id="@+id/cardTotalPatients"
                 android:layout_width="0dp"
-                android:layout_height="140dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginEnd="6dp"
                 app:cardCornerRadius="@dimen/radius_lg"
@@ -99,19 +103,20 @@
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/stat_card_min_height"
                     android:orientation="vertical"
                     android:padding="@dimen/space_base"
                     android:clipToPadding="false">
 
                     <!-- Icon -->
                     <FrameLayout
-                        android:layout_width="36dp"
-                        android:layout_height="36dp">
+                        android:layout_width="@dimen/icon_container_sm"
+                        android:layout_height="@dimen/icon_container_sm">
 
                         <View
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
                             android:background="@drawable/bg_stat_card_icon" />
 
                         <ImageView
@@ -123,32 +128,32 @@
                             android:contentDescription="@null" />
                     </FrameLayout>
 
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="0dp"
-                        android:layout_weight="1" />
-
                     <!-- Count -->
                     <TextView
                         android:id="@+id/tvPatientCount"
-                        android:layout_width="wrap_content"
+                        android:layout_marginTop="@dimen/space_base"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="0"
                         android:textSize="28sp"
                         android:fontFamily="@font/inter_bold"
-                        android:textColor="@color/color_on_surface" />
+                        android:textColor="@color/color_on_surface"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <!-- Label -->
                     <TextView
                         android:id="@+id/lblPatients"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Total Patients"
                         android:textSize="13sp"
                         android:fontFamily="@font/inter_medium"
                         android:textColor="@color/color_on_surface"
                         android:alpha="0.6"
-                        android:layout_marginTop="2dp" />
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
                 </LinearLayout>
             </com.hospital.management.ui.components.GlassCardView>
 
@@ -156,7 +161,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btnNewAdmission"
                 android:layout_width="0dp"
-                android:layout_height="140dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
                 android:clickable="true"
@@ -169,18 +174,19 @@
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/stat_card_min_height"
                     android:orientation="vertical"
                     android:padding="@dimen/space_base"
                     android:clipToPadding="false">
 
                     <FrameLayout
-                        android:layout_width="36dp"
-                        android:layout_height="36dp">
+                        android:layout_width="@dimen/icon_container_sm"
+                        android:layout_height="@dimen/icon_container_sm">
 
                         <View
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
                             android:background="@drawable/bg_circle_white_alpha" />
 
                         <ImageView
@@ -192,18 +198,16 @@
                             android:contentDescription="@null" />
                     </FrameLayout>
 
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="0dp"
-                        android:layout_weight="1" />
-
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/space_base"
                         android:text="New"
                         android:textSize="18sp"
                         android:fontFamily="@font/inter_bold"
-                        android:textColor="@android:color/white" />
+                        android:textColor="@android:color/white"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -220,7 +224,9 @@
                             android:textSize="13sp"
                             android:fontFamily="@font/inter_medium"
                             android:textColor="@android:color/white"
-                            android:alpha="0.85" />
+                            android:alpha="0.85"
+                            android:maxLines="1"
+                            android:ellipsize="end" />
 
                         <ImageView
                             android:layout_width="@dimen/icon_size_sm"

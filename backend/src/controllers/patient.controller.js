@@ -340,7 +340,8 @@ export const deleteFile = async (req, res) => {
 
     // Best effort remote cleanup; don't fail the API if Cloudinary cleanup fails.
     if (deletedFile?.cloudinaryPublicId) {
-      const remoteDeleteResult = await cloudinaryDeleteFile(deletedFile.cloudinaryPublicId);
+      const resourceType = deletedFile.resourceType || "image";
+      const remoteDeleteResult = await cloudinaryDeleteFile(deletedFile.cloudinaryPublicId, resourceType);
       if (!remoteDeleteResult.success) {
         console.warn("[Patient Controller] Cloudinary cleanup failed:", remoteDeleteResult.error);
       }

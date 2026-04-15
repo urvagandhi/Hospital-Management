@@ -122,9 +122,11 @@ hospitalSchema.index({ email: 1 });
 hospitalSchema.index({ phone: 1 });
 // authCode already has a unique index via field definition
 
-// Virtual for full address
+// Virtual for full address — skips any empty/undefined parts
 hospitalSchema.virtual("fullAddress").get(function () {
-  return `${this.address}, ${this.city}, ${this.state} ${this.zipCode}`;
+  return [this.address, this.city, this.state, this.zipCode]
+    .filter(Boolean)
+    .join(", ");
 });
 
 // Remove sensitive fields from JSON responses

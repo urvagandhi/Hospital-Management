@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import com.hospital.management.utils.FileLogger
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,14 +46,21 @@ object NetworkMonitor {
         val capabilities = activeNetwork?.let { connectivityManager.getNetworkCapabilities(it) }
         val hasInternet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
         _status.value = if (hasInternet) NetworkStatus.ONLINE else NetworkStatus.OFFLINE
+        FileLogger.i(TAG, "init — system reports hasInternet=$hasInternet → initial status=${_status.value}")
 
         // Verify with actual ping if we think we're online.
-        // Retry a few times before flipping to OFFLINE so a single transient
-        // failure (cold TLS handshake, DNS miss) doesn't surface a bogus
-        // "You are offline" banner right after login.
+        // On first app launch the backend (Render.com free tier) may be cold-starting
+        // and take 30–60 s to respond.  Don't flip to OFFLINE immediately — give it
+        // up to 90 s (3 attempts × 20 s timeout + 10 s delays) before declaring offline.
+        // This prevents the "You are offline" banner appearing on a perfectly good
+        // connection just because the server hadn't warmed up yet.
         if (hasInternet) {
             CoroutineScope(Dispatchers.IO).launch {
-                if (!pingHealthWithRetry()) _status.value = NetworkStatus.OFFLINE
+                val ok = pingHealthWithRetry()
+                if (!ok) {
+                    FileLogger.w(TAG, "Startup ping failed after all retries → setting OFFLINE")
+                    _status.value = NetworkStatus.OFFLINE
+                }
             }
         }
 
@@ -65,10 +73,15 @@ object NetworkMonitor {
             override fun onAvailable(network: Network) {
                 // Set ONLINE immediately if connectivity reports available,
                 // then verify in background (with retries)
+                FileLogger.i(TAG, "NetworkCallback.onAvailable — verifying with ping")
                 _status.value = NetworkStatus.ONLINE
                 CoroutineScope(Dispatchers.IO).launch {
                     delay(1000)
-                    if (!pingHealthWithRetry()) _status.value = NetworkStatus.OFFLINE
+                    val ok = pingHealthWithRetry()
+                    if (!ok) {
+                        FileLogger.w(TAG, "onAvailable ping failed → setting OFFLINE")
+                        _status.value = NetworkStatus.OFFLINE
+                    }
                 }
             }
 
@@ -78,7 +91,10 @@ object NetworkMonitor {
                 val caps = current?.let { connectivityManager.getNetworkCapabilities(it) }
                 val stillConnected = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
                 if (!stillConnected) {
+                    FileLogger.w(TAG, "NetworkCallback.onLost — no remaining network → OFFLINE")
                     _status.value = NetworkStatus.OFFLINE
+                } else {
+                    FileLogger.i(TAG, "NetworkCallback.onLost — fallback network still active, staying ONLINE")
                 }
             }
         })
@@ -102,26 +118,44 @@ object NetworkMonitor {
         }
     }
 
-    private suspend fun pingHealthWithRetry(attempts: Int = 3, delayMs: Long = 1500): Boolean {
+    private suspend fun pingHealthWithRetry(attempts: Int = 3, delayMs: Long = 10_000): Boolean {
         repeat(attempts) { i ->
+            FileLogger.d(TAG, "pingHealthWithRetry attempt ${i + 1}/$attempts")
             if (pingHealth()) return true
-            if (i < attempts - 1) delay(delayMs)
+            if (i < attempts - 1) {
+                FileLogger.d(TAG, "pingHealthWithRetry attempt ${i + 1} failed, waiting ${delayMs}ms")
+                delay(delayMs)
+            }
         }
         return false
     }
 
     private fun pingHealth(): Boolean {
+        val targetUrl = "$baseUrl/api/health"
+        val startMs = System.currentTimeMillis()
         return try {
-            val url = URL("$baseUrl/api/health")
+            val url = URL(targetUrl)
             val conn = url.openConnection() as HttpURLConnection
-            conn.connectTimeout = 5000
-            conn.readTimeout = 5000
+            // 20 s gives the Render.com free-tier server enough time to cold-start
+            // (cold starts typically take 30–60 s but TLS handshake completes earlier).
+            // The old 5 s was too short and caused false-offline on the very first open.
+            conn.connectTimeout = 20_000
+            conn.readTimeout = 20_000
             conn.requestMethod = "GET"
             val code = conn.responseCode
+            val elapsedMs = System.currentTimeMillis() - startMs
             conn.disconnect()
-            code == 200
+            val success = code == 200
+            FileLogger.i(TAG, "pingHealth → HTTP $code (${elapsedMs}ms) url=$targetUrl → ${if (success) "OK" else "FAIL"}")
+            success
         } catch (e: Exception) {
+            val elapsedMs = System.currentTimeMillis() - startMs
+            // Log the full exception class + message + stack trace so we know exactly
+            // WHY the ping failed (SSL error? Connection refused? Timeout? DNS failure?)
+            FileLogger.e(TAG, "pingHealth EXCEPTION after ${elapsedMs}ms url=$targetUrl — ${e.javaClass.name}: ${e.message}", e)
             false
         }
     }
+
+    private const val TAG = "NetworkMonitor"
 }

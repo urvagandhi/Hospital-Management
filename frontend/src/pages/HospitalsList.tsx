@@ -17,7 +17,7 @@ interface Hospital {
   email: string;
   phone: string;
   authCode?: string;
-  address: string;
+  address?: string;
   logoUrl?: string;
   isActive: boolean;
   createdAt: string;
@@ -29,7 +29,7 @@ interface Hospital {
 
 export const HospitalsList: React.FC = () => {
   const navigate = useNavigate();
-  const { state } = useAuth();
+  const { state, updateHospital } = useAuth();
   const { hospital } = state;
 
   const isAdmin = hospital?.role === "admin";
@@ -174,7 +174,7 @@ export const HospitalsList: React.FC = () => {
       hospitalName: hospital.hospitalName,
       email: hospital.email,
       phone: barePhone,
-      address: hospital.address,
+      address: hospital.address || "",
       isActive: hospital.isActive,
     });
     setLogoFile(null);
@@ -216,7 +216,7 @@ export const HospitalsList: React.FC = () => {
       formData.append("hospitalName", editForm.hospitalName);
       formData.append("email", editForm.email);
       formData.append("phone", editForm.phone.replace(/[^\d]/g, ""));
-      formData.append("address", editForm.address);
+      formData.append("address", editForm.address || "");
       formData.append("isActive", editForm.isActive.toString());
       if (logoFile) {
         formData.append("logo", logoFile);
@@ -232,6 +232,11 @@ export const HospitalsList: React.FC = () => {
 
       const updatedHospital = { ...editForm, logoUrl: response.data.data.logoUrl };
       setHospitals(hospitals.map((h) => (h._id === editingHospital._id ? { ...h, ...updatedHospital } : h)));
+
+      // If admin edited their own hospital, sync logo/name into global auth context → Navbar updates instantly
+      if (editingHospital._id === state.hospital?._id) {
+        updateHospital({ ...state.hospital, ...updatedHospital });
+      }
 
       setTimeout(() => {
         setEditingHospital(null);
@@ -509,7 +514,7 @@ export const HospitalsList: React.FC = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                           </div>
-                          <span className="flex-1 line-clamp-2">{h.address}</span>
+                          <span className="flex-1 line-clamp-2">{h.address || "—"}</span>
                         </div>
                       </div>
 

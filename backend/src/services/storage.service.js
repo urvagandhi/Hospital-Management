@@ -90,9 +90,9 @@ const uploadDocument = multer({
 // ---------------------------------------------------------------------------
 // deleteFile — remove a resource from Cloudinary by its public ID
 // ---------------------------------------------------------------------------
-async function deleteFile(publicId) {
+async function deleteFile(publicId, resourceType = "image") {
   try {
-    const result = await cloudinary.uploader.destroy(publicId);
+    const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
     return { success: true, result };
   } catch (error) {
     return {

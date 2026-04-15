@@ -17,7 +17,6 @@ import {
 
 const DEFAULT_PREFS: NotificationPrefs = {
     newLoginAlert: true,
-    deletionUpdates: true,
     securityAlerts: true,
     marketing: false,
 };
@@ -48,17 +47,6 @@ const ROWS: Row[] = [
         icon: (
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-        ),
-    },
-    {
-        key: "deletionUpdates",
-        label: "Deletion requests",
-        desc: "Notify me when a hospital requests account deletion (admin review queue)",
-        adminOnly: true,
-        icon: (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V4a1 1 0 011-1h6a1 1 0 011 1v3" />
             </svg>
         ),
     },

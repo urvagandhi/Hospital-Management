@@ -47,12 +47,15 @@ export const verifyAccessToken = async (req, res, next) => {
     // 2. Check DB status
     const session = await Session.findById(decoded.sessionId);
     if (!session || !session.isActive) {
+      const reason = session?.revokedReason || "SESSION_EXPIRED";
+      const message =
+        reason === "SESSION_CONFLICT"   ? "You were logged out because you signed in on another device." :
+        reason === "ACCOUNT_DISABLED"   ? "ACCOUNT_DISABLED: Your account has been disabled by the administrator." :
+                                          "Session expired or invalid. Please login again.";
       return res.status(401).json({
         success: false,
-        message: session?.revokedReason === "SESSION_CONFLICT"
-          ? "You were logged out because you signed in on another device."
-          : "Session expired or invalid. Please login again.",
-        reason: session?.revokedReason || "SESSION_EXPIRED",
+        message,
+        reason,
       });
     }
 

@@ -81,13 +81,17 @@
 
             <TextView
                 android:id="@+id/tvPatientName"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="Patient"
                 android:textColor="@color/color_on_surface"
                 android:textSize="13sp"
                 android:fontFamily="@font/inter_medium"
-                android:layout_marginStart="@dimen/space_sm" />
+                android:layout_marginStart="@dimen/space_sm"
+                android:layout_marginEnd="@dimen/space_sm"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
             <View
                 android:layout_width="1dp"
@@ -198,7 +202,7 @@
         android:layout_marginTop="@dimen/space_sm"
         android:paddingHorizontal="@dimen/space_md"
         android:paddingTop="@dimen/space_xs"
-        android:paddingBottom="88dp"
+        android:paddingBottom="@dimen/fab_clearance"
         android:clipToPadding="false"
         app:layout_constraintTop_toBottomOf="@id/tvFilesLabel"
         app:layout_constraintBottom_toBottomOf="parent" />

@@ -23,6 +23,7 @@ interface AuthContextType {
   verifyAuthCode: (authCode: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateHospital: (hospital: any) => void;
   isAuthenticated: boolean;
 }
 
@@ -196,6 +197,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
+  /** Directly sync updated hospital data into auth state (e.g. after profile save). */
+  const updateHospital = (hospital: any) => {
+    saveHospitalToStorage(hospital);
+    setState((prev) => ({ ...prev, hospital }));
+  };
+
   // 15-minute inactivity auto-logout
   const handleInactivityTimeout = useCallback(() => {
     if (state.isAuthenticated) logout();
@@ -211,6 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyAuthCode,
         logout,
         refreshUser,
+        updateHospital,
         isAuthenticated: state.isAuthenticated,
       }}
     >

@@ -122,11 +122,11 @@ export const updateHospital = async (req, res) => {
     const { id } = req.params;
     const { hospitalName, email, phone, address, isActive } = req.body;
 
-    // Validate inputs
-    if (!hospitalName || !email || !phone || !address) {
+    // Validate inputs (address is optional)
+    if (!hospitalName || !email || !phone) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: "Hospital name, email, and phone are required",
       });
     }
 
@@ -185,7 +185,7 @@ export const updateHospital = async (req, res) => {
     hospital.hospitalName = hospitalName;
     hospital.email = email.toLowerCase();
     hospital.phone = normalizedPhone;
-    hospital.address = address;
+    if (address !== undefined) hospital.address = address;
 
     // Only admins can change isActive status
     const wasActive = hospital.isActive;
@@ -657,7 +657,6 @@ export const verifyContactChange = async (req, res) => {
 
 const DEFAULT_NOTIFICATION_PREFS = {
   newLoginAlert: true,
-  deletionUpdates: true,
   securityAlerts: true,
   marketing: false,
 };
@@ -690,7 +689,7 @@ export const updateNotificationPreferences = async (req, res) => {
     if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     // Only accept known boolean keys — silently drop anything else.
-    const allowed = ["newLoginAlert", "deletionUpdates", "securityAlerts", "marketing"];
+    const allowed = ["newLoginAlert", "securityAlerts", "marketing"];
     const set = {};
     for (const k of allowed) {
       if (typeof req.body?.[k] === "boolean") {

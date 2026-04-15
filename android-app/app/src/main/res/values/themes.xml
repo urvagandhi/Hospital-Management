@@ -381,4 +381,14 @@
         <item name="android:windowLightStatusBar">false</item>
     </style>
 
+    <!-- Transparent/pass-through theme — used by ScannerActivity so no
+         intro screen is shown while the ML Kit scanner intent is loading -->
+    <style name="Theme.HospitalManagement.Transparent" parent="Base.Theme.HospitalManagement">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+
 </resources>

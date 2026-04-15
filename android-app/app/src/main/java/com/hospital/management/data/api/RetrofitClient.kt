@@ -1,12 +1,15 @@
 package com.hospital.management.data.api
 
 import android.content.Context
+import com.hospital.management.BuildConfig
+import com.hospital.management.utils.FileLogger
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
@@ -49,14 +52,33 @@ object RetrofitClient {
         // Certificate pinning with backup pin (intermediate CA)
         // Remove OkHttp pinning — rely on network_security_config.xml instead
         // to avoid double-pinning conflicts.
-        val client = OkHttpClient.Builder()
+        val builder = OkHttpClient.Builder()
             .cookieJar(cookieJar)
             .addInterceptor(UserAgentInterceptor(context))
             .addInterceptor(AuthInterceptor(context))
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            .build()
+
+        // In release builds, attach a network-level logging interceptor that
+        // writes every request/response line to FileLogger (on-device file).
+        // HEADERS level is used so we get status codes and content-types;
+        // Authorization and Cookie headers are redacted so tokens are never
+        // written to disk.  In debug, Logcat + Android Studio Network Inspector
+        // are available so no file logging is needed.
+        if (!BuildConfig.DEBUG) {
+            val httpLogger = HttpLoggingInterceptor { message ->
+                FileLogger.d("OkHttp", message)
+            }.apply {
+                level = HttpLoggingInterceptor.Level.HEADERS
+                redactHeader("Authorization")
+                redactHeader("Cookie")
+                redactHeader("Set-Cookie")
+            }
+            builder.addNetworkInterceptor(httpLogger)
+        }
+
+        val client = builder.build()
 
         return Retrofit.Builder()
             .baseUrl(BASE_URL)

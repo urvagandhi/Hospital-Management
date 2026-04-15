@@ -45,7 +45,8 @@ class ViewModelFactory(
                 DownloadAllPdfUseCase(patientRepository),
                 DownloadFolderZipUseCase(patientRepository),
                 DownloadAllZipUseCase(patientRepository),
-                UpdatePatientUseCase(patientRepository)
+                UpdatePatientUseCase(patientRepository),
+                patientRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

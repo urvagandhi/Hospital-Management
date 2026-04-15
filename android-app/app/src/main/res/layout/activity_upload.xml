@@ -22,7 +22,7 @@
         android:id="@+id/btnBack"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:layout_marginTop="36dp"
+        android:layout_marginTop="@dimen/space_sm"
         android:layout_marginStart="@dimen/space_md"
         android:background="?android:attr/selectableItemBackgroundBorderless"
         android:src="@drawable/ic_arrow_back"
@@ -86,7 +86,10 @@
                 <ImageView
                     android:id="@+id/ivPreview"
                     android:layout_width="match_parent"
-                    android:layout_height="280dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/preview_min_height"
+                    android:maxHeight="320dp"
+                    android:adjustViewBounds="true"
                     android:scaleType="centerCrop"
                     android:background="@color/color_surface_variant" />
             </com.hospital.management.ui.components.GlassCardView>

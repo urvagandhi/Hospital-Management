@@ -65,7 +65,7 @@ function formatFileSize(bytes) {
  * @param {string[]} details  - ["Generated: ...", "Files: N", ...]
  * @param {{ fileName: string, size: number, pageCount: number|null }[]} files
  */
-async function createSectionPage(title, subtitle, details = [], files = []) {
+async function createSectionPage(title, subtitle, _details = [], files = []) {
   const doc = await PDFDocument.create();
   const page = doc.addPage([612, 792]); // US Letter
   const font    = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -93,56 +93,38 @@ async function createSectionPage(title, subtitle, details = [], files = []) {
   page.drawText("MEDICAL RECORDS",   { x: 40, y: 722, size: 9,  font, color: blueLight });
 
   // ─── Decorative Divider ───────────────────────────────────────
-  page.drawRectangle({ x: 40,  y: 590, width: 247, height: 1, color: border });
-  page.drawRectangle({ x: 302, y: 586, width: 8,   height: 8, color: accent });
-  page.drawRectangle({ x: 325, y: 590, width: 247, height: 1, color: border });
+  page.drawRectangle({ x: 40,  y: 568, width: 247, height: 1, color: border });
+  page.drawRectangle({ x: 302, y: 564, width: 8,   height: 8, color: accent });
+  page.drawRectangle({ x: 325, y: 568, width: 247, height: 1, color: border });
 
-  // ─── Patient Card ─────────────────────────────────────────────
-  const cx = 40, cy = 295, cw = 532, ch = 170;
+  // ─── Patient Card (name only) ─────────────────────────────────
+  const cx = 40, cy = 380, cw = 532, ch = 90;
 
   page.drawRectangle({ x: cx + 3, y: cy - 3, width: cw, height: ch, color: cardShadow });
   page.drawRectangle({ x: cx,     y: cy,      width: cw, height: ch, color: white });
   page.drawRectangle({ x: cx,     y: cy,      width: 5,  height: ch, color: accent });
 
-  page.drawText("PATIENT INFORMATION", { x: cx + 20, y: cy + ch - 24, size: 7.5, font, color: muted });
+  page.drawText("PATIENT", { x: cx + 20, y: cy + ch - 22, size: 7.5, font, color: muted });
 
   const patientName = subtitle ? subtitle.replace(/^Patient:\s*/, "") : "";
-  page.drawText(patientName, { x: cx + 20, y: cy + ch - 52, size: 20, font, color: dark, maxWidth: cw - 50 });
+  page.drawText(patientName, { x: cx + 20, y: cy + ch - 52, size: 24, font, color: dark, maxWidth: cw - 50 });
 
-  page.drawRectangle({ x: cx + 20, y: cy + ch - 64, width: cw - 40, height: 1, color: border });
-
-  // Details grid (4 columns)
-  const colW = 115;
-  let dx = cx + 20;
-  let dy = cy + ch - 86;
-  const maxRight = cx + cw - 20;
-
-  for (const line of details) {
-    const sep = line.indexOf(": ");
-    if (sep < 0) continue;
-    const label = line.substring(0, sep).toUpperCase();
-    const value = line.substring(sep + 2);
-    page.drawText(label, { x: dx, y: dy,      size: 7,  font,    color: muted });
-    page.drawText(value,  { x: dx, y: dy - 16, size: 10, font: regular, color: dark });
-    dx += colW;
-    if (dx + colW > maxRight) { dx = cx + 20; dy -= 42; }
-  }
-
-  // ─── File List (below the card) ───────────────────────────────
+  // ─── Document List ────────────────────────────────────────────
   if (files.length > 0) {
     const listLabelY = cy - 28;
+    const docWord = files.length === 1 ? "Document" : "Documents";
 
-    page.drawText(`FILES IN THIS FOLDER (${files.length})`, {
-      x: cx + 20, y: listLabelY, size: 7.5, font, color: muted,
+    // Section heading
+    page.drawText(`${files.length} ${docWord} in this Folder`, {
+      x: cx + 20, y: listLabelY, size: 8, font, color: dark,
     });
-    page.drawRectangle({ x: cx, y: listLabelY - 9, width: cw, height: 1, color: border });
+    page.drawRectangle({ x: cx, y: listLabelY - 10, width: cw, height: 1, color: border });
 
-    // Column header labels
-    const colHeaderY = listLabelY - 20;
-    page.drawText("#",       { x: cx + 12,  y: colHeaderY, size: 6.5, font, color: muted });
-    page.drawText("FILE NAME", { x: cx + 32,  y: colHeaderY, size: 6.5, font, color: muted });
-    page.drawText("PAGES",   { x: cx + 400, y: colHeaderY, size: 6.5, font, color: muted });
-    page.drawText("SIZE",    { x: cx + 460, y: colHeaderY, size: 6.5, font, color: muted });
+    // Column headers
+    const colHeaderY = listLabelY - 22;
+    page.drawText("#",         { x: cx + 12, y: colHeaderY, size: 6.5, font, color: muted });
+    page.drawText("FILE NAME", { x: cx + 32, y: colHeaderY, size: 6.5, font, color: muted });
+    page.drawText("PAGES",     { x: cx + 450, y: colHeaderY, size: 6.5, font, color: muted });
     page.drawRectangle({ x: cx, y: colHeaderY - 5, width: cw, height: 0.75, color: border });
 
     let fileY = colHeaderY - 22;
@@ -152,37 +134,25 @@ async function createSectionPage(title, subtitle, details = [], files = []) {
 
       const f = files[i];
 
-      // Alternating row tint
       if (i % 2 === 0) {
         page.drawRectangle({ x: cx, y: fileY - 6, width: cw, height: 20, color: rgb(0.965, 0.973, 0.988) });
       }
 
-      // Index
       page.drawText(String(i + 1), { x: cx + 12, y: fileY, size: 8, font, color: muted });
 
-      // File name
-      const name = f.fileName.length > 55 ? f.fileName.substring(0, 52) + "…" : f.fileName;
+      const name = f.fileName.length > 62 ? f.fileName.substring(0, 59) + "…" : f.fileName;
       page.drawText(name, { x: cx + 32, y: fileY, size: 9, font: regular, color: dark });
 
-      // Page count
-      if (f.pageCount != null) {
-        const pgStr = f.pageCount === 1 ? "1 pg" : `${f.pageCount} pgs`;
-        page.drawText(pgStr, { x: cx + 400, y: fileY, size: 8, font: regular, color: muted });
-      } else {
-        page.drawText("—", { x: cx + 400, y: fileY, size: 8, font: regular, color: muted });
-      }
-
-      // Size
-      page.drawText(formatFileSize(f.size || 0), { x: cx + 460, y: fileY, size: 8, font: regular, color: muted });
+      const pgStr = f.pageCount != null ? (f.pageCount === 1 ? "1 pg" : `${f.pageCount} pgs`) : "—";
+      page.drawText(pgStr, { x: cx + 450, y: fileY, size: 8, font: regular, color: muted });
 
       fileY -= 22;
     }
 
-    // "…and N more" if clipped
     const maxVisible = Math.floor((colHeaderY - 22 - 45) / 22);
     if (files.length > maxVisible) {
       const remaining = files.length - maxVisible;
-      page.drawText(`…and ${remaining} more file${remaining > 1 ? "s" : ""}`, {
+      page.drawText(`…and ${remaining} more document${remaining > 1 ? "s" : ""}`, {
         x: cx + 32, y: 50, size: 8, font: regular, color: muted,
       });
     }

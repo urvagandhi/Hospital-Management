@@ -17,8 +17,6 @@ import kotlinx.coroutines.withContext
 
 /**
  * Notifications preferences (A4). Wired to backend B6 endpoints.
- * Admin sees an extra "Deletion requests" toggle and the Delete Account
- * menu item is hidden for admins (backend blocks it anyway).
  */
 class NotificationsActivity : BaseActivity() {
 

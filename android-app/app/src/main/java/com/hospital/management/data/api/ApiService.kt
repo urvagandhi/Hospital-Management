@@ -1,12 +1,15 @@
 package com.hospital.management.data.api
 
+import com.google.gson.annotations.SerializedName
 import com.hospital.management.data.models.*
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
 
-data class ZipDownloadRequest(val selectedFolders: List<String>)
+data class ZipDownloadRequest(
+    @SerializedName("selectedFolders") val selectedFolders: List<String>
+)
 
 interface ApiService {
 

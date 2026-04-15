@@ -74,10 +74,10 @@ open class BaseActivity : AppCompatActivity() {
                 override fun onReceive(context: Context?, intent: Intent?) {
                     runOnUiThread {
                         val reason = intent?.getStringExtra(AuthInterceptor.EXTRA_SESSION_REASON)
-                        val message = if (reason == "SESSION_CONFLICT") {
-                            "You were logged out because you signed in on another device."
-                        } else {
-                            "Session expired. Please sign in again."
+                        val message = when (reason) {
+                            "SESSION_CONFLICT"  -> "You were logged out because you signed in on another device."
+                            "ACCOUNT_DISABLED"  -> "Your account has been disabled by the administrator."
+                            else                -> "Session expired. Please sign in again."
                         }
                         Toast.makeText(
                             this@BaseActivity,

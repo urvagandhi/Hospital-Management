@@ -91,7 +91,7 @@ async function main() {
         console.log(`  ${h._id}  ${h.hospitalName}`);
         console.log(`    email: ${h.email}`);
         console.log(`    fcm updated: ${h.fcmToken?.updatedAt || "—"}`);
-        console.log(`    prefs: newLogin=${prefs.newLoginAlert ?? "(default on)"} security=${prefs.securityAlerts ?? "(default on)"} deletion=${prefs.deletionUpdates ?? "(default on)"}`);
+        console.log(`    prefs: newLogin=${prefs.newLoginAlert ?? "(default on)"} security=${prefs.securityAlerts ?? "(default on)"} marketing=${prefs.marketing ?? "(default off)"}`);
         console.log("");
       }
       return;
