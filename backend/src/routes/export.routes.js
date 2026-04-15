@@ -8,7 +8,7 @@ import { body } from "express-validator";
 import { verifyAccessToken, verifyAdmin } from "../middleware/auth.js";
 import { handleValidationErrors } from "../middleware/validateRequest.js";
 import rateLimit from "express-rate-limit";
-import { exportArchive, exportPatientsPdf } from "../controllers/export.controller.js";
+import { exportArchive, exportPatientsPdf, exportSampleCover } from "../controllers/export.controller.js";
 
 const router = express.Router();
 
@@ -50,5 +50,11 @@ router.get(
   exportLimiter,
   exportPatientsPdf,
 );
+
+/**
+ * GET /api/export/sample-cover
+ * Preview the PDF cover page design — no auth, dev/preview only.
+ */
+router.get("/sample-cover", exportSampleCover);
 
 export default router;

@@ -7,6 +7,7 @@ import archiver from "archiver";
 import PDFDocument from "pdfkit";
 import Patient from "../models/Patient.js";
 import Hospital from "../models/Hospital.js";
+import { generateSampleCoverPdf } from "../services/pdf.service.js";
 
 // ─── Layout constants ───────────────────────────────────────────
 const MARGIN = 40;
@@ -381,4 +382,19 @@ function formatModuleName(name) {
   return name.charAt(0).toUpperCase() + name.slice(1).replace(/[_-]/g, " ");
 }
 
-export default { exportArchive, exportPatientsPdf };
+/**
+ * GET /api/export/sample-cover
+ * Preview the PDF cover page design with dummy data — no auth required.
+ */
+export const exportSampleCover = async (req, res) => {
+  try {
+    await generateSampleCoverPdf(res);
+  } catch (error) {
+    console.error("[Export] Sample cover error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: { code: "EXPORT_ERROR", message: "Failed to generate sample PDF." } });
+    }
+  }
+};
+
+export default { exportArchive, exportPatientsPdf, exportSampleCover };

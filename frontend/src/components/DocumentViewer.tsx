@@ -48,6 +48,42 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
     setZoom(1);
   }, [index]);
 
+  // Download the current file with the correct filename.
+  // The HTML `download` attribute is ignored for cross-origin URLs (e.g. Cloudinary),
+  // so we fetch as a blob and create a same-origin blob URL.
+  const handleDownload = async () => {
+    const url = resolvedUrl || file.fileUrl;
+
+    // PDFs already have a blob URL ready — reuse it.
+    if (isPdfMime(file.mimeType) && pdfBlobUrl) {
+      const a = document.createElement("a");
+      a.href = pdfBlobUrl;
+      a.download = file.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
+    // For all other types, fetch as blob to force the correct filename.
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = file.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Fallback: open in new tab
+      window.open(url, "_blank");
+    }
+  };
+
   // Cloudinary stores PDFs as resource_type=raw, which serves them with
   // Content-Disposition: attachment. Browsers download instead of rendering.
   // Fetch as blob and create a blob URL — blob URLs use the `type` parameter
@@ -129,15 +165,12 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
               </button>
             </>
           )}
-          <a
-            href={resolvedUrl || file.fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            download={file.fileName}
+          <button
+            onClick={handleDownload}
             className="px-3 py-1.5 text-xs rounded bg-white/10 hover:bg-white/20"
           >
             Download
-          </a>
+          </button>
           <button onClick={onClose} className="px-3 py-1.5 text-xs rounded bg-white/10 hover:bg-white/20">
             Close
           </button>
