@@ -42,7 +42,7 @@ jobs:
             -H "Content-Type: application/json" \
             -d '{"email":"admin@sunrisehealth.in","password":"Test@1234"}')
           echo "Login response: $RESPONSE"
-          TOKEN=$(echo "$RESPONSE" | jq -r '.tempToken // empty')
+          TOKEN=$(echo "$RESPONSE" | jq -r '.data.tempToken // empty')
           if [ -z "$TOKEN" ]; then
             echo "No token received — login step 1 failed"
             exit 1
