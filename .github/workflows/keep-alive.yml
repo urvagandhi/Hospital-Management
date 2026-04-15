@@ -32,17 +32,24 @@ jobs:
       - name: Step 1 — Password login
         id: login
         run: |
-          RESPONSE=$(curl -s -X POST \
+          # Write response to file — avoids shell variable issues with large payloads (logoUrl is a huge base64)
+          curl -s -X POST \
             --connect-timeout 30 \
             --max-time 60 \
             --retry 2 \
             --retry-delay 20 \
             --retry-all-errors \
+            -o /tmp/login_resp.json \
             https://hospital-management-8lbf.onrender.com/api/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"admin@sunrisehealth.in","password":"Test@1234"}')
-          echo "Login response: $RESPONSE"
-          TOKEN=$(echo "$RESPONSE" | jq -r '.data.tempToken // empty')
+            -d '{"email":"admin@sunrisehealth.in","password":"Test@1234"}'
+
+          # Log only non-sensitive fields (skip the huge logoUrl)
+          echo "success=$(jq -r '.success' /tmp/login_resp.json)"
+          echo "requireAuthCode=$(jq -r '.requireAuthCode' /tmp/login_resp.json)"
+          echo "message=$(jq -r '.message' /tmp/login_resp.json)"
+
+          TOKEN=$(jq -r '.data.tempToken // empty' /tmp/login_resp.json)
           if [ -z "$TOKEN" ]; then
             echo "No token received — login step 1 failed"
             exit 1
@@ -51,18 +58,22 @@ jobs:
 
       - name: Step 2 — Verify auth code
         run: |
-          RESPONSE=$(curl -s -X POST \
+          curl -s -X POST \
             --connect-timeout 30 \
             --max-time 60 \
             --retry 2 \
             --retry-delay 20 \
             --retry-all-errors \
+            -o /tmp/auth_resp.json \
             https://hospital-management-8lbf.onrender.com/api/auth/login/verify-auth-code \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ steps.login.outputs.token }}" \
-            -d '{"authCode":"854866"}')
-          echo "Auth code response: $RESPONSE"
-          SUCCESS=$(echo "$RESPONSE" | jq -r '.success // empty')
+            -d '{"authCode":"854866"}'
+
+          echo "success=$(jq -r '.success' /tmp/auth_resp.json)"
+          echo "message=$(jq -r '.message' /tmp/auth_resp.json)"
+
+          SUCCESS=$(jq -r '.success // empty' /tmp/auth_resp.json)
           if [ "$SUCCESS" != "true" ]; then
             echo "Auth code verification failed"
             exit 1
