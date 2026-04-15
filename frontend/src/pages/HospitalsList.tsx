@@ -52,6 +52,7 @@ export const HospitalsList: React.FC = () => {
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendMessage, setResendMessage] = useState<{ id: string; text: string; ok: boolean } | null>(null);
+  const [resendTarget, setResendTarget] = useState<Hospital | null>(null);
 
   // Admin force-delete modal state
   const [deletingHospital, setDeletingHospital] = useState<Hospital | null>(null);
@@ -110,15 +111,15 @@ export const HospitalsList: React.FC = () => {
   };
 
   const handleResendWelcome = async (h: Hospital) => {
-    const confirmMsg = h.mustChangePassword
-      ? `Resend welcome email to ${h.email}?\n\nThis generates a NEW temporary password and overwrites the current one. Only use if the hospital hasn't received the original email.`
-      : `Resend the Auth Code email to ${h.email}?\n\nThis re-delivers the existing Auth Code. The password will NOT be changed.`;
-    if (!window.confirm(confirmMsg)) return;
+    setResendTarget(null);
     setResendingId(h._id);
     setResendMessage(null);
     try {
-      await api.post(`/hospitals/${h._id}/resend-welcome`);
-      setResendMessage({ id: h._id, text: "Welcome email resent successfully.", ok: true });
+      const res = await api.post(`/hospitals/${h._id}/resend-welcome`);
+      const msg = res.data?.message || (h.mustChangePassword
+        ? "Welcome email resent successfully."
+        : "Auth Code email resent successfully.");
+      setResendMessage({ id: h._id, text: msg, ok: true });
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || "Failed to resend welcome email";
       setResendMessage({ id: h._id, text: msg, ok: false });
@@ -524,45 +525,51 @@ export const HospitalsList: React.FC = () => {
                         <span className="text-xs text-gray-400">
                           Registered {new Date(h.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           {/* Admin-provisioned (mustChangePassword=true) → resends with a fresh temp password.
                               Self-registered (mustChangePassword=false) → re-delivers the existing Auth Code only. */}
                           {isAdmin && (
                             <button
-                              onClick={() => handleResendWelcome(h)}
+                              onClick={() => setResendTarget(h)}
                               disabled={resendingId === h._id}
                               title={h.mustChangePassword
-                                ? "Resend the welcome email with a new temporary password"
-                                : "Re-deliver the Auth Code email (password unchanged)"}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors duration-200 disabled:opacity-60 disabled:cursor-wait"
+                                ? "Resend welcome email with new temp password"
+                                : "Re-deliver Auth Code email (password unchanged)"}
+                              aria-label="Resend email"
+                              className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors duration-200 disabled:opacity-60 disabled:cursor-wait"
                             >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                              {resendingId === h._id
-                                ? "Sending…"
-                                : h.mustChangePassword ? "Resend Email" : "Resend Auth Code"}
+                              {resendingId === h._id ? (
+                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                              )}
                             </button>
                           )}
                           <button
                             onClick={() => handleEditClick(h)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+                            title="Edit hospital"
+                            aria-label="Edit hospital"
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
-                            Edit
                           </button>
                           {isAdmin && h.role !== "admin" && h._id !== hospital?._id && (
                             <button
                               onClick={() => openDeleteModal(h)}
-                              title="Permanently delete this hospital (requires your admin password)"
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-200"
+                              title="Delete hospital (requires admin password)"
+                              aria-label="Delete hospital"
+                              className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors duration-200"
                             >
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
                               </svg>
-                              Delete
                             </button>
                           )}
                         </div>
@@ -573,6 +580,78 @@ export const HospitalsList: React.FC = () => {
               </div>
             )}
           </>
+        )}
+
+        {/* Resend Confirmation Modal */}
+        {resendTarget && (
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
+            onClick={() => setResendTarget(null)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-100 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={`relative h-20 bg-gradient-to-br ${resendTarget.mustChangePassword ? "from-amber-400 to-orange-500" : "from-emerald-400 to-teal-500"} flex items-center justify-center`}>
+                <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/10" />
+                <div className="absolute -left-3 -bottom-3 w-14 h-14 rounded-full bg-white/10" />
+                <div className="relative w-12 h-12 bg-white/95 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 text-center">
+                  {resendTarget.mustChangePassword ? "Resend Welcome Email?" : "Resend Auth Code Email?"}
+                </h3>
+                <p className="mt-2 text-sm text-gray-600 text-center leading-relaxed">
+                  Send to{" "}
+                  <span className="font-medium text-gray-900 break-all">{resendTarget.email}</span>
+                </p>
+
+                <div className={`mt-4 rounded-xl p-3.5 text-sm ${resendTarget.mustChangePassword ? "bg-amber-50 border border-amber-100 text-amber-800" : "bg-emerald-50 border border-emerald-100 text-emerald-800"}`}>
+                  {resendTarget.mustChangePassword ? (
+                    <div className="flex gap-2.5">
+                      <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div>
+                        A <strong>new temporary password</strong> will be generated and the current one overwritten. The Auth Code stays the same.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2.5">
+                      <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      <div>
+                        The existing <strong>Auth Code</strong> will be re-emailed. The hospital's password will <strong>NOT</strong> be changed.
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-5 flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setResendTarget(null)}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleResendWelcome(resendTarget)}
+                    className={`flex-1 px-4 py-2.5 text-sm font-medium text-white rounded-lg shadow-sm transition-colors ${resendTarget.mustChangePassword ? "bg-amber-500 hover:bg-amber-600" : "bg-emerald-500 hover:bg-emerald-600"}`}
+                  >
+                    Yes, Resend
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Edit Modal */}
