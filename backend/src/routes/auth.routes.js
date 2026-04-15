@@ -10,6 +10,7 @@ import {
   changePassword,
   login,
   verifyAuthCodeLogin,
+  resendLoginAuthCode,
   logout,
   refreshToken,
   registerHospital,
@@ -242,6 +243,19 @@ router.post(
   ],
   handleValidationErrors,
   verifyAuthCodeLogin,
+);
+
+/**
+ * POST /api/auth/login/resend-auth-code
+ * Re-send the hospital's Auth Code to their registered email when the
+ * welcome email was lost. Requires the AUTH_CODE temp token (password
+ * must already be verified). 60-second per-hospital cooldown.
+ */
+router.post(
+  "/login/resend-auth-code",
+  otpLimiter,
+  verifyTempToken,
+  resendLoginAuthCode,
 );
 
 /**

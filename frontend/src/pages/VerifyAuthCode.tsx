@@ -13,6 +13,7 @@ import { ErrorMessage } from "../components/ErrorMessage";
 import { LogoHeader } from "../components/LogoHeader";
 import { OtpInput } from "../components/OtpInput";
 import { useAuth } from "../hooks/useAuth";
+import { authService } from "../services/authService";
 
 export const VerifyAuthCode: React.FC = () => {
   const navigate = useNavigate();
@@ -20,7 +21,34 @@ export const VerifyAuthCode: React.FC = () => {
 
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
+
+  const handleResend = async () => {
+    if (isResending || resendCooldown > 0) return;
+    setIsResending(true);
+    setError("");
+    setInfo("");
+    try {
+      const res = await authService.resendLoginAuthCode();
+      setInfo(res.message || "Auth Code re-sent to your email.");
+      setResendCooldown(res.data?.retryAfterSeconds ?? 60);
+    } catch (err: any) {
+      const retry = err?.data?.retryAfterSeconds;
+      if (typeof retry === "number") setResendCooldown(retry);
+      setError(err?.message || "Failed to resend Auth Code.");
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   useEffect(() => {
     document.title = "Enter Auth Code — Hospital Management";
@@ -74,6 +102,7 @@ export const VerifyAuthCode: React.FC = () => {
         </p>
 
         {error && <ErrorMessage message={error} type="error" onClose={() => setError("")} />}
+        {info && <ErrorMessage message={info} type="success" onClose={() => setInfo("")} />}
 
         <div className="mt-6">
           <OtpInput
@@ -99,8 +128,21 @@ export const VerifyAuthCode: React.FC = () => {
 
         <button
           type="button"
+          onClick={handleResend}
+          disabled={isResending || resendCooldown > 0}
+          className="mt-5 w-full text-sm text-blue-600 hover:text-blue-700 underline underline-offset-2 disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
+        >
+          {isResending
+            ? "Sending…"
+            : resendCooldown > 0
+              ? `Resend Auth Code in ${resendCooldown}s`
+              : "Didn't receive the email? Resend Auth Code"}
+        </button>
+
+        <button
+          type="button"
           onClick={handleBackToLogin}
-          className="mt-5 w-full text-sm text-gray-500 hover:text-blue-600 underline underline-offset-2"
+          className="mt-3 w-full text-sm text-gray-500 hover:text-blue-600 underline underline-offset-2"
         >
           Back to login
         </button>
