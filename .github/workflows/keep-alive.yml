@@ -1,0 +1,70 @@
+name: Keep Server Alive
+
+on:
+  schedule:
+    - cron: '*/7 * * * *'   # every 7 minutes
+  workflow_dispatch:          # allow manual trigger
+
+jobs:
+  ping-health:
+    name: Ping Health Endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            --connect-timeout 30 \
+            --max-time 60 \
+            --retry 2 \
+            --retry-delay 20 \
+            --retry-all-errors \
+            https://hospital-management-8lbf.onrender.com/api/health)
+          echo "Health status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Server returned $STATUS — may be cold starting"
+          fi
+
+  demo-login:
+    name: Demo Account Warm-up Login
+    runs-on: ubuntu-latest
+    needs: ping-health
+    steps:
+      - name: Step 1 — Password login
+        id: login
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            --connect-timeout 30 \
+            --max-time 60 \
+            --retry 2 \
+            --retry-delay 20 \
+            --retry-all-errors \
+            https://hospital-management-8lbf.onrender.com/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"admin@sunrisehealth.in","password":"Test@1234"}')
+          echo "Login response: $RESPONSE"
+          TOKEN=$(echo "$RESPONSE" | jq -r '.tempToken // empty')
+          if [ -z "$TOKEN" ]; then
+            echo "No token received — login step 1 failed"
+            exit 1
+          fi
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Step 2 — Verify auth code
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            --connect-timeout 30 \
+            --max-time 60 \
+            --retry 2 \
+            --retry-delay 20 \
+            --retry-all-errors \
+            https://hospital-management-8lbf.onrender.com/api/auth/login/verify-auth-code \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ steps.login.outputs.token }}" \
+            -d '{"authCode":"854866"}')
+          echo "Auth code response: $RESPONSE"
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success // empty')
+          if [ "$SUCCESS" != "true" ]; then
+            echo "Auth code verification failed"
+            exit 1
+          fi
+          echo "Demo login completed successfully"
