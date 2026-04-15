@@ -295,15 +295,6 @@ export const resendWelcomeEmail = async (req, res) => {
       return res.status(404).json({ success: false, message: "Hospital not found" });
     }
 
-    // Gate: once the hospital has changed their password, the admin can no
-    // longer resend — doing so would reset the user's chosen password.
-    if (!hospital.mustChangePassword) {
-      return res.status(409).json({
-        success: false,
-        message: "Hospital has already changed its password. Resend is no longer available.",
-      });
-    }
-
     // Simple 60-second per-hospital cooldown to prevent email spam.
     const lastAt = resendCooldownSecondsByHospital.get(id);
     if (lastAt && Date.now() - lastAt < 60_000) {
@@ -315,29 +306,36 @@ export const resendWelcomeEmail = async (req, res) => {
       });
     }
 
-    // Generate a fresh temp password (same alphabet/rules as initial admin register).
-    const generate = () => {
-      const U = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-      const L = "abcdefghijkmnopqrstuvwxyz";
-      const D = "23456789";
-      const S = "!@#$%^&*";
-      const all = U + L + D + S;
-      let p = U[crypto.randomInt(0, U.length)] + L[crypto.randomInt(0, L.length)]
-        + D[crypto.randomInt(0, D.length)] + S[crypto.randomInt(0, S.length)];
-      for (let i = 4; i < 12; i++) p += all[crypto.randomInt(0, all.length)];
-      const arr = p.split("");
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = crypto.randomInt(0, i + 1);
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr.join("");
-    };
-    const newTempPassword = generate();
+    // Two resend modes based on account state:
+    //  • Admin-provisioned (mustChangePassword=true): rotate temp password
+    //    and email both (password + authCode).
+    //  • Self-registered (mustChangePassword=false): DON'T touch the password
+    //    — the user chose it. Just re-deliver the authCode.
+    let newTempPassword = null;
+    if (hospital.mustChangePassword) {
+      const generate = () => {
+        const U = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const L = "abcdefghijkmnopqrstuvwxyz";
+        const D = "23456789";
+        const S = "!@#$%^&*";
+        const all = U + L + D + S;
+        let p = U[crypto.randomInt(0, U.length)] + L[crypto.randomInt(0, L.length)]
+          + D[crypto.randomInt(0, D.length)] + S[crypto.randomInt(0, S.length)];
+        for (let i = 4; i < 12; i++) p += all[crypto.randomInt(0, all.length)];
+        const arr = p.split("");
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = crypto.randomInt(0, i + 1);
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr.join("");
+      };
+      newTempPassword = generate();
 
-    hospital.passwordHash = await hashPassword(newTempPassword);
-    hospital.failedLoginAttempts = 0;
-    hospital.lockUntil = undefined;
-    await hospital.save();
+      hospital.passwordHash = await hashPassword(newTempPassword);
+      hospital.failedLoginAttempts = 0;
+      hospital.lockUntil = undefined;
+      await hospital.save();
+    }
 
     resendCooldownSecondsByHospital.set(id, Date.now());
 
@@ -353,7 +351,7 @@ export const resendWelcomeEmail = async (req, res) => {
       console.error("[resendWelcomeEmail] mail send failed:", mailErr.message);
       return res.status(502).json({
         success: false,
-        message: "Hospital password was reset but the email could not be delivered. Please try again.",
+        message: "The welcome email could not be delivered. Please try again.",
       });
     }
 
@@ -363,12 +361,18 @@ export const resendWelcomeEmail = async (req, res) => {
       status: "SUCCESS",
       ipAddress: req.ip || req.connection?.remoteAddress,
       userAgent: req.headers["user-agent"],
-      details: { targetHospitalId: id, targetEmail: hospital.email },
+      details: {
+        targetHospitalId: id,
+        targetEmail: hospital.email,
+        resetPassword: Boolean(newTempPassword),
+      },
     }).catch((e) => console.error("[AuditLog] resendWelcome:", e.message));
 
     return res.status(200).json({
       success: true,
-      message: "Welcome email resent with a new temporary password.",
+      message: newTempPassword
+        ? "Welcome email resent with a new temporary password."
+        : "Auth Code re-sent to the hospital's registered email.",
     });
   } catch (error) {
     console.error("[resendWelcomeEmail] error:", error);

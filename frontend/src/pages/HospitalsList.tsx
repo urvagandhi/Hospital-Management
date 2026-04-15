@@ -110,9 +110,10 @@ export const HospitalsList: React.FC = () => {
   };
 
   const handleResendWelcome = async (h: Hospital) => {
-    if (!window.confirm(
-      `Resend welcome email to ${h.email}?\n\nThis generates a NEW temporary password and overwrites the current one. Only use if the hospital hasn't received the original email.`
-    )) return;
+    const confirmMsg = h.mustChangePassword
+      ? `Resend welcome email to ${h.email}?\n\nThis generates a NEW temporary password and overwrites the current one. Only use if the hospital hasn't received the original email.`
+      : `Resend the Auth Code email to ${h.email}?\n\nThis re-delivers the existing Auth Code. The password will NOT be changed.`;
+    if (!window.confirm(confirmMsg)) return;
     setResendingId(h._id);
     setResendMessage(null);
     try {
@@ -524,18 +525,23 @@ export const HospitalsList: React.FC = () => {
                           Registered {new Date(h.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                         </span>
                         <div className="flex items-center gap-2">
-                          {/* Only show resend while the hospital hasn't changed their admin-set password */}
-                          {isAdmin && h.mustChangePassword && (
+                          {/* Admin-provisioned (mustChangePassword=true) → resends with a fresh temp password.
+                              Self-registered (mustChangePassword=false) → re-delivers the existing Auth Code only. */}
+                          {isAdmin && (
                             <button
                               onClick={() => handleResendWelcome(h)}
                               disabled={resendingId === h._id}
-                              title="Hospital hasn't logged in yet — resend the welcome email with a new temporary password"
+                              title={h.mustChangePassword
+                                ? "Resend the welcome email with a new temporary password"
+                                : "Re-deliver the Auth Code email (password unchanged)"}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors duration-200 disabled:opacity-60 disabled:cursor-wait"
                             >
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                               </svg>
-                              {resendingId === h._id ? "Sending…" : "Resend Email"}
+                              {resendingId === h._id
+                                ? "Sending…"
+                                : h.mustChangePassword ? "Resend Email" : "Resend Auth Code"}
                             </button>
                           )}
                           <button
