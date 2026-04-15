@@ -22,7 +22,7 @@
         android:id="@+id/ivLogo"
         android:layout_width="120dp"
         android:layout_height="120dp"
-        android:src="@drawable/ic_splash_logo"
+        android:src="@drawable/ic_platform_logo"
         android:contentDescription="App Logo"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

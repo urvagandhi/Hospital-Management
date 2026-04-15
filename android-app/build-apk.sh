@@ -64,7 +64,7 @@ case "$MODE" in
         echo ""
         echo "-- Release build --"
         ./gradlew assembleRelease "${GRADLE_OPTS[@]}"
-        SRC_PATH="app/build/outputs/apk/release/app-release-unsigned.apk"
+        SRC_PATH="app/build/outputs/apk/release/app-release.apk"
         APK_PATH="app/build/outputs/apk/release/HospitALL_${TIMESTAMP}.apk"
         ;;
     clean)

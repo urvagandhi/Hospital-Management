@@ -7,15 +7,12 @@
         </trust-anchors>
     </base-config>
 
-    <!-- Pin certificates for the production API domain -->
+    <!-- Production API domain — inherits base-config (system CAs, no cleartext) -->
+    <!-- Certificate pins removed: Render.com rotates certs via Google Trust Services;
+         pinning causes SSLPeerUnverifiedException after every rotation. System CA
+         trust (enforced by base-config above) is sufficient here. -->
     <domain-config>
         <domain includeSubdomains="true">hospital-management-8lbf.onrender.com</domain>
-        <pin-set expiration="2036-01-01">
-            <!-- GTS Root R4 (Google Trust Services root CA used by Render) - valid until ~2036 -->
-            <pin digest="SHA-256">mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=</pin>
-            <!-- Backup: Google Trust Services WE1 intermediate CA -->
-            <pin digest="SHA-256">kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=</pin>
-        </pin-set>
     </domain-config>
 
     <!-- Allow localhost cleartext for development only -->

@@ -29,6 +29,15 @@
                 android:orientation="vertical"
                 android:padding="@dimen/space_xl">
 
+                <!-- Platform logo -->
+                <ImageView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginBottom="@dimen/space_lg"
+                    android:src="@drawable/ic_platform_logo"
+                    android:contentDescription="HospitAll" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

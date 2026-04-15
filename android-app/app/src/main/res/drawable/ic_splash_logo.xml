@@ -3,14 +3,19 @@
     android:height="120dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    
+
     <!-- Background Rounded Square -->
     <path
         android:fillColor="#4F46E5"
         android:pathData="M24,0 h60 a24,24 0 0 1 24,24 v60 a24,24 0 0 1 -24,24 h-60 a24,24 0 0 1 -24,-24 v-60 a24,24 0 0 1 24,-24 z"/>
-        
-    <!-- The "H" -->
+
+    <!-- Hospital circle ring -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M36,30 h8 v20 h20 v-20 h8 v48 h-8 v-20 h-20 v20 h-8 z"/>
+        android:pathData="M54,24C36.3,24 22,38.3 22,56c0,17.7 14.3,32 32,32s32,-14.3 32,-32C86,38.3 71.7,24 54,24zM54,78c-12.1,0 -22,-9.9 -22,-22s9.9,-22 22,-22s22,9.9 22,22S66.1,78 54,78z"/>
+
+    <!-- Plus / cross symbol -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M62,50h-6v-6c0,-1.1 -0.9,-2 -2,-2s-2,0.9 -2,2v6h-6c-1.1,0 -2,0.9 -2,2s0.9,2 2,2h6v6c0,1.1 0.9,2 2,2s2,-0.9 2,-2v-6h6c1.1,0 2,-0.9 2,-2S63.1,50 62,50z"/>
 </vector>
