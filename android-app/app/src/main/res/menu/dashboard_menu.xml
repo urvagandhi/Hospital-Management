@@ -33,14 +33,6 @@
             app:showAsAction="never" />
     </group>
 
-    <!-- ═══════════════  DANGER (non-admin only)  ═══════════════ -->
-    <group android:id="@+id/menu_group_danger">
-        <item
-            android:id="@+id/action_delete_account"
-            android:title="Delete Account"
-            app:showAsAction="never" />
-    </group>
-
     <!-- Sign Out stays as a toolbar icon (showAsAction=always),
          NOT inside the overflow popup. This is the same icon you
          see beside the hamburger — not a duplicate. -->

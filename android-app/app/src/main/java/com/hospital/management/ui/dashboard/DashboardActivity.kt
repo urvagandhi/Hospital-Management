@@ -67,6 +67,17 @@ class DashboardActivity : BaseActivity() {
         setupPatientListeners()
         observeNetworkStatus()
         SessionManager.updateLastInteractionTime(this)
+        requestNotificationPermissionIfNeeded()
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val granted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+            }
+        }
     }
 
     // SESSION_REVOKED receiver is now handled by BaseActivity
@@ -121,8 +132,6 @@ class DashboardActivity : BaseActivity() {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        // Admin can't self-delete (backend blocks it); hide the Danger group entirely.
-        menu.setGroupVisible(R.id.menu_group_danger, !isAdmin)
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -144,10 +153,6 @@ class DashboardActivity : BaseActivity() {
             }
             R.id.action_notifications -> {
                 startActivity(Intent(this, com.hospital.management.ui.profile.NotificationsActivity::class.java))
-                true
-            }
-            R.id.action_delete_account -> {
-                startActivity(Intent(this, com.hospital.management.ui.profile.DeleteAccountActivity::class.java))
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -213,20 +218,40 @@ class DashboardActivity : BaseActivity() {
         lifecycleScope.launch {
             var hospitalName = tokenManager.getHospitalName() ?: "Hospital"
             if (hospitalName.isEmpty()) hospitalName = "Hospital"
-            
+
             val logoUrl = tokenManager.getHospitalLogoUrl() ?: ""
-            
+
             binding.tvToolbarHospitalName.text = hospitalName
-            if (logoUrl.isNotEmpty()) {
-                Glide.with(this@DashboardActivity)
-                    .load(logoUrl)
-                    .circleCrop()
-                    .placeholder(R.drawable.ic_splash_logo)
-                    .error(R.drawable.ic_splash_logo)
-                    .into(binding.ivToolbarLogo)
-            } else {
-                 binding.ivToolbarLogo.setImageResource(R.drawable.ic_splash_logo)
-            }
+            applyHospitalAvatar(hospitalName, logoUrl)
+        }
+    }
+
+    /**
+     * Show a real logo image if one exists, otherwise render initials on a
+     * brand-gradient circle. Keeps appearance consistent with web navbar.
+     */
+    private fun applyHospitalAvatar(hospitalName: String, logoUrl: String) {
+        val isPlaceholder = logoUrl.isEmpty() || logoUrl.contains("placeholder", ignoreCase = true)
+        if (!isPlaceholder) {
+            binding.tvToolbarInitials.visibility = View.GONE
+            binding.ivToolbarLogo.visibility = View.VISIBLE
+            Glide.with(this@DashboardActivity)
+                .load(logoUrl)
+                .circleCrop()
+                .into(binding.ivToolbarLogo)
+        } else {
+            binding.ivToolbarLogo.visibility = View.GONE
+            binding.tvToolbarInitials.visibility = View.VISIBLE
+            binding.tvToolbarInitials.text = hospitalInitials(hospitalName)
+        }
+    }
+
+    private fun hospitalInitials(name: String): String {
+        val parts = name.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }
+        return when {
+            parts.size >= 2 -> "${parts.first().first()}${parts[1].first()}".uppercase()
+            parts.isNotEmpty() -> parts[0].take(2).uppercase()
+            else -> "H"
         }
     }
 
@@ -264,34 +289,11 @@ class DashboardActivity : BaseActivity() {
                     
                     // Update display with the resolved values
                     binding.tvToolbarHospitalName.text = name
-                    
-                    if (logoUrl.isNotEmpty()) {
-                        Glide.with(this@DashboardActivity)
-                            .load(logoUrl)
-                            .circleCrop()
-                            .placeholder(R.drawable.ic_splash_logo)
-                            .error(R.drawable.ic_splash_logo)
-                            .into(binding.ivToolbarLogo)
-                    } else {
-                        binding.ivToolbarLogo.setImageResource(R.drawable.ic_splash_logo)
-                    }
+                    applyHospitalAvatar(name, logoUrl)
                     
                     // Save to cache only if we have valid values to update
                     tokenManager.saveHospitalInfo(hospital._id, name, logoUrl)
 
-                    // B2: surface deletion-pending state — Snackbar with a "Review" action
-                    // that deep-links to DeleteAccountActivity where the user can cancel.
-                    if (hospital.deletionStatus == "deletion_pending") {
-                        try {
-                            com.google.android.material.snackbar.Snackbar
-                                .make(binding.root, "Account deletion pending — tap to review", com.google.android.material.snackbar.Snackbar.LENGTH_INDEFINITE)
-                                .setAction("Review") {
-                                    startActivity(Intent(this@DashboardActivity,
-                                        com.hospital.management.ui.profile.DeleteAccountActivity::class.java))
-                                }
-                                .show()
-                        } catch (_: Exception) { /* UI not ready — ignore */ }
-                    }
                     }
                 } else {
                     // API failed - keep existing cached data

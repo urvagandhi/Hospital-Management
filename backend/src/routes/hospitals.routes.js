@@ -15,11 +15,7 @@ import {
   verifyContactChange,
   getNotificationPreferences,
   updateNotificationPreferences,
-  requestAccountDeletion,
-  cancelAccountDeletion,
-  listDeletionRequests,
-  approveDeletion,
-  rejectDeletion,
+  adminForceDelete,
 } from "../controllers/hospitals.controller.js";
 import { verifyAccessToken, verifyAdmin, verifyAdminOrSelf } from "../middleware/auth.js";
 import { uploadSingle } from "../middleware/upload.js";
@@ -59,15 +55,6 @@ router.post("/me/change-contact/verify", otpLimiter, verifyContactChange);
 router.get("/me/notification-preferences", getNotificationPreferences);
 router.put("/me/notification-preferences", updateNotificationPreferences);
 
-// B2 — Account deletion (user self-service)
-router.post("/me/account/deletion-request", authLimiter, requestAccountDeletion);
-router.post("/me/account/deletion-cancel", authLimiter, cancelAccountDeletion);
-
-// B2 — Admin: list + approve/reject deletion requests
-router.get("/deletion-requests", verifyAdmin, listDeletionRequests);
-router.post("/:id/deletion/approve", verifyAdmin, approveDeletion);
-router.post("/:id/deletion/reject", verifyAdmin, rejectDeletion);
-
 /**
  * GET /api/hospitals
  * Get all hospitals (admin only)
@@ -92,5 +79,11 @@ router.put("/:id", verifyAdminOrSelf, uploadSingle("logo"), updateHospital);
  * that has not yet changed its password. Admin only.
  */
 router.post("/:id/resend-welcome", verifyAdmin, resendWelcomeEmail);
+
+/**
+ * DELETE /api/hospitals/:id
+ * Admin-initiated forced deletion. Body: { password, reason }.
+ */
+router.delete("/:id", verifyAdmin, authLimiter, adminForceDelete);
 
 export default router;

@@ -48,6 +48,17 @@ export async function sendPushToDevice(fcmToken, title, body, data = {}) {
       token: fcmToken,
       notification: { title, body },
       data: stringData,
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "hospital_notifications",
+          defaultSound: true,
+        },
+      },
+      apns: {
+        headers: { "apns-priority": "10" },
+        payload: { aps: { sound: "default" } },
+      },
     };
 
     await admin.messaging().send(message);
@@ -164,33 +175,3 @@ export async function notifyPasswordChanged(userId) {
   }
 }
 
-/**
- * Notify all admins who opted-in about a new deletion request.
- * Gated by each admin's notificationPrefs.deletionUpdates.
- */
-export async function notifyAdminsOfDeletionRequest(hospitalName) {
-  try {
-    const admins = await Hospital.find({
-      role: "admin",
-      isActive: true,
-      "notificationPrefs.deletionUpdates": { $ne: false },
-    }).select("_id fcmToken").lean();
-
-    const results = [];
-    for (const admin of admins) {
-      if (admin.fcmToken?.token) {
-        const r = await sendPushToDevice(
-          admin.fcmToken.token,
-          "Deletion Request",
-          `${hospitalName} has requested account deletion`,
-          { type: "DELETION_REQUEST" }
-        );
-        results.push({ adminId: String(admin._id), ...r });
-      }
-    }
-    return { success: true, count: results.length, results };
-  } catch (error) {
-    console.error("[push.service] notifyAdminsOfDeletionRequest failed:", error.message);
-    return { success: false, error: error.message };
-  }
-}

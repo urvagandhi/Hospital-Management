@@ -37,4 +37,12 @@
     <!-- ─── Blob gradient colors — Dark ─── -->
     <color name="color_blob_primary">#261D4ED8</color>     <!-- #1D4ED8 @ 15% -->
     <color name="color_blob_accent">#1A0EA5E9</color>     <!-- #0EA5E9 @ 10% -->
+
+    <!-- ─── Semantic surfaces (dark) ─── -->
+    <color name="color_danger_surface">#2A1616</color>
+    <color name="color_danger_stroke">#7F1D1D</color>
+    <color name="color_danger_text">#FCA5A5</color>
+    <color name="color_warning_surface">#2B1F0A</color>
+    <color name="color_warning_stroke">#854D0E</color>
+    <color name="color_warning_text">#FDE68A</color>
 </resources>

@@ -16,6 +16,7 @@ import { OtpInput } from "../components/OtpInput";
 import { TextInput } from "../components/TextInput";
 import { useAuth } from "../hooks/useAuth";
 import { useScrollToHash } from "../hooks/useScrollToHash";
+import { getAvatarGradient, getInitials, isPlaceholderLogo } from "../utils/avatar";
 import {
   getCurrentHospital,
   patchProfile,
@@ -215,11 +216,17 @@ const Profile: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Logo</label>
               <div className="flex items-center gap-4">
-                <img
-                  src={logoPreview || hospital?.logoUrl || "https://via.placeholder.com/80?text=Logo"}
-                  alt="Logo"
-                  className="w-16 h-16 rounded-lg object-cover border border-gray-200"
-                />
+                {(() => {
+                  const src = logoPreview || (hospital?.logoUrl && !isPlaceholderLogo(hospital.logoUrl) ? hospital.logoUrl : null);
+                  if (src) {
+                    return <img src={src} alt="Logo" className="w-16 h-16 rounded-lg object-cover border border-gray-200" />;
+                  }
+                  return (
+                    <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${getAvatarGradient(hospital?.hospitalName)} flex items-center justify-center border border-gray-200`}>
+                      <span className="text-white font-bold text-lg">{getInitials(hospital?.hospitalName)}</span>
+                    </div>
+                  );
+                })()}
                 <label className="cursor-pointer text-sm text-blue-600 hover:text-blue-800 underline underline-offset-2">
                   Choose new logo
                   <input type="file" accept="image/*" className="hidden" onChange={handleLogoSelect} />

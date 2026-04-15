@@ -233,7 +233,14 @@ class LoginActivity : BaseActivity() {
                         val alreadyEnabled = if (currentHospitalId.isNullOrEmpty()) false
                             else withContext(Dispatchers.IO) { tokenManager.isBiometricEnabled(currentHospitalId) }
                         val keyStillValid = currentHospitalId != null && biometricHelper.hasKeyPair(currentHospitalId)
-                        if ((alreadyEnabled && keyStillValid) || !biometricHelper.isBiometricAvailable() || currentHospitalId.isNullOrEmpty()) {
+                        if ((alreadyEnabled && keyStillValid) || currentHospitalId.isNullOrEmpty()) {
+                            navigateToDashboard()
+                        } else if (!biometricHelper.isBiometricAvailable()) {
+                            val reason = biometricHelper.biometricUnavailableReason()
+                            Log.w("LoginActivity", "Biometric unavailable: $reason")
+                            if (reason != null) {
+                                GlassSnackbar.show(this@LoginActivity, reason, GlassSnackbar.Variant.INFO)
+                            }
                             navigateToDashboard()
                         } else {
                             // Either never enrolled for this hospital, or a previous key was wiped —

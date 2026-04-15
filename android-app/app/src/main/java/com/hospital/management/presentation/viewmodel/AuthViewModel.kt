@@ -72,7 +72,14 @@ class AuthViewModel(
                         }
                     }
                 } else {
-                    val errorMsg = response.body()?.message ?: "Login failed"
+                    val errBody = try { response.errorBody()?.string() } catch (_: Exception) { null }
+                    val parsedMsg = errBody?.let {
+                        try {
+                            val json = org.json.JSONObject(it)
+                            json.optString("message").takeIf { m -> m.isNotEmpty() }
+                        } catch (_: Exception) { null }
+                    }
+                    val errorMsg = parsedMsg ?: response.body()?.message ?: "Login failed"
                     _authState.value = AuthState.Error(errorMsg)
                 }
             } catch (e: Exception) {

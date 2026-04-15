@@ -136,6 +136,38 @@
                         android:padding="@dimen/space_sm" />
                 </LinearLayout>
 
+                <!-- Remarks / description row (hidden when empty) -->
+                <LinearLayout
+                    android:id="@+id/layoutRemarks"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/color_surface_elevated"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="@dimen/space_base"
+                    android:paddingVertical="@dimen/space_sm"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Remarks"
+                        android:textSize="11sp"
+                        android:fontFamily="@font/inter_semibold"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.06"
+                        android:textColor="@color/color_on_surface_variant" />
+
+                    <TextView
+                        android:id="@+id/tvPatientRemarks"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:fontFamily="@font/inter"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"
+                        android:textColor="@color/color_on_surface" />
+                </LinearLayout>
+
                 <!-- Spacer below gradient -->
                 <View
                     android:layout_width="match_parent"

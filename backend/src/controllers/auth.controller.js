@@ -770,9 +770,10 @@ export const login = async (req, res) => {
     }
 
     if (!hospital.isActive) {
-      return res.status(401).json({
+      return res.status(403).json({
         success: false,
-        message: "Invalid credentials",
+        code: "ACCOUNT_DISABLED",
+        message: "Your account has been disabled by an administrator. Please contact support.",
       });
     }
 

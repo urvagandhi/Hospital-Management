@@ -106,11 +106,6 @@
             android:screenOrientation="portrait"
             android:theme="@style/Theme.HospitalManagement" />
         <activity
-            android:name=".ui.profile.DeleteAccountActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.HospitalManagement" />
-        <activity
             android:name=".ui.folders.FileViewerActivity"
             android:exported="false"
             android:screenOrientation="portrait"

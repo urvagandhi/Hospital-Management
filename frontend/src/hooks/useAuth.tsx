@@ -119,8 +119,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setState((prev) => ({ ...prev, tempToken, loading: false, error: null }));
       return "AUTH_CODE";
     } catch (error: any) {
-      const errorMessage = error.message || error.response?.message || "Login failed";
+      const serverMsg = error?.response?.data?.message;
+      const errorMessage = serverMsg || error.message || "Login failed";
       setState((prev) => ({ ...prev, error: errorMessage, loading: false }));
+      // Re-throw an Error whose .message is the server message so Login.tsx
+      // can display the disabled-account notice (or any other server error)
+      // instead of the generic axios "Request failed with status code ..." text.
+      if (serverMsg) {
+        const e: any = new Error(serverMsg);
+        e.response = error.response;
+        throw e;
+      }
       throw error;
     }
   };

@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import { HospitalProfileModal } from "./HospitalProfileModal";
 import { getCurrentHospital, Hospital } from "../services/hospitalService";
 import { NetworkStatusPill } from "./NetworkStatus";
+import { getInitials, getAvatarGradient, isPlaceholderLogo } from "../utils/avatar";
 
 export const Navbar: React.FC = () => {
   const { state, logout } = useAuth();
@@ -54,11 +55,11 @@ export const Navbar: React.FC = () => {
           {/* Left Side: Logo & Navigation */}
           <div className="flex">
             <div className="flex-shrink-0 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center overflow-hidden shadow-sm">
-                {hospital?.logoUrl ? (
+              <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${getAvatarGradient(hospital?.hospitalName)} flex items-center justify-center overflow-hidden shadow-sm`}>
+                {hospital?.logoUrl && !isPlaceholderLogo(hospital.logoUrl) ? (
                   <img className="h-full w-full object-cover" src={hospital.logoUrl} alt={hospital.hospitalName} />
                 ) : (
-                  <span className="text-white font-bold text-lg">{hospital?.hospitalName?.charAt(0) || "H"}</span>
+                  <span className="text-white font-bold text-sm">{getInitials(hospital?.hospitalName)}</span>
                 )}
               </div>
               <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-500">{hospital?.hospitalName || "Hospital Manager"}</span>
@@ -78,18 +79,6 @@ export const Navbar: React.FC = () => {
                 >
                   Hospitals
                 </Link>
-                <Link
-                  to="/activity"
-                  className="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-500 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
-                >
-                  Activity
-                </Link>
-                <Link
-                  to="/admin/deletion-requests"
-                  className="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-500 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
-                >
-                  Deletions
-                </Link>
               </div>
             )}
           </div>
@@ -102,11 +91,11 @@ export const Navbar: React.FC = () => {
                 <span className="hidden md:block text-sm font-medium text-gray-700">{hospital?.email}</span>
                 <Menu.Button className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-shadow">
                   <span className="sr-only">Open user menu</span>
-                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 font-bold border border-blue-200 overflow-hidden">
-                    {hospital?.logoUrl ? (
+                  <div className={`h-9 w-9 rounded-full bg-gradient-to-br ${getAvatarGradient(hospital?.hospitalName)} flex items-center justify-center text-white font-bold border border-white/40 overflow-hidden text-xs`}>
+                    {hospital?.logoUrl && !isPlaceholderLogo(hospital.logoUrl) ? (
                       <img className="h-full w-full object-cover" src={hospital.logoUrl} alt={hospital.hospitalName} />
                     ) : (
-                      hospital?.hospitalName?.charAt(0).toUpperCase() || "U"
+                      getInitials(hospital?.hospitalName)
                     )}
                   </div>
                 </Menu.Button>
@@ -183,23 +172,6 @@ export const Navbar: React.FC = () => {
                       )}
                     </Menu.Item>
                   </div>
-
-                  {/* DANGER — non-admin only */}
-                  {!isAdmin && (
-                    <div className="py-1">
-                      <p className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-red-400">Danger</p>
-                      <Menu.Item>
-                        {({ active }) => (
-                          <Link to="/delete-account" className={`${active ? "bg-red-50" : ""} group flex items-center px-4 py-2 text-sm text-red-700`}>
-                            <svg className="mr-3 h-5 w-5 text-red-400 group-hover:text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V4a1 1 0 011-1h6a1 1 0 011 1v3" />
-                            </svg>
-                            Delete Account
-                          </Link>
-                        )}
-                      </Menu.Item>
-                    </div>
-                  )}
 
                   <div className="py-1">
                     <Menu.Item>

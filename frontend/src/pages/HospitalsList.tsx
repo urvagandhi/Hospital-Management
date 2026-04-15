@@ -8,6 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { useAuth } from "../hooks/useAuth";
 import api from "../services/api";
+import { adminForceDeleteHospital } from "../services/hospitalService";
+import { isPlaceholderLogo } from "../utils/avatar";
 
 interface Hospital {
   _id: string;
@@ -19,6 +21,7 @@ interface Hospital {
   logoUrl?: string;
   isActive: boolean;
   createdAt: string;
+  role?: "admin" | "hospital";
   // true until the hospital logs in and sets their own password. While true,
   // the admin can resend the welcome email (issues a new temp password).
   mustChangePassword?: boolean;
@@ -49,6 +52,62 @@ export const HospitalsList: React.FC = () => {
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendMessage, setResendMessage] = useState<{ id: string; text: string; ok: boolean } | null>(null);
+
+  // Admin force-delete modal state
+  const [deletingHospital, setDeletingHospital] = useState<Hospital | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const openDeleteModal = (h: Hospital) => {
+    setDeletingHospital(h);
+    setDeletePassword("");
+    setDeleteReason("");
+    setDeleteConfirmText("");
+    setDeleteError(null);
+  };
+
+  const closeDeleteModal = () => {
+    if (deleteLoading) return;
+    setDeletingHospital(null);
+    setDeletePassword("");
+    setDeleteReason("");
+    setDeleteConfirmText("");
+    setDeleteError(null);
+  };
+
+  const handleForceDelete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deletingHospital) return;
+    if (deleteConfirmText.trim() !== "DELETE") {
+      setDeleteError('Please type DELETE to confirm');
+      return;
+    }
+    if (deleteReason.trim().length < 10) {
+      setDeleteError("Reason must be at least 10 characters");
+      return;
+    }
+    if (!deletePassword) {
+      setDeleteError("Your admin password is required");
+      return;
+    }
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      await adminForceDeleteHospital(deletingHospital._id, deletePassword, deleteReason.trim());
+      setHospitals((prev) => prev.filter((h) => h._id !== deletingHospital._id));
+      setDeletingHospital(null);
+      setDeletePassword("");
+      setDeleteReason("");
+      setDeleteConfirmText("");
+    } catch (err: any) {
+      setDeleteError(err?.message || "Failed to delete hospital");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const handleResendWelcome = async (h: Hospital) => {
     if (!window.confirm(
@@ -379,7 +438,7 @@ export const HospitalsList: React.FC = () => {
                       <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10" />
                       <div className="absolute -left-4 -bottom-4 w-16 h-16 rounded-full bg-white/10" />
 
-                      {h.logoUrl ? (
+                      {h.logoUrl && !isPlaceholderLogo(h.logoUrl) ? (
                         <img
                           src={h.logoUrl}
                           alt={h.hospitalName}
@@ -488,6 +547,18 @@ export const HospitalsList: React.FC = () => {
                             </svg>
                             Edit
                           </button>
+                          {isAdmin && h.role !== "admin" && h._id !== hospital?._id && (
+                            <button
+                              onClick={() => openDeleteModal(h)}
+                              title="Permanently delete this hospital (requires your admin password)"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-200"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3" />
+                              </svg>
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -648,6 +719,132 @@ export const HospitalsList: React.FC = () => {
                         </span>
                       ) : (
                         "Update Hospital"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Admin Force-Delete Modal */}
+        {deletingHospital && (
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={closeDeleteModal}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900">Permanently Delete Hospital?</h2>
+                      <p className="text-xs text-gray-500 mt-0.5">This action cannot be undone</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={closeDeleteModal}
+                    disabled={deleteLoading}
+                    className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-800">
+                  You are about to delete{" "}
+                  <span className="font-semibold">{deletingHospital.hospitalName}</span> ({deletingHospital.email}).
+                  All sessions will be revoked and personal data scrubbed. The audit log is preserved.
+                </div>
+
+                {deleteError && (
+                  <div className="mb-3">
+                    <ErrorMessage message={deleteError} type="error" onClose={() => setDeleteError(null)} />
+                  </div>
+                )}
+
+                <form onSubmit={handleForceDelete} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Reason <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={deleteReason}
+                      onChange={(e) => setDeleteReason(e.target.value)}
+                      rows={3}
+                      maxLength={1000}
+                      placeholder="Why is this hospital being force-deleted? (min 10 chars; written to audit log)"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 resize-none"
+                      required
+                      disabled={deleteLoading}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Your Admin Password <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      autoComplete="current-password"
+                      placeholder="Re-enter your password"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
+                      required
+                      disabled={deleteLoading}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Type <span className="font-mono font-semibold">DELETE</span> to confirm
+                    </label>
+                    <input
+                      type="text"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400"
+                      required
+                      disabled={deleteLoading}
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={closeDeleteModal}
+                      disabled={deleteLoading}
+                      className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={deleteLoading || deleteConfirmText.trim() !== "DELETE"}
+                      className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-500/25"
+                    >
+                      {deleteLoading ? (
+                        <span className="inline-flex items-center gap-2">
+                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Deleting…
+                        </span>
+                      ) : (
+                        "Permanently Delete"
                       )}
                     </button>
                   </div>

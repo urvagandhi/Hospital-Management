@@ -38,13 +38,31 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <de.hdodenhof.circleimageview.CircleImageView
-                    android:id="@+id/ivToolbarLogo"
+                <FrameLayout
                     android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:src="@mipmap/ic_launcher_round"
-                    app:civ_border_width="@dimen/glass_stroke_width"
-                    app:civ_border_color="@color/color_glass_stroke" />
+                    android:layout_height="36dp">
+
+                    <TextView
+                        android:id="@+id/tvToolbarInitials"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_avatar_initials"
+                        android:gravity="center"
+                        android:textColor="@android:color/white"
+                        android:textSize="13sp"
+                        android:fontFamily="@font/inter_bold"
+                        android:includeFontPadding="false"
+                        android:text="H"
+                        android:visibility="gone" />
+
+                    <de.hdodenhof.circleimageview.CircleImageView
+                        android:id="@+id/ivToolbarLogo"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone"
+                        app:civ_border_width="@dimen/glass_stroke_width"
+                        app:civ_border_color="@color/color_glass_stroke" />
+                </FrameLayout>
 
                 <TextView
                     android:id="@+id/tvToolbarHospitalName"
@@ -294,11 +312,20 @@
                 android:layout_gravity="center"
                 android:visibility="gone">
 
-                <View
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
+                <FrameLayout
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
                     android:background="@drawable/bg_circle_light"
-                    android:layout_marginBottom="@dimen/space_base" />
+                    android:layout_marginBottom="@dimen/space_base">
+
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_people"
+                        android:contentDescription="@null"
+                        app:tint="@color/brand_primary" />
+                </FrameLayout>
 
                 <TextView
                     android:id="@+id/tvEmpty"

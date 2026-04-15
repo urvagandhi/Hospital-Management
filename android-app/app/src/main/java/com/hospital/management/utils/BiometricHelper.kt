@@ -44,6 +44,30 @@ class BiometricHelper(private val context: Context) {
     }
 
     /**
+     * Return a human-readable reason for why biometric isn't usable.
+     * Returns null if biometric IS usable.
+     */
+    fun biometricUnavailableReason(): String? {
+        val biometricManager = BiometricManager.from(context)
+        return when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)) {
+            BiometricManager.BIOMETRIC_SUCCESS -> null
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ->
+                "This device has no fingerprint hardware."
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE ->
+                "Fingerprint hardware is temporarily unavailable. Try again."
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
+                "No fingerprint enrolled. Add one in Settings → Security → Fingerprint, then log in again."
+            BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED ->
+                "A security update is required for biometric login. Please update Android."
+            BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED ->
+                "Strong biometric (class 3) is not supported on this device."
+            BiometricManager.BIOMETRIC_STATUS_UNKNOWN ->
+                "Biometric status is unknown on this device."
+            else -> "Biometric login is unavailable on this device."
+        }
+    }
+
+    /**
      * Generate a key pair in Android Keystore bound to biometric authentication
      * for a specific hospital. Returns the public key as Base64, or null on
      * failure.

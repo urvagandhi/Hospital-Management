@@ -273,15 +273,6 @@ interface ApiService {
         @Body body: Map<String, Boolean>
     ): Response<com.hospital.management.data.models.NotificationPrefsResponse>
 
-    // ── Account Deletion (B2 / A2) ──
-    @POST("/api/hospitals/me/account/deletion-request")
-    suspend fun requestAccountDeletion(
-        @Body body: Map<String, String>
-    ): Response<Map<String, Any>>
-
-    @POST("/api/hospitals/me/account/deletion-cancel")
-    suspend fun cancelAccountDeletion(): Response<Map<String, Any>>
-
     // ── Signed URL (B5 / A3) ──
     @GET("/api/patients/{patientId}/files/{folderName}/{fileId}/signed-url")
     suspend fun getFileSignedUrl(

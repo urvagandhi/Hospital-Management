@@ -105,25 +105,9 @@ const hospitalSchema = new mongoose.Schema(
     tcVersion: { type: String, default: null },
     tcAcceptedAt: { type: Date, default: null },
 
-    // Account deletion lifecycle
-    deletionStatus: {
-      type: String,
-      enum: ["active", "deletion_pending", "deleted"],
-      default: "active",
-      index: true,
-    },
-    deletionRequestedAt: { type: Date, default: null },
-    deletionScheduledFor: { type: Date, default: null },
-    deletionReason: { type: String, default: null, maxlength: 1000 },
-    deletionApprovedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Hospital", default: null },
-    deletionApprovedAt: { type: Date, default: null },
-    deletionRejectedReason: { type: String, default: null, maxlength: 1000 },
-    deletedAt: { type: Date, default: null },
-
     // Notification preferences (feature B6 — defaults match "notify by default")
     notificationPrefs: {
       newLoginAlert: { type: Boolean, default: true },
-      deletionUpdates: { type: Boolean, default: true },
       securityAlerts: { type: Boolean, default: true },
       marketing: { type: Boolean, default: false },
     },

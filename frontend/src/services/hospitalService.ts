@@ -157,67 +157,16 @@ export const updateNotificationPrefs = async (
     }
 };
 
-// ─────────────────────────────────────────────────────────────
-// Account deletion (B2) — user self-service
-// ─────────────────────────────────────────────────────────────
-export const requestAccountDeletion = async (password: string, reason: string) => {
+/**
+ * Admin-initiated forced deletion. Requires the admin's current password
+ * plus a reason (min 10 chars). Hard-deletes the hospital record.
+ */
+export const adminForceDeleteHospital = async (id: string, password: string, reason: string) => {
     try {
-        const res = await api.post("/hospitals/me/account/deletion-request", { password, reason });
+        const res = await api.delete(`/hospitals/${id}`, { data: { password, reason } });
         return res.data;
     } catch (err) {
-        throw apiError(err, "Failed to request deletion");
-    }
-};
-
-export const cancelAccountDeletion = async () => {
-    try {
-        const res = await api.post("/hospitals/me/account/deletion-cancel", {});
-        return res.data;
-    } catch (err) {
-        throw apiError(err, "Failed to cancel deletion");
-    }
-};
-
-// ─────────────────────────────────────────────────────────────
-// Admin: deletion approvals + version management
-// ─────────────────────────────────────────────────────────────
-export interface DeletionRequest {
-    _id: string;
-    hospitalName: string;
-    email: string;
-    phone: string;
-    deletionStatus: "deletion_pending";
-    deletionRequestedAt: string;
-    deletionScheduledFor: string;
-    deletionReason?: string;
-}
-
-export const listDeletionRequests = async (): Promise<DeletionRequest[]> => {
-    try {
-        const res = await api.get<{ success: boolean; data: DeletionRequest[] }>(
-            "/hospitals/deletion-requests",
-        );
-        return res.data.data;
-    } catch (err) {
-        throw apiError(err, "Failed to load deletion requests");
-    }
-};
-
-export const approveDeletion = async (id: string) => {
-    try {
-        const res = await api.post(`/hospitals/${id}/deletion/approve`, {});
-        return res.data;
-    } catch (err) {
-        throw apiError(err, "Failed to approve deletion");
-    }
-};
-
-export const rejectDeletion = async (id: string, reason: string) => {
-    try {
-        const res = await api.post(`/hospitals/${id}/deletion/reject`, { reason });
-        return res.data;
-    } catch (err) {
-        throw apiError(err, "Failed to reject deletion");
+        throw apiError(err, "Failed to delete hospital");
     }
 };
 
@@ -294,11 +243,7 @@ export default {
     verifyContactChange,
     getNotificationPrefs,
     updateNotificationPrefs,
-    requestAccountDeletion,
-    cancelAccountDeletion,
-    listDeletionRequests,
-    approveDeletion,
-    rejectDeletion,
+    adminForceDeleteHospital,
     listAppVersions,
     createAppVersion,
     updateAppVersion,

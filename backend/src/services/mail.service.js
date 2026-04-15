@@ -531,29 +531,49 @@ export async function sendPasswordChangedEmail(to, info) {
 }
 
 // ---------------------------------------------------------------------------
-// sendDeletionRequestEmail — notify admin of a new deletion request.
-// Gated by the admin's notificationPrefs.deletionUpdates at the caller.
+// Admin actions: disable / re-enable / delete hospital account.
+// Each sends a plain-language notice to the affected hospital. Called from
+// updateHospital / adminForceDelete — see hospitals.controller.js.
 // ---------------------------------------------------------------------------
-export async function sendDeletionRequestEmail(to, info) {
-  const name = escapeHtml(info?.hospitalName || "Unknown hospital");
-  const email = escapeHtml(info?.email || "");
-  const reason = escapeHtml(info?.reason || "No reason provided");
-  const when = info?.when ? new Date(info.when).toLocaleString() : new Date().toLocaleString();
-  const scheduledFor = info?.scheduledFor ? new Date(info.scheduledFor).toLocaleString() : "—";
-  const subject = `Account deletion request — ${APP_NAME}`;
+export async function sendAccountDisabledEmail(to, info) {
+  const name = escapeHtml(info?.hospitalName || "Hospital");
+  const reason = info?.reason ? escapeHtml(info.reason) : "";
+  const subject = `Your account has been disabled — ${APP_NAME}`;
   const body = `
-    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">New deletion request</h2>
-    <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
-      A hospital has requested account deletion and is awaiting your review.
+    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Account disabled</h2>
+    <p style="margin:0 0 14px;color:#475569;font-size:14px;line-height:1.6;">
+      Hi <strong>${name}</strong>, an administrator has disabled your ${APP_NAME} account.
+      You won't be able to sign in until the account is re-enabled.
     </p>
-    <div style="background:#fff7ed;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #fed7aa;">
-      <p style="margin:0 0 6px;font-size:14px;color:#7c2d12;"><strong>Hospital:</strong> ${name}</p>
-      <p style="margin:0 0 6px;font-size:14px;color:#7c2d12;"><strong>Email:</strong> ${email}</p>
-      <p style="margin:0 0 6px;font-size:14px;color:#7c2d12;"><strong>Requested:</strong> ${escapeHtml(when)}</p>
-      <p style="margin:0 0 6px;font-size:14px;color:#7c2d12;"><strong>Scheduled:</strong> ${escapeHtml(scheduledFor)}</p>
-      <p style="margin:0;font-size:14px;color:#7c2d12;"><strong>Reason:</strong> ${reason}</p>
-    </div>
-    <p style="margin:0;color:#475569;font-size:14px;">Review pending requests in the admin dashboard under <strong>Deletions</strong>.</p>`;
+    ${reason ? `<div style="background:#fff7ed;border:1px solid #fed7aa;padding:12px;border-radius:8px;margin-bottom:14px;"><p style="margin:0;font-size:13px;color:#7c2d12;"><strong>Reason:</strong> ${reason}</p></div>` : ""}
+    <p style="margin:0;color:#475569;font-size:14px;">If you believe this is a mistake, please contact your administrator.</p>`;
+  return sendEmail(to, subject, wrapHtml(body));
+}
+
+export async function sendAccountEnabledEmail(to, info) {
+  const name = escapeHtml(info?.hospitalName || "Hospital");
+  const subject = `Your account has been re-enabled — ${APP_NAME}`;
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Account re-enabled</h2>
+    <p style="margin:0 0 14px;color:#475569;font-size:14px;line-height:1.6;">
+      Good news, <strong>${name}</strong> — your ${APP_NAME} account has been re-enabled by an administrator.
+      You can now sign in as usual.
+    </p>`;
+  return sendEmail(to, subject, wrapHtml(body));
+}
+
+export async function sendAccountDeletedEmail(to, info) {
+  const name = escapeHtml(info?.hospitalName || "Hospital");
+  const reason = info?.reason ? escapeHtml(info.reason) : "";
+  const subject = `Your account has been deleted — ${APP_NAME}`;
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#991b1b;">Account deleted</h2>
+    <p style="margin:0 0 14px;color:#475569;font-size:14px;line-height:1.6;">
+      Hi <strong>${name}</strong>, an administrator has permanently deleted your ${APP_NAME} account.
+      All active sessions have been revoked and you will no longer be able to sign in.
+    </p>
+    ${reason ? `<div style="background:#fef2f2;border:1px solid #fecaca;padding:12px;border-radius:8px;margin-bottom:14px;"><p style="margin:0;font-size:13px;color:#991b1b;"><strong>Reason:</strong> ${reason}</p></div>` : ""}
+    <p style="margin:0;color:#475569;font-size:14px;">If you have questions, please contact your administrator.</p>`;
   return sendEmail(to, subject, wrapHtml(body));
 }
 
@@ -571,5 +591,7 @@ export default {
   sendContactChangedNoticeEmail,
   sendNewLoginAlertEmail,
   sendPasswordChangedEmail,
-  sendDeletionRequestEmail,
+  sendAccountDisabledEmail,
+  sendAccountEnabledEmail,
+  sendAccountDeletedEmail,
 };

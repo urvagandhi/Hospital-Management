@@ -86,7 +86,10 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
         val data = message.data
 
         when (data["type"]) {
-            "SESSION_REVOKED" -> handleSessionRevoked()
+            "SESSION_REVOKED" -> {
+                showNotification(message)
+                handleSessionRevoked()
+            }
             else -> showNotification(message)
         }
     }
@@ -141,9 +144,6 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
             "NEW_LOGIN", "PASSWORD_CHANGED" ->
                 Intent(this, com.hospital.management.ui.profile.SessionsActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            "DELETION_REQUEST" ->
-                // Admin-only; open dashboard — admin will see the new request there.
-                launcherIntent
             else -> launcherIntent
         }
 

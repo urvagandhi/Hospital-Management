@@ -152,6 +152,17 @@ class FolderViewActivity : BaseActivity() {
                     findViewById<android.widget.TextView>(R.id.tvPatientName).text = patient.patientName
                     findViewById<android.widget.TextView>(R.id.tvPatientId)?.text = patient.patientId
 
+                    // Remarks row — show only when non-empty, matching web behaviour
+                    val remarksText = patient.remarks?.trim().orEmpty()
+                    val layoutRemarks = findViewById<View>(R.id.layoutRemarks)
+                    val tvRemarks = findViewById<android.widget.TextView>(R.id.tvPatientRemarks)
+                    if (remarksText.isNotEmpty()) {
+                        tvRemarks.text = remarksText
+                        layoutRemarks.visibility = View.VISIBLE
+                    } else {
+                        layoutRemarks.visibility = View.GONE
+                    }
+
                     // Update folder list with current pending counts
                     updateFolderList(patient)
                 }

@@ -16,8 +16,6 @@ data class Hospital(
     @SerializedName("state") val state: String? = null,
     @SerializedName("zipCode") val zipCode: String? = null,
     @SerializedName("isActive") val isActive: Boolean = true,
-    @SerializedName("deletionStatus") val deletionStatus: String? = "active",
-    @SerializedName("deletionScheduledFor") val deletionScheduledFor: String? = null,
     @SerializedName("notificationPrefs") val notificationPrefs: NotificationPrefs? = null
 ) {
     val isAdmin: Boolean get() = role == "admin"
@@ -25,7 +23,6 @@ data class Hospital(
 
 data class NotificationPrefs(
     @SerializedName("newLoginAlert") val newLoginAlert: Boolean = true,
-    @SerializedName("deletionUpdates") val deletionUpdates: Boolean = true,
     @SerializedName("securityAlerts") val securityAlerts: Boolean = true,
     @SerializedName("marketing") val marketing: Boolean = false
 )

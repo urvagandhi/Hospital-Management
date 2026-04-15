@@ -17,9 +17,7 @@ import Password from "../pages/Password";
 import Sessions from "../pages/Sessions";
 import VerifyAuthCode from "../pages/VerifyAuthCode";
 import ActivityLog from "../pages/ActivityLog";
-import DeletionRequests from "../pages/DeletionRequests";
 import NotificationSettings from "../pages/NotificationSettings";
-import DeleteAccount from "../pages/DeleteAccount";
 import Terms from "../pages/Terms";
 import Privacy from "../pages/Privacy";
 
@@ -82,15 +80,6 @@ export const AppRoutes: React.FC = () => {
         />
         <Route path="/profile" element={<Profile />} />
         <Route path="/notifications" element={<NotificationSettings />} />
-        <Route path="/delete-account" element={<DeleteAccount />} />
-        <Route
-          path="/admin/deletion-requests"
-          element={
-            <AdminRoute>
-              <DeletionRequests />
-            </AdminRoute>
-          }
-        />
         <Route path="/patients/:patientId" element={<PatientDetails />} />
         <Route path="/patients/:patientId/folders/:folderName" element={<FolderView />} />
       </Route>
