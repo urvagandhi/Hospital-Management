@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { isImageMime, isPdfMime } from "../utils/cloudinary";
 import { getFileSignedUrl } from "../services/hospitalService";
+import { isImageMime, isPdfMime } from "../utils/cloudinary";
 
 interface FileItem {
   _id?: string;
@@ -221,9 +221,9 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
             </div>
           ) : pdfBlobUrl ? (
             <iframe
-              src={pdfBlobUrl}
+              src={`${pdfBlobUrl}#zoom=page-width`}
               title={file.fileName}
-              className="w-[95vw] h-[85vh] bg-white rounded"
+              className="w-[98vw] h-[90vh] bg-white rounded"
             />
           ) : (
             <div className="text-white/70 text-sm">Loading PDF…</div>

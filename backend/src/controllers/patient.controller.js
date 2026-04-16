@@ -234,11 +234,11 @@ export const uploadFile = async (req, res) => {
       });
     }
 
-    // Sanitize folderName — allow only alphanumeric, hyphens, underscores, spaces, dots
-    if (!/^[a-zA-Z0-9_\-\.\s]+$/.test(folderName)) {
+    // Sanitize folderName — allow alphanumeric, hyphens, underscores, spaces, dots, commas, parentheses
+    if (!/^[a-zA-Z0-9_\-\.\s,()\/]+$/.test(folderName)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid folder name. Use only letters, numbers, hyphens, underscores, and dots.",
+        message: "Invalid folder name. Use only letters, numbers, hyphens, underscores, dots, and commas.",
       });
     }
 

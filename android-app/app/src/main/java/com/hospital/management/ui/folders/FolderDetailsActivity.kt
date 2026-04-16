@@ -153,8 +153,8 @@ class FolderDetailsActivity : BaseActivity() {
                     }
                     is PatientState.Error -> {
                         progressBar.visibility = View.GONE
-                        // Don't show error toast if we have offline files to display
-                        if (pendingOfflineFiles.isEmpty()) {
+                        // Only show error toast when online and no offline files are shown
+                        if (pendingOfflineFiles.isEmpty() && isNetworkAvailable()) {
                             Toast.makeText(this@FolderDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
                         }
                         // Use whatever server files we already have in memory (offline fallback)
@@ -268,6 +268,11 @@ class FolderDetailsActivity : BaseActivity() {
     private fun openFileInDrive(file: FileItem) {
         val fileUrl = file.displayUrl
         if (fileUrl.isEmpty()) return
+        val isRemote = !(fileUrl.startsWith("file://") || fileUrl.startsWith("/"))
+        if (isRemote && !isNetworkAvailable()) {
+            showOfflineDialog("This file is stored on the server. Connect to the internet to open it.")
+            return
+        }
 
         try {
             val intent = Intent(Intent.ACTION_VIEW)

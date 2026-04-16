@@ -61,10 +61,12 @@
                         android:layout_height="match_parent"
                         android:background="@drawable/bg_avatar_initials"
                         android:gravity="center"
-                        android:includeFontPadding="false"
                         android:fontFamily="@font/inter_bold"
                         android:textColor="@android:color/white"
-                        android:textSize="28sp"
+                        android:autoSizeTextType="uniform"
+                        android:autoSizeMinTextSize="18sp"
+                        android:autoSizeMaxTextSize="30sp"
+                        android:autoSizeStepGranularity="1sp"
                         android:text="H" />
 
                     <de.hdodenhof.circleimageview.CircleImageView

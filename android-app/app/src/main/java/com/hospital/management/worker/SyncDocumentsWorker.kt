@@ -45,11 +45,14 @@ class SyncDocumentsWorker(
 
                 Log.d(TAG, "Starting sync for ${pendingDocs.size} pending documents")
                 var successCount = 0
-                
+                var retryableFailureCount = 0
+                var skippedExhaustedCount = 0
+
                 for (doc in pendingDocs) {
                     // Skip permanently failed documents (exceeded max retries)
                     if (doc.retryCount >= MAX_RETRY_COUNT) {
                         Log.w(TAG, "Skipping document that exceeded max retries: ${doc.fileUri}")
+                        skippedExhaustedCount++
                         continue
                     }
 
@@ -79,12 +82,14 @@ class SyncDocumentsWorker(
                                successCount++
                            } else {
                                Log.e(TAG, "Upload failed for document")
+                               val shouldRetry = result.retryable
                                val updatedDoc = doc.copy(
                                    status = SyncStatus.FAILED,
-                                   retryCount = doc.retryCount + 1,
-                                   errorMessage = "Upload returned error"
+                                   retryCount = if (shouldRetry) doc.retryCount + 1 else MAX_RETRY_COUNT,
+                                   errorMessage = result.message?.take(200) ?: "Upload returned error"
                                )
                                documentDao.update(updatedDoc)
+                               if (shouldRetry) retryableFailureCount++
                            }
                         } else {
                             // File not found locally, remove the database entry
@@ -101,16 +106,20 @@ class SyncDocumentsWorker(
                         documentDao.update(updatedDoc)
                     }
                 }
-                
+
                 Log.d(TAG, "Sync completed: $successCount/${pendingDocs.size} successful")
-                
-                if (successCount == pendingDocs.size) {
+
+                val actionableCount = pendingDocs.size - skippedExhaustedCount
+                if (actionableCount <= 0) {
                     Result.success()
-                } else if (successCount > 0) {
-                    // Some succeeded, some failed - retry later
+                } else if (successCount == actionableCount) {
+                    Result.success()
+                } else if (retryableFailureCount > 0) {
+                    // Retry when at least one failure is recoverable.
                     Result.retry()
                 } else {
-                    Result.failure()
+                    // Only unretryable failures remain; avoid infinite failing sync loops.
+                    Result.success()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Sync worker failed", e)
@@ -156,7 +165,7 @@ class SyncDocumentsWorker(
                 }
                 val fileName = "temp_upload_${System.currentTimeMillis()}.$extension"
                 val file = File(context.cacheDir, fileName)
-                
+
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     FileOutputStream(file).use { output ->
                         input.copyTo(output)

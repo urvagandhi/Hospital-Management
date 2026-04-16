@@ -93,9 +93,11 @@
                             android:text="PD"
                             android:gravity="center"
                             android:textColor="@android:color/white"
-                            android:textSize="17sp"
                             android:fontFamily="@font/inter_bold"
-                            android:includeFontPadding="false" />
+                            android:autoSizeTextType="uniform"
+                            android:autoSizeMinTextSize="11sp"
+                            android:autoSizeMaxTextSize="18sp"
+                            android:autoSizeStepGranularity="1sp" />
                     </com.google.android.material.card.MaterialCardView>
 
                     <!-- Name + PatientID -->

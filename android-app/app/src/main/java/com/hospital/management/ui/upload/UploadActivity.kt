@@ -37,11 +37,16 @@ import java.util.Collections
 
 class UploadActivity : BaseActivity() {
 
+    companion object {
+        private const val MAX_SERVER_UPLOAD_BYTES = 20L * 1024L * 1024L
+    }
+
     private lateinit var binding: ActivityUploadBinding
     private lateinit var patientViewModel: PatientViewModel
     private lateinit var tokenManager: TokenManager
 
     private val scannedPages = mutableListOf<Uri>()
+    private var scannedPdfUri: Uri? = null
     private lateinit var pageAdapter: PageAdapter
     private var currentPageIndex = 0
 
@@ -91,6 +96,11 @@ class UploadActivity : BaseActivity() {
     }
 
     private fun loadScannedPages() {
+        val scannerPdfUri = intent.getStringExtra(ScannerActivity.EXTRA_SCANNED_PDF_URI)
+        if (!scannerPdfUri.isNullOrBlank()) {
+            scannedPdfUri = Uri.parse(scannerPdfUri)
+        }
+
         // Get multiple pages from scanner
         val pageUris = intent.getStringArrayExtra(ScannerActivity.EXTRA_SCANNED_PAGES)
 
@@ -164,11 +174,19 @@ class UploadActivity : BaseActivity() {
     private fun updateMainPreview() {
         if (scannedPages.isNotEmpty() && currentPageIndex < scannedPages.size) {
             binding.ivPreview.setImageURI(scannedPages[currentPageIndex])
+        } else {
+            binding.ivPreview.setImageDrawable(null)
         }
     }
 
     private fun updatePageCount() {
-        binding.tvPageCount.text = "${scannedPages.size} page${if (scannedPages.size > 1) "s" else ""} scanned"
+        binding.tvPageCount.text = if (scannedPages.isNotEmpty()) {
+            "${scannedPages.size} page${if (scannedPages.size > 1) "s" else ""} scanned"
+        } else if (scannedPdfUri != null) {
+            "Scanner PDF ready"
+        } else {
+            "No pages scanned"
+        }
         binding.rvPages.visibility = if (scannedPages.size > 1) View.VISIBLE else View.GONE
         binding.tvPagesLabel.visibility = if (scannedPages.size > 1) View.VISIBLE else View.GONE
     }
@@ -219,7 +237,7 @@ class UploadActivity : BaseActivity() {
 
     private fun uploadFiles() {
         // Use class properties directly
-        if (patientId.isEmpty() || folderName.isEmpty() || scannedPages.isEmpty()) {
+        if (patientId.isEmpty() || folderName.isEmpty() || (scannedPages.isEmpty() && scannedPdfUri == null)) {
             Toast.makeText(this, "Missing patient info or documents", Toast.LENGTH_SHORT).show()
             return
         }
@@ -238,9 +256,6 @@ class UploadActivity : BaseActivity() {
             )
 
             try {
-                // Create a single PDF from all scanned pages
-                binding.tvUploadProgress.text = "Converting ${scannedPages.size} page(s) to PDF..."
-                
                 // Build filename: use user input if provided, otherwise auto-generate
                 val userInput = binding.etFileName.text.toString().trim()
                 val sanitizedPatientName = patientName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
@@ -251,12 +266,35 @@ class UploadActivity : BaseActivity() {
                     val sanitizedFolderName = folderName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
                     "${sanitizedPatientName}_${sanitizedFolderName}_${System.currentTimeMillis()}.pdf"
                 }
-                val pdfFile = withContext(Dispatchers.IO) {
-                    com.hospital.management.utils.PdfUtils.createPdfFromImages(
-                        applicationContext,
-                        scannedPages,
-                        pdfFileName
-                    )
+
+                val pdfFile = when {
+                    scannedPdfUri != null -> {
+                        binding.tvUploadProgress.text = "Preparing scanner PDF..."
+                        withContext(Dispatchers.IO) {
+                            val copiedPdf = copyPdfFromUri(scannedPdfUri!!, pdfFileName)
+                            if (copiedPdf != null && copiedPdf.length() <= MAX_SERVER_UPLOAD_BYTES) {
+                                copiedPdf
+                            } else {
+                                copiedPdf?.delete()
+                                com.hospital.management.utils.PdfUtils.recompressPdfFromUri(
+                                    applicationContext,
+                                    scannedPdfUri!!,
+                                    pdfFileName
+                                )
+                            }
+                        }
+                    }
+                    scannedPages.isNotEmpty() -> {
+                        binding.tvUploadProgress.text = "Converting ${scannedPages.size} page(s) to PDF..."
+                        withContext(Dispatchers.IO) {
+                            com.hospital.management.utils.PdfUtils.createPdfFromImages(
+                                applicationContext,
+                                scannedPages,
+                                pdfFileName
+                            )
+                        }
+                    }
+                    else -> null
                 }
 
                 if (pdfFile == null) {
@@ -266,6 +304,23 @@ class UploadActivity : BaseActivity() {
                         binding.tvUploadProgress.visibility = View.GONE
                         Toast.makeText(this@UploadActivity, "Failed to create PDF", Toast.LENGTH_SHORT).show()
                     }
+                    return@launch
+                }
+
+                // Keep generated PDFs within the backend's hard upload cap.
+                if (pdfFile.length() > MAX_SERVER_UPLOAD_BYTES) {
+                    withContext(Dispatchers.Main) {
+                        binding.progressBar.visibility = View.GONE
+                        binding.btnUpload.isEnabled = true
+                        binding.tvUploadProgress.visibility = View.GONE
+                        val sizeMb = "%.1f".format(pdfFile.length().toDouble() / (1024.0 * 1024.0))
+                        Toast.makeText(
+                            this@UploadActivity,
+                            "File is ${sizeMb}MB. Max upload is 20MB. Reduce pages and try again.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    pdfFile.delete()
                     return@launch
                 }
 
@@ -288,19 +343,26 @@ class UploadActivity : BaseActivity() {
                         Toast.makeText(this@UploadActivity, "PDF uploaded successfully!", Toast.LENGTH_SHORT).show()
                         finish()
                     } else {
-                        // Upload failed, save offline with SAME key so any retry hits idempotency cache
-                        docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), idempotencyKey)
-                        Toast.makeText(this@UploadActivity, "Upload failed. Saved offline.", Toast.LENGTH_LONG).show()
-                        finish()
+                        if (result.retryable) {
+                            // Retryable failures (network/server) are safe to queue for later sync.
+                            docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), idempotencyKey)
+                            Toast.makeText(this@UploadActivity, "Upload failed. Saved offline.", Toast.LENGTH_LONG).show()
+                            finish()
+                        } else {
+                            // Permanent failures (e.g. payload rejected) should not be queued as pending.
+                            pdfFile.delete()
+                            val backendMessage = result.message?.takeIf { it.isNotBlank() } ?: "Upload rejected by server"
+                            Toast.makeText(this@UploadActivity, backendMessage, Toast.LENGTH_LONG).show()
+                        }
                     }
                 } else {
                     // Offline - save PDF locally with its key
                     docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), idempotencyKey)
-                    
+
                     binding.progressBar.visibility = View.GONE
                     binding.btnUpload.isEnabled = true
                     binding.tvUploadProgress.visibility = View.GONE
-                    
+
                     Toast.makeText(this@UploadActivity, "Saved offline. Will sync when connected.", Toast.LENGTH_LONG).show()
                     finish()
                 }
@@ -332,13 +394,33 @@ class UploadActivity : BaseActivity() {
              val fileName = "doc_${System.currentTimeMillis()}_$index.jpg"
              // Use app's private files directory so it's safer
              val file = File(filesDir, fileName)
-             
+
              // Copy compressed file to permanent storage
              compressedFile.copyTo(file, overwrite = true)
              return@withContext file
         } catch(e: Exception) {
             e.printStackTrace()
             return@withContext null
+        }
+    }
+
+    private fun copyPdfFromUri(uri: Uri, outputFileName: String): File? {
+        return try {
+            val safeFileName = if (outputFileName.lowercase().endsWith(".pdf")) {
+                outputFileName
+            } else {
+                "$outputFileName.pdf"
+            }
+            val file = File(filesDir, safeFileName)
+            contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(file).use { output ->
+                    input.copyTo(output)
+                }
+            } ?: return null
+            file
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 

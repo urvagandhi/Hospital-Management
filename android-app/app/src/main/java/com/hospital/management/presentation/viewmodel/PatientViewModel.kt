@@ -63,8 +63,8 @@ class PatientViewModel(
                     if (body.success) {
                         val patients = body.data.patients
                         _patients.value = patients
-                        patientRepository?.cachePatients(patients)
                         _patientState.value = PatientState.Success("Patients loaded")
+                        try { patientRepository?.cachePatients(patients) } catch (_: Exception) {}
                     } else {
                         loadPatientsFromCache(body.message ?: "Failed to fetch patients")
                     }
@@ -104,6 +104,7 @@ class PatientViewModel(
                             val patient: Patient = gson.fromJson(json, Patient::class.java)
                             _currentPatient.value = patient
                             _patientState.value = PatientState.Success("Patient loaded")
+                            try { patientRepository?.cachePatientDetail(patient) } catch (_: Exception) {}
                         } catch (e: Exception) {
                              _patientState.value = PatientState.Error("Error parsing patient data: ${e.message}")
                         }
@@ -111,11 +112,21 @@ class PatientViewModel(
                         _patientState.value = PatientState.Error("Patient not found")
                     }
                 } else {
-                    _patientState.value = PatientState.Error(response.body()?.get("message") as? String ?: "Failed to fetch patient")
+                    loadPatientFromCache(id, response.body()?.get("message") as? String ?: "Failed to fetch patient")
                 }
             } catch (e: Exception) {
-                 _patientState.value = PatientState.Error(e.message ?: "Network error")
+                loadPatientFromCache(id, e.message ?: "Network error")
             }
+        }
+    }
+
+    private suspend fun loadPatientFromCache(id: String, reason: String) {
+        val cached = patientRepository?.getCachedPatient(id)
+        if (cached != null) {
+            _currentPatient.value = cached
+            _patientState.value = PatientState.Success("Patient loaded")
+        } else {
+            _patientState.value = PatientState.Error(reason)
         }
     }
 
@@ -181,8 +192,8 @@ class PatientViewModel(
                     if (data != null) {
                         val files = parseFolderFiles(data)
                         _currentFolderFiles.value = files
-                        patientRepository?.cacheFolderFiles(patientId, folderName, files)
                         _patientState.value = PatientState.Success("Files loaded")
+                        try { patientRepository?.cacheFolderFiles(patientId, folderName, files) } catch (_: Exception) {}
                     } else {
                         _currentFolderFiles.value = emptyList()
                         _patientState.value = PatientState.Success("Files loaded")

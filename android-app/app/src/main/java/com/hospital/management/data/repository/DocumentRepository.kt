@@ -10,8 +10,17 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
+import java.io.IOException
+import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.UUID
+
+data class UploadAttempt(
+    val isSuccess: Boolean,
+    val statusCode: Int? = null,
+    val message: String? = null,
+    val retryable: Boolean = false
+)
 
 class DocumentRepository(
     private val apiService: ApiService,
@@ -24,7 +33,7 @@ class DocumentRepository(
         folderName: String,
         file: File,
         idempotencyKey: String
-    ): Result<Boolean> {
+    ): UploadAttempt {
         return try {
             val mediaType = when {
                 file.name.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
@@ -36,12 +45,32 @@ class DocumentRepository(
 
             val response = apiService.uploadFile(patientId, folderName, body, idempotencyKey)
             if (response.isSuccessful) {
-                Result.success(true)
+                UploadAttempt(isSuccess = true, statusCode = response.code())
             } else {
-                Result.failure(Exception(response.message()))
+                val code = response.code()
+                val message = runCatching { response.errorBody()?.string() }
+                    .getOrNull()
+                    ?.takeIf { it.isNotBlank() }
+                    ?: response.message()
+                UploadAttempt(
+                    isSuccess = false,
+                    statusCode = code,
+                    message = message,
+                    retryable = code == 408 || code == 429 || code >= 500
+                )
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            val retryable = when (e) {
+                is UnknownHostException,
+                is SocketTimeoutException,
+                is IOException -> true
+                else -> false
+            }
+            UploadAttempt(
+                isSuccess = false,
+                message = e.message,
+                retryable = retryable
+            )
         }
     }
 
@@ -73,7 +102,7 @@ class DocumentRepository(
     suspend fun updateStatus(document: OfflineDocument, status: SyncStatus) {
         documentDao.update(document.copy(status = status))
     }
-    
+
     suspend fun deleteDocument(document: OfflineDocument) {
         documentDao.delete(document)
     }

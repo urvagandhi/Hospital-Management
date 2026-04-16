@@ -13,6 +13,9 @@ interface PatientCacheDao {
     @Query("SELECT * FROM cached_patients ORDER BY cachedAt DESC")
     suspend fun getAllCachedPatients(): List<CachedPatient>
 
+    @Query("SELECT * FROM cached_patients WHERE id = :patientId LIMIT 1")
+    suspend fun getCachedPatient(patientId: String): CachedPatient?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPatients(patients: List<CachedPatient>)
 

@@ -49,9 +49,11 @@
                         android:background="@drawable/bg_avatar_initials"
                         android:gravity="center"
                         android:textColor="@android:color/white"
-                        android:textSize="13sp"
                         android:fontFamily="@font/inter_bold"
-                        android:includeFontPadding="false"
+                        android:autoSizeTextType="uniform"
+                        android:autoSizeMinTextSize="9sp"
+                        android:autoSizeMaxTextSize="14sp"
+                        android:autoSizeStepGranularity="1sp"
                         android:text="H"
                         android:visibility="gone" />
 

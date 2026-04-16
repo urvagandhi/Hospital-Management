@@ -30,10 +30,7 @@ import com.hospital.management.data.repository.PatientRepository
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
 import android.content.Context
-import com.hospital.management.utils.NetworkMonitor
-import com.hospital.management.utils.NetworkStatus
 import com.hospital.management.utils.SessionManager
-import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -44,7 +41,6 @@ class DashboardActivity : BaseActivity() {
     private lateinit var authViewModel: AuthViewModel
     private lateinit var patientViewModel: com.hospital.management.presentation.viewmodel.PatientViewModel
     private lateinit var patientAdapter: com.hospital.management.ui.patients.PatientAdapter
-    private var offlineSnackbar: Snackbar? = null
     private var searchDebounceJob: Job? = null
 
     private fun isNetworkAvailable(): Boolean {
@@ -66,7 +62,6 @@ class DashboardActivity : BaseActivity() {
         setupPatientList()
         setupPatientObservers()
         setupPatientListeners()
-        observeNetworkStatus()
         SessionManager.updateLastInteractionTime(this)
         requestNotificationPermissionIfNeeded()
     }
@@ -82,38 +77,7 @@ class DashboardActivity : BaseActivity() {
     }
 
     // SESSION_REVOKED receiver is now handled by BaseActivity
-
-    private fun observeNetworkStatus() {
-        lifecycleScope.launch {
-            var isFirstEmission = true
-            NetworkMonitor.status.collect { status ->
-                when (status) {
-                    NetworkStatus.OFFLINE -> {
-                        if (offlineSnackbar == null || !offlineSnackbar!!.isShown) {
-                            offlineSnackbar = Snackbar.make(
-                                binding.root,
-                                "You are offline",
-                                Snackbar.LENGTH_INDEFINITE
-                            )
-                            offlineSnackbar?.show()
-                        }
-                    }
-                    NetworkStatus.ONLINE -> {
-                        offlineSnackbar?.dismiss()
-                        offlineSnackbar = null
-                        // Don't show "Back online" on first emission (app start)
-                        if (!isFirstEmission) {
-                            Snackbar.make(binding.root, "Back online", Snackbar.LENGTH_SHORT).show()
-                        }
-                    }
-                    NetworkStatus.RECONNECTING -> {
-                        // Keep showing offline snackbar until confirmed
-                    }
-                }
-                isFirstEmission = false
-            }
-        }
-    }
+    // Offline banner is now handled by BaseActivity.observeNetworkStatus()
 
     override fun onResume() {
         super.onResume()

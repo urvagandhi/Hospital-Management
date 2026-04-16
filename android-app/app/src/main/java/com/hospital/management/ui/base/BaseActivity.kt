@@ -22,9 +22,12 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import com.hospital.management.R
 import com.hospital.management.data.api.AuthInterceptor
 import com.hospital.management.data.api.RetrofitClient
+import com.hospital.management.utils.NetworkMonitor
+import com.hospital.management.utils.NetworkStatus
 import com.hospital.management.utils.SessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -52,6 +55,9 @@ open class BaseActivity : AppCompatActivity() {
     companion object {
         @Volatile private var reverifyDialogShowing = false
     }
+
+    private var offlineSnackbar: Snackbar? = null
+    private var networkObserverStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -106,6 +112,40 @@ open class BaseActivity : AppCompatActivity() {
                 IntentFilter(AuthInterceptor.ACTION_AUTH_CODE_REQUIRED),
                 Context.RECEIVER_NOT_EXPORTED
             )
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!networkObserverStarted) {
+            networkObserverStarted = true
+            observeNetworkStatus()
+        }
+    }
+
+    private fun observeNetworkStatus() {
+        lifecycleScope.launch {
+            var isFirstEmission = true
+            NetworkMonitor.status.collect { status ->
+                val anchor = findViewById<View>(android.R.id.content) ?: return@collect
+                when (status) {
+                    NetworkStatus.OFFLINE -> {
+                        if (offlineSnackbar == null || offlineSnackbar?.isShown == false) {
+                            offlineSnackbar = Snackbar.make(anchor, "You are offline", Snackbar.LENGTH_INDEFINITE)
+                            offlineSnackbar?.show()
+                        }
+                    }
+                    NetworkStatus.ONLINE -> {
+                        offlineSnackbar?.dismiss()
+                        offlineSnackbar = null
+                        if (!isFirstEmission) {
+                            Snackbar.make(anchor, "Back online", Snackbar.LENGTH_SHORT).show()
+                        }
+                    }
+                    NetworkStatus.RECONNECTING -> { /* keep offline snackbar until confirmed */ }
+                }
+                isFirstEmission = false
+            }
         }
     }
 

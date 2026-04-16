@@ -65,6 +65,17 @@
     @com.google.gson.annotations.Expose <fields>;
 }
 
+# CRITICAL: Preserve TypeToken generic type info for R8 3.0+ compatibility.
+# Without these rules, Retrofit suspend functions throw at runtime:
+#   "java.lang.Class cannot be cast to java.lang.reflect.ParameterizedType"
+# This affects ALL Retrofit suspend calls — login, register, forgot-password, etc.
+-keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
+-keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
+
+# Keep all ParameterizedType implementations so Gson's type resolution works
+-keep public class * implements java.lang.reflect.Type { *; }
+-keep public class * implements java.lang.reflect.ParameterizedType { *; }
+
 # ---------------------------------------------------------------------------
 # 4.  RETROFIT 2
 # ---------------------------------------------------------------------------

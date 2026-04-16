@@ -138,10 +138,11 @@ class FolderViewActivity : BaseActivity() {
                         progressBar.visibility = View.GONE
                         val msg = state.message
                         if (msg.contains("duplicate key error")) {
-                             showErrorDialog("Update Failed", "An error occurred while updating the patient.")
-                        } else {
-                             Toast.makeText(this@FolderViewActivity, msg, Toast.LENGTH_SHORT).show()
+                            showErrorDialog("Update Failed", "An error occurred while updating the patient.")
+                        } else if (isNetworkAvailable()) {
+                            Toast.makeText(this@FolderViewActivity, msg, Toast.LENGTH_SHORT).show()
                         }
+                        // Offline with no cache: folders list stays empty/hidden silently
                     }
                     else -> progressBar.visibility = View.GONE
                 }
@@ -327,6 +328,13 @@ class FolderViewActivity : BaseActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun showErrorDialog(title: String, message: String) {

@@ -18,5 +18,6 @@ data class CachedPatient(
     val hospitalId: String,
     val createdAt: String,
     val folderCount: Int = 0,
+    val foldersJson: String = "",        // JSON: [{"name":"X","fileCount":2}, ...]
     val cachedAt: Long = System.currentTimeMillis()
 )

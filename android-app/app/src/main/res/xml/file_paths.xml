@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Scoped to specific subdirectories only -->
+    <!-- Root filesDir — pending offline PDFs are saved here by PdfUtils/UploadActivity -->
+    <files-path name="app_files" path="." />
     <files-path name="documents" path="documents/" />
     <cache-path name="viewed_files" path="viewed_files/" />
+    <!-- Root cacheDir — for temp files downloaded for viewing -->
+    <cache-path name="cache_root" path="." />
     <external-files-path name="shared" path="shared/" />
     <external-files-path name="logs" path="logs/" />
 </paths>
