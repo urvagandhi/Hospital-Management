@@ -43,7 +43,7 @@ export class ServiceUnavailableError extends Error {
 
 const SERVICE_URL = config.COMPRESSION_SERVICE_URL;
 const SERVICE_SECRET = config.COMPRESSION_SERVICE_SECRET;
-const TIMEOUT_MS = 120_000;
+const TIMEOUT_MS = 300_000;
 
 // ── Internal helper ────────────────────────────────────────
 
@@ -134,8 +134,9 @@ export async function compressPatient({
 }
 
 /**
- * Fetch the merged PDF from a signed Cloudinary URL.
- * Returns the native Response object — caller pipes .body to Express res.
+ * Fetch the merged PDF from the public Cloudinary URL returned by the
+ * compression service. Merged PDFs are uploaded as raw/upload (public),
+ * same as source documents — no signing needed.
  */
 export async function fetchMergedStream(mergedUrl) {
   const res = await fetch(mergedUrl);

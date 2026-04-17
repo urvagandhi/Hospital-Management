@@ -13,6 +13,14 @@ backend/serviceAccountKey.json
 node_modules/
 npm-debug.log*
 
+# Python
+compression-service/venv/
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+.pytest_cache/
+
 # Build outputs
 dist/
 build/

@@ -33,7 +33,7 @@ from app.schemas import DownloadResponse, FolderDownloadRequest
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_PIPELINE_TIMEOUT = 100.0
+_PIPELINE_TIMEOUT = 300.0
 
 
 @router.post("/api/folder-download")

@@ -33,7 +33,7 @@ from app.schemas import DownloadResponse, PatientDownloadRequest, SourcePdf
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_PIPELINE_TIMEOUT = 100.0
+_PIPELINE_TIMEOUT = 300.0
 
 
 @router.post("/api/patient-download")

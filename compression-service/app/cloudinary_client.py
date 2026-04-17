@@ -21,20 +21,12 @@ cloudinary.config(
     secure=True,
 )
 
-_CACHE_PREFIX = "HospitALL_merged"
+_CACHE_PREFIX = "HospitALL_compressed"
 
 
 def _merged_url(public_id: str) -> str:
-    """Plain public URL for a merged PDF (raw/upload with .pdf in public_id).
-
-    Merged PDFs use SHA-256 hashes as public_ids — unguessable, so public delivery is safe.
-    """
-    url, _ = cloudinary.utils.cloudinary_url(
-        public_id,
-        resource_type="raw",
-        secure=True,
-    )
-    return url
+    """Plain public URL for a merged PDF — same as source documents (raw/upload)."""
+    return f"https://res.cloudinary.com/{config.CLOUDINARY_CLOUD_NAME}/raw/upload/{public_id}"
 
 
 def _source_delivery_url(
