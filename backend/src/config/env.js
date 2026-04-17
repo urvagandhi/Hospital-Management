@@ -88,6 +88,11 @@ const config = {
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
   FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
   FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
+
+  // Compression Service (Phase 3B)
+  USE_COMPRESSION_SERVICE: process.env.USE_COMPRESSION_SERVICE === "true",
+  COMPRESSION_SERVICE_URL: process.env.COMPRESSION_SERVICE_URL || "",
+  COMPRESSION_SERVICE_SECRET: process.env.COMPRESSION_SERVICE_SECRET || "",
 };
 
 // Validate required environment variables in production
@@ -103,6 +108,15 @@ if (config.NODE_ENV === "production") {
   }
   if (!config.CLOUDINARY_CLOUD_NAME && !config.R2_ACCESS_KEY_ID) {
     console.warn("WARNING: Neither Cloudinary nor R2 storage configured for production");
+  }
+}
+
+if (config.USE_COMPRESSION_SERVICE) {
+  if (!config.COMPRESSION_SERVICE_URL) {
+    throw new Error("COMPRESSION_SERVICE_URL is required when USE_COMPRESSION_SERVICE=true");
+  }
+  if (!config.COMPRESSION_SERVICE_SECRET) {
+    throw new Error("COMPRESSION_SERVICE_SECRET is required when USE_COMPRESSION_SERVICE=true");
   }
 }
 

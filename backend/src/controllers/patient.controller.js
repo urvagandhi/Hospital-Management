@@ -3,9 +3,14 @@
  * Handles all patient-related operations
  */
 
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+
 import AuditLog from "../models/AuditLog.js";
+import config from "../config/env.js";
 import * as patientService from "../services/patient.service.js";
 import * as pdfService from "../services/pdf.service.js";
+import * as compressionService from "../services/compression.service.js";
 import { setUploadIdempotentResponse } from "../services/redis.service.js";
 import {
   deleteFile as cloudinaryDeleteFile,
@@ -14,6 +19,8 @@ import {
   SIGNED_UPLOADS_ENABLED,
 } from "../services/storage.service.js";
 import * as zipService from "../services/zip.service.js";
+
+const USE_COMPRESSION = config.USE_COMPRESSION_SERVICE;
 
 /** Fire-and-forget audit log — never blocks the response */
 function logAudit(userId, action, req, details) {
@@ -563,19 +570,119 @@ export const downloadAllPdf = async (req, res) => {
     req.setTimeout(300000);
     res.setTimeout(300000);
 
+    if (!USE_COMPRESSION) {
+      if (mode === "per-folder") {
+        await pdfService.generatePatientPdfPerFolder(patient, res);
+      } else {
+        await pdfService.generatePatientPdfMerged(patient, res);
+      }
+      return;
+    }
+
+    // ── Compression service path ──
+    const start = Date.now();
+    const foldersWithFiles = patient.folders.filter((f) => f.files.length > 0);
+
+    // Helper: build source_pdfs + files_info for a folder
+    const buildFolderPayload = (folder) => ({
+      folderId: String(folder._id),
+      displayName: folder.name,
+      patientName: patient.patientName,
+      sourcePdfs: folder.files
+        .filter((f) => f.cloudinaryPublicId)
+        .map((f) => ({
+          public_id: f.cloudinaryPublicId,
+          uploaded_at: (f.uploadedAt || f.createdAt || new Date()).toISOString(),
+        })),
+      filesInfo: folder.files.map((f) => ({
+        file_name: f.fileName,
+        page_count: f.pageCount ?? null,
+      })),
+    });
+
     if (mode === "per-folder") {
-      await pdfService.generatePatientPdfPerFolder(patient, res);
+      // Compress each folder in parallel
+      const folderResults = await Promise.all(
+        foldersWithFiles.map((folder) => {
+          const payload = buildFolderPayload(folder);
+          return compressionService.compressFolder({
+            ...payload,
+            userId: String(hospitalId),
+            patientId: String(patient._id),
+          });
+        }),
+      );
+
+      // Fetch all merged PDFs from Cloudinary in parallel
+      const fetchResults = await Promise.all(
+        folderResults.map(async (result, i) => {
+          const upstream = await compressionService.fetchMergedStream(result.merged_url);
+          return {
+            name: `${foldersWithFiles[i].name}.pdf`,
+            buffer: Buffer.from(await upstream.arrayBuffer()),
+          };
+        }),
+      );
+
+      // Zip all folder PDFs in original order
+      const { default: archiver } = await import("archiver");
+      const safeName = encodeURIComponent(`${patient.patientName}_records_by_folder.zip`);
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+
+      const archive = archiver("zip", { zlib: { level: 9 } });
+      archive.pipe(res);
+
+      for (const { name, buffer } of fetchResults) {
+        archive.append(buffer, { name });
+      }
+
+      logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, {
+        patientId, mode: "per-folder", compressed: true,
+        folder_count: folderResults.length,
+        content_hashes: folderResults.map((r) => r.content_hash),
+        duration_ms: Date.now() - start,
+      });
+
+      await archive.finalize();
     } else {
-      await pdfService.generatePatientPdfMerged(patient, res);
+      // Merged mode — single compressed PDF with cover pages
+      const folderMap = foldersWithFiles.map((folder) => {
+        const payload = buildFolderPayload(folder);
+        return {
+          folder_id: payload.folderId,
+          display_name: payload.displayName,
+          patient_name: payload.patientName,
+          source_pdfs: payload.sourcePdfs,
+          files_info: payload.filesInfo,
+        };
+      });
+
+      const result = await compressionService.compressPatient({
+        patientId: String(patient._id),
+        userId: String(hospitalId),
+        patientName: patient.patientName,
+        folderMap,
+      });
+
+      logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, {
+        patientId, mode: "merged", compressed: true,
+        content_hash: result.content_hash,
+        tier_used: result.tier_used, cache_hit: result.cache_hit,
+        final_size_bytes: result.final_size_bytes,
+        duration_ms: Date.now() - start,
+      });
+
+      const upstream = await compressionService.fetchMergedStream(result.merged_url);
+      const safeName = encodeURIComponent(`${patient.patientName}_all_records.pdf`);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+      if (result.final_size_bytes > 0) res.setHeader("Content-Length", result.final_size_bytes);
+
+      await pipeline(Readable.fromWeb(upstream.body), res);
     }
   } catch (error) {
-    console.error("[Patient Controller] PDF error:", error);
-    if (!res.headersSent) {
-      return res.status(error.message === "Patient not found" ? 404 : 500).json({
-        success: false,
-        message: error.message === "Patient not found" ? error.message : "Failed to generate PDF",
-      });
-    }
+    if (!res.headersSent) handleCompressionError(error, res, "Patient PDF");
   }
 };
 
@@ -595,16 +702,61 @@ export const downloadFolderPdf = async (req, res) => {
     req.setTimeout(300000);
     res.setTimeout(300000);
 
-    await pdfService.generateFolderPdf(patient, folderName, res);
-  } catch (error) {
-    console.error("[Patient Controller] Folder PDF error:", error);
-    if (!res.headersSent) {
-      const isNotFound = error.message.includes("not found");
-      return res.status(isNotFound ? 404 : 500).json({
-        success: false,
-        message: isNotFound ? error.message : "Failed to generate folder PDF",
-      });
+    if (!USE_COMPRESSION) {
+      await pdfService.generateFolderPdf(patient, folderName, res);
+      return;
     }
+
+    // ── Compression service path ──
+    const folder = patient.folders.find(
+      (f) => f.name.toLowerCase() === folderName.toLowerCase(),
+    );
+    if (!folder) return res.status(404).json({ success: false, message: "Folder not found" });
+
+    const sourcePdfs = folder.files
+      .filter((f) => f.cloudinaryPublicId)
+      .map((f) => ({
+        public_id: f.cloudinaryPublicId,
+        uploaded_at: (f.uploadedAt || f.createdAt || new Date()).toISOString(),
+      }));
+
+    if (sourcePdfs.length === 0) {
+      return res.status(400).json({ success: false, message: "No files in folder" });
+    }
+
+    const filesInfo = folder.files.map((f) => ({
+      file_name: f.fileName,
+      page_count: f.pageCount ?? null,
+    }));
+
+    const start = Date.now();
+    const result = await compressionService.compressFolder({
+      folderId: String(folder._id),
+      userId: String(hospitalId),
+      patientId: String(patient._id),
+      patientName: patient.patientName,
+      displayName: folder.name,
+      filesInfo,
+      sourcePdfs,
+    });
+
+    logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, {
+      patientId, folderName, compressed: true,
+      content_hash: result.content_hash,
+      tier_used: result.tier_used, cache_hit: result.cache_hit,
+      final_size_bytes: result.final_size_bytes,
+      duration_ms: Date.now() - start,
+    });
+
+    const upstream = await compressionService.fetchMergedStream(result.merged_url);
+    const safeName = encodeURIComponent(`${patient.patientName}_${folderName}.pdf`);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+    if (result.final_size_bytes > 0) res.setHeader("Content-Length", result.final_size_bytes);
+
+    await pipeline(Readable.fromWeb(upstream.body), res);
+  } catch (error) {
+    if (!res.headersSent) handleCompressionError(error, res, "Folder PDF");
   }
 };
 
@@ -646,6 +798,51 @@ function formatFileSize(bytes) {
   const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+}
+
+/**
+ * Shared error handler for compression service errors.
+ * Maps custom error classes to HTTP status codes.
+ */
+function handleCompressionError(error, res, context) {
+  // Non-compression errors (Patient not found, etc.) — preserve existing behavior
+  if (error.message?.includes("not found")) {
+    return res.status(404).json({ success: false, message: error.message });
+  }
+
+  if (error instanceof compressionService.SizeFloorError) {
+    return res.status(413).json({
+      success: false,
+      error: "size_floor_breached",
+      min_achievable_mb: error.minAchievableMb,
+      detail: "Even at maximum compression, file exceeds target. Try per-folder mode or deselect folders.",
+    });
+  }
+  if (error instanceof compressionService.SourceFetchError) {
+    return res.status(502).json({
+      success: false,
+      error: "source_unavailable",
+      detail: "Could not fetch source PDF from storage",
+    });
+  }
+  if (error instanceof compressionService.ServiceTimeoutError) {
+    return res.status(504).json({
+      success: false,
+      error: "compression_timeout",
+      detail: "Compression took too long. Try per-folder mode.",
+    });
+  }
+  if (error instanceof compressionService.ServiceUnavailableError) {
+    return res.status(503).json({
+      success: false,
+      error: "service_unavailable",
+      detail: "Compression service temporarily down. Try again in a moment.",
+    });
+  }
+
+  // Fallback for unexpected errors
+  console.error(`[Patient Controller] ${context} error:`, error);
+  return res.status(500).json({ success: false, message: `Failed to generate ${context}` });
 }
 
 export default {
