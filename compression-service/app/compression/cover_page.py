@@ -186,7 +186,7 @@ def generate_cover_page(
             if f.page_count is not None:
                 pg_str = "1 pg" if f.page_count == 1 else f"{f.page_count} pgs"
             else:
-                pg_str = "\u2014"
+                pg_str = "-"
             pdf.set_font("Helvetica", "", 8)
             pdf.set_text_color(*_MUTED)
             pdf.set_xy(cx + 450 * _PT, file_y)
