@@ -593,6 +593,8 @@ export const downloadAllPdf = async (req, res) => {
         .map((f) => ({
           public_id: f.cloudinaryPublicId,
           uploaded_at: (f.uploadedAt || f.createdAt || new Date()).toISOString(),
+          resource_type: f.resourceType || "image",
+          access_mode: f.accessMode || "signed",
         })),
       filesInfo: folder.files.map((f) => ({
         file_name: f.fileName,
@@ -718,6 +720,8 @@ export const downloadFolderPdf = async (req, res) => {
       .map((f) => ({
         public_id: f.cloudinaryPublicId,
         uploaded_at: (f.uploadedAt || f.createdAt || new Date()).toISOString(),
+        resource_type: f.resourceType || "image",
+        access_mode: f.accessMode || "signed",
       }));
 
     if (sourcePdfs.length === 0) {

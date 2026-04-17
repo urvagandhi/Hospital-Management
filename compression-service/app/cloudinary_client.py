@@ -25,22 +25,52 @@ _CACHE_PREFIX = "HospitALL_merged"
 
 
 def _signed_url(public_id: str, expiry_seconds: int = 3600) -> str:
-    """Generate a signed Cloudinary URL for an authenticated PDF."""
-    ts = int(time.time()) + expiry_seconds
+    """Generate a signed Cloudinary URL for an authenticated PDF.
+
+    Uses expires_at + sign_url (same approach as the Node backend's
+    buildSignedUrl in storage.service.js). NOT auth_token which is premium.
+    """
+    expires_at = int(time.time()) + expiry_seconds
     url, _ = cloudinary.utils.cloudinary_url(
         public_id,
         resource_type="image",
         type="authenticated",
-        format="pdf",
         sign_url=True,
-        auth_token={"key": config.CLOUDINARY_API_SECRET, "expiration": ts},
+        secure=True,
+        expires_at=expires_at,
     )
     return url
 
 
-def _source_delivery_url(public_id: str) -> str:
-    """Build a signed delivery URL for fetching a source PDF."""
-    return _signed_url(public_id, expiry_seconds=300)
+def _source_delivery_url(
+    public_id: str,
+    resource_type: str = "image",
+    access_mode: str = "signed",
+) -> str:
+    """Build a delivery URL for fetching a source PDF.
+
+    Public files use a plain Cloudinary URL.
+    Signed/authenticated files use expires_at + sign_url.
+    """
+    if access_mode == "public":
+        url, _ = cloudinary.utils.cloudinary_url(
+            public_id,
+            resource_type=resource_type,
+            secure=True,
+        )
+        return url
+
+    # Authenticated / signed access
+    expires_at = int(time.time()) + 300
+    url, _ = cloudinary.utils.cloudinary_url(
+        public_id,
+        resource_type=resource_type,
+        type="authenticated",
+        sign_url=True,
+        secure=True,
+        expires_at=expires_at,
+    )
+    return url
 
 
 async def check_cache(content_hash: str, http_client: httpx.AsyncClient) -> str | None:
@@ -88,7 +118,7 @@ async def fetch_source_pdfs(
     """
 
     async def _fetch_one(src: SourcePdf, index: int) -> Path:
-        url = _source_delivery_url(src.public_id)
+        url = _source_delivery_url(src.public_id, src.resource_type, src.access_mode)
         dest = job_dir / f"source_{index}.pdf"
 
         try:

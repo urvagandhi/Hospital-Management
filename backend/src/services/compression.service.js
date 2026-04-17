@@ -49,6 +49,8 @@ const TIMEOUT_MS = 120_000;
 
 async function postToService(endpoint, body) {
   const url = `${SERVICE_URL}${endpoint}`;
+  console.log(`[Compression] POST ${url}`);
+  console.log(`[Compression] Payload:`, JSON.stringify(body, null, 2));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -77,6 +79,7 @@ async function postToService(endpoint, body) {
   if (res.status === 413) throw new SizeFloorError(errBody.min_achievable_mb);
   if (res.status === 502) throw new SourceFetchError(errBody.failed_public_id, errBody.detail);
   if (res.status === 504) throw new ServiceTimeoutError();
+  console.error(`[Compression] Service returned ${res.status}:`, JSON.stringify(errBody));
   throw new ServiceUnavailableError(`Compression service returned ${res.status}`);
 }
 
@@ -104,7 +107,12 @@ export async function compressFolder({
     display_name: displayName || "",
     files_info: filesInfo || [],
     target_size_mb: targetSizeMb,
-    source_pdfs: sourcePdfs,
+    source_pdfs: sourcePdfs.map((s) => ({
+      public_id: s.public_id,
+      uploaded_at: s.uploaded_at,
+      resource_type: s.resource_type || "image",
+      access_mode: s.access_mode || "signed",
+    })),
   });
 }
 

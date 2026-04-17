@@ -67,6 +67,8 @@ try {
       .map((f) => ({
         public_id: f.cloudinaryPublicId,
         uploaded_at: (f.uploadedAt || new Date()).toISOString(),
+        resource_type: f.resourceType || "image",
+        access_mode: f.accessMode || "signed",
       }));
 
     console.log(`[Test] Compressing folder "${folder.name}" (${sourcePdfs.length} files)...`);
@@ -106,6 +108,8 @@ try {
           .map((f) => ({
             public_id: f.cloudinaryPublicId,
             uploaded_at: (f.uploadedAt || new Date()).toISOString(),
+            resource_type: f.resourceType || "image",
+            access_mode: f.accessMode || "signed",
           })),
         files_info: folder.files.map((f) => ({
           file_name: f.fileName,
