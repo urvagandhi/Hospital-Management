@@ -422,6 +422,75 @@ export const getFileSignedUrl = async (req, res) => {
 };
 
 /**
+ * GET /api/patients/:patientId/files/:folderName/:fileId/stream
+ * Proxies the file from Cloudinary and sets:
+ *   Content-Disposition: inline; filename="<db fileName>"
+ *   Content-Type: application/pdf (or the stored mimeType)
+ * This lets the browser's native PDF viewer show the correct filename
+ * on its own download button, without needing a client-side blob URL.
+ */
+export const streamFile = async (req, res) => {
+  try {
+    const { patientId, folderName, fileId } = req.params;
+    const hospitalId = req.hospital?.id;
+
+    const patient = await patientService.getPatientById(hospitalId, patientId);
+    if (!patient) return res.status(404).json({ success: false, message: "Patient not found" });
+
+    const folder = patient.folders.find((f) => f.name === folderName);
+    if (!folder) return res.status(404).json({ success: false, message: "Folder not found" });
+
+    const file = folder.files.id
+      ? folder.files.id(fileId)
+      : folder.files.find((f) => String(f._id) === String(fileId));
+    if (!file) return res.status(404).json({ success: false, message: "File not found" });
+
+    // Build the fetch URL — use a short-lived signed URL for authenticated assets,
+    // or the stored public URL for legacy public files.
+    let fetchUrl = file.fileUrl;
+    if (file.accessMode === "signed" && file.cloudinaryPublicId) {
+      fetchUrl = buildSignedUrl({
+        publicId: file.cloudinaryPublicId,
+        resourceType: file.resourceType || "raw",
+        ttlSeconds: 120,
+      });
+    }
+
+    const upstream = await fetch(fetchUrl);
+    if (!upstream.ok) {
+      return res.status(502).json({ success: false, message: "Failed to fetch file from storage" });
+    }
+
+    const mimeType = file.mimeType || "application/octet-stream";
+    const safeFileName = encodeURIComponent(file.fileName).replace(/'/g, "%27");
+
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${safeFileName}"; filename*=UTF-8''${safeFileName}`);
+    res.setHeader("Cache-Control", "private, max-age=300");
+
+    const contentLength = upstream.headers.get("content-length");
+    if (contentLength) res.setHeader("Content-Length", contentLength);
+
+    // Pipe the upstream body directly to the response
+    const reader = upstream.body.getReader();
+    const pump = async () => {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+      }
+      res.end();
+    };
+    await pump();
+  } catch (err) {
+    console.error("[Patient Controller] streamFile error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: "Failed to stream file" });
+    }
+  }
+};
+
+/**
  * GET /api/patients/:patientId/download/zip/size-check
  * Check total file size before downloading ZIP.
  * Returns folder breakdown so frontend can show picker if over 10MB.

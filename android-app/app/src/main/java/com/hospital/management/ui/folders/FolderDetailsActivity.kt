@@ -179,7 +179,7 @@ class FolderDetailsActivity : BaseActivity() {
         if (allFiles.isNotEmpty()) {
             fileAdapter = FileAdapter(allFiles,
                 onFileClick = { file ->
-                    openFile(file)
+                    openWithChooser(file)
                 },
                 onOptionClick = { view, file ->
                     showFileOptions(view, file)
@@ -196,7 +196,6 @@ class FolderDetailsActivity : BaseActivity() {
 
     private fun showFileOptions(view: View, file: FileItem) {
         val popup = androidx.appcompat.widget.PopupMenu(this, view)
-        popup.menu.add("Open")
         popup.menu.add("Open with Drive PDF Viewer")
         popup.menu.add("Download")
         popup.menu.add("Rename")
@@ -204,7 +203,6 @@ class FolderDetailsActivity : BaseActivity() {
 
         popup.setOnMenuItemClickListener { item ->
             when (item.title) {
-                "Open" -> openFile(file)
                 "Open with Drive PDF Viewer" -> openFileInDrive(file)
                 "Download" -> downloadFile(file)
                 "Rename" -> showRenameDialog(file)
@@ -222,25 +220,57 @@ class FolderDetailsActivity : BaseActivity() {
             return
         }
 
-        val currentName = file.fileName.removeSuffix(".pdf").removeSuffix(".PDF")
+        // The filename is structured as "{sanitizedPatientName}_{docName}.pdf".
+        // Only the docName part is editable — the patient prefix stays fixed so
+        // all files for a patient stay consistently named.
+        val sanitizedPatient = patientName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
+        val prefix = "${sanitizedPatient}_"
+        val nameWithoutExt = file.fileName.removeSuffix(".pdf").removeSuffix(".PDF")
+        val hasPrefix = nameWithoutExt.startsWith(prefix)
+        val editablePart = if (hasPrefix) nameWithoutExt.removePrefix(prefix) else nameWithoutExt
+
+        val dp = resources.displayMetrics.density
+
+        val prefixLabel = android.widget.TextView(this).apply {
+            text = prefix
+            textSize = 16f
+            setTextColor(android.graphics.Color.parseColor("#888888"))
+            setPadding(0, 0, 4, 0)
+        }
+
         val editText = com.google.android.material.textfield.TextInputEditText(this).apply {
-            setText(currentName)
+            setText(editablePart)
             selectAll()
             setSingleLine()
         }
+
+        // Row: [prefix label (grey)] [editable field]
+        val row = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            addView(prefixLabel)
+            addView(editText, android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
+
         val container = android.widget.FrameLayout(this).apply {
-            val dp16 = (16 * resources.displayMetrics.density).toInt()
-            setPadding(dp16, dp16, dp16, 0)
-            addView(editText)
+            val pad = (16 * dp).toInt()
+            setPadding(pad, pad, pad, 0)
+            addView(row)
         }
 
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Rename File")
             .setView(container)
             .setPositiveButton("Rename") { _, _ ->
-                val newName = editText.text.toString().trim()
-                if (newName.isNotEmpty()) {
-                    val finalName = if (newName.endsWith(".pdf", ignoreCase = true)) newName else "$newName.pdf"
+                val suffix = editText.text.toString().trim()
+                if (suffix.isNotEmpty()) {
+                    val sanitizedSuffix = suffix.replace(Regex("[^A-Za-z0-9_\\- ]"), "_")
+                    val finalName = if (hasPrefix) {
+                        "${prefix}${sanitizedSuffix}.pdf"
+                    } else {
+                        val s = if (sanitizedSuffix.endsWith(".pdf", ignoreCase = true)) sanitizedSuffix else "$sanitizedSuffix.pdf"
+                        s
+                    }
                     renameFile(file, fileId, finalName)
                 }
             }
@@ -274,39 +304,56 @@ class FolderDetailsActivity : BaseActivity() {
             return
         }
 
-        try {
-            val intent = Intent(Intent.ACTION_VIEW)
-            intent.setPackage("com.google.android.apps.docs")
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-
-            if (fileUrl.startsWith("file://") || fileUrl.startsWith("/")) {
-                 val localFile = if (fileUrl.startsWith("file://")) {
-                    File(Uri.parse(fileUrl).path ?: "")
-                } else {
-                    File(fileUrl)
-                }
-
-                if (localFile.exists()) {
-                    val uri = FileProvider.getUriForFile(this, "${packageName}.provider", localFile)
-                    intent.setDataAndType(uri, "application/pdf")
-                } else {
-                    Toast.makeText(this, "File not found locally", Toast.LENGTH_SHORT).show()
-                    return
-                }
-            } else {
-                intent.setDataAndType(Uri.parse(fileUrl), "application/pdf")
-            }
-
+        lifecycleScope.launch {
             try {
-                startActivity(intent)
-            } catch (e: android.content.ActivityNotFoundException) {
-                Toast.makeText(this, "Google Drive PDF Viewer not found, opening with default viewer", Toast.LENGTH_SHORT).show()
-                openFile(file)
+                // Always resolve to a local FileProvider URI with the correct filename so
+                // Google Drive's "Save" / download button shows the real document name.
+                val localFile = if (isRemote) {
+                    Toast.makeText(this@FolderDetailsActivity, "Preparing file…", Toast.LENGTH_SHORT).show()
+                    withContext(Dispatchers.IO) { downloadToCache(file) }
+                } else {
+                    if (fileUrl.startsWith("file://")) File(Uri.parse(fileUrl).path ?: "") else File(fileUrl)
+                }
+
+                if (localFile == null || !localFile.exists()) {
+                    Toast.makeText(this@FolderDetailsActivity, "Could not prepare file", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val uri = FileProvider.getUriForFile(this@FolderDetailsActivity, "${packageName}.provider", localFile)
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setPackage("com.google.android.apps.docs")
+                    setDataAndType(uri, "application/pdf")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+
+                try {
+                    startActivity(intent)
+                } catch (e: android.content.ActivityNotFoundException) {
+                    Toast.makeText(this@FolderDetailsActivity, "Google Drive not found, showing all apps", Toast.LENGTH_SHORT).show()
+                    openFileWithUri(uri, "application/pdf")
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@FolderDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    /** Downloads [file] to the app's cache directory using its real fileName. Returns null on failure. */
+    private suspend fun downloadToCache(file: FileItem): File? = withContext(Dispatchers.IO) {
+        try {
+            val cacheDir = File(cacheDir, "viewed_files").also { if (!it.exists()) it.mkdirs() }
+            val dest = File(cacheDir, file.fileName)
+            val url = java.net.URL(file.displayUrl)
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.connectTimeout = 15_000
+            conn.readTimeout = 60_000
+            conn.connect()
+            if (conn.responseCode !in 200..299) return@withContext null
+            conn.inputStream.use { input -> dest.outputStream().use { input.copyTo(it) } }
+            dest
         } catch (e: Exception) {
-            e.printStackTrace()
-             Toast.makeText(this, "Error with Drive Viewer, opening with default", Toast.LENGTH_SHORT).show()
-            openFile(file)
+            null
         }
     }
 
@@ -328,7 +375,7 @@ class FolderDetailsActivity : BaseActivity() {
     private fun downloadFile(file: FileItem) {
         val fileUrl = file.displayUrl
 
-        // Handle local private files (pending offline upload) — no internet needed
+        // Pending offline file — copy from local storage
         if (fileUrl.startsWith("file://") || fileUrl.startsWith("/")) {
             exportLocalFile(file, fileUrl)
             return
@@ -344,21 +391,46 @@ class FolderDetailsActivity : BaseActivity() {
             return
         }
 
-        try {
-            val subPath = getDownloadSubPath()
-            val request = android.app.DownloadManager.Request(Uri.parse(fileUrl))
-                .setTitle(file.name)
-                .setDescription("Downloading file...")
-                .setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, "$subPath/${file.name}")
-                .setAllowedOverMetered(true)
-                .setAllowedOverRoaming(true)
+        Toast.makeText(this, "Downloading…", Toast.LENGTH_SHORT).show()
 
-            val downloadManager = getSystemService(android.content.Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-            downloadManager.enqueue(request)
-            Toast.makeText(this, "Download started...", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val conn = (java.net.URL(fileUrl).openConnection() as java.net.HttpURLConnection).also {
+                    it.connectTimeout = 15_000
+                    it.readTimeout = 60_000
+                    it.connect()
+                }
+                if (conn.responseCode !in 200..299) throw Exception("Server error ${conn.responseCode}")
+
+                val fileName = file.name
+                val mimeType = getMimeType(fileName)
+                val subPath = getDownloadSubPath()
+
+                val cv = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeType)
+                    put(android.provider.MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$subPath")
+                    put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val uri = contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv)
+                    ?: throw Exception("Could not create download entry")
+
+                contentResolver.openOutputStream(uri)?.use { out ->
+                    conn.inputStream.use { it.copyTo(out, bufferSize = 16 * 1024) }
+                }
+
+                cv.clear()
+                cv.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+                contentResolver.update(uri, cv, null, null)
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@FolderDetailsActivity, "Saved: $fileName", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@FolderDetailsActivity, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
@@ -826,6 +898,45 @@ class FolderDetailsActivity : BaseActivity() {
             startActivity(intent)
         } catch (e: android.content.ActivityNotFoundException) {
             Toast.makeText(this, "No app found to open this file type", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Shows the Android system "Open with" chooser for [file].
+     * Tapping a file row calls this instead of our in-app viewer, so the user
+     * can pick any installed app (Google Drive, Adobe, WPS, CamScanner, etc.).
+     * For remote files the URL is passed directly — most PDF apps handle HTTP URLs.
+     * For local/pending files a FileProvider URI is used.
+     */
+    private fun openWithChooser(file: FileItem) {
+        val fileUrl = file.displayUrl
+        if (fileUrl.isEmpty()) {
+            Toast.makeText(this, "File URL not available", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val isRemote = !(fileUrl.startsWith("file://") || fileUrl.startsWith("/"))
+        if (isRemote && !isNetworkAvailable()) {
+            showOfflineDialog("Connect to the internet to open this file.")
+            return
+        }
+
+        try {
+            val intent = if (isRemote) {
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(Uri.parse(fileUrl), file.mimeType ?: "application/pdf")
+                }
+            } else {
+                val localFile = if (fileUrl.startsWith("file://")) File(Uri.parse(fileUrl).path ?: "") else File(fileUrl)
+                val uri = FileProvider.getUriForFile(this, "${packageName}.provider", localFile)
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, getMimeType(file.name))
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+            }
+            startActivity(Intent.createChooser(intent, "Open with"))
+        } catch (e: Exception) {
+            Toast.makeText(this, "No app available to open this file", Toast.LENGTH_SHORT).show()
         }
     }
 

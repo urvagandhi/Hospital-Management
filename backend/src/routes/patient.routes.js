@@ -137,6 +137,13 @@ router.delete("/:patientId/files/:folderName/:fileId", patientController.deleteF
  */
 router.get("/:patientId/files/:folderName/:fileId/signed-url", patientController.getFileSignedUrl);
 
+/**
+ * GET /api/patients/:patientId/files/:folderName/:fileId/stream
+ * Proxy file from Cloudinary with correct Content-Disposition: inline; filename="..."
+ * Used by the web PDF viewer so the viewer's own download button has the right filename.
+ */
+router.get("/:patientId/files/:folderName/:fileId/stream", patientController.streamFile);
+
 // ═══════════════════════════════════════════════════
 // DOWNLOAD ENDPOINTS
 // ═══════════════════════════════════════════════════

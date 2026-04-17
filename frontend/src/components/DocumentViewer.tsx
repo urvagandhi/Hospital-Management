@@ -84,17 +84,32 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
     }
   };
 
-  // Cloudinary stores PDFs as resource_type=raw, which serves them with
-  // Content-Disposition: attachment. Browsers download instead of rendering.
-  // Fetch as blob and create a blob URL — blob URLs use the `type` parameter
-  // rather than the server's disposition header, so the browser's native PDF
-  // viewer picks them up.
+  // Build the stream URL for PDF viewing.
+  // The backend /stream endpoint proxies the file from Cloudinary and sets:
+  //   Content-Disposition: inline; filename="<db fileName>"
+  // This means the browser's native PDF viewer download button shows the correct
+  // filename instead of a blob UUID.
+  //
+  // Auth works automatically — the JWT is in the accessToken cookie which the
+  // browser sends with all same-origin requests, including iframe src loads.
+  //
+  // Fall back to the blob-URL workaround when patientId/folderName/fileId are
+  // not available (e.g. viewer opened without full context).
+  const streamUrl =
+    patientId && folderName && file._id
+      ? `/api/patients/${patientId}/files/${encodeURIComponent(folderName)}/${file._id}/stream`
+      : null;
+
+  // Blob URL fallback — only created when we cannot use the stream endpoint.
+  // Also pre-fetches the PDF for our custom Download button so it can reuse the blob.
   useEffect(() => {
     if (!file || !isPdfMime(file.mimeType)) {
       setPdfBlobUrl(null);
       setPdfError(null);
       return;
     }
+    // Stream endpoint available — no need for a blob URL for the iframe.
+    // Still pre-fetch so handleDownload can reuse the blob (avoids a second network hit).
     let cancelled = false;
     let objectUrl: string | null = null;
     setPdfBlobUrl(null);
@@ -112,13 +127,16 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
         setPdfBlobUrl(objectUrl);
       })
       .catch((err) => {
-        if (!cancelled) setPdfError(err.message || "Failed to load PDF");
+        if (!cancelled) {
+          // Only treat as error when there is no stream URL to fall back to.
+          if (!streamUrl) setPdfError(err.message || "Failed to load PDF");
+        }
       });
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [resolvedUrl, file?.fileUrl, file?.mimeType]);
+  }, [resolvedUrl, file?.fileUrl, file?.mimeType, streamUrl]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -219,7 +237,16 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
                 Open in new tab
               </a>
             </div>
+          ) : streamUrl ? (
+            // Stream endpoint: serves Content-Disposition: inline; filename="correct.pdf"
+            // so the browser PDF viewer's own download button gets the right filename.
+            <iframe
+              src={`${streamUrl}#zoom=page-width`}
+              title={file.fileName}
+              className="w-[98vw] h-[90vh] bg-white rounded"
+            />
           ) : pdfBlobUrl ? (
+            // Fallback blob URL when stream endpoint is unavailable.
             <iframe
               src={`${pdfBlobUrl}#zoom=page-width`}
               title={file.fileName}
