@@ -18,7 +18,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # Paths that skip secret validation
-_PUBLIC_PATHS = {"/api/health", "/docs", "/openapi.json"}
+_PUBLIC_PATHS = {"/", "/api/health", "/docs", "/openapi.json"}
 
 
 @asynccontextmanager

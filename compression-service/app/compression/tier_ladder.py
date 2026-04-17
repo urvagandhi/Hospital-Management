@@ -60,16 +60,15 @@ async def run_tier_ladder(
 ) -> CompressionResult:
     """Try tiers 0→4 on a merged scanned PDF, stop at first fit.
 
+    Always runs at least Tier 0 — even if the merged file fits the target —
+    because the merged output must stay under Cloudinary's 10 MB upload limit.
+
     Raises SizeFloorBreached if Tier 4 still exceeds target.
     """
-    # Check if input already fits
-    input_size = merged_pdf_path.stat().st_size
-    if input_size <= target_size_bytes:
-        return CompressionResult(
-            output_path=merged_pdf_path,
-            tier_used=0,
-            output_size_bytes=input_size,
-        )
+    # Cloudinary free tier upload limit
+    CLOUDINARY_MAX_BYTES = 10_485_760  # 10 MB
+
+    effective_target = min(target_size_bytes, CLOUDINARY_MAX_BYTES)
 
     last_output: Path | None = None
     last_size = 0
@@ -98,13 +97,13 @@ async def run_tier_ladder(
                 "metrics": {
                     "tier": tier.level.value,
                     "output_bytes": output_size,
-                    "target_bytes": target_size_bytes,
-                    "fits": output_size <= target_size_bytes,
+                    "target_bytes": effective_target,
+                    "fits": output_size <= effective_target,
                 },
             },
         )
 
-        if output_size <= target_size_bytes:
+        if output_size <= effective_target:
             return CompressionResult(
                 output_path=output_path,
                 tier_used=tier.level.value,
