@@ -267,19 +267,21 @@ class UploadActivity : BaseActivity() {
                     "${sanitizedPatientName}_${sanitizedFolderName}_${System.currentTimeMillis()}.pdf"
                 }
 
-                val pdfFile = when {
+                val pdfResult: com.hospital.management.utils.PdfUtils.PdfResult? = when {
                     scannedPdfUri != null -> {
                         binding.tvUploadProgress.text = "Preparing scanner PDF..."
                         withContext(Dispatchers.IO) {
                             val copiedPdf = copyPdfFromUri(scannedPdfUri!!, pdfFileName)
                             if (copiedPdf != null && copiedPdf.length() <= MAX_SERVER_UPLOAD_BYTES) {
-                                copiedPdf
+                                // Raw copy — no compression profile applied.
+                                com.hospital.management.utils.PdfUtils.PdfResult(copiedPdf, -1)
                             } else {
                                 copiedPdf?.delete()
                                 com.hospital.management.utils.PdfUtils.recompressPdfFromUri(
                                     applicationContext,
                                     scannedPdfUri!!,
-                                    pdfFileName
+                                    pdfFileName,
+                                    folderName
                                 )
                             }
                         }
@@ -290,12 +292,16 @@ class UploadActivity : BaseActivity() {
                             com.hospital.management.utils.PdfUtils.createPdfFromImages(
                                 applicationContext,
                                 scannedPages,
-                                pdfFileName
+                                pdfFileName,
+                                folderName
                             )
                         }
                     }
                     else -> null
                 }
+
+                val pdfFile = pdfResult?.file
+                val uploadProfileUsed = pdfResult?.profileUsed ?: -1
 
                 if (pdfFile == null) {
                     withContext(Dispatchers.Main) {
@@ -331,7 +337,7 @@ class UploadActivity : BaseActivity() {
 
                 if (isOnline) {
                     binding.tvUploadProgress.text = "Uploading PDF..."
-                    val result = docRepository.uploadDocument(patientId, folderName, pdfFile, idempotencyKey)
+                    val result = docRepository.uploadDocument(patientId, folderName, pdfFile, idempotencyKey, uploadProfileUsed)
 
                     binding.progressBar.visibility = View.GONE
                     binding.btnUpload.isEnabled = true
@@ -345,7 +351,7 @@ class UploadActivity : BaseActivity() {
                     } else {
                         if (result.retryable) {
                             // Retryable failures (network/server) are safe to queue for later sync.
-                            docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), idempotencyKey)
+                            docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), idempotencyKey, uploadProfileUsed)
                             Toast.makeText(this@UploadActivity, "Upload failed. Saved offline.", Toast.LENGTH_LONG).show()
                             finish()
                         } else {

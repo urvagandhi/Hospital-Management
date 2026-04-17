@@ -1,5 +1,6 @@
 package com.hospital.management.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -17,7 +18,12 @@ data class OfflineDocument(
     // Stable key sent as Idempotency-Key header. Prevents the server from
     // creating a duplicate file entry when a request succeeds server-side but
     // fails client-side (e.g. network drop mid-response) and is later retried.
-    val idempotencyKey: String = ""
+    val idempotencyKey: String = "",
+    // Which PdfUtils compression profile produced this file (0 = primary/spec, 1/2 = fallback).
+    // -1 means unknown (pre-existing rows or non-scanned uploads).
+    // Cloud Run can use this to skip aggressive re-compression on already-compressed files.
+    @ColumnInfo(name = "upload_profile_used", defaultValue = "-1")
+    val uploadProfileUsed: Int = -1
 )
 
 enum class SyncStatus {

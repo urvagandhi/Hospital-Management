@@ -6,6 +6,8 @@
     <cache-path name="viewed_files" path="viewed_files/" />
     <!-- Root cacheDir — for temp files downloaded for viewing -->
     <cache-path name="cache_root" path="." />
+    <!-- Download cache — DownloadWorker stores cached downloads here -->
+    <files-path name="download_cache" path="download_cache/" />
     <external-files-path name="shared" path="shared/" />
     <external-files-path name="logs" path="logs/" />
 </paths>

@@ -16,6 +16,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputLayout
 import com.hospital.management.R
 import com.hospital.management.data.api.RetrofitClient
+import com.hospital.management.data.local.AppDatabase
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.models.Hospital
 import com.hospital.management.data.repository.AuthRepository
@@ -83,9 +84,11 @@ class ProfileActivity : BaseActivity() {
         binding.btnSave.setOnClickListener { saveBasic() }
         binding.btnChangeEmail.setOnClickListener { showContactChangeDialog("email") }
         binding.btnChangePhone.setOnClickListener { showContactChangeDialog("phone") }
+        binding.btnClearCache.setOnClickListener { clearDownloadCache() }
 
         observe()
         vm.loadProfile()
+        refreshCacheInfo()
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -246,6 +249,41 @@ class ProfileActivity : BaseActivity() {
             }
         }
         dialog.show()
+    }
+
+    // ── Download cache management ───────────────────────────────────────────
+
+    private fun refreshCacheInfo() {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val dao = AppDatabase.getDatabase(this@ProfileActivity).downloadCacheDao()
+            val totalBytes = dao.totalCacheBytes() ?: 0L
+            val cacheDir = java.io.File(filesDir, "download_cache")
+            val fileCount = cacheDir.listFiles()?.count { !it.name.endsWith(".tmp") && !it.name.endsWith(".meta") } ?: 0
+            val sizeMb = "%.1f".format(totalBytes / (1024.0 * 1024.0))
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                binding.tvCacheInfo.text = "Downloaded files: $fileCount items, $sizeMb MB"
+            }
+        }
+    }
+
+    private fun clearDownloadCache() {
+        AlertDialog.Builder(this)
+            .setTitle("Clear Downloads Cache")
+            .setMessage("This will remove all cached downloads. Files already saved to your Downloads folder are not affected.")
+            .setPositiveButton("Clear") { _, _ ->
+                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val dao = AppDatabase.getDatabase(this@ProfileActivity).downloadCacheDao()
+                    dao.clearAll()
+                    val cacheDir = java.io.File(filesDir, "download_cache")
+                    cacheDir.listFiles()?.forEach { it.delete() }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        binding.tvCacheInfo.text = "Downloaded files: 0 items, 0.0 MB"
+                        GlassSnackbar.show(this@ProfileActivity, "Cache cleared", GlassSnackbar.Variant.SUCCESS)
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ── State observation ──────────────────────────────────────────────────

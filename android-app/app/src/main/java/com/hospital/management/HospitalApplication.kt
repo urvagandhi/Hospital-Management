@@ -11,11 +11,13 @@ import android.net.NetworkRequest
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
 import com.hospital.management.data.api.AuthInterceptor
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.AppDatabase
@@ -42,13 +44,11 @@ class HospitalApplication : Application() {
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private var heartbeatJob: Job? = null
 
-    companion object {
-        private const val HEARTBEAT_INTERVAL_MS = 60_000L // 60 seconds
-        private const val TAG = "HospitalApplication"
-    }
-
     override fun onCreate() {
         super.onCreate()
+
+        // Create notification channels (Android 8+)
+        createNotificationChannels()
 
         // Initialize file-based logging
         FileLogger.init(this)
@@ -212,6 +212,7 @@ class HospitalApplication : Application() {
 
                     val syncRequest = OneTimeWorkRequestBuilder<SyncDocumentsWorker>()
                         .setConstraints(constraints)
+                        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                         .build()
 
                     WorkManager.getInstance(this@HospitalApplication)
@@ -225,6 +226,26 @@ class HospitalApplication : Application() {
                 e.printStackTrace()
             }
         }
+    }
+
+    private fun createNotificationChannels() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val manager = getSystemService(android.app.NotificationManager::class.java)
+            val downloads = android.app.NotificationChannel(
+                CHANNEL_DOWNLOADS,
+                "Downloads",
+                android.app.NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "File download progress and completion"
+            }
+            manager.createNotificationChannel(downloads)
+        }
+    }
+
+    companion object {
+        private const val HEARTBEAT_INTERVAL_MS = 60_000L // 60 seconds
+        private const val TAG = "HospitalApplication"
+        const val CHANNEL_DOWNLOADS = "downloads"
     }
 
     // Note: onTerminate() is never called on real Android devices,

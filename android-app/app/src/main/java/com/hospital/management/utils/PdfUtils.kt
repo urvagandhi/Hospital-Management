@@ -20,12 +20,11 @@ import kotlin.math.roundToInt
 object PdfUtils {
 
     private const val TAG = "PdfUtils"
-    private const val A4_WIDTH = 1240
-    private const val A4_HEIGHT = 1754
-    private const val MAX_UPLOAD_BYTES = 20L * 1024L * 1024L
-    private const val TARGET_HEADROOM_BYTES = 2L * 1024L * 1024L
-    private const val MIN_TARGET_PDF_BYTES = 2L * 1024L * 1024L
-    private const val TARGET_PER_PAGE_BYTES = 900L * 1024L
+    private const val A4_WIDTH = 1654   // 200 DPI × 210 mm
+    private const val A4_HEIGHT = 2339  // 200 DPI × 297 mm
+
+    /** Returned by both public functions so callers can record which profile fired. */
+    data class PdfResult(val file: File, val profileUsed: Int)
 
     private data class CompressionProfile(
         val pageWidth: Int,
@@ -33,45 +32,33 @@ object PdfUtils {
         val maxSourceDimension: Int,
         val maxBitmapWidth: Int,
         val jpegQuality: Int,
-        val grayscale: Boolean
+        // Per-profile size gate. Long.MAX_VALUE = last-resort, accepts any output size.
+        // Greyscale is not stored here — decided once from FolderColorMode.
+        val maxOutputBytes: Long
     )
 
     private val compressionProfiles = listOf(
-        // Preferred profile: readable medical docs around 150 DPI.
+        // Profile 0 (primary, spec): 200 DPI A4, quality 80.
+        // Generous 18 MB gate — should handle ~95% of real-world scans without falling through.
         CompressionProfile(
-            pageWidth = A4_WIDTH,
-            pageHeight = A4_HEIGHT,
-            maxSourceDimension = 2200,
-            maxBitmapWidth = 1240,
-            jpegQuality = 88,
-            grayscale = false
+            pageWidth = A4_WIDTH, pageHeight = A4_HEIGHT,
+            maxSourceDimension = 2600, maxBitmapWidth = 1654,
+            jpegQuality = 80, maxOutputBytes = 18L * 1024 * 1024
         ),
-        // Fallback profile when source pages are still too large.
+        // Profile 1 (fallback): load source smaller, 12 MB gate.
+        // Fires for extreme high-res camera shots.
         CompressionProfile(
-            pageWidth = A4_WIDTH,
-            pageHeight = A4_HEIGHT,
-            maxSourceDimension = 1900,
-            maxBitmapWidth = 1160,
-            jpegQuality = 82,
-            grayscale = false
+            pageWidth = A4_WIDTH, pageHeight = A4_HEIGHT,
+            maxSourceDimension = 2000, maxBitmapWidth = 1240,
+            jpegQuality = 80, maxOutputBytes = 12L * 1024 * 1024
         ),
-        // Last resort profile to keep uploads comfortably below backend limits.
+        // Profile 2 (last resort): lower quality floor, no size gate.
+        // Accepts whatever it produces — if even this is too large, the pre-upload
+        // check in UploadActivity will catch it.
         CompressionProfile(
-            pageWidth = A4_WIDTH,
-            pageHeight = A4_HEIGHT,
-            maxSourceDimension = 1700,
-            maxBitmapWidth = 1040,
-            jpegQuality = 76,
-            grayscale = false
-        ),
-        // Nuclear profile for extreme high-res scans.
-        CompressionProfile(
-            pageWidth = A4_WIDTH,
-            pageHeight = A4_HEIGHT,
-            maxSourceDimension = 1400,
-            maxBitmapWidth = 900,
-            jpegQuality = 70,
-            grayscale = true
+            pageWidth = A4_WIDTH, pageHeight = A4_HEIGHT,
+            maxSourceDimension = 1600, maxBitmapWidth = 1040,
+            jpegQuality = 72, maxOutputBytes = Long.MAX_VALUE
         )
     )
     private const val WHITE_THRESHOLD = 200
@@ -82,15 +69,16 @@ object PdfUtils {
     fun createPdfFromImages(
         context: Context,
         imageUris: List<Uri>,
-        outputFileName: String = "document_${System.currentTimeMillis()}.pdf"
-    ): File? {
+        outputFileName: String = "document_${System.currentTimeMillis()}.pdf",
+        folderName: String = ""
+    ): PdfResult? {
         if (imageUris.isEmpty()) return null
 
+        val grayscale = FolderColorMode.isGrayscale(folderName)
         val safeFileName = ensurePdfExtension(outputFileName)
         val outputFile = File(context.filesDir, safeFileName)
-        val targetPdfBytes = getTargetPdfBytes(pageCount = imageUris.size)
 
-        for (profile in compressionProfiles) {
+        for ((profileIndex, profile) in compressionProfiles.withIndex()) {
             outputFile.delete()
             val wrote = writeCompressedPdf(
                 outputFile = outputFile,
@@ -106,7 +94,7 @@ object PdfUtils {
                 var working: Bitmap? = source
                 try {
                     working = trimWhiteBorders(working!!)
-                    val normalized = normalizeForPdf(working, p)
+                    val normalized = normalizeForPdf(working, p, grayscale)
                     if (normalized !== working) {
                         working?.recycle()
                     }
@@ -121,23 +109,17 @@ object PdfUtils {
             }
 
             if (!wrote || !outputFile.exists()) {
-                Log.d(TAG, "${profile.pageWidth}px q${profile.jpegQuality}: write_failed")
+                Log.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: write_failed")
                 continue
             }
 
-            Log.d(
-                TAG,
-                "${profile.pageWidth}px q${profile.jpegQuality}: ${outputFile.length() / 1024}KB target=${targetPdfBytes / 1024}KB"
-            )
-            if (outputFile.length() <= targetPdfBytes || profile == compressionProfiles.last()) {
-                return outputFile
+            Log.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: ${outputFile.length() / 1024}KB limit=${profile.maxOutputBytes / 1024}KB")
+            if (outputFile.length() <= profile.maxOutputBytes) {
+                return PdfResult(outputFile, profileIndex)
             }
         }
 
-        if (outputFile.exists()) {
-            return outputFile
-        }
-        return null
+        return if (outputFile.exists()) PdfResult(outputFile, compressionProfiles.lastIndex) else null
     }
 
     /**
@@ -146,8 +128,10 @@ object PdfUtils {
     fun recompressPdfFromUri(
         context: Context,
         pdfUri: Uri,
-        outputFileName: String = "document_${System.currentTimeMillis()}.pdf"
-    ): File? {
+        outputFileName: String = "document_${System.currentTimeMillis()}.pdf",
+        folderName: String = ""
+    ): PdfResult? {
+        val grayscale = FolderColorMode.isGrayscale(folderName)
         val safeFileName = ensurePdfExtension(outputFileName)
         val outputFile = File(context.filesDir, safeFileName)
 
@@ -156,9 +140,8 @@ object PdfUtils {
             val renderer = PdfRenderer(it)
             renderer.use { pdfRenderer ->
                 if (pdfRenderer.pageCount <= 0) return null
-                val targetPdfBytes = getTargetPdfBytes(pageCount = pdfRenderer.pageCount)
 
-                for (profile in compressionProfiles) {
+                for ((profileIndex, profile) in compressionProfiles.withIndex()) {
                     outputFile.delete()
                     val wrote = writeCompressedPdf(
                         outputFile = outputFile,
@@ -167,30 +150,24 @@ object PdfUtils {
                     ) { pageIndex, p ->
                         pdfRenderer.openPage(pageIndex).use { page ->
                             val rendered = renderPdfPage(page, p)
-                            normalizeForPdf(rendered, p)
+                            normalizeForPdf(rendered, p, grayscale)
                         }
                     }
 
                     if (!wrote || !outputFile.exists()) {
-                        Log.d(TAG, "${profile.pageWidth}px q${profile.jpegQuality}: write_failed")
+                        Log.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: write_failed")
                         continue
                     }
 
-                    Log.d(
-                        TAG,
-                        "${profile.pageWidth}px q${profile.jpegQuality}: ${outputFile.length() / 1024}KB target=${targetPdfBytes / 1024}KB"
-                    )
-                    if (outputFile.length() <= targetPdfBytes || profile == compressionProfiles.last()) {
-                        return outputFile
+                    Log.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: ${outputFile.length() / 1024}KB limit=${profile.maxOutputBytes / 1024}KB")
+                    if (outputFile.length() <= profile.maxOutputBytes) {
+                        return PdfResult(outputFile, profileIndex)
                     }
                 }
             }
         }
 
-        if (outputFile.exists()) {
-            return outputFile
-        }
-        return null
+        return if (outputFile.exists()) PdfResult(outputFile, compressionProfiles.lastIndex) else null
     }
 
     private inline fun writeCompressedPdf(
@@ -311,10 +288,10 @@ object PdfUtils {
         }
     }
 
-    private fun normalizeForPdf(bitmap: Bitmap, profile: CompressionProfile): Bitmap {
+    private fun normalizeForPdf(bitmap: Bitmap, profile: CompressionProfile, grayscale: Boolean): Bitmap {
         var working = scaleBitmapToWidth(bitmap, profile.maxBitmapWidth)
 
-        if (profile.grayscale) {
+        if (grayscale) {
             val gray = toGrayscale(working)
             if (gray !== working && working !== bitmap && !working.isRecycled) {
                 working.recycle()
@@ -412,14 +389,6 @@ object PdfUtils {
         return Color.red(pixel) >= WHITE_THRESHOLD &&
             Color.green(pixel) >= WHITE_THRESHOLD &&
             Color.blue(pixel) >= WHITE_THRESHOLD
-    }
-
-    private fun getTargetPdfBytes(pageCount: Int): Long {
-        val clampedPages = pageCount.coerceAtLeast(1).toLong()
-        val maxTargetBytes = (MAX_UPLOAD_BYTES - TARGET_HEADROOM_BYTES)
-            .coerceAtLeast(MIN_TARGET_PDF_BYTES)
-        val calculatedTarget = clampedPages * TARGET_PER_PAGE_BYTES
-        return calculatedTarget.coerceIn(MIN_TARGET_PDF_BYTES, maxTargetBytes)
     }
 
     private fun scaleBitmapToWidth(bitmap: Bitmap, targetWidth: Int): Bitmap {

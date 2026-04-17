@@ -246,6 +246,51 @@
                     android:text="Change"
                     android:textSize="12sp" />
             </LinearLayout>
+
+            <!-- ── Storage ────────────────────────────────────────── -->
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="@dimen/space_xl"
+                android:background="@color/color_on_surface_muted"
+                android:alpha="0.2" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_xl"
+                android:fontFamily="@font/inter_bold"
+                android:text="Storage"
+                android:textColor="@color/color_on_surface"
+                android:textSize="18sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_md"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvCacheInfo"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/inter"
+                    android:text="Downloaded files: calculating…"
+                    android:textColor="@color/color_on_surface"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btnClearCache"
+                    style="@style/Widget.App.Button.Secondary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/inter_medium"
+                    android:text="Clear"
+                    android:textSize="12sp" />
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 

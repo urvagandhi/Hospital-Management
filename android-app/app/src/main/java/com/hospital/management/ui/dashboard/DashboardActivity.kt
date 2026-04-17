@@ -17,10 +17,12 @@ import com.hospital.management.R
 import com.hospital.management.databinding.ActivityDashboardBinding
 import com.hospital.management.ui.admission.AdmissionActivity
 import com.hospital.management.ui.auth.LoginActivity
+import androidx.work.BackoffPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
 import com.hospital.management.worker.SyncDocumentsWorker
 import com.hospital.management.ui.folders.FolderViewActivity
 import com.hospital.management.presentation.viewmodel.AuthViewModel
@@ -29,7 +31,11 @@ import com.hospital.management.data.repository.AuthRepository
 import com.hospital.management.data.repository.PatientRepository
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.TokenManager
+import android.annotation.SuppressLint
 import android.content.Context
+import com.google.android.material.badge.BadgeDrawable
+import com.google.android.material.badge.BadgeUtils
+import com.hospital.management.data.local.AppDatabase
 import com.hospital.management.utils.SessionManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -42,6 +48,11 @@ class DashboardActivity : BaseActivity() {
     private lateinit var patientViewModel: com.hospital.management.presentation.viewmodel.PatientViewModel
     private lateinit var patientAdapter: com.hospital.management.ui.patients.PatientAdapter
     private var searchDebounceJob: Job? = null
+    private var currentMenu: Menu? = null
+    private var syncBadge: BadgeDrawable? = null
+
+    override fun isShowingCachedData(): Boolean =
+        ::patientViewModel.isInitialized && patientViewModel.patients.value.isNotEmpty()
 
     private fun isNetworkAvailable(): Boolean {
         val connectivityManager = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
@@ -92,9 +103,29 @@ class DashboardActivity : BaseActivity() {
 
     private var isAdmin = false
 
+    @SuppressLint("UnsafeOptInUsageError")
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.dashboard_menu, menu)
+        currentMenu = menu
+        observePendingBadge()
         return true
+    }
+
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun observePendingBadge() {
+        val db = AppDatabase.getDatabase(this)
+        lifecycleScope.launch {
+            db.documentDao().observePendingCount().collect { count ->
+                val badge = syncBadge ?: BadgeDrawable.create(this@DashboardActivity).also { syncBadge = it }
+                if (count > 0) {
+                    badge.number = count
+                    BadgeUtils.attachBadgeDrawable(badge, binding.toolbar, R.id.action_sync)
+                } else {
+                    BadgeUtils.detachBadgeDrawable(badge, binding.toolbar, R.id.action_sync)
+                    syncBadge = null
+                }
+            }
+        }
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
@@ -131,13 +162,22 @@ class DashboardActivity : BaseActivity() {
             return
         }
 
+        // Reset any docs stuck in UPLOADING from a previously cancelled worker
+        // before enqueuing, so they're picked up immediately by this run.
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            AppDatabase.getDatabase(this@DashboardActivity).documentDao().resetStuckUploading()
+        }
+
         Toast.makeText(this, "Starting sync...", Toast.LENGTH_SHORT).show()
-        // Use the same unique name as the auto-sync so only one worker ever runs at a time.
-        // REPLACE cancels any enqueued auto-sync and starts a fresh one immediately.
-        val syncWorkRequest = OneTimeWorkRequestBuilder<SyncDocumentsWorker>().build()
+        // KEEP — if a sync is already running, let it finish rather than cancelling
+        // mid-upload. REPLACE caused a race where the cancelled worker had already
+        // uploaded but hadn't deleted the Room entry, leaving docs stuck in UPLOADING.
+        val syncWorkRequest = OneTimeWorkRequestBuilder<SyncDocumentsWorker>()
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
         WorkManager.getInstance(this).enqueueUniqueWork(
             "auto_sync_documents",
-            ExistingWorkPolicy.REPLACE,
+            ExistingWorkPolicy.KEEP,
             syncWorkRequest
         )
 

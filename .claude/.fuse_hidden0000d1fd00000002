@@ -217,7 +217,11 @@
       "Bash(find . -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" -o -name \"*.jsx\" -o -name \"*.js\" \\\\\\) ! -path \"./node_modules/*\" ! -path \"./android-app/*build*\" ! -path \"./.git/*\" -exec grep -l \"address.*+\" {} \\\\;)",
       "Bash(node src/migrate-folders.js)",
       "Bash(node -e ' *)",
-      "Bash(ls /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/build.gradle*)"
+      "Bash(ls /media/urva/Personal/Technical/Project/Urva/Hospital-Management/android-app/app/build.gradle*)",
+      "Bash(node --input-type=module --eval ' *)",
+      "Bash(node --env-file=.env --input-type=module --eval ' *)",
+      "Bash(node --env-file=.env src/migrate-cloudinary-paths.js)",
+      "Bash(node --input-type=module --eval \"console.log\\(typeof fetch\\)\")"
     ]
   }
 }

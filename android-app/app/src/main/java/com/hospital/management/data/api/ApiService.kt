@@ -190,7 +190,8 @@ interface ApiService {
         @Path("patientId") patientId: String,
         @Path("folderName") folderName: String,
         @Part file: MultipartBody.Part,
-        @Header("Idempotency-Key") idempotencyKey: String
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Header("X-Upload-Profile") uploadProfileUsed: Int
     ): Response<Map<String, Any>>
 
     @PATCH("/api/patients/{patientId}/files/{folderName}/{fileId}/rename")

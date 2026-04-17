@@ -48,9 +48,10 @@ class PatientRepository(
         patientId: String,
         folderName: String,
         file: okhttp3.MultipartBody.Part,
-        idempotencyKey: String = java.util.UUID.randomUUID().toString()
+        idempotencyKey: String = java.util.UUID.randomUUID().toString(),
+        uploadProfileUsed: Int = -1
     ): Response<Map<String, Any>> {
-        return apiService.uploadFile(patientId, folderName, file, idempotencyKey)
+        return apiService.uploadFile(patientId, folderName, file, idempotencyKey, uploadProfileUsed)
     }
     
     suspend fun downloadFolderPdf(patientId: String, folderName: String): Response<okhttp3.ResponseBody> {

@@ -35,6 +35,10 @@ interface DocumentDao {
     @Query("SELECT * FROM offline_documents WHERE patientId = :patientId AND folderName = :folderName AND status != 'COMPLETED' AND retryCount < 5 ORDER BY timestamp DESC")
     fun observePendingForFolder(patientId: String, folderName: String): Flow<List<OfflineDocument>>
 
+    // Real-time Flow of total pending count — drives the header badge in DashboardActivity
+    @Query("SELECT COUNT(*) FROM offline_documents WHERE status != 'COMPLETED' AND retryCount < 5")
+    fun observePendingCount(): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM offline_documents WHERE patientId = :patientId AND folderName = :folderName AND status != 'COMPLETED' AND retryCount < 5")
     suspend fun getPendingCountForFolder(patientId: String, folderName: String): Int
 

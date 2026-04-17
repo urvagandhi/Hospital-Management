@@ -32,7 +32,8 @@ class DocumentRepository(
         patientId: String,
         folderName: String,
         file: File,
-        idempotencyKey: String
+        idempotencyKey: String,
+        uploadProfileUsed: Int = -1
     ): UploadAttempt {
         return try {
             val mediaType = when {
@@ -43,7 +44,7 @@ class DocumentRepository(
             val requestFile = file.asRequestBody(mediaType.toMediaTypeOrNull())
             val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
 
-            val response = apiService.uploadFile(patientId, folderName, body, idempotencyKey)
+            val response = apiService.uploadFile(patientId, folderName, body, idempotencyKey, uploadProfileUsed)
             if (response.isSuccessful) {
                 UploadAttempt(isSuccess = true, statusCode = response.code())
             } else {
@@ -83,14 +84,16 @@ class DocumentRepository(
         patientId: String,
         folderName: String,
         fileUri: String,
-        idempotencyKey: String = newIdempotencyKey()
+        idempotencyKey: String = newIdempotencyKey(),
+        uploadProfileUsed: Int = -1
     ): Long {
         val document = OfflineDocument(
             patientId = patientId,
             folderName = folderName,
             fileUri = fileUri,
             status = SyncStatus.PENDING,
-            idempotencyKey = idempotencyKey
+            idempotencyKey = idempotencyKey,
+            uploadProfileUsed = uploadProfileUsed
         )
         return documentDao.insert(document)
     }

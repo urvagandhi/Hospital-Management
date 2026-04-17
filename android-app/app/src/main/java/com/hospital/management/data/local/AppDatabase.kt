@@ -8,13 +8,14 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [OfflineDocument::class, CachedPatient::class, CachedFileItem::class],
-    version = 5,
+    entities = [OfflineDocument::class, CachedPatient::class, CachedFileItem::class, DownloadCache::class],
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun documentDao(): DocumentDao
     abstract fun patientCacheDao(): PatientCacheDao
+    abstract fun downloadCacheDao(): DownloadCacheDao
 
     companion object {
         @Volatile
@@ -35,6 +36,31 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `cached_patients` ADD COLUMN `foldersJson` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE offline_documents ADD COLUMN upload_profile_used INTEGER NOT NULL DEFAULT -1")
+            }
+        }
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `download_cache` (
+                        `contentHash` TEXT NOT NULL,
+                        `downloadUrl` TEXT NOT NULL,
+                        `localPath` TEXT NOT NULL,
+                        `fileName` TEXT NOT NULL,
+                        `sizeBytes` INTEGER NOT NULL DEFAULT 0,
+                        `lastAccessedAt` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `lastModifiedHeader` TEXT NOT NULL DEFAULT '',
+                        `isStale` INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(`contentHash`)
+                    )"""
+                )
             }
         }
 
@@ -78,7 +104,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "hospital_management_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

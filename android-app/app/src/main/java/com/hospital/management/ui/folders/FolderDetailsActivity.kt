@@ -22,6 +22,15 @@ import com.hospital.management.presentation.viewmodel.PatientState
 import com.hospital.management.presentation.viewmodel.PatientViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.data.models.FileItem
+import androidx.work.Constraints
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import com.hospital.management.utils.FeatureFlags
+import com.hospital.management.worker.DownloadWorker
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.launch
 import java.io.File
@@ -35,6 +44,9 @@ import kotlinx.coroutines.withContext
 import android.os.Environment
 
 class FolderDetailsActivity : BaseActivity() {
+
+    override fun isShowingCachedData(): Boolean =
+        ::patientViewModel.isInitialized && patientViewModel.currentFolderFiles.value.isNotEmpty()
 
     private lateinit var patientViewModel: PatientViewModel
     private lateinit var rvFiles: RecyclerView
@@ -391,11 +403,90 @@ class FolderDetailsActivity : BaseActivity() {
             return
         }
 
+        if (FeatureFlags.USE_DOWNLOAD_WORKER) {
+            enqueueDownloadWorker(file)
+        } else {
+            legacyDownloadFile(file)
+        }
+    }
+
+    private fun enqueueDownloadWorker(file: FileItem) {
+        val inputData = Data.Builder()
+            .putString(DownloadWorker.KEY_DOWNLOAD_URL, file.displayUrl)
+            .putString(DownloadWorker.KEY_FILE_NAME, file.name)
+            .putString(DownloadWorker.KEY_MIME_TYPE, getMimeType(file.name))
+            .putString(DownloadWorker.KEY_PATIENT_NAME, patientName)
+            .putString(DownloadWorker.KEY_HOSPITAL_NAME, hospitalName)
+            .putString(DownloadWorker.KEY_FOLDER_NAME, folderName)
+            .putString(DownloadWorker.KEY_DOWNLOAD_SUB_PATH, getDownloadSubPath())
+            .build()
+
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val request = OneTimeWorkRequestBuilder<DownloadWorker>()
+            .setInputData(inputData)
+            .setConstraints(constraints)
+            .build()
+
+        // Unique work keyed by URL — double-tap skips if already running
+        val workName = "download_${file.displayUrl.hashCode()}"
+        val workManager = WorkManager.getInstance(this)
+        workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, request)
+
+        // Snackbar with Cancel action
+        com.google.android.material.snackbar.Snackbar
+            .make(rvFiles, "Downloading ${file.name}…", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+            .setAction("Cancel") {
+                workManager.cancelUniqueWork(workName)
+                Toast.makeText(this, "Download cancelled", Toast.LENGTH_SHORT).show()
+            }
+            .show()
+
+        workManager.getWorkInfoByIdLiveData(request.id).observe(this) { workInfo ->
+            if (workInfo == null) return@observe
+            when (workInfo.state) {
+                WorkInfo.State.RUNNING -> {
+                    val state = workInfo.progress.getString(DownloadWorker.KEY_PROGRESS_STATE) ?: ""
+                    when (state) {
+                        DownloadWorker.STATE_PREPARING ->
+                            progressBar.visibility = View.VISIBLE
+                        DownloadWorker.STATE_DOWNLOADING ->
+                            progressBar.visibility = View.VISIBLE
+                    }
+                }
+                WorkInfo.State.SUCCEEDED -> {
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(this, "Downloaded: ${file.name}", Toast.LENGTH_LONG).show()
+                }
+                WorkInfo.State.FAILED -> {
+                    progressBar.visibility = View.GONE
+                    val reason = workInfo.outputData.getString(DownloadWorker.KEY_ERROR_REASON) ?: ""
+                    val detail = workInfo.outputData.getString(DownloadWorker.KEY_STATUS) ?: "Download failed"
+                    val msg = when (reason) {
+                        DownloadWorker.ERROR_AUTH_EXPIRED -> "Session expired. Please log in again."
+                        DownloadWorker.ERROR_STORAGE_FULL -> "Not enough storage space."
+                        DownloadWorker.ERROR_SERVER -> "Server error. Try again later."
+                        else -> "Download failed: $detail"
+                    }
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                }
+                WorkInfo.State.CANCELLED -> {
+                    progressBar.visibility = View.GONE
+                }
+                else -> { /* ENQUEUED, BLOCKED */ }
+            }
+        }
+    }
+
+    /** Legacy inline download — kept for rollback via FeatureFlags.USE_DOWNLOAD_WORKER = false */
+    private fun legacyDownloadFile(file: FileItem) {
         Toast.makeText(this, "Downloading…", Toast.LENGTH_SHORT).show()
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val conn = (java.net.URL(fileUrl).openConnection() as java.net.HttpURLConnection).also {
+                val conn = (java.net.URL(file.displayUrl).openConnection() as java.net.HttpURLConnection).also {
                     it.connectTimeout = 15_000
                     it.readTimeout = 60_000
                     it.connect()
@@ -674,7 +765,7 @@ class FolderDetailsActivity : BaseActivity() {
 
         androidx.work.WorkManager.getInstance(this).enqueueUniqueWork(
             "auto_sync_documents",
-            androidx.work.ExistingWorkPolicy.REPLACE,
+            androidx.work.ExistingWorkPolicy.KEEP,
             syncRequest
         )
 

@@ -69,19 +69,20 @@ class SyncDocumentsWorker(
                            if (key != doc.idempotencyKey) {
                                documentDao.update(doc.copy(idempotencyKey = key))
                            }
-                           val result = repository.uploadDocument(doc.patientId, doc.folderName, file, key)
+                           val result = repository.uploadDocument(doc.patientId, doc.folderName, file, key, doc.uploadProfileUsed)
                            if (result.isSuccess) {
                                Log.d(TAG, "Successfully uploaded document")
 
-                               // Delete from database
+                               // Delete from database FIRST, then local file.
+                               // If we crash between these two lines, the orphaned
+                               // local file is harmless; the reverse (file deleted,
+                               // DB entry alive) causes the stuck-pending bug.
                                repository.deleteDocument(doc)
-
-                               // Delete local file to free up storage
                                deleteLocalFile(uri)
 
                                successCount++
                            } else {
-                               Log.e(TAG, "Upload failed for document")
+                               Log.e(TAG, "Upload failed for document: ${result.message}")
                                val shouldRetry = result.retryable
                                val updatedDoc = doc.copy(
                                    status = SyncStatus.FAILED,
@@ -92,9 +93,11 @@ class SyncDocumentsWorker(
                                if (shouldRetry) retryableFailureCount++
                            }
                         } else {
-                            // File not found locally, remove the database entry
-                            Log.w(TAG, "File not found locally, removing entry")
+                            // File not found locally — likely already uploaded by a
+                            // previously cancelled worker. Remove the orphaned DB entry.
+                            Log.w(TAG, "File not found locally (already synced?), removing orphaned entry: ${doc.fileUri}")
                             repository.deleteDocument(doc)
+                            successCount++ // Don't count as failure
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error syncing document", e)

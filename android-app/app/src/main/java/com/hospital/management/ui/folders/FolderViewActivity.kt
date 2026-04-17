@@ -36,6 +36,9 @@ import kotlinx.coroutines.withContext
 
 class FolderViewActivity : BaseActivity() {
 
+    override fun isShowingCachedData(): Boolean =
+        ::patientViewModel.isInitialized && patientViewModel.currentPatient.value != null
+
     private lateinit var patientViewModel: PatientViewModel
     private lateinit var rvFolders: RecyclerView
     private lateinit var folderAdapter: FolderAdapter

@@ -131,7 +131,8 @@ open class BaseActivity : AppCompatActivity() {
                 when (status) {
                     NetworkStatus.OFFLINE -> {
                         if (offlineSnackbar == null || offlineSnackbar?.isShown == false) {
-                            offlineSnackbar = Snackbar.make(anchor, "You are offline", Snackbar.LENGTH_INDEFINITE)
+                            val message = offlineMessage()
+                            offlineSnackbar = Snackbar.make(anchor, message, Snackbar.LENGTH_INDEFINITE)
                             offlineSnackbar?.show()
                         }
                     }
@@ -148,6 +149,17 @@ open class BaseActivity : AppCompatActivity() {
             }
         }
     }
+
+    /**
+     * Subclasses override to indicate they're currently showing cached data.
+     * When true, the offline snackbar says "Viewing saved data — you are offline"
+     * instead of the plain "You are offline".
+     */
+    protected open fun isShowingCachedData(): Boolean = false
+
+    private fun offlineMessage(): String =
+        if (isShowingCachedData()) "Viewing saved data — you are offline"
+        else "You are offline"
 
     override fun onDestroy() {
         super.onDestroy()
