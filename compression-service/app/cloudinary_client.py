@@ -35,6 +35,7 @@ def _signed_url(public_id: str, expiry_seconds: int = 3600) -> str:
         public_id,
         resource_type="image",
         type="authenticated",
+        format="pdf",
         sign_url=True,
         secure=True,
         expires_at=expires_at,
