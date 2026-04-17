@@ -25,13 +25,14 @@ _CACHE_PREFIX = "HospitALL_merged"
 
 
 def _merged_url(public_id: str) -> str:
-    """Plain public URL for a merged PDF (uploaded as type=upload, not authenticated).
+    """Plain public URL for a merged PDF (uploaded as type=upload + image/pdf).
 
     Merged PDFs use SHA-256 hashes as public_ids — unguessable, so public delivery is safe.
     """
     url, _ = cloudinary.utils.cloudinary_url(
         public_id,
-        resource_type="raw",
+        resource_type="image",
+        format="pdf",
         secure=True,
     )
     return url
@@ -167,7 +168,8 @@ def upload_merged(
     cloudinary.uploader.upload(
         str(local_path),
         public_id=public_id,
-        resource_type="raw",
+        resource_type="image",
+        format="pdf",
         tags=["auto_delete_30d"],
         overwrite=True,
     )
