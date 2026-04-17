@@ -25,14 +25,13 @@ _CACHE_PREFIX = "HospitALL_merged"
 
 
 def _merged_url(public_id: str) -> str:
-    """Plain public URL for a merged PDF (uploaded as type=upload + image/pdf).
+    """Plain public URL for a merged PDF (raw/upload with .pdf in public_id).
 
     Merged PDFs use SHA-256 hashes as public_ids — unguessable, so public delivery is safe.
     """
     url, _ = cloudinary.utils.cloudinary_url(
         public_id,
-        resource_type="image",
-        format="pdf",
+        resource_type="raw",
         secure=True,
     )
     return url
@@ -71,7 +70,7 @@ def _source_delivery_url(
 
 async def check_cache(content_hash: str, http_client: httpx.AsyncClient) -> str | None:
     """Check if a cached merged PDF exists via HEAD request."""
-    public_id = f"{_CACHE_PREFIX}/{content_hash}"
+    public_id = f"{_CACHE_PREFIX}/{content_hash}.pdf"
     probe_url = _merged_url(public_id)
 
     try:
@@ -86,7 +85,7 @@ async def check_cache(content_hash: str, http_client: httpx.AsyncClient) -> str 
 
 def generate_delivery_url(content_hash: str) -> str:
     """Public URL for a merged PDF — no signing needed."""
-    return _merged_url(f"{_CACHE_PREFIX}/{content_hash}")
+    return _merged_url(f"{_CACHE_PREFIX}/{content_hash}.pdf")
 
 
 class SourceFetchError(Exception):
@@ -154,7 +153,7 @@ def upload_merged(
     Uses type=upload + resource_type=raw — public delivery via plain URL.
     The public_id is a SHA-256 hash so it's unguessable.
     """
-    public_id = f"{_CACHE_PREFIX}/{content_hash}"
+    public_id = f"{_CACHE_PREFIX}/{content_hash}.pdf"
 
     logger.info(
         "Uploading merged PDF",
@@ -168,8 +167,7 @@ def upload_merged(
     cloudinary.uploader.upload(
         str(local_path),
         public_id=public_id,
-        resource_type="image",
-        format="pdf",
+        resource_type="raw",
         tags=["auto_delete_30d"],
         overwrite=True,
     )
