@@ -45,6 +45,30 @@ const documentFileFilter = (_req, file, cb) => {
 };
 
 // ---------------------------------------------------------------------------
+// Structured public_id helpers
+// ---------------------------------------------------------------------------
+// Converts a folder display name to a URL-safe slug.
+// "hospital indoor case, ot note, daily note" → "hospital_indoor_case_ot_note_daily_note"
+function slugifyFolder(name) {
+  return (name || 'others')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')  // replace special chars with space
+    .trim()
+    .replace(/\s+/g, '_');          // collapse whitespace → underscore
+}
+
+// Builds the full Cloudinary public_id for a patient document.
+// Pattern: HospitALL/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{YYYYMMDD}_{4hash}
+// Both hospitalId and patientMongoId are opaque MongoDB ObjectIds — no PHI in the path.
+function buildCloudinaryPublicId(hospitalId, patientMongoId, folderName) {
+  const folderSlug = slugifyFolder(folderName);
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+  const hash = Math.random().toString(36).slice(2, 6);                       // 4-char suffix
+  const docId = `${dateStr}_${hash}`;
+  return `HospitALL/h_${hospitalId}/p_${patientMongoId}/${folderSlug}/${docId}`;
+}
+
+// ---------------------------------------------------------------------------
 // Cloudinary storage instances
 // ---------------------------------------------------------------------------
 // B5: Opt-in signed uploads via env flag. When true, new uploads go to
@@ -52,6 +76,7 @@ const documentFileFilter = (_req, file, cb) => {
 const SIGNED_UPLOADS_ENABLED = String(process.env.SIGNED_UPLOADS_ENABLED || 'false').toLowerCase() === 'true';
 const uploadType = SIGNED_UPLOADS_ENABLED ? 'authenticated' : 'upload';
 
+// Profile images (hospital logos etc.) — not patient PHI, flat folder is fine.
 const imageStorage = new CloudinaryStorage({
   cloudinary: cloudinaryModule,
   params: {
@@ -62,13 +87,32 @@ const imageStorage = new CloudinaryStorage({
   },
 });
 
+// Patient document uploads — structured public_id built from request context.
+// Path: HospitALL/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{YYYYMMDD}_{hash}
 const documentStorage = new CloudinaryStorage({
   cloudinary: cloudinaryModule,
-  params: {
-    folder: 'hospital/documents',
-    resource_type: 'raw',
-    type: uploadType,
-    allowed_formats: ['pdf'],
+  params: (req, _file, cb) => {
+    const hospitalId = req.hospital?.id?.toString();
+    const patientMongoId = req.params?.patientId;
+    const folderName = req.params?.folderName || 'others';
+
+    if (!hospitalId || !patientMongoId) {
+      return cb(new Error('Missing hospitalId or patientId for Cloudinary path'));
+    }
+
+    const publicId = buildCloudinaryPublicId(hospitalId, patientMongoId, folderName);
+    // In Fixed Folder mode, asset_folder and display_name must be set explicitly
+    // so the Media Library shows the correct folder tree.
+    const assetFolder = publicId.substring(0, publicId.lastIndexOf('/'));
+    const displayName = publicId.substring(publicId.lastIndexOf('/') + 1);
+    cb(null, {
+      resource_type: 'raw',
+      type: uploadType,
+      allowed_formats: ['pdf'],
+      public_id: publicId,
+      asset_folder: assetFolder,
+      display_name: displayName,
+    });
   },
 });
 
@@ -183,6 +227,29 @@ function buildSignedUrl({ publicId, resourceType = 'image', ttlSeconds = 300, at
 }
 
 // ---------------------------------------------------------------------------
+// listCloudinaryResources — paginate all resources under a prefix.
+// Used by the admin orphan-cleanup scan.
+// ---------------------------------------------------------------------------
+async function listCloudinaryResources(prefix, resourceType = 'raw') {
+  const resources = [];
+  let nextCursor = undefined;
+
+  do {
+    const result = await cloudinary.api.resources({
+      type: 'upload',
+      resource_type: resourceType,
+      prefix,
+      max_results: 500,
+      ...(nextCursor ? { next_cursor: nextCursor } : {}),
+    });
+    resources.push(...(result.resources || []));
+    nextCursor = result.next_cursor;
+  } while (nextCursor);
+
+  return resources;
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 export {
@@ -194,4 +261,7 @@ export {
   buildThumbnailUrl,
   buildSignedUrl,
   SIGNED_UPLOADS_ENABLED,
+  slugifyFolder,
+  buildCloudinaryPublicId,
+  listCloudinaryResources,
 };

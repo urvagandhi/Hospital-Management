@@ -19,6 +19,7 @@ import exportRoutes from "./routes/export.routes.js";
 import auditRoutes from "./routes/audit.routes.js";
 import appVersionRoutes from "./routes/appVersion.routes.js";
 import notificationsRoutes from "./routes/notifications.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 
 const app = express();
 
@@ -91,6 +92,7 @@ app.use("/api/export", exportRoutes);
 app.use("/api/audits", auditRoutes);
 app.use("/api/version", appVersionRoutes);
 app.use("/api/notifications", notificationsRoutes);
+app.use("/api/admin", adminRoutes);
 
 // ============ HEALTH CHECK ============
 app.get("/api/health", (req, res) => {

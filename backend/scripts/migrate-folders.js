@@ -18,7 +18,7 @@ const devEnvPath = path.resolve(process.cwd(), ".env.development");
 if (fs.existsSync(devEnvPath)) dotenv.config({ path: devEnvPath });
 else dotenv.config();
 
-import Patient from "./models/Patient.js";
+import Patient from "../src/models/Patient.js";
 
 const MONGO_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/hospital-management";
 
