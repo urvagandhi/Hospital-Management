@@ -12,16 +12,30 @@ import config from "./config/env.js";
 import scheduleAutoDelete from "./jobs/autoDelete.job.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { generalLimiter } from "./middleware/rateLimiter.js";
-import authRoutes from "./routes/auth.routes.js";
-import hospitalsRoutes from "./routes/hospitals.routes.js";
-import patientRoutes from "./routes/patient.routes.js";
-import exportRoutes from "./routes/export.routes.js";
-import auditRoutes from "./routes/audit.routes.js";
-import appVersionRoutes from "./routes/appVersion.routes.js";
-import notificationsRoutes from "./routes/notifications.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import appVersionRoutes from "./routes/appVersion.routes.js";
+import auditRoutes from "./routes/audit.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import exportRoutes from "./routes/export.routes.js";
+import hospitalsRoutes from "./routes/hospitals.routes.js";
+import notificationsRoutes from "./routes/notifications.routes.js";
+import patientRoutes from "./routes/patient.routes.js";
 
 const app = express();
+
+function inferHealthCheckSource(userAgent = "") {
+  const ua = String(userAgent).toLowerCase();
+  if (ua.includes("uptime") || ua.includes("statuscake") || ua.includes("healthcheck")) {
+    return "uptime-monitor";
+  }
+  if (ua.includes("cron")) {
+    return "cron-job";
+  }
+  if (ua) {
+    return "manual-or-client";
+  }
+  return "unknown";
+}
 
 // ============ TRUST PROXY (Required for Render/Heroku) ============
 app.set("trust proxy", 1);
@@ -96,6 +110,12 @@ app.use("/api/admin", adminRoutes);
 
 // ============ HEALTH CHECK ============
 app.get("/api/health", (req, res) => {
+  const userAgent = req.get("user-agent") || "";
+  const forwardedFor = req.get("x-forwarded-for") || "";
+  const clientIp = forwardedFor ? forwardedFor.split(",", 1)[0].trim() : req.ip;
+  console.log(
+    `[health] hit source=${inferHealthCheckSource(userAgent)} ip=${clientIp || "unknown"} ua=${userAgent || "n/a"}`,
+  );
   res.status(200).json({
     status: "ok",
     timestamp: new Date().toISOString(),
@@ -104,6 +124,12 @@ app.get("/api/health", (req, res) => {
 
 // Deep health check (auth + admin required)
 app.get("/api/health/deep", async (req, res) => {
+  const userAgent = req.get("user-agent") || "";
+  const forwardedFor = req.get("x-forwarded-for") || "";
+  const clientIp = forwardedFor ? forwardedFor.split(",", 1)[0].trim() : req.ip;
+  console.log(
+    `[health:deep] hit source=${inferHealthCheckSource(userAgent)} ip=${clientIp || "unknown"} ua=${userAgent || "n/a"}`,
+  );
   const checks = { server: "ok", database: "unknown", redis: "unknown" };
   try {
     // Check MongoDB
