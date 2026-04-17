@@ -144,6 +144,12 @@ router.get("/:patientId/files/:folderName/:fileId/signed-url", patientController
  */
 router.get("/:patientId/files/:folderName/:fileId/stream", patientController.streamFile);
 
+/**
+ * GET /api/patients/:patientId/files/:folderName/:fileId/compressed
+ * Download a single file compressed via the compression service.
+ */
+router.get("/:patientId/files/:folderName/:fileId/compressed", patientController.downloadFileCompressed);
+
 // ═══════════════════════════════════════════════════
 // DOWNLOAD ENDPOINTS
 // ═══════════════════════════════════════════════════

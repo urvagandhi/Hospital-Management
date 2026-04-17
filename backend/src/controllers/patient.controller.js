@@ -849,6 +849,95 @@ function handleCompressionError(error, res, context) {
   return res.status(500).json({ success: false, message: `Failed to generate ${context}` });
 }
 
+/**
+ * GET /api/patients/:patientId/files/:folderName/:fileId/compressed
+ * Compress a single file via the compression service and stream it back.
+ * Falls back to the existing /stream endpoint behavior when flag is off.
+ */
+export const downloadFileCompressed = async (req, res) => {
+  try {
+    const { patientId, folderName, fileId } = req.params;
+    const hospitalId = req.hospital?.id;
+
+    const patient = await patientService.getPatientById(hospitalId, patientId);
+    if (!patient) return res.status(404).json({ success: false, message: "Patient not found" });
+
+    const folder = patient.folders.find((f) => f.name === folderName);
+    if (!folder) return res.status(404).json({ success: false, message: "Folder not found" });
+
+    const file = folder.files.id
+      ? folder.files.id(fileId)
+      : folder.files.find((f) => String(f._id) === String(fileId));
+    if (!file) return res.status(404).json({ success: false, message: "File not found" });
+
+    if (!file.cloudinaryPublicId) {
+      return res.status(400).json({ success: false, message: "File has no cloud storage ID" });
+    }
+
+    if (!USE_COMPRESSION) {
+      // Fallback: proxy the raw file from Cloudinary (same as /stream)
+      let fetchUrl = file.fileUrl;
+      if (file.accessMode === "signed" && file.cloudinaryPublicId) {
+        fetchUrl = buildSignedUrl({
+          publicId: file.cloudinaryPublicId,
+          resourceType: file.resourceType || "raw",
+          ttlSeconds: 120,
+        });
+      }
+      const upstream = await fetch(fetchUrl);
+      if (!upstream.ok) return res.status(502).json({ success: false, message: "Failed to fetch file" });
+
+      const safeName = encodeURIComponent(file.fileName);
+      res.setHeader("Content-Type", file.mimeType || "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+      const contentLength = upstream.headers.get("content-length");
+      if (contentLength) res.setHeader("Content-Length", contentLength);
+      await pipeline(Readable.fromWeb(upstream.body), res);
+      return;
+    }
+
+    // ── Compression service path ──
+    logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, { patientId, folderName, fileId, compressed: true });
+
+    req.setTimeout(300000);
+    res.setTimeout(300000);
+
+    const start = Date.now();
+    const result = await compressionService.compressFolder({
+      folderId: String(folder._id),
+      userId: String(hospitalId),
+      patientId: String(patient._id),
+      patientName: patient.patientName,
+      displayName: "",  // No cover page for single file
+      filesInfo: [],
+      sourcePdfs: [{
+        public_id: file.cloudinaryPublicId,
+        uploaded_at: (file.uploadedAt || file.createdAt || new Date()).toISOString(),
+        resource_type: file.resourceType || "image",
+        access_mode: file.accessMode || "signed",
+      }],
+    });
+
+    logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, {
+      patientId, folderName, fileId, compressed: true,
+      content_hash: result.content_hash,
+      tier_used: result.tier_used, cache_hit: result.cache_hit,
+      final_size_bytes: result.final_size_bytes,
+      duration_ms: Date.now() - start,
+    });
+
+    const upstream = await compressionService.fetchMergedStream(result.merged_url);
+    const safeName = encodeURIComponent(file.fileName);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+    if (result.final_size_bytes > 0) res.setHeader("Content-Length", result.final_size_bytes);
+
+    await pipeline(Readable.fromWeb(upstream.body), res);
+  } catch (error) {
+    if (!res.headersSent) handleCompressionError(error, res, "File compressed download");
+  }
+};
+
 export default {
   createPatient,
   getPatients,
@@ -859,4 +948,5 @@ export default {
   downloadFolderPdf,
   downloadAllZip,
   downloadFolderZip,
+  downloadFileCompressed,
 };
