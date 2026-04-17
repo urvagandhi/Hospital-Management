@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getFileSignedUrl } from "../services/hospitalService";
+import { getFileSignedUrl, downloadFileCompressed } from "../services/hospitalService";
 import { isImageMime, isPdfMime } from "../utils/cloudinary";
 
 interface FileItem {
@@ -48,10 +48,23 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
     setZoom(1);
   }, [index]);
 
-  // Download the current file with the correct filename.
-  // The HTML `download` attribute is ignored for cross-origin URLs (e.g. Cloudinary),
-  // so we fetch as a blob and create a same-origin blob URL.
+  const [downloading, setDownloading] = useState(false);
+
+  // Download the current file — uses compressed endpoint for PDFs when possible.
   const handleDownload = async () => {
+    // Try compressed download for PDFs when we have patient context
+    if (isPdfMime(file.mimeType) && patientId && folderName && file._id) {
+      try {
+        setDownloading(true);
+        await downloadFileCompressed(patientId, folderName, file._id, file.fileName);
+        return;
+      } catch {
+        // Fall through to legacy download
+      } finally {
+        setDownloading(false);
+      }
+    }
+
     const url = resolvedUrl || file.fileUrl;
 
     // PDFs already have a blob URL ready — reuse it.
@@ -167,9 +180,10 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
           )}
           <button
             onClick={handleDownload}
-            className="px-3 py-1.5 text-xs rounded bg-white/10 hover:bg-white/20"
+            disabled={downloading}
+            className="px-3 py-1.5 text-xs rounded bg-white/10 hover:bg-white/20 disabled:opacity-50"
           >
-            Download
+            {downloading ? "Compressing…" : "Download"}
           </button>
           <button onClick={onClose} className="px-3 py-1.5 text-xs rounded bg-white/10 hover:bg-white/20">
             Close

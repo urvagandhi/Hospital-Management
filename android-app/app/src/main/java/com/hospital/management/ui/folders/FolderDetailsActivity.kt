@@ -29,6 +29,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.utils.FeatureFlags
 import com.hospital.management.worker.DownloadWorker
 import kotlinx.coroutines.flow.distinctUntilChangedBy
@@ -411,8 +412,15 @@ class FolderDetailsActivity : BaseActivity() {
     }
 
     private fun enqueueDownloadWorker(file: FileItem) {
+        // Use compressed endpoint for PDFs when compression is enabled
+        val downloadUrl = if (file.isPdf && FeatureFlags.USE_COMPRESSION_SERVICE && file._id != null) {
+            "${RetrofitClient.BASE_URL}/api/patients/$patientId/files/${Uri.encode(folderName)}/${file._id}/compressed"
+        } else {
+            file.displayUrl
+        }
+
         val inputData = Data.Builder()
-            .putString(DownloadWorker.KEY_DOWNLOAD_URL, file.displayUrl)
+            .putString(DownloadWorker.KEY_DOWNLOAD_URL, downloadUrl)
             .putString(DownloadWorker.KEY_FILE_NAME, file.name)
             .putString(DownloadWorker.KEY_MIME_TYPE, getMimeType(file.name))
             .putString(DownloadWorker.KEY_PATIENT_NAME, patientName)

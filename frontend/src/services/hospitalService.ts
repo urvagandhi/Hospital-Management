@@ -234,6 +234,34 @@ export const getFileSignedUrl = async (
     }
 };
 
+// ─────────────────────────────────────────────────────────────
+// Compressed file download (Phase 3B)
+// ─────────────────────────────────────────────────────────────
+export const downloadFileCompressed = async (
+    patientId: string,
+    folderName: string,
+    fileId: string,
+    fileName: string,
+): Promise<void> => {
+    try {
+        const res = await api.getBlob(
+            `/patients/${patientId}/files/${encodeURIComponent(folderName)}/${fileId}/compressed`,
+            { timeout: 300000 },
+        );
+        const blob = new Blob([res.data], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        throw apiError(err, "Failed to download compressed file");
+    }
+};
+
 export default {
     getCurrentHospital,
     getHospitalById,
@@ -247,4 +275,5 @@ export default {
     createAppVersion,
     updateAppVersion,
     getFileSignedUrl,
+    downloadFileCompressed,
 };

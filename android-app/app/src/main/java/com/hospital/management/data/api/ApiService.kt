@@ -285,4 +285,13 @@ interface ApiService {
         @Path("fileId") fileId: String,
         @Query("download") download: Boolean = false
     ): Response<com.hospital.management.data.models.SignedUrlResponse>
+
+    // ── Compressed file download (Phase 3B) ──
+    @Streaming
+    @GET("/api/patients/{patientId}/files/{folderName}/{fileId}/compressed")
+    suspend fun downloadFileCompressed(
+        @Path("patientId") patientId: String,
+        @Path("folderName") folderName: String,
+        @Path("fileId") fileId: String,
+    ): Response<okhttp3.ResponseBody>
 }
