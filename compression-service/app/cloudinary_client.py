@@ -24,21 +24,15 @@ cloudinary.config(
 _CACHE_PREFIX = "HospitALL_merged"
 
 
-def _signed_url(public_id: str, expiry_seconds: int = 3600) -> str:
-    """Generate a signed Cloudinary URL for an authenticated PDF.
+def _merged_url(public_id: str) -> str:
+    """Plain public URL for a merged PDF (uploaded as type=upload, not authenticated).
 
-    Uses expires_at + sign_url (same approach as the Node backend's
-    buildSignedUrl in storage.service.js). NOT auth_token which is premium.
+    Merged PDFs use SHA-256 hashes as public_ids — unguessable, so public delivery is safe.
     """
-    expires_at = int(time.time()) + expiry_seconds
     url, _ = cloudinary.utils.cloudinary_url(
         public_id,
-        resource_type="image",
-        type="authenticated",
-        format="pdf",
-        sign_url=True,
+        resource_type="raw",
         secure=True,
-        expires_at=expires_at,
     )
     return url
 
@@ -75,12 +69,9 @@ def _source_delivery_url(
 
 
 async def check_cache(content_hash: str, http_client: httpx.AsyncClient) -> str | None:
-    """Check if a cached merged PDF exists via HEAD request.
-
-    Returns the public_id if cached, None otherwise.
-    """
+    """Check if a cached merged PDF exists via HEAD request."""
     public_id = f"{_CACHE_PREFIX}/{content_hash}"
-    probe_url = _signed_url(public_id, expiry_seconds=60)
+    probe_url = _merged_url(public_id)
 
     try:
         resp = await http_client.head(probe_url, timeout=10.0)
@@ -93,8 +84,8 @@ async def check_cache(content_hash: str, http_client: httpx.AsyncClient) -> str 
 
 
 def generate_delivery_url(content_hash: str) -> str:
-    """Generate a 1-hour signed URL for a cached/uploaded merged PDF."""
-    return _signed_url(f"{_CACHE_PREFIX}/{content_hash}", expiry_seconds=3600)
+    """Public URL for a merged PDF — no signing needed."""
+    return _merged_url(f"{_CACHE_PREFIX}/{content_hash}")
 
 
 class SourceFetchError(Exception):
@@ -159,9 +150,8 @@ def upload_merged(
 ) -> None:
     """Upload merged PDF to Cloudinary under HospitALL_merged/{hash}.
 
-    Uses the sync SDK uploader (called from async context via run_in_executor
-    by the caller if needed — kept sync here for simplicity since upload is
-    a single blocking call at the end of the pipeline).
+    Uses type=upload + resource_type=raw — public delivery via plain URL.
+    The public_id is a SHA-256 hash so it's unguessable.
     """
     public_id = f"{_CACHE_PREFIX}/{content_hash}"
 
@@ -177,9 +167,7 @@ def upload_merged(
     cloudinary.uploader.upload(
         str(local_path),
         public_id=public_id,
-        resource_type="image",
-        type="authenticated",
-        format="pdf",
+        resource_type="raw",
         tags=["auto_delete_30d"],
         overwrite=True,
     )
