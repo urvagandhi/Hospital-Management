@@ -13,17 +13,28 @@ class SourcePdf(BaseModel):
 # ── Requests ──
 
 
+class FileInfo(BaseModel):
+    file_name: str
+    page_count: Optional[int] = None  # None if unknown/corrupt
+
+
 class FolderDownloadRequest(BaseModel):
     folder_id: str
     user_id: str
     patient_id: str
     target_size_mb: float = Field(default=5.0, gt=0, le=50)
     source_pdfs: list[SourcePdf]
+    display_name: str = ""  # Folder name for cover page (optional — no cover if empty)
+    patient_name: str = ""  # Patient name for cover page subtitle
+    files_info: list[FileInfo] = []  # For cover page document list
 
 
 class FolderEntry(BaseModel):
     folder_id: str
+    display_name: str  # Printed on cover page (e.g. "Claims", "Reports")
     source_pdfs: list[SourcePdf]
+    patient_name: str = ""  # For cover page subtitle
+    files_info: list[FileInfo] = []  # For cover page document list
 
 
 class PatientDownloadRequest(BaseModel):

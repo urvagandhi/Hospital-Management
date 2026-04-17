@@ -27,6 +27,7 @@ from app.compression.tier_ladder import (
     compress_digital_pdf,
     run_tier_ladder,
 )
+from app.compression.cover_page import generate_cover_page
 from app.schemas import DownloadResponse, PatientDownloadRequest, SourcePdf
 
 logger = logging.getLogger(__name__)
@@ -111,12 +112,30 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                 )
                 input_size = sum(p.stat().st_size for p in local_paths)
 
-                # Merge all into one PDF
+                # Merge with cover pages per folder
                 merged_path = job_dir / "merged.pdf"
                 merged = pikepdf.Pdf.new()
-                for lp in local_paths:
-                    src = pikepdf.open(lp)
-                    merged.pages.extend(src.pages)
+
+                path_idx = 0
+                for fi, entry in enumerate(body.folder_map):
+                    # Generate cover page for this folder
+                    cover_path = generate_cover_page(
+                        title=entry.display_name,
+                        patient_name=entry.patient_name,
+                        files_info=entry.files_info,
+                        job_dir=job_dir,
+                        folder_index=fi,
+                    )
+                    cover_pdf = pikepdf.open(cover_path)
+                    merged.pages.extend(cover_pdf.pages)
+
+                    # Append this folder's source PDFs
+                    for _ in entry.source_pdfs:
+                        if path_idx < len(local_paths):
+                            src = pikepdf.open(local_paths[path_idx])
+                            merged.pages.extend(src.pages)
+                            path_idx += 1
+
                 merged.save(merged_path)
                 merged.close()
 

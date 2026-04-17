@@ -6,3 +6,4 @@ cloudinary==1.41.0
 motor==3.7.1
 httpx==0.28.1
 python-multipart==0.0.20
+fpdf2==2.8.3

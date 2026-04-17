@@ -1,5 +1,6 @@
 import hmac
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -23,12 +24,32 @@ _PUBLIC_PATHS = {"/api/health", "/docs", "/openapi.json"}
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     # Startup: init Mongo client
-    application.state.mongo_client = AsyncIOMotorClient(config.MONGO_URI)
-    application.state.mongo_db = application.state.mongo_client.get_default_database()
+    port = os.environ.get("PORT", "8000")
+    print(f"\n[Database] Connecting to MongoDB...")
+    print(f"[Database] URI: {config.masked_uri()}")
+
+    client = AsyncIOMotorClient(config.MONGO_URI)
+    application.state.mongo_client = client
+    db = client.get_default_database()
+    application.state.mongo_db = db
+
+    # Verify connection
+    await client.admin.command("ping")
+
+    print(f"[Database] \u2713 MongoDB connected successfully")
+    print(f"[Database] Database: {db.name}")
+    print(f"""
+\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557
+\u2551   HospitALL Compression Service      \u2551
+\u2551   \u2713 Server running on port {port:<11s}\u2551
+\u2551   \u2713 DB: MongoDB Connected              \u2551
+\u2551   \u2713 Cloudinary: {config.CLOUDINARY_CLOUD_NAME:<21s}\u2551
+\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d
+""")
     logger.info("Compression service started", extra={"event": "startup"})
     yield
     # Shutdown: close Mongo
-    application.state.mongo_client.close()
+    client.close()
     logger.info("Compression service stopped", extra={"event": "shutdown"})
 
 

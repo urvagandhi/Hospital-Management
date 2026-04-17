@@ -27,6 +27,7 @@ from app.compression.tier_ladder import (
     compress_digital_pdf,
     run_tier_ladder,
 )
+from app.compression.cover_page import generate_cover_page
 from app.schemas import DownloadResponse, FolderDownloadRequest
 
 logger = logging.getLogger(__name__)
@@ -103,9 +104,20 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                 )
                 input_size = sum(p.stat().st_size for p in local_paths)
 
-                # Merge
+                # Merge (with optional cover page)
                 merged_path = job_dir / "merged.pdf"
                 merged = pikepdf.Pdf.new()
+
+                if body.display_name:
+                    cover_path = generate_cover_page(
+                        title=body.display_name,
+                        patient_name=body.patient_name,
+                        files_info=body.files_info,
+                        job_dir=job_dir,
+                    )
+                    cover_pdf = pikepdf.open(cover_path)
+                    merged.pages.extend(cover_pdf.pages)
+
                 for lp in local_paths:
                     src = pikepdf.open(lp)
                     merged.pages.extend(src.pages)
