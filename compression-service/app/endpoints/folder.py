@@ -35,7 +35,7 @@ router = APIRouter()
 _PIPELINE_TIMEOUT = 100.0
 
 
-@router.post("/folder-download")
+@router.post("/api/folder-download")
 async def folder_download(body: FolderDownloadRequest, request: Request):
     job_id = str(uuid.uuid4())
     start = time.monotonic()

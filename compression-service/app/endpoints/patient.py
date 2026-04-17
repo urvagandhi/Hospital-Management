@@ -35,7 +35,7 @@ router = APIRouter()
 _PIPELINE_TIMEOUT = 100.0
 
 
-@router.post("/patient-download")
+@router.post("/api/patient-download")
 async def patient_download(body: PatientDownloadRequest, request: Request):
     job_id = str(uuid.uuid4())
     start = time.monotonic()

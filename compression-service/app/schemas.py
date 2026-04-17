@@ -44,10 +44,6 @@ class DownloadResponse(BaseModel):
     cache_hit: bool
 
 
-class HealthResponse(BaseModel):
-    ok: bool = True
-
-
 class SizeFloorBreachedResponse(BaseModel):
     error: str = "size_floor_breached"
     min_achievable_mb: float
