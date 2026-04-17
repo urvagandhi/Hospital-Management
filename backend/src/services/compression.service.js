@@ -49,8 +49,6 @@ const TIMEOUT_MS = 120_000;
 
 async function postToService(endpoint, body) {
   const url = `${SERVICE_URL}${endpoint}`;
-  console.log(`[Compression] POST ${url}`);
-  console.log(`[Compression] Payload:`, JSON.stringify(body, null, 2));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
