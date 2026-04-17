@@ -104,6 +104,24 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                 )
                 input_size = sum(p.stat().st_size for p in local_paths)
 
+                # Open all source PDFs and count pages
+                source_pdfs_opened = []
+                for lp in local_paths:
+                    src = pikepdf.open(lp)
+                    source_pdfs_opened.append(src)
+
+                # Build files_info with real page counts
+                files_info = body.files_info
+                if files_info and len(files_info) == len(source_pdfs_opened):
+                    from app.schemas import FileInfo
+                    files_info = [
+                        FileInfo(
+                            file_name=fi.file_name,
+                            page_count=len(src.pages),
+                        )
+                        for fi, src in zip(files_info, source_pdfs_opened)
+                    ]
+
                 # Merge (with optional cover page)
                 merged_path = job_dir / "merged.pdf"
                 merged = pikepdf.Pdf.new()
@@ -112,14 +130,13 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                     cover_path = generate_cover_page(
                         title=body.display_name,
                         patient_name=body.patient_name,
-                        files_info=body.files_info,
+                        files_info=files_info,
                         job_dir=job_dir,
                     )
                     cover_pdf = pikepdf.open(cover_path)
                     merged.pages.extend(cover_pdf.pages)
 
-                for lp in local_paths:
-                    src = pikepdf.open(lp)
+                for src in source_pdfs_opened:
                     merged.pages.extend(src.pages)
                 merged.save(merged_path)
                 merged.close()

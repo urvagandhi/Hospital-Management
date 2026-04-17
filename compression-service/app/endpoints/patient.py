@@ -112,17 +112,36 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                 )
                 input_size = sum(p.stat().st_size for p in local_paths)
 
+                # Open all source PDFs and count pages
+                source_pdfs_opened = []
+                for lp in local_paths:
+                    src = pikepdf.open(lp)
+                    source_pdfs_opened.append(src)
+
                 # Merge with cover pages per folder
                 merged_path = job_dir / "merged.pdf"
                 merged = pikepdf.Pdf.new()
 
-                path_idx = 0
+                pdf_idx = 0
                 for fi, entry in enumerate(body.folder_map):
+                    # Build files_info with real page counts for this folder
+                    from app.schemas import FileInfo
+                    folder_files_info = []
+                    for i, finfo in enumerate(entry.files_info):
+                        src_idx = pdf_idx + i
+                        if src_idx < len(source_pdfs_opened):
+                            folder_files_info.append(FileInfo(
+                                file_name=finfo.file_name,
+                                page_count=len(source_pdfs_opened[src_idx].pages),
+                            ))
+                        else:
+                            folder_files_info.append(finfo)
+
                     # Generate cover page for this folder
                     cover_path = generate_cover_page(
                         title=entry.display_name,
                         patient_name=entry.patient_name,
-                        files_info=entry.files_info,
+                        files_info=folder_files_info,
                         job_dir=job_dir,
                         folder_index=fi,
                     )
@@ -131,10 +150,9 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
 
                     # Append this folder's source PDFs
                     for _ in entry.source_pdfs:
-                        if path_idx < len(local_paths):
-                            src = pikepdf.open(local_paths[path_idx])
-                            merged.pages.extend(src.pages)
-                            path_idx += 1
+                        if pdf_idx < len(source_pdfs_opened):
+                            merged.pages.extend(source_pdfs_opened[pdf_idx].pages)
+                            pdf_idx += 1
 
                 merged.save(merged_path)
                 merged.close()
