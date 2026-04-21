@@ -2,7 +2,7 @@
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
-**Last updated:** 2026-04-21 (TD-002 / TD-004 / TD-005 / TD-010 / TD-012 / TD-013 shipped)
+**Last updated:** 2026-04-21 (TD-002 / TD-004 / TD-005 / TD-007 / TD-008 / TD-009 / TD-010 / TD-011 / TD-012 / TD-013 / TD-014 shipped)
 
 All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` converted into an actionable backlog. Severity: Critical/High/Medium/Low. Effort: XS (<1h) · S (<1d) · M (1-3d) · L (1w) · XL (>1w).
 
@@ -13,6 +13,11 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 | TD-002 | ✅ DONE | Refresh-token rotation + reuse detection in [token.service.js](../../backend/src/services/token.service.js). Replaying a rotated-out token revokes all active sessions + sends `sendSessionRevokedEmail` with reason `REFRESH_TOKEN_REUSE`. Cookie overwrite added in [auth.controller.js `refreshToken`](../../backend/src/controllers/auth.controller.js). Unit test: [refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js). |
 | TD-004 | ✅ DONE | `.env.example` cleaned: 13 dead vars removed (TOTP × 5, SMS × 2, legacy SMTP × 6), 11 undocumented vars added (OTP config, Firebase alt auth, compression service, trust proxy, geoip override, signed uploads), `REFRESH_TOKEN_EXPIRY` fixed `7d → 365d`. |
 | TD-005 | ✅ DONE | `GET /api/hospitals` now cursor-paginated (`?limit&cursor&search`, cap 100, default 50) with server-side search + first-page totals. `HospitalsList.tsx` wired to the new contract: debounced server search, "Load more" button, totals-aware stat cards, delete syncs totals. |
+| TD-007 | ✅ DONE | Centralised pino logger at [utils/logger.js](../../backend/src/utils/logger.js); `pino-http` adds a per-request `X-Request-Id` + `req.log` child in [index.js](../../backend/src/index.js). Pretty output in dev, JSON in prod, `LOG_LEVEL` env. Redact list covers Authorization/Cookie headers and top-level + nested `password / newPassword / oldPassword / currentPassword / confirmPassword / token / refreshToken / otp / authCode`. Zero `console.*` remain in `backend/src/`; 330+ call-sites migrated across 27 files (configs × 3, controllers × 8, middleware × 2, routes × 2, services × 10, jobs, seed, index). `backend/scripts/` intentionally left on `console.*` (CLI operator output). Dev-only ASCII boot banner preserved via `process.stdout.write`. Cloudinary probe in `/api/health/deep` bumped to 5s to match its cold-call latency. |
+| TD-008 | ✅ DONE | `/api/health/deep` now probes Mongo, Redis, Cloudinary, Brevo, FCM, and the compression sidecar in parallel with a 3s hard timeout per probe. Response shape: `{ status, degraded, checks: { server, database, redis, cloudinary, brevo, fcm, sidecar }, timestamp }`. Per-dep fields include `latency_ms` and an optional `detail`; unconfigured deps (`BREVO_API_KEY` missing, `USE_COMPRESSION_SERVICE=false`, etc.) report `status: "disabled"` and do NOT mark the system degraded. Probe logic lives in [health.service.js](../../backend/src/services/health.service.js). |
+| TD-009 | ✅ DONE | Replaced direct `document.title = "..."` with `useDocumentTitle("...")` in Dashboard, Login, Password, Profile, Sessions, VerifyAuthCode, and ForgotPassword. `grep -rn "document\.title" frontend/src/pages/` is empty; `npx tsc --noEmit` clean. |
+| TD-011 | ✅ DONE | `/components-preview` and `/spinners-preview` are now `lazy()` in [AppRoutes.tsx](../../frontend/src/routes/AppRoutes.tsx) with a `<Suspense fallback>` running the shared `Spinner`. Vite now emits `ComponentsPreview-*.js` (438 kB raw / 121 kB gz — carries `recharts` + `lucide-react`) and `LoadingSpinners-*.js` (15 kB raw / 4 kB gz) as separate chunks. Main `index-*.js` chunk drops from ~872 kB raw / ~231 kB gz to 434 kB raw / 110 kB gz. |
+| TD-014 | ✅ DONE | Sidecar 504 body + schema default both read `"Pipeline exceeded 300s limit"` in [folder.py:285](../../compression-service/app/endpoints/folder.py), [patient.py:301](../../compression-service/app/endpoints/patient.py), and [schemas.py:73](../../compression-service/app/schemas.py); matches `_PIPELINE_TIMEOUT = 300.0`. |
 | TD-010 | ✅ DONE | Deleted orphan frontend files: `CountdownTimer.tsx`, `SkeletonLoader.tsx`, `Toast.tsx`, `services/patientApi.ts`. Removed `listAppVersions` / `createAppVersion` / `updateAppVersion` + `AppVersion` interface from [hospitalService.ts](../../frontend/src/services/hospitalService.ts). `PasswordConfirmModal.tsx` did not exist on disk. `npx tsc --noEmit` clean; `npx vite build` succeeds. |
 | TD-012 | ✅ DONE | `@getbrevo/brevo` + `axios` removed from [backend/package.json](../../backend/package.json); `node_modules` confirmed gone. Mail still works via `nodemailer` + Brevo SMTP; outbound HTTP via native `fetch`. |
 | TD-013 | ✅ DONE | Pruned 10 dead enum members (`TOTP_*` × 8, `RECOVERY_*` × 2) from [AuditLog.js](../../backend/src/models/AuditLog.js). Grep confirmed no live emitter. Live enum regrouped by concern. |
@@ -81,10 +86,35 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 - **Acceptance:** > 50% backend branch coverage in critical controllers; at least 1 E2E happy-path.
 - **Dependencies:** None.
 
-### TD-007 · Medium · M — Centralised structured logging (pino / bunyan) on backend
+### TD-007 · Medium · M — Centralised structured logging (pino) on backend — ✅ SHIPPED 2026-04-21
 - **Source:** `04-enhancements.md` OBS-004
-- **Migration plan:** Replace `console.log` with `pino` logger (JSON out); add request-id middleware; redact `Authorization` header + password fields.
-- **Dependencies:** None.
+- **Blast radius:** Every log line in the backend — observability, secret-leak posture, ops correlation.
+- **Shipped in:**
+  - [backend/src/utils/logger.js](../../backend/src/utils/logger.js) — shared `pino` logger. JSON in prod, `pino-pretty` in dev (colour, `SYS:standard` time, `singleLine=false`). Base fields `service: "hms-backend"` + `env`. `LOG_LEVEL` env drives the level (`info` default in prod, `debug` in dev). Exports `httpLogger` = `pino-http` middleware with a `genReqId` that trusts an incoming `X-Request-Id` (<200 chars) or mints `crypto.randomUUID()`, and always echoes the id back on the response header. `customLogLevel` maps 5xx → `error`, 4xx → `warn`, else `info`.
+  - **Redaction (centralised)** — `REDACT_PATHS` covers `req.headers.authorization`, `req.headers.cookie`, `req.headers["set-cookie"]`, `res.headers["set-cookie"]`, and both top-level AND nested forms (via `*.field`) of `password`, `newPassword`, `oldPassword`, `currentPassword`, `confirmPassword`, `token`, `refreshToken`, `otp`, `authCode`. Any new secret-ish field should be added here rather than pre-scrubbed at call sites.
+  - [backend/src/index.js](../../backend/src/index.js) — old ad-hoc request-logger middleware (which was itself leaking headers in dev) replaced with `app.use(httpLogger)` above CORS/body-parsers. Boot flow now emits `server_started` (structured) and keeps the ASCII banner as `process.stdout.write(...)` gated on `NODE_ENV !== "production"` so humans keep the visual and aggregators get the JSON. CORS block → `logger.warn({ event: "cors_blocked", origin })`. Health endpoints log via `req.log` with `event: "health_hit" | "health_deep_hit" | "health_deep_failed"`.
+  - [backend/src/middleware/errorHandler.js](../../backend/src/middleware/errorHandler.js) — unconditional structured error log (`event: "request_error"`, with `err` + `status_code`), up from dev-only. Uses `req.log` when available (request-id stays attached), falls back to the module logger otherwise. Stack is still only echoed to the client in dev.
+  - **330+ `console.*` call sites migrated across 27 files** in `backend/src/`:
+    - Configs × 3 (`db.js`, `env.js`, `firebase.js`)
+    - Jobs × 1 (`autoDelete.job.js`) · Seed (`seed.js`) · Entry (`index.js`)
+    - Middleware × 2 (`auth.js`, `errorHandler.js`)
+    - Routes × 2 (`auth.routes.js`, `patient.routes.js`)
+    - Controllers × 8 (`auth` × 51, `patient` × 24, `hospitals` × 24, `admin` × 7, plus `appVersion`, `audit`, `export`, `notifications`)
+    - Services × 10 (`redis` × 28, `patient` × 36, `push` × 10, `token` × 10, `mail` × 6, `pdf` × 4, `geoip` × 4, `r2` × 20, `compression` × 1, `zip` × 1)
+    - Handler scope uses `req.log` (pre-bound to `request_id`); non-handler scope imports the module-level `logger`. `.catch(console.error)` fire-and-forget sites were rewritten as `.catch((err) => req.log.error({ event, err }, "..."))` so silent auth/notify failures are now captured.
+  - **Cloudinary probe bump** — `/api/health/deep` Cloudinary probe in [health.service.js](../../backend/src/services/health.service.js) gets its own 5s budget (SDK `{ timeout: 5000 }` + outer race) because `cloudinary.api.ping()` lands 2–4s cold and was flapping the global 3s budget.
+  - [.env.example](../../.env.example) — documented `LOG_LEVEL` under a new `── Logging (pino) ──` block.
+  - [CLAUDE.md](../../CLAUDE.md) §3 + §9 + §10 updated (stack row adds pino/pino-http, §9 documents the `LOG_LEVEL` env + request-id semantics + redaction list, §10 flips the "no structured logging" smell to ✅ resolved).
+  - [backend/README.md](../../backend/README.md) — new **Logging** section spelling out the `req.log` vs module-logger convention, the redaction list, and the deliberate `backend/scripts/` opt-out.
+- **Deliberate non-scope:** `backend/scripts/` (13 operator CLIs: migrations, smoke tests, manual pushes) stays on raw `console.*`. Rationale: those scripts exist to print human-readable progress for an operator; structured logs are noisier than stdout there. A partial scripts migration was attempted and reverted.
+- **Acceptance:**
+  - `grep -rn "console\\." backend/src/` → zero matches ✓
+  - `node --check` passes on every edited file ✓
+  - Smoke test of logger: `{ event, err }` → pino's std serializer emits `type/message/stack` ✓
+  - Dev boot shows the ASCII banner then the structured `server_started` log ✓
+  - `X-Request-Id` echoed on every HTTP response; pino-pretty prefixes each line with timestamp + level + event fields ✓
+
+### TD-008 (legacy)
 
 ### TD-008 · Medium · M — Probe all externals in `/api/health/deep`
 - **Source:** `04-enhancements.md` OBS-001
