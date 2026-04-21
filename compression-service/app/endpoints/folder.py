@@ -29,7 +29,10 @@ from app.compression.tier_ladder import (
     run_tier_ladder,
 )
 from app.compression.cover_page import generate_cover_page
-from app.merged_cache import get_meta as get_cache_meta, upsert_meta as upsert_cache_meta
+from app.merged_cache import (
+    get_meta as get_cache_meta,
+    upsert_meta as upsert_cache_meta,
+)
 from app.schemas import DownloadResponse, FolderDownloadRequest
 
 logger = logging.getLogger(__name__)
@@ -119,7 +122,10 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                     extra={
                         **log_extra,
                         "event": "cache_hit",
-                        "metrics": {"size_bytes": cached_size, "tier_used": cached_tier},
+                        "metrics": {
+                            "size_bytes": cached_size,
+                            "tier_used": cached_tier,
+                        },
                     },
                 )
                 return DownloadResponse(
@@ -148,6 +154,7 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                 files_info = body.files_info
                 if files_info and len(files_info) == len(source_pdfs_opened):
                     from app.schemas import FileInfo
+
                     files_info = [
                         FileInfo(
                             file_name=fi.file_name,
@@ -195,7 +202,9 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                     )
                     output_size = compressed.stat().st_size
                     result = CompressionResult(
-                        output_path=compressed, tier_used=0, output_size_bytes=output_size
+                        output_path=compressed,
+                        tier_used=0,
+                        output_size_bytes=output_size,
                     )
                 else:
                     result = await run_tier_ladder(
@@ -271,7 +280,10 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
         )
         return JSONResponse(
             status_code=504,
-            content={"error": "processing_timeout", "detail": "Pipeline exceeded 100s limit"},
+            content={
+                "error": "processing_timeout",
+                "detail": "Pipeline exceeded 300s limit",
+            },
         )
 
     except SizeFloorBreached as e:
