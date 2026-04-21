@@ -57,20 +57,66 @@ export const createPatient = async (hospitalId, patientData) => {
  */
 export const getPatients = async (hospitalId, options = {}) => {
   try {
-    const { limit = 20, skip = 0, search } = options;
+    const {
+      limit = 20,
+      skip = 0,
+      search,
+      createdFrom,
+      createdTo,
+      hasRemarks,
+    } = options;
     console.log("[Patient Service] Fetching patients for hospital:", hospitalId);
-    console.log("[Patient Service] Options - limit:", limit, "skip:", skip, "search:", search);
+    console.log(
+      "[Patient Service] Options - limit:",
+      limit,
+      "skip:",
+      skip,
+      "search:",
+      search,
+      "createdFrom:",
+      createdFrom,
+      "createdTo:",
+      createdTo,
+      "hasRemarks:",
+      hasRemarks,
+    );
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
     const query = { hospitalId: hospitalObjectId };
+    const clauses = [];
 
     if (search && search.trim()) {
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      query.$or = [
-        { patientName: { $regex: escapedSearch, $options: "i" } },
-        { patientId: { $regex: escapedSearch, $options: "i" } },
-      ];
+      clauses.push({
+        $or: [
+          { patientName: { $regex: escapedSearch, $options: "i" } },
+          { patientId: { $regex: escapedSearch, $options: "i" } },
+        ],
+      });
+    }
+
+    if (createdFrom || createdTo) {
+      const range = {};
+      if (createdFrom) range.$gte = createdFrom;
+      if (createdTo) range.$lte = createdTo;
+      clauses.push({ createdAt: range });
+    }
+
+    if (hasRemarks === "yes") {
+      clauses.push({ remarks: { $exists: true, $nin: [null, ""] } });
+    } else if (hasRemarks === "no") {
+      clauses.push({
+        $or: [
+          { remarks: { $exists: false } },
+          { remarks: null },
+          { remarks: "" },
+        ],
+      });
+    }
+
+    if (clauses.length > 0) {
+      query.$and = clauses;
     }
 
     const patients = await Patient.find(query)

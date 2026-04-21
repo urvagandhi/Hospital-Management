@@ -71,7 +71,14 @@ export const createPatient = async (req, res) => {
 export const getPatients = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
-    const { limit: rawLimit = 20, skip: rawSkip = 0, search } = req.query;
+    const {
+      limit: rawLimit = 20,
+      skip: rawSkip = 0,
+      search,
+      createdFrom: rawCreatedFrom,
+      createdTo: rawCreatedTo,
+      hasRemarks: rawHasRemarks,
+    } = req.query;
 
     // Clamp limit to 1-100 and skip to >= 0, default on NaN
     const parsedLimit = parseInt(rawLimit);
@@ -79,10 +86,26 @@ export const getPatients = async (req, res) => {
     const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 100);
     const skip = Number.isNaN(parsedSkip) ? 0 : Math.max(parsedSkip, 0);
 
+    // Parse date range (ignore unparseable values silently; do not 400)
+    const parseDate = (raw) => {
+      if (!raw) return undefined;
+      const d = new Date(raw);
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    };
+    const createdFrom = parseDate(rawCreatedFrom);
+    const createdTo = parseDate(rawCreatedTo);
+
+    // Clamp hasRemarks to a safe enum
+    const hasRemarks =
+      rawHasRemarks === "yes" || rawHasRemarks === "no" ? rawHasRemarks : undefined;
+
     const { patients, total } = await patientService.getPatients(hospitalId, {
       limit,
       skip,
       search,
+      createdFrom,
+      createdTo,
+      hasRemarks,
     });
 
     return res.status(200).json({
