@@ -124,6 +124,9 @@ class SourceFetchError(Exception):
         super().__init__(f"Failed to fetch {public_id}: {detail}")
 
 
+_FETCH_CONCURRENCY = 10
+
+
 async def fetch_source_pdfs(
     source_pdfs: list[SourcePdf],
     job_dir: Path,
@@ -134,37 +137,44 @@ async def fetch_source_pdfs(
 
     Returns list of local file paths in the same order as source_pdfs.
     Raises SourceFetchError on first failure.
+
+    Parallelism is bounded by _FETCH_CONCURRENCY (10) so a patient with
+    hundreds of files can't swamp the event loop, saturate the httpx
+    connection pool, or trip Cloudinary per-IP rate limits (TD-015).
     """
 
+    semaphore = asyncio.Semaphore(_FETCH_CONCURRENCY)
+
     async def _fetch_one(src: SourcePdf, index: int) -> Path:
-        url = _source_delivery_url(src.public_id, src.resource_type, src.access_mode)
-        dest = job_dir / f"source_{index}.pdf"
+        async with semaphore:
+            url = _source_delivery_url(src.public_id, src.resource_type, src.access_mode)
+            dest = job_dir / f"source_{index}.pdf"
 
-        try:
-            async with http_client.stream("GET", url, timeout=60.0) as resp:
-                if resp.status_code != 200:
-                    raise SourceFetchError(
-                        src.public_id,
-                        f"HTTP {resp.status_code}",
-                    )
-                with open(dest, "wb") as f:
-                    async for chunk in resp.aiter_bytes(chunk_size=65536):
-                        f.write(chunk)
-        except httpx.HTTPError as e:
-            raise SourceFetchError(src.public_id, str(e)) from e
+            try:
+                async with http_client.stream("GET", url, timeout=60.0) as resp:
+                    if resp.status_code != 200:
+                        raise SourceFetchError(
+                            src.public_id,
+                            f"HTTP {resp.status_code}",
+                        )
+                    with open(dest, "wb") as f:
+                        async for chunk in resp.aiter_bytes(chunk_size=65536):
+                            f.write(chunk)
+            except httpx.HTTPError as e:
+                raise SourceFetchError(src.public_id, str(e)) from e
 
-        logger.info(
-            "Fetched source PDF",
-            extra={
-                "job_id": job_id,
-                "event": "source_fetched",
-                "metrics": {
-                    "public_id": src.public_id,
-                    "size_bytes": dest.stat().st_size,
+            logger.info(
+                "Fetched source PDF",
+                extra={
+                    "job_id": job_id,
+                    "event": "source_fetched",
+                    "metrics": {
+                        "public_id": src.public_id,
+                        "size_bytes": dest.stat().st_size,
+                    },
                 },
-            },
-        )
-        return dest
+            )
+            return dest
 
     tasks = [_fetch_one(src, i) for i, src in enumerate(source_pdfs)]
     return list(await asyncio.gather(*tasks))
