@@ -53,6 +53,16 @@ const sessionSchema = new mongoose.Schema(
     lastSeenIp: {
       type: String,
     },
+    // Populated fire-and-forget after session creation via geoip.service.
+    // Null until the lookup completes or if the IP is private/LAN.
+    location: {
+      city: { type: String, default: null },
+      region: { type: String, default: null },
+      country: { type: String, default: null },
+      countryCode: { type: String, default: null },
+      isPrivate: { type: Boolean, default: false },
+      displayName: { type: String, default: null },
+    },
     revokedReason: {
       type: String, // "SESSION_CONFLICT", "ADMIN_REVOKE", "SUSPICIOUS_ACTIVITY", "SESSION_LIMIT_EXCEEDED"
     },

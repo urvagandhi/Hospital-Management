@@ -9,6 +9,7 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from ".
 import config from "../config/env.js";
 import { notifySessionRevoked, notifyNewLogin } from "./push.service.js";
 import { sendSessionRevokedEmail, sendNewLoginAlertEmail } from "./mail.service.js";
+import { geolocateIp } from "./geoip.service.js";
 import Hospital from "../models/Hospital.js";
 
 /**
@@ -28,6 +29,9 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
     //     the previous device logged in alongside the new one.
     //   Web: multiple concurrent sessions allowed (read-only portal).
     const MOBILE_SESSION_LIMIT = 2;
+    // Pre-create eviction: makes the common path produce 2 sessions.
+    // A second post-create sweep below catches the race where two logins
+    // both pass this check at the same time.
     if (isMobile) {
       const activeMobile = await Session.find({
         hospitalId,
@@ -35,20 +39,16 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
         isActive: true,
         expiresAt: { $gt: new Date() },
       })
-        .sort({ createdAt: 1 })
-        .select("_id")
+        // _id tie-break so identical createdAt values produce a stable order.
+        .sort({ createdAt: 1, _id: 1 })
+        .select("_id userAgent")
         .lean();
 
-      // Before inserting the new one, keep at most (LIMIT - 1) existing sessions.
       const toRevokeCount = Math.max(0, activeMobile.length - (MOBILE_SESSION_LIMIT - 1));
       if (toRevokeCount > 0) {
-        // Re-fetch the session docs we're about to kick so we can show the
-        // actual old-device UA in the revocation email (not the new UA).
-        const idsToRevoke = activeMobile.slice(0, toRevokeCount).map((s) => s._id);
-        const revokedDocs = await Session.find({ _id: { $in: idsToRevoke } })
-          .select("userAgent")
-          .lean();
-        const oldDeviceUA = revokedDocs[0]?.userAgent || null;
+        const victims = activeMobile.slice(0, toRevokeCount);
+        const idsToRevoke = victims.map((s) => s._id);
+        const oldDeviceUA = victims[0]?.userAgent || null;
 
         await Session.updateMany(
           { _id: { $in: idsToRevoke } },
@@ -98,6 +98,54 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
       authCodeVerifiedAt: now,
     });
 
+    // Fire-and-forget geolocation so login latency isn't blocked on an
+    // external HTTP call. Updates the session record once resolved.
+    geolocateIp(ipAddress)
+      .then((location) =>
+        Session.updateOne({ _id: session._id }, { $set: { location } }),
+      )
+      .catch((err) =>
+        console.warn("[token.service] geo lookup failed:", err.message),
+      );
+
+    // Race-safety sweep: if two simultaneous mobile logins both passed the
+    // pre-create check, both Session.create calls succeeded and we may now
+    // have > LIMIT active mobile sessions. Re-check and evict the oldest
+    // surplus, never the session we just created.
+    if (isMobile) {
+      const activeAfter = await Session.find({
+        hospitalId,
+        isMobile: true,
+        isActive: true,
+        expiresAt: { $gt: new Date() },
+      })
+        .sort({ createdAt: 1, _id: 1 })
+        .select("_id userAgent")
+        .lean();
+
+      const surplus = activeAfter.length - MOBILE_SESSION_LIMIT;
+      if (surplus > 0) {
+        const victims = activeAfter
+          .filter((s) => String(s._id) !== String(session._id))
+          .slice(0, surplus);
+        if (victims.length > 0) {
+          const ids = victims.map((s) => s._id);
+          await Session.updateMany(
+            { _id: { $in: ids } },
+            { isActive: false, revokedReason: "SESSION_LIMIT_EXCEEDED" },
+          );
+          notifySessionRevoked(hospitalId).catch(console.error);
+          Hospital.findById(hospitalId).select("email").lean()
+            .then((h) => h?.email && sendSessionRevokedEmail(h.email, {
+              oldDevice: victims[0]?.userAgent || null,
+              newDevice: userAgent,
+              reason: "SESSION_LIMIT_EXCEEDED",
+            }))
+            .catch((e) => console.error("[Token] race-sweep email failed:", e.message));
+        }
+      }
+    }
+
     // B6 — Fire new-login notification (email + push), gated by user prefs.
     // Fire-and-forget; never blocks login. Skips if this is the first session
     // (account creation) by detecting no other active sessions at time of create.
@@ -141,18 +189,83 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
 };
 
 /**
- * Refresh access token using refresh token
- * @param {string} refreshToken - Refresh token
- * @returns {Promise<object>} New tokens
+ * Handle a refresh-token presentation that decoded successfully but matched no
+ * active session. Two possibilities:
+ *   (a) Legitimate post-logout retry — the session was hard-deleted by logout
+ *       and the client sent one more refresh before its cookie cleared.
+ *   (b) Replay of a rotated token — an attacker (or a stale tab) is using an
+ *       old refresh token that has since been rotated out.
+ *
+ * Heuristic: if the hospital has ANY other active sessions, assume (b) and
+ * revoke ALL sessions for that hospital + send a security-alert email. This
+ * protects the common attack surface while tolerating the benign (a) case
+ * when no sessions remain (nothing to protect).
+ *
+ * @param {string} hospitalId
+ */
+const handlePossibleRefreshReuse = async (hospitalId) => {
+  try {
+    const activeCount = await Session.countDocuments({
+      hospitalId,
+      isActive: true,
+      expiresAt: { $gt: new Date() },
+    });
+    if (activeCount === 0) return; // nothing to protect — likely logout retry
+
+    await Session.updateMany(
+      { hospitalId, isActive: true },
+      { isActive: false, revokedReason: "REFRESH_TOKEN_REUSE" },
+    );
+
+    notifySessionRevoked(hospitalId).catch((e) =>
+      console.error("[Token] reuse push failed:", e.message),
+    );
+
+    Hospital.findById(hospitalId)
+      .select("email")
+      .lean()
+      .then(
+        (h) =>
+          h?.email &&
+          sendSessionRevokedEmail(h.email, {
+            oldDevice: null,
+            newDevice: null,
+            reason: "REFRESH_TOKEN_REUSE",
+          }),
+      )
+      .catch((e) =>
+        console.error("[Token] reuse email failed:", e.message),
+      );
+  } catch (e) {
+    console.error("[Token] reuse handler failed:", e.message);
+  }
+};
+
+/**
+ * Refresh access token using refresh token — ROTATES the refresh token.
+ *
+ * Each successful refresh issues a brand-new refresh token and persists it on
+ * the session doc, invalidating the old one. Presenting an old (rotated-out)
+ * refresh token hits `handlePossibleRefreshReuse` which may revoke all
+ * sessions for the hospital if reuse is detected.
+ *
+ * @param {string} refreshToken - Refresh token (from cookie or body)
+ * @returns {Promise<object>} { accessToken, refreshToken (new), expiresIn, tokenType, sessionId, hospitalId }
  */
 export const refreshAccessToken = async (refreshToken) => {
+  // Verify JWT signature / type FIRST. On signature failure, bail out without
+  // touching the DB — that's just an invalid token, not a replay signal.
+  let decoded;
   try {
-    // Verify JWT signature before DB lookup
-    const decoded = verifyRefreshToken(refreshToken);
+    decoded = verifyRefreshToken(refreshToken);
     if (decoded.type !== "refresh") {
       throw new Error("Invalid token type");
     }
+  } catch (error) {
+    throw new Error(`Failed to refresh token: ${error.message}`);
+  }
 
+  try {
     // Find session with refresh token
     const session = await Session.findOne({
       refreshToken,
@@ -161,21 +274,27 @@ export const refreshAccessToken = async (refreshToken) => {
     });
 
     if (!session) {
+      // JWT was signed by us but no active session holds this token.
+      // Could be replay of a rotated token — attempt reuse defense.
+      await handlePossibleRefreshReuse(decoded.id);
       throw new Error("Invalid or expired refresh token");
     }
 
-    // Generate new access token
+    // ROTATE: issue a new refresh token and persist it atomically.
     const newAccessToken = generateAccessToken(session.hospitalId, session._id);
+    const newRefreshToken = generateRefreshToken(session.hospitalId);
 
-    // Update last accessed
+    session.refreshToken = newRefreshToken;
     session.lastAccessedAt = new Date();
     await session.save();
 
     return {
       accessToken: newAccessToken,
-      refreshToken: session.refreshToken,
+      refreshToken: newRefreshToken,
       expiresIn: config.JWT_EXPIRY,
       tokenType: "Bearer",
+      sessionId: session._id,
+      hospitalId: session.hospitalId,
     };
   } catch (error) {
     throw new Error(`Failed to refresh token: ${error.message}`);
@@ -183,15 +302,23 @@ export const refreshAccessToken = async (refreshToken) => {
 };
 
 /**
- * Invalidate session (logout)
- * @param {string} refreshToken - Refresh token
- * @returns {Promise<boolean>} Success status
+ * Invalidate session (manual logout) — HARD delete.
+ *
+ * Manual logout removes the row entirely so it never counts toward the mobile
+ * session limit and never leaves a "ghost" entry. Forced/admin revocations
+ * use Session.updateMany({ isActive:false, revokedReason }) instead so the
+ * old device's next API call gets a 401 with a useful reason.
+ *
+ * Idempotent: returns true if anything was deleted, false if nothing matched
+ * (already gone) — caller should treat both as success.
+ *
+ * @param {string} refreshToken
+ * @returns {Promise<boolean>} true if a session was deleted
  */
 export const invalidateSession = async (refreshToken) => {
   try {
-    const result = await Session.updateOne({ refreshToken }, { isActive: false });
-
-    return result.modifiedCount > 0;
+    const result = await Session.deleteOne({ refreshToken });
+    return result.deletedCount > 0;
   } catch (error) {
     throw new Error(`Failed to invalidate session: ${error.message}`);
   }
