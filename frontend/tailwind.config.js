@@ -64,21 +64,15 @@ module.exports = {
       backgroundImage: {
         'gradient-primary': 'linear-gradient(135deg, #2B7FE0 0%, #60A5FA 100%)',
         'gradient-card':    'linear-gradient(180deg, #FFFFFF 0%, #F0F6FF 100%)',
-        'shimmer':          'linear-gradient(90deg, #F1F5F9 25%, #F8FAFC 50%, #F1F5F9 75%)',
       },
 
       animation: {
-        shimmer: 'shimmer 1.5s infinite ease-in-out',
         'fade-in': 'fadeIn 0.2s ease',
         'slide-up': 'slideUp 0.3s ease',
         'scale-in': 'scaleIn 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
       },
 
       keyframes: {
-        shimmer: {
-          '0%':   { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition:  '200% 0' },
-        },
         fadeIn: {
           from: { opacity: '0' },
           to:   { opacity: '1' },

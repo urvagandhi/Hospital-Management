@@ -11,7 +11,6 @@ Uses fpdf2 for page rendering, returns a pikepdf-compatible PDF path.
 """
 
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
 
 from fpdf import FPDF
