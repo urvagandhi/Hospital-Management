@@ -85,13 +85,16 @@ class AuthCodeVerificationActivity : BaseActivity() {
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val data = response.body()?.data
-                    if (data?.accessToken != null && data.refreshToken != null) {
+                    val at = data?.accessToken
+                    val rt = data?.refreshToken
+                    val hospital = data?.hospital
+                    if (at != null && rt != null && hospital != null) {
                         withContext(Dispatchers.IO) {
-                            tokenManager.saveTokens(data.accessToken, data.refreshToken)
+                            tokenManager.saveTokens(at, rt)
                             tokenManager.saveHospitalInfo(
-                                data.hospital._id,
-                                data.hospital.hospitalName,
-                                data.hospital.logoUrl ?: ""
+                                hospital._id,
+                                hospital.hospitalName,
+                                hospital.logoUrl ?: ""
                             )
                         }
                         SessionManager.startSession(this@AuthCodeVerificationActivity)

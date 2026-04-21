@@ -6,6 +6,7 @@ import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.models.AuthCodeVerifyRequest
 import com.hospital.management.data.models.AuthCodeVerifyResponse
 import com.hospital.management.data.models.ChangePasswordResponse
+import com.hospital.management.data.models.LoginRequest
 import com.hospital.management.data.models.LoginResponse
 import retrofit2.Response
 
@@ -15,12 +16,13 @@ class AuthRepository(
 ) {
 
     suspend fun login(identifier: String, password: String): Response<LoginResponse> {
-        val body = mapOf(
-            "identifier" to identifier,
-            "email" to identifier, // Legacy compat
-            "password" to password
+        return apiService.login(
+            LoginRequest(
+                identifier = identifier,
+                email = identifier, // Legacy compat
+                password = password
+            )
         )
-        return apiService.login(body)
     }
 
     suspend fun verifyAuthCodeLogin(tempToken: String, authCode: String): Response<AuthCodeVerifyResponse> {
@@ -61,8 +63,24 @@ class AuthRepository(
     }
 
     suspend fun logout() {
-        tokenManager.clearAll()
-        RetrofitClient.clearCookies()
+        // Notify backend FIRST so it can hard-delete the session, send the
+        // logout-confirmation email, and clean up FCM token state.
+        //
+        // NonCancellable: AuthViewModel.logout() runs in viewModelScope, which
+        // gets canceled the moment DashboardActivity calls finish(). Without
+        // NonCancellable the apiService.logout() call would be aborted mid-
+        // flight and the backend session would linger as a ghost.
+        //
+        // try-catch so a network failure (offline, 5xx) still proceeds to the
+        // local cleanup below — the user must always end up signed out
+        // locally, and the backend session will fall off via TTL.
+        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+            try {
+                apiService.logout()
+            } catch (_: Throwable) { /* best-effort */ }
+            tokenManager.clearAll()
+            RetrofitClient.clearCookies()
+        }
     }
 
     // ── Forgot password (Task #27) ──────────────────────────────────────
