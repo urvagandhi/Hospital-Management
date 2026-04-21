@@ -1,7 +1,8 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import AdminRoute from "../components/AdminRoute";
 import ProtectedRoute from "../components/ProtectedRoute";
+import Spinner from "../components/Spinner";
 import { MainLayout } from "../layouts/MainLayout";
 import ChangePassword from "../pages/ChangePassword";
 import Dashboard from "../pages/Dashboard";
@@ -20,9 +21,19 @@ import ActivityLog from "../pages/ActivityLog";
 import NotificationSettings from "../pages/NotificationSettings";
 import Terms from "../pages/Terms";
 import Privacy from "../pages/Privacy";
-import ComponentsPreview from "../pages/ComponentsPreview";
 import NotFound from "../pages/NotFound";
-import LoadingSpinners from "../pages/LoadingSpinners";
+
+// Design-system preview pages are public, rarely visited, and pull in heavy
+// deps (recharts + lucide-react via ComponentsPreview). Code-split them so
+// they never land in the main bundle.
+const ComponentsPreview = lazy(() => import("../pages/ComponentsPreview"));
+const LoadingSpinners = lazy(() => import("../pages/LoadingSpinners"));
+
+const PreviewFallback: React.FC = () => (
+  <div className="min-h-screen flex items-center justify-center bg-surface-bg">
+    <Spinner />
+  </div>
+);
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -52,11 +63,25 @@ export const AppRoutes: React.FC = () => {
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
 
-      {/* HMS Design System showcase — public, no auth needed */}
-      <Route path="/components-preview" element={<ComponentsPreview />} />
+      {/* HMS Design System showcase — public, no auth needed. Lazy. */}
+      <Route
+        path="/components-preview"
+        element={
+          <Suspense fallback={<PreviewFallback />}>
+            <ComponentsPreview />
+          </Suspense>
+        }
+      />
 
-      {/* Loading spinner gallery — design preview */}
-      <Route path="/spinners-preview" element={<LoadingSpinners />} />
+      {/* Loading spinner gallery — design preview. Lazy. */}
+      <Route
+        path="/spinners-preview"
+        element={
+          <Suspense fallback={<PreviewFallback />}>
+            <LoadingSpinners />
+          </Suspense>
+        }
+      />
 
       {/* Protected Routes */}
       <Route
