@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import logger from "../utils/logger.js";
 import { geolocateIp, formatLocation } from "./geoip.service.js";
 
 // ---------------------------------------------------------------------------
@@ -51,11 +52,14 @@ async function sendViaBrevo(to, subject, htmlContent) {
   const senderEmail = SENDER_EMAIL();
 
   if (!apiKey) {
-    console.error("[Brevo] BREVO_API_KEY is not set!");
+    logger.error({ event: "brevo_not_configured" }, "[Brevo] BREVO_API_KEY is not set!");
     throw new Error("BREVO_API_KEY environment variable is not configured");
   }
 
-  console.log(`[Brevo] Sending email to=${to}, from=${senderEmail}, subject="${subject}"`);
+  logger.info(
+    { event: "mail_sending", provider: "brevo", to, from: senderEmail, subject },
+    `[Brevo] Sending email to=${to}, from=${senderEmail}, subject="${subject}"`,
+  );
 
   const payload = JSON.stringify({
     sender: { name: SENDER_NAME(), email: senderEmail },
@@ -82,16 +86,26 @@ async function sendViaBrevo(to, subject, htmlContent) {
       const body = await res.json().catch(() => ({}));
 
       if (res.ok) {
-        console.log(`[Brevo] Email sent successfully. messageId=${body.messageId}`);
+        logger.info(
+          { event: "mail_sent", provider: "brevo", to, messageId: body.messageId },
+          `[Brevo] Email sent successfully. messageId=${body.messageId}`,
+        );
         return { success: true, messageId: body.messageId };
       }
 
       // Brevo returned an error
       const errMsg = body.message || JSON.stringify(body);
-      console.error(`[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} failed (${res.status}): ${errMsg}`);
+      const failEvent = res.status === 429 ? "brevo_rate_limited" : "mail_failed";
+      logger.error(
+        { event: failEvent, provider: "brevo", to, status: res.status, attempt: attempt + 1, maxAttempts: MAX_RETRIES + 1, errMsg },
+        `[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} failed (${res.status}): ${errMsg}`,
+      );
       lastError = new Error(`Brevo API error ${res.status}: ${errMsg}`);
     } catch (err) {
-      console.error(`[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} network error:`, err.message);
+      logger.error(
+        { event: "mail_retry", provider: "brevo", to, attempt: attempt + 1, maxAttempts: MAX_RETRIES + 1, err },
+        `[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} network error`,
+      );
       lastError = err;
     }
 
@@ -131,7 +145,10 @@ export async function sendEmail(to, subject, htmlContent) {
     }
     return await sendViaMailtrap(to, subject, htmlContent);
   } catch (err) {
-    console.error(`[mail.service] Failed to send email to ${to}:`, err.message || err);
+    logger.error(
+      { event: "mail_failed", to, err },
+      `[mail.service] Failed to send email to ${to}`,
+    );
     return { success: false, error: err.message || String(err) };
   }
 }

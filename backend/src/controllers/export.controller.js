@@ -253,7 +253,7 @@ export const exportPatientsPdf = async (req, res) => {
     drawPageFooter(doc, pageNum, totalPatients);
     doc.end();
   } catch (error) {
-    console.error("[Export] PDF error:", error);
+    req.log.error({ event: "export_pdf_failed", err: error }, "[Export] PDF error");
     if (!res.headersSent) {
       return res.status(500).json({
         success: false,
@@ -294,7 +294,7 @@ export const exportArchive = async (req, res) => {
     const archive = archiver("zip", { zlib: { level: 6 } });
 
     archive.on("error", (err) => {
-      console.error("[Export] Archive error:", err);
+      req.log.error({ event: "export_archive_stream_failed", err }, "[Export] Archive error");
       if (!res.headersSent) {
         res.status(500).json({ success: false, error: { code: "ARCHIVE_ERROR", message: "Archive generation failed" } });
       }
@@ -310,7 +310,7 @@ export const exportArchive = async (req, res) => {
 
     await archive.finalize();
   } catch (error) {
-    console.error("[Export] Error:", error);
+    req.log.error({ event: "export_archive_failed", err: error }, "[Export] Error");
     if (!res.headersSent) {
       return res.status(500).json({
         success: false,
@@ -390,7 +390,7 @@ export const exportSampleCover = async (req, res) => {
   try {
     await generateSampleCoverPdf(res);
   } catch (error) {
-    console.error("[Export] Sample cover error:", error);
+    req.log.error({ event: "export_sample_cover_failed", err: error }, "[Export] Sample cover error");
     if (!res.headersSent) {
       res.status(500).json({ success: false, error: { code: "EXPORT_ERROR", message: "Failed to generate sample PDF." } });
     }

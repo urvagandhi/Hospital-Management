@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import Session from "../models/Session.js";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt.js";
 import config from "../config/env.js";
+import logger from "../utils/logger.js";
 import { notifySessionRevoked, notifyNewLogin } from "./push.service.js";
 import { sendSessionRevokedEmail, sendNewLoginAlertEmail } from "./mail.service.js";
 import { geolocateIp } from "./geoip.service.js";
@@ -54,14 +55,16 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
           { _id: { $in: idsToRevoke } },
           { isActive: false, revokedReason: "SESSION_LIMIT_EXCEEDED" },
         );
-        notifySessionRevoked(hospitalId).catch(console.error);
+        notifySessionRevoked(hospitalId).catch((err) =>
+          logger.error({ event: "push_session_revoked_failed", err }, "[Token] session-revoked push failed"),
+        );
         Hospital.findById(hospitalId).select("email").lean()
           .then((h) => h?.email && sendSessionRevokedEmail(h.email, {
             oldDevice: oldDeviceUA,
             newDevice: userAgent,
             reason: "SESSION_LIMIT_EXCEEDED",
           }))
-          .catch((e) => console.error("[Token] session-revoked email failed:", e.message));
+          .catch((e) => logger.error({ event: "mail_failed", reason: "session_revoked", err: e }, "[Token] session-revoked email failed"));
       }
     }
 
@@ -105,7 +108,10 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
         Session.updateOne({ _id: session._id }, { $set: { location } }),
       )
       .catch((err) =>
-        console.warn("[token.service] geo lookup failed:", err.message),
+        logger.warn(
+          { event: "geoip_lookup_failed", sessionId: session._id, err },
+          "[token.service] geo lookup failed",
+        ),
       );
 
     // Race-safety sweep: if two simultaneous mobile logins both passed the
@@ -134,14 +140,16 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
             { _id: { $in: ids } },
             { isActive: false, revokedReason: "SESSION_LIMIT_EXCEEDED" },
           );
-          notifySessionRevoked(hospitalId).catch(console.error);
+          notifySessionRevoked(hospitalId).catch((err) =>
+            logger.error({ event: "push_session_revoked_failed", err }, "[Token] race-sweep push failed"),
+          );
           Hospital.findById(hospitalId).select("email").lean()
             .then((h) => h?.email && sendSessionRevokedEmail(h.email, {
               oldDevice: victims[0]?.userAgent || null,
               newDevice: userAgent,
               reason: "SESSION_LIMIT_EXCEEDED",
             }))
-            .catch((e) => console.error("[Token] race-sweep email failed:", e.message));
+            .catch((e) => logger.error({ event: "mail_failed", reason: "race_sweep", err: e }, "[Token] race-sweep email failed"));
         }
       }
     }
@@ -168,11 +176,11 @@ export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, 
             userAgent,
             ipAddress,
             when: now,
-          }).catch((e) => console.error("[new-login email]", e.message));
+          }).catch((e) => logger.error({ event: "mail_failed", reason: "new_login", err: e }, "[new-login email]"));
         }
         notifyNewLogin(hospitalId, userAgent || "a new device").catch(() => {});
       } catch (e) {
-        console.error("[new-login notify]", e.message);
+        logger.error({ event: "new_login_notify_failed", err: e }, "[new-login notify]");
       }
     })();
 
@@ -217,8 +225,17 @@ const handlePossibleRefreshReuse = async (hospitalId) => {
       { isActive: false, revokedReason: "REFRESH_TOKEN_REUSE" },
     );
 
+    logger.warn(
+      { event: "refresh_reuse_detected", hospitalId },
+      "[Token] refresh token reuse detected — revoking all sessions",
+    );
+    logger.warn(
+      { event: "token_revoked_all", hospitalId, reason: "REFRESH_TOKEN_REUSE" },
+      "[Token] all sessions revoked",
+    );
+
     notifySessionRevoked(hospitalId).catch((e) =>
-      console.error("[Token] reuse push failed:", e.message),
+      logger.error({ event: "push_session_revoked_failed", err: e }, "[Token] reuse push failed"),
     );
 
     Hospital.findById(hospitalId)
@@ -234,10 +251,10 @@ const handlePossibleRefreshReuse = async (hospitalId) => {
           }),
       )
       .catch((e) =>
-        console.error("[Token] reuse email failed:", e.message),
+        logger.error({ event: "mail_failed", reason: "refresh_reuse", err: e }, "[Token] reuse email failed"),
       );
   } catch (e) {
-    console.error("[Token] reuse handler failed:", e.message);
+    logger.error({ event: "refresh_reuse_handler_failed", err: e }, "[Token] reuse handler failed");
   }
 };
 

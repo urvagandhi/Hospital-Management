@@ -104,7 +104,7 @@ export const getAllHospitals = async (req, res) => {
 
     return res.status(200).json(response);
   } catch (error) {
-    console.error("Get hospitals error:", error);
+    req.log.error({ event: "hospitals_list_error", err: error }, "Get hospitals error");
     return res.status(500).json({
       success: false,
       message: "Failed to fetch hospitals",
@@ -141,7 +141,7 @@ export const getCurrentHospital = async (req, res) => {
       data: hospital,
     });
   } catch (error) {
-    console.error("Get current hospital error:", error);
+    req.log.error({ event: "hospital_me_fetch_error", err: error }, "Get current hospital error");
     return res.status(500).json({
       success: false,
       message: "Failed to fetch hospital",
@@ -171,7 +171,7 @@ export const getHospitalById = async (req, res) => {
       data: hospital,
     });
   } catch (error) {
-    console.error("Get hospital error:", error);
+    req.log.error({ event: "hospital_fetch_error", err: error }, "Get hospital error");
     return res.status(500).json({
       success: false,
       message: "Failed to fetch hospital",
@@ -280,10 +280,10 @@ export const updateHospital = async (req, res) => {
           { hospitalId: hospital._id, isActive: true },
           { $set: { isActive: false, revokedReason: "ACCOUNT_DISABLED" } },
         );
-      } catch (e) { console.error("[updateHospital] session revoke failed:", e.message); }
+      } catch (e) { req.log.error({ event: "update_hospital_session_revoke_failed", err: e }, "[updateHospital] session revoke failed"); }
       if (hospital.email) {
         sendAccountDisabledEmail(hospital.email, { hospitalName: hospital.hospitalName })
-          .catch((e) => console.error("[updateHospital] disabled email:", e.message));
+          .catch((e) => req.log.error({ event: "update_hospital_disabled_email_failed", err: e }, "[updateHospital] disabled email"));
       }
       AuditLog.create({
         userId: hospital._id,
@@ -296,7 +296,7 @@ export const updateHospital = async (req, res) => {
     } else if (activeTransition === "enabled") {
       if (hospital.email) {
         sendAccountEnabledEmail(hospital.email, { hospitalName: hospital.hospitalName })
-          .catch((e) => console.error("[updateHospital] enabled email:", e.message));
+          .catch((e) => req.log.error({ event: "update_hospital_enabled_email_failed", err: e }, "[updateHospital] enabled email"));
       }
       AuditLog.create({
         userId: hospital._id,
@@ -314,7 +314,7 @@ export const updateHospital = async (req, res) => {
       data: hospital,
     });
   } catch (error) {
-    console.error("Update hospital error:", error);
+    req.log.error({ event: "update_hospital_error", err: error }, "Update hospital error");
 
     // Handle duplicate key errors
     if (error.code === 11000) {
@@ -415,7 +415,7 @@ export const resendWelcomeEmail = async (req, res) => {
         hospital.authCode,
       );
     } catch (mailErr) {
-      console.error("[resendWelcomeEmail] mail send failed:", mailErr.message);
+      req.log.error({ event: "resend_welcome_email_failed", err: mailErr }, "[resendWelcomeEmail] mail send failed");
       return res.status(502).json({
         success: false,
         message: "The welcome email could not be delivered. Please try again.",
@@ -433,7 +433,7 @@ export const resendWelcomeEmail = async (req, res) => {
         targetEmail: hospital.email,
         resetPassword: Boolean(newTempPassword),
       },
-    }).catch((e) => console.error("[AuditLog] resendWelcome:", e.message));
+    }).catch((e) => req.log.error({ event: "audit_log_resend_welcome_failed", err: e }, "[AuditLog] resendWelcome"));
 
     return res.status(200).json({
       success: true,
@@ -442,7 +442,7 @@ export const resendWelcomeEmail = async (req, res) => {
         : "Auth Code re-sent to the hospital's registered email.",
     });
   } catch (error) {
-    console.error("[resendWelcomeEmail] error:", error);
+    req.log.error({ event: "resend_welcome_email_error", err: error }, "[resendWelcomeEmail] error");
     return res.status(500).json({ success: false, message: "Failed to resend welcome email" });
   }
 };
@@ -516,11 +516,11 @@ export const patchMe = async (req, res) => {
       ipAddress,
       userAgent,
       details: changes,
-    }).catch((e) => console.error("AuditLog error (profile patch):", e));
+    }).catch((e) => req.log.error({ event: "audit_log_profile_patch_failed", err: e }, "AuditLog error (profile patch)"));
 
     return res.status(200).json({ success: true, message: "Profile updated", data: hospital });
   } catch (error) {
-    console.error("[patchMe] error:", error);
+    req.log.error({ event: "patch_me_error", err: error }, "[patchMe] error");
     return res.status(500).json({ success: false, message: "Failed to update profile" });
   }
 };
@@ -592,7 +592,7 @@ export const initContactChange = async (req, res) => {
     try {
       await sendOTPEmail(otpRecipient, otp, "contact_change");
     } catch (e) {
-      console.error("[initContactChange] OTP email failed:", e.message);
+      req.log.error({ event: "contact_change_otp_email_failed", err: e }, "[initContactChange] OTP email failed");
     }
 
     AuditLog.create({
@@ -602,7 +602,7 @@ export const initContactChange = async (req, res) => {
       ipAddress,
       userAgent,
       details: { field, otpChannel },
-    }).catch((e) => console.error("AuditLog error (contact init):", e));
+    }).catch((e) => req.log.error({ event: "audit_log_contact_init_failed", err: e }, "AuditLog error (contact init)"));
 
     const maskedRecipient = field === "email"
       ? newValue.replace(/(.{1,2}).*(@.*)/, "$1***$2")
@@ -616,7 +616,7 @@ export const initContactChange = async (req, res) => {
       data: { field, otpChannel, otpExpiresInSeconds: CONTACT_OTP_TTL_SECONDS },
     });
   } catch (error) {
-    console.error("[initContactChange] error:", error);
+    req.log.error({ event: "init_contact_change_error", err: error }, "[initContactChange] error");
     return res.status(500).json({ success: false, message: "Failed to initiate contact change" });
   }
 };
@@ -685,7 +685,7 @@ export const resendContactChangeOtp = async (req, res) => {
     try {
       await sendOTPEmail(otpRecipient, otp, "contact_change");
     } catch (e) {
-      console.error("[resendContactChangeOtp] OTP email failed:", e.message);
+      req.log.error({ event: "contact_change_resend_otp_email_failed", err: e }, "[resendContactChangeOtp] OTP email failed");
     }
 
     resendContactOtpCooldown.set(hospitalId, Date.now());
@@ -697,7 +697,7 @@ export const resendContactChangeOtp = async (req, res) => {
       ipAddress,
       userAgent,
       details: { field: pending.field, otpChannel },
-    }).catch((e) => console.error("AuditLog error (contact resend):", e));
+    }).catch((e) => req.log.error({ event: "audit_log_contact_resend_failed", err: e }, "AuditLog error (contact resend)"));
 
     const maskedRecipient = otpRecipient.replace(/(.{1,2}).*(@.*)/, "$1***$2");
     return res.status(200).json({
@@ -713,7 +713,7 @@ export const resendContactChangeOtp = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("[resendContactChangeOtp] error:", error);
+    req.log.error({ event: "resend_contact_change_otp_error", err: error }, "[resendContactChangeOtp] error");
     return res.status(500).json({ success: false, message: "Failed to resend OTP" });
   }
 };
@@ -787,7 +787,7 @@ export const verifyContactChange = async (req, res) => {
       ipAddress,
       userAgent,
       details: { field, oldValue, newValue },
-    }).catch((e) => console.error("AuditLog error (contact changed):", e));
+    }).catch((e) => req.log.error({ event: "audit_log_contact_changed_failed", err: e }, "AuditLog error (contact changed)"));
 
     // Security notice emails (fire-and-forget):
     //   • Email change: notify BOTH the old and the new address so a
@@ -796,12 +796,12 @@ export const verifyContactChange = async (req, res) => {
     //     so just one notice goes to that address.
     if (field === "email") {
       sendContactChangedNoticeEmail(oldValue, { field, oldValue, newValue, recipient: "old" })
-        .catch((e) => console.error("[contactChanged] old-addr email failed:", e.message));
+        .catch((e) => req.log.error({ event: "contact_changed_old_addr_email_failed", err: e }, "[contactChanged] old-addr email failed"));
       sendContactChangedNoticeEmail(newValue, { field, oldValue, newValue, recipient: "new" })
-        .catch((e) => console.error("[contactChanged] new-addr email failed:", e.message));
+        .catch((e) => req.log.error({ event: "contact_changed_new_addr_email_failed", err: e }, "[contactChanged] new-addr email failed"));
     } else {
       sendContactChangedNoticeEmail(hospital.email, { field, oldValue, newValue, recipient: "current" })
-        .catch((e) => console.error("[contactChanged] current-email notice failed:", e.message));
+        .catch((e) => req.log.error({ event: "contact_changed_current_email_failed", err: e }, "[contactChanged] current-email notice failed"));
     }
 
     return res.status(200).json({
@@ -810,7 +810,7 @@ export const verifyContactChange = async (req, res) => {
       data: hospital,
     });
   } catch (error) {
-    console.error("[verifyContactChange] error:", error);
+    req.log.error({ event: "verify_contact_change_error", err: error }, "[verifyContactChange] error");
     return res.status(500).json({ success: false, message: "Failed to verify contact change" });
   }
 };
@@ -841,7 +841,7 @@ export const getNotificationPreferences = async (req, res) => {
 
     return res.json({ success: true, data: normalizePrefs(hospital.notificationPrefs) });
   } catch (err) {
-    console.error("[getNotificationPreferences] error:", err);
+    req.log.error({ event: "get_notification_prefs_error", err }, "[getNotificationPreferences] error");
     return res.status(500).json({ success: false, message: "Failed to load preferences" });
   }
 };
@@ -886,7 +886,7 @@ export const updateNotificationPreferences = async (req, res) => {
 
     return res.json({ success: true, data: normalizePrefs(updated.notificationPrefs) });
   } catch (err) {
-    console.error("[updateNotificationPreferences] error:", err);
+    req.log.error({ event: "update_notification_prefs_error", err }, "[updateNotificationPreferences] error");
     return res.status(500).json({ success: false, message: "Failed to update preferences" });
   }
 };
@@ -954,7 +954,7 @@ export const adminForceDelete = async (req, res) => {
         { hospitalId: hospital._id, isActive: true },
         { $set: { isActive: false, revokedReason: "ACCOUNT_DELETED" } },
       );
-    } catch (e) { console.error("[adminForceDelete] session revoke failed:", e.message); }
+    } catch (e) { req.log.error({ event: "admin_force_delete_session_revoke_failed", err: e }, "[adminForceDelete] session revoke failed"); }
 
     // Hard delete: admin-initiated takedowns should remove the record entirely.
     // The audit log still references the ObjectId + snapshot for accountability.
@@ -965,7 +965,7 @@ export const adminForceDelete = async (req, res) => {
       sendAccountDeletedEmail(snapshot.email, {
         hospitalName: snapshot.hospitalName,
         reason: trimmedReason,
-      }).catch((e) => console.error("[adminForceDelete] notify email failed:", e.message));
+      }).catch((e) => req.log.error({ event: "admin_force_delete_notify_email_failed", err: e }, "[adminForceDelete] notify email failed"));
     }
 
     AuditLog.create({
@@ -984,7 +984,7 @@ export const adminForceDelete = async (req, res) => {
 
     return res.json({ success: true, message: "Hospital deleted" });
   } catch (err) {
-    console.error("[adminForceDelete] error:", err);
+    req.log.error({ event: "admin_force_delete_error", err }, "[adminForceDelete] error");
     return res.status(500).json({ success: false, message: "Failed to delete hospital" });
   }
 };

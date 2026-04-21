@@ -19,6 +19,7 @@ import {
   SIGNED_UPLOADS_ENABLED,
 } from "../services/storage.service.js";
 import * as zipService from "../services/zip.service.js";
+import logger from "../utils/logger.js";
 
 const USE_COMPRESSION = config.USE_COMPRESSION_SERVICE;
 
@@ -31,7 +32,7 @@ function logAudit(userId, action, req, details) {
     ipAddress: req.ip || req.connection?.remoteAddress,
     userAgent: req.headers?.["user-agent"],
     details,
-  }).catch((e) => console.error("[Audit] log failed:", e.message));
+  }).catch((e) => logger.error({ event: "audit_log_failed", err: e }, "[Audit] log failed"));
 }
 
 /**
@@ -43,7 +44,7 @@ export const createPatient = async (req, res) => {
     const hospitalId = req.hospital?.id;
     const { patientName, remarks } = req.body;
 
-    console.log("[Patient Controller] Creating patient:", patientName);
+    req.log.info({ event: "patient_create_attempt", patientName }, "[Patient Controller] Creating patient");
 
     const patient = await patientService.createPatient(hospitalId, {
       patientName,
@@ -56,7 +57,7 @@ export const createPatient = async (req, res) => {
       message: "Patient created successfully",
     });
   } catch (error) {
-    console.error("[Patient Controller] Create error:", error);
+    req.log.error({ event: "patient_create_error", err: error }, "[Patient Controller] Create error");
     return res.status(500).json({
       success: false,
       message: "Failed to create patient",
@@ -118,7 +119,7 @@ export const getPatients = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("[Patient Controller] Error:", error);
+    req.log.error({ event: "patients_list_error", err: error }, "[Patient Controller] Error");
     return res.status(500).json({
       success: false,
       message: "Failed to fetch patients",
@@ -135,7 +136,7 @@ export const getPatientById = async (req, res) => {
     const { patientId } = req.params;
     const hospitalId = req.hospital?.id;
 
-    console.log("[Patient Controller] Fetching patient:", patientId);
+    req.log.info({ event: "patient_fetch", patientId }, "[Patient Controller] Fetching patient");
 
     const patient = await patientService.getPatientById(hospitalId, patientId);
 
@@ -146,7 +147,7 @@ export const getPatientById = async (req, res) => {
       data: patient,
     });
   } catch (error) {
-    console.error("[Patient Controller] Error:", error);
+    req.log.error({ event: "patient_fetch_error", err: error }, "[Patient Controller] Error");
     return res.status(error.message === "Patient not found" ? 404 : 500).json({
       success: false,
       message: error.message === "Patient not found" ? error.message : "Failed to fetch patient",
@@ -164,7 +165,7 @@ export const updatePatient = async (req, res) => {
     const hospitalId = req.hospital?.id;
     const { patientName, remarks } = req.body;
 
-    console.log("[Patient Controller] Updating patient:", patientId);
+    req.log.info({ event: "patient_update_attempt", patientId }, "[Patient Controller] Updating patient");
 
     const patient = await patientService.updatePatient(hospitalId, patientId, {
       patientName,
@@ -177,7 +178,7 @@ export const updatePatient = async (req, res) => {
       message: "Patient updated successfully",
     });
   } catch (error) {
-    console.error("[Patient Controller] Update error:", error);
+    req.log.error({ event: "patient_update_error", err: error }, "[Patient Controller] Update error");
     return res.status(error.message === "Patient not found" ? 404 : 500).json({
       success: false,
       message: error.message === "Patient not found" ? error.message : "Failed to update patient",
@@ -202,7 +203,7 @@ export const createFolder = async (req, res) => {
       });
     }
 
-    console.log("[Patient Controller] Creating folder:", folderName, "for patient:", patientId);
+    req.log.info({ event: "folder_create_attempt", folderName, patientId }, "[Patient Controller] Creating folder");
 
     const patient = await patientService.createFolder(hospitalId, patientId, folderName.trim());
 
@@ -212,7 +213,7 @@ export const createFolder = async (req, res) => {
       message: "Folder created successfully",
     });
   } catch (error) {
-    console.error("[Patient Controller] Create folder error:", error);
+    req.log.error({ event: "folder_create_error", err: error }, "[Patient Controller] Create folder error");
     return res.status(error.message === "Patient not found" ? 404 : 500).json({
       success: false,
       message: error.message,
@@ -229,7 +230,7 @@ export const getFolderFiles = async (req, res) => {
     const { patientId, folderName } = req.params;
     const hospitalId = req.hospital?.id;
 
-    console.log("[Patient Controller] Fetching files for folder:", folderName);
+    req.log.info({ event: "folder_files_fetch", folderName }, "[Patient Controller] Fetching files for folder");
 
     const folder = await patientService.getFolderFiles(hospitalId, patientId, folderName);
 
@@ -238,7 +239,7 @@ export const getFolderFiles = async (req, res) => {
       data: folder,
     });
   } catch (error) {
-    console.error("[Patient Controller] Error:", error);
+    req.log.error({ event: "folder_files_fetch_error", err: error }, "[Patient Controller] Error");
     const isNotFound = error.message.includes("not found");
     return res.status(isNotFound ? 404 : 500).json({
       success: false,
@@ -284,7 +285,7 @@ export const uploadFile = async (req, res) => {
       ? buildThumbnailUrl({ publicId: cloudinaryPublicId, resourceType, accessMode })
       : null;
 
-    console.log("[Patient Controller] File uploaded to Cloudinary:", cloudinaryUrl);
+    req.log.info({ event: "file_uploaded_cloudinary", cloudinaryUrl }, "[Patient Controller] File uploaded to Cloudinary");
 
     // Update patient record — store the Cloudinary URL directly
     const patient = await patientService.addFileToFolder(hospitalId, patientId, folderName, {
@@ -310,12 +311,12 @@ export const uploadFile = async (req, res) => {
     const idemKey = req.header("Idempotency-Key");
     if (idemKey) {
       setUploadIdempotentResponse(hospitalId, idemKey, { status: 200, body: responseBody })
-        .catch((e) => console.error("[Patient Controller] idem cache failed:", e.message));
+        .catch((e) => req.log.error({ event: "upload_idem_cache_failed", err: e }, "[Patient Controller] idem cache failed"));
     }
 
     return res.status(200).json(responseBody);
   } catch (error) {
-    console.error("[Patient Controller] Upload error:", error);
+    req.log.error({ event: "file_upload_error", err: error }, "[Patient Controller] Upload error");
     return res.status(error.message === "Patient not found" || error.message === "Folder not found" ? 404 : 500).json({
       success: false,
       message: error.message === "Patient not found" || error.message === "Folder not found" ? error.message : "Failed to upload file",
@@ -348,7 +349,7 @@ export const renameFile = async (req, res) => {
       message: "File renamed successfully",
     });
   } catch (error) {
-    console.error("[Patient Controller] Rename error:", error);
+    req.log.error({ event: "file_rename_error", err: error }, "[Patient Controller] Rename error");
     const isNotFound = error.message.includes("not found");
     return res.status(isNotFound ? 404 : 500).json({
       success: false,
@@ -373,7 +374,10 @@ export const deleteFile = async (req, res) => {
       const resourceType = deletedFile.resourceType || "image";
       const remoteDeleteResult = await cloudinaryDeleteFile(deletedFile.cloudinaryPublicId, resourceType);
       if (!remoteDeleteResult.success) {
-        console.warn("[Patient Controller] Cloudinary cleanup failed:", remoteDeleteResult.error);
+        req.log.warn(
+          { event: "cloudinary_cleanup_failed", cleanup_error: remoteDeleteResult.error },
+          "[Patient Controller] Cloudinary cleanup failed",
+        );
       }
     }
 
@@ -390,7 +394,7 @@ export const deleteFile = async (req, res) => {
       message: "File deleted successfully",
     });
   } catch (error) {
-    console.error("[Patient Controller] Delete file error:", error);
+    req.log.error({ event: "file_delete_error", err: error }, "[Patient Controller] Delete file error");
     const isNotFound = error.message.includes("not found");
     return res.status(isNotFound ? 404 : 500).json({
       success: false,
@@ -446,7 +450,7 @@ export const getFileSignedUrl = async (req, res) => {
       data: { url: signed, expiresIn: 300, accessMode: "signed" },
     });
   } catch (err) {
-    console.error("[Patient Controller] signed-url error:", err);
+    req.log.error({ event: "signed_url_error", err }, "[Patient Controller] signed-url error");
     return res.status(500).json({ success: false, message: "Failed to build signed URL" });
   }
 };
@@ -513,7 +517,7 @@ export const streamFile = async (req, res) => {
     };
     await pump();
   } catch (err) {
-    console.error("[Patient Controller] streamFile error:", err);
+    req.log.error({ event: "stream_file_error", err }, "[Patient Controller] streamFile error");
     if (!res.headersSent) {
       res.status(500).json({ success: false, message: "Failed to stream file" });
     }
@@ -533,7 +537,7 @@ export const zipSizeCheck = async (req, res) => {
     const result = zipService.checkSize(patient);
     return res.status(200).json({ success: true, ...result });
   } catch (error) {
-    console.error("[Patient Controller] Size check error:", error);
+    req.log.error({ event: "zip_size_check_error", err: error }, "[Patient Controller] Size check error");
     if (!res.headersSent) {
       return res.status(error.message === "Patient not found" ? 404 : 500).json({
         success: false,
@@ -563,7 +567,7 @@ export const downloadAllZip = async (req, res) => {
 
     await zipService.generatePatientZip(patient, res, selectedFolders || null);
   } catch (error) {
-    console.error("[Patient Controller] ZIP error:", error);
+    req.log.error({ event: "patient_zip_error", err: error }, "[Patient Controller] ZIP error");
     if (!res.headersSent) {
       return res.status(error.message === "Patient not found" ? 404 : 500).json({
         success: false,
@@ -805,7 +809,7 @@ export const downloadFolderZip = async (req, res) => {
 
     await zipService.generateFolderZip(patient, folderName, res);
   } catch (error) {
-    console.error("[Patient Controller] Folder ZIP error:", error);
+    req.log.error({ event: "folder_zip_error", err: error }, "[Patient Controller] Folder ZIP error");
     if (!res.headersSent) {
       const isNotFound = error.message.includes("not found");
       return res.status(isNotFound ? 404 : 500).json({
@@ -868,7 +872,7 @@ function handleCompressionError(error, res, context) {
   }
 
   // Fallback for unexpected errors
-  console.error(`[Patient Controller] ${context} error:`, error);
+  logger.error({ event: "compression_unexpected_error", context, err: error }, `[Patient Controller] ${context} error`);
   return res.status(500).json({ success: false, message: `Failed to generate ${context}` });
 }
 

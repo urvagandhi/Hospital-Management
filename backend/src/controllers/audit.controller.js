@@ -73,7 +73,7 @@ export const listAudits = async (req, res) => {
 
     return res.json({ success: true, data: { items, nextCursor } });
   } catch (err) {
-    console.error("[audit.controller] listAudits error:", err);
+    req.log.error({ event: "audit_fetch_failed", err }, "[audit.controller] listAudits error");
     return res.status(500).json({ success: false, message: "Failed to fetch audit logs" });
   }
 };

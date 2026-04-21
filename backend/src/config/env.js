@@ -7,11 +7,12 @@ import dotenv from "dotenv";
 
 import fs from "fs";
 import path from "path";
+import logger from "../utils/logger.js";
 
 // Load .env.development for development if it exists
 const devEnvPath = path.resolve(process.cwd(), ".env.development");
 if (fs.existsSync(devEnvPath)) {
-  console.log("Loading environment from .env.development");
+  logger.info({ event: "env_loaded", source: ".env.development" }, "Loading environment from .env.development");
   dotenv.config({ path: devEnvPath });
 } else {
   dotenv.config();
@@ -107,7 +108,7 @@ if (config.NODE_ENV === "production") {
     throw new Error("MONGODB_URI must be set in production");
   }
   if (!config.CLOUDINARY_CLOUD_NAME && !config.R2_ACCESS_KEY_ID) {
-    console.warn("WARNING: Neither Cloudinary nor R2 storage configured for production");
+    logger.warn({ event: "env_storage_missing" }, "WARNING: Neither Cloudinary nor R2 storage configured for production");
   }
 }
 

@@ -213,7 +213,7 @@ flowchart TD
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET`  | `/api/health` | Basic health check |
-| `GET`  | `/api/health/deep` | DB + Redis connectivity check |
+| `GET`  | `/api/health/deep` | DB + Redis + Cloudinary + Brevo + FCM + sidecar probes (3s per-dep timeout; `degraded` flag) |
 
 ---
 
@@ -457,3 +457,17 @@ docker-compose up --build backend
 | node-cron | 4.2.1 | Scheduled jobs |
 | qrcode | 1.5.4 | QR code for TOTP setup |
 | cookie-parser | - | Parse httpOnly cookies |
+| pino | 9.x | Structured JSON logger (pino-pretty in dev) |
+| pino-http | 10.x | Per-request logger + `X-Request-Id` middleware |
+
+---
+
+## Logging
+
+All backend logs flow through pino (`src/utils/logger.js`). Pretty-printed in dev, JSON in production; level via `LOG_LEVEL` env (default `info` in prod, `debug` in dev).
+
+Every HTTP request is tagged with a `request_id` (from `X-Request-Id` header or auto-generated UUID) and echoed back on the response. Inside an Express handler prefer `req.log.*` — it's a child logger pre-bound to the request id. Outside handlers (services, jobs, seeds) import the module-level `logger`.
+
+Redaction is centralised: Authorization + Cookie headers and top-level + nested `password / newPassword / oldPassword / currentPassword / confirmPassword / token / refreshToken / otp / authCode` are automatically censored in every log record. Do NOT add ad-hoc logging that bypasses the shared logger.
+
+Files under `backend/scripts/` still use `console.*` intentionally — those are operator CLIs (migrations, smoke tests) where raw stdout is clearer than structured logs.

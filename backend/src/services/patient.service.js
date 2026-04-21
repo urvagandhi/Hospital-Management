@@ -6,6 +6,7 @@
 import mongoose from "mongoose";
 import Hospital from "../models/Hospital.js";
 import Patient from "../models/Patient.js";
+import logger from "../utils/logger.js";
 import { cloudinary } from "./storage.service.js";
 
 /**
@@ -16,7 +17,7 @@ import { cloudinary } from "./storage.service.js";
  */
 export const createPatient = async (hospitalId, patientData) => {
   try {
-    console.log("[Patient Service] Creating patient for hospital:", hospitalId);
+    logger.info({ event: "patient_create_start", hospitalId }, "[Patient Service] Creating patient");
 
     // Atomically increment the hospital's patient counter and get initials
     const hospital = await Hospital.findByIdAndUpdate(
@@ -41,10 +42,13 @@ export const createPatient = async (hospitalId, patientData) => {
     });
 
     await patient.save();
-    console.log("[Patient Service] Patient created:", patient._id, "patientId:", patientId);
+    logger.info(
+      { event: "patient_created", patientMongoId: patient._id, patientId },
+      "[Patient Service] Patient created",
+    );
     return patient;
   } catch (error) {
-    console.error("[Patient Service] Create error:", error);
+    logger.error({ event: "patient_create_failed", err: error }, "[Patient Service] Create error");
     throw error;
   }
 };
@@ -65,20 +69,9 @@ export const getPatients = async (hospitalId, options = {}) => {
       createdTo,
       hasRemarks,
     } = options;
-    console.log("[Patient Service] Fetching patients for hospital:", hospitalId);
-    console.log(
-      "[Patient Service] Options - limit:",
-      limit,
-      "skip:",
-      skip,
-      "search:",
-      search,
-      "createdFrom:",
-      createdFrom,
-      "createdTo:",
-      createdTo,
-      "hasRemarks:",
-      hasRemarks,
+    logger.info(
+      { event: "patients_fetch_start", hospitalId, limit, skip, search, createdFrom, createdTo, hasRemarks },
+      "[Patient Service] Fetching patients",
     );
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
@@ -127,10 +120,13 @@ export const getPatients = async (hospitalId, options = {}) => {
 
     const total = await Patient.countDocuments(query);
 
-    console.log("[Patient Service] Found", patients.length, "patients");
+    logger.info(
+      { event: "patients_fetch_ok", hospitalId, count: patients.length, total },
+      `[Patient Service] Found ${patients.length} patients`,
+    );
     return { patients, total };
   } catch (error) {
-    console.error("[Patient Service] Fetch error:", error);
+    logger.error({ event: "patients_fetch_failed", err: error }, "[Patient Service] Fetch error");
     throw error;
   }
 };
@@ -143,7 +139,7 @@ export const getPatients = async (hospitalId, options = {}) => {
  */
 export const getPatientById = async (hospitalId, patientId) => {
   try {
-    console.log("[Patient Service] Fetching patient:", patientId);
+    logger.info({ event: "patient_fetch_start", patientId }, "[Patient Service] Fetching patient");
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
@@ -156,10 +152,10 @@ export const getPatientById = async (hospitalId, patientId) => {
       throw new Error("Patient not found");
     }
 
-    console.log("[Patient Service] Patient found:", patient._id);
+    logger.info({ event: "patient_fetch_ok", patientMongoId: patient._id }, "[Patient Service] Patient found");
     return patient;
   } catch (error) {
-    console.error("[Patient Service] Fetch error:", error);
+    logger.error({ event: "patient_fetch_failed", err: error }, "[Patient Service] Fetch error");
     throw error;
   }
 };
@@ -173,7 +169,7 @@ export const getPatientById = async (hospitalId, patientId) => {
  */
 export const updatePatient = async (hospitalId, patientId, updateData) => {
   try {
-    console.log("[Patient Service] Updating patient:", patientId);
+    logger.info({ event: "patient_update_start", patientId }, "[Patient Service] Updating patient");
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
@@ -195,10 +191,10 @@ export const updatePatient = async (hospitalId, patientId, updateData) => {
       throw new Error("Patient not found");
     }
 
-    console.log("[Patient Service] Patient updated successfully");
+    logger.info({ event: "patient_updated", patientId }, "[Patient Service] Patient updated successfully");
     return patient;
   } catch (error) {
-    console.error("[Patient Service] Update error:", error);
+    logger.error({ event: "patient_update_failed", err: error }, "[Patient Service] Update error");
     throw error;
   }
 };
@@ -212,7 +208,10 @@ export const updatePatient = async (hospitalId, patientId, updateData) => {
  */
 export const createFolder = async (hospitalId, patientId, folderName) => {
   try {
-    console.log("[Patient Service] Creating folder:", folderName, "for patient:", patientId);
+    logger.info(
+      { event: "folder_create_start", folderName, patientId },
+      "[Patient Service] Creating folder",
+    );
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
@@ -233,10 +232,10 @@ export const createFolder = async (hospitalId, patientId, folderName) => {
       throw new Error("Patient not found");
     }
 
-    console.log("[Patient Service] Folder created");
+    logger.info({ event: "folder_created", folderName, patientId }, "[Patient Service] Folder created");
     return patient;
   } catch (error) {
-    console.error("[Patient Service] Folder creation error:", error);
+    logger.error({ event: "folder_create_failed", err: error }, "[Patient Service] Folder creation error");
     throw error;
   }
 };
@@ -251,7 +250,7 @@ export const createFolder = async (hospitalId, patientId, folderName) => {
  */
 export const addFileToFolder = async (hospitalId, patientId, folderName, fileData) => {
   try {
-    console.log("[Patient Service] Adding file to folder:", folderName);
+    logger.info({ event: "file_add_start", folderName, patientId }, "[Patient Service] Adding file to folder");
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
@@ -275,10 +274,10 @@ export const addFileToFolder = async (hospitalId, patientId, folderName, fileDat
     });
 
     await patient.save();
-    console.log("[Patient Service] File added successfully");
+    logger.info({ event: "file_added", folderName, patientId }, "[Patient Service] File added successfully");
     return patient;
   } catch (error) {
-    console.error("[Patient Service] Add file error:", error);
+    logger.error({ event: "file_add_failed", err: error }, "[Patient Service] Add file error");
     throw error;
   }
 };
@@ -292,7 +291,7 @@ export const addFileToFolder = async (hospitalId, patientId, folderName, fileDat
  */
 export const getFolderFiles = async (hospitalId, patientId, folderName) => {
   try {
-    console.log("[Patient Service] Fetching files for folder:", folderName);
+    logger.info({ event: "folder_files_fetch_start", folderName, patientId }, "[Patient Service] Fetching folder files");
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
@@ -310,10 +309,13 @@ export const getFolderFiles = async (hospitalId, patientId, folderName) => {
       throw new Error("Folder not found");
     }
 
-    console.log("[Patient Service] Found", folder.files.length, "files");
+    logger.info(
+      { event: "folder_files_fetch_ok", folderName, count: folder.files.length },
+      `[Patient Service] Found ${folder.files.length} files`,
+    );
     return folder;
   } catch (error) {
-    console.error("[Patient Service] Fetch files error:", error);
+    logger.error({ event: "folder_files_fetch_failed", err: error }, "[Patient Service] Fetch files error");
     throw error;
   }
 };
@@ -323,7 +325,10 @@ export const getFolderFiles = async (hospitalId, patientId, folderName) => {
  */
 export const renameFile = async (hospitalId, patientId, folderName, fileId, newFileName) => {
   try {
-    console.log("[Patient Service] Renaming file:", fileId, "to:", newFileName);
+    logger.info(
+      { event: "file_rename_start", fileId, newFileName },
+      "[Patient Service] Renaming file",
+    );
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
@@ -349,10 +354,10 @@ export const renameFile = async (hospitalId, patientId, folderName, fileId, newF
     file.fileName = newFileName;
     await patient.save();
 
-    console.log("[Patient Service] File renamed successfully");
+    logger.info({ event: "file_renamed", fileId, newFileName }, "[Patient Service] File renamed successfully");
     return patient;
   } catch (error) {
-    console.error("[Patient Service] Rename file error:", error);
+    logger.error({ event: "file_rename_failed", err: error }, "[Patient Service] Rename file error");
     throw error;
   }
 };
@@ -362,7 +367,7 @@ export const renameFile = async (hospitalId, patientId, folderName, fileId, newF
  */
 export const deleteFileFromFolder = async (hospitalId, patientId, folderName, fileId) => {
   try {
-    console.log("[Patient Service] Deleting file:", fileId);
+    logger.info({ event: "file_delete_start", fileId }, "[Patient Service] Deleting file");
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
@@ -395,10 +400,10 @@ export const deleteFileFromFolder = async (hospitalId, patientId, folderName, fi
     folder.files.pull(fileId);
     await patient.save();
 
-    console.log("[Patient Service] File deleted successfully");
+    logger.info({ event: "file_deleted", fileId }, "[Patient Service] File deleted successfully");
     return { patient, deletedFile };
   } catch (error) {
-    console.error("[Patient Service] Delete file error:", error);
+    logger.error({ event: "file_delete_failed", err: error }, "[Patient Service] Delete file error");
     throw error;
   }
 };
@@ -408,7 +413,7 @@ export const deleteFileFromFolder = async (hospitalId, patientId, folderName, fi
  */
 export const deletePatient = async (hospitalId, patientId) => {
   try {
-    console.log("[Patient Service] Deleting patient:", patientId);
+    logger.info({ event: "patient_delete_start", patientId }, "[Patient Service] Deleting patient");
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
@@ -429,9 +434,9 @@ export const deletePatient = async (hospitalId, patientId) => {
       hospitalId: hospitalObjectId,
     });
 
-    console.log("[Patient Service] Patient deleted successfully");
+    logger.info({ event: "patient_deleted", patientId }, "[Patient Service] Patient deleted successfully");
   } catch (error) {
-    console.error("[Patient Service] Delete error:", error);
+    logger.error({ event: "patient_delete_failed", err: error }, "[Patient Service] Delete error");
     throw error;
   }
 };
@@ -445,7 +450,10 @@ export const deleteOldPatients = async (days = 90) => {
       throw new Error("Safety: days threshold must be >= 30");
     }
 
-    console.log("[Patient Service] Finding patients older than", days, "days");
+    logger.info(
+      { event: "auto_delete_scan_start", days },
+      `[Patient Service] Finding patients older than ${days} days`,
+    );
 
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
@@ -454,7 +462,10 @@ export const deleteOldPatients = async (days = 90) => {
       createdAt: { $lt: cutoffDate },
     }).select("_id hospitalId folders");
 
-    console.log("[Patient Service] Found", oldPatients.length, "old patients");
+    logger.info(
+      { event: "auto_delete_scan_ok", count: oldPatients.length },
+      `[Patient Service] Found ${oldPatients.length} old patients`,
+    );
 
     if (oldPatients.length === 0) {
       return { deletedCount: 0, filesDeleted: 0 };
@@ -473,7 +484,10 @@ export const deleteOldPatients = async (days = 90) => {
             await cloudinary.uploader.destroy(file.cloudinaryPublicId, { resource_type: resourceType });
             patientFilesDeleted++;
           } catch (err) {
-            console.warn("[Patient Service] Cloudinary delete failed for", file.cloudinaryPublicId, err.message);
+            logger.warn(
+              { event: "cloudinary_delete_failed", cloudinaryPublicId: file.cloudinaryPublicId, err },
+              "[Patient Service] Cloudinary delete failed",
+            );
           }
         }
       }
@@ -485,10 +499,13 @@ export const deleteOldPatients = async (days = 90) => {
       _id: { $in: patientIds },
     });
 
-    console.log("[Patient Service] Deleted", result.deletedCount, "patients and", filesDeleted, "files");
+    logger.info(
+      { event: "auto_delete_ok", patients: result.deletedCount, filesDeleted },
+      `[Patient Service] Deleted ${result.deletedCount} patients and ${filesDeleted} files`,
+    );
     return { deletedCount: result.deletedCount, filesDeleted };
   } catch (error) {
-    console.error("[Patient Service] Delete old patients error:", error);
+    logger.error({ event: "auto_delete_failed", err: error }, "[Patient Service] Delete old patients error");
     throw error;
   }
 };

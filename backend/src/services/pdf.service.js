@@ -6,6 +6,7 @@
 
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import PDFDocumentKit from "pdfkit";
+import logger from "../utils/logger.js";
 
 /**
  * Fetch a file buffer from a Cloudinary (or any HTTPS) URL.
@@ -17,7 +18,10 @@ async function fetchFileBuffer(url) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return Buffer.from(await response.arrayBuffer());
   } catch (error) {
-    console.error(`[PDF Service] Failed to fetch ${url}:`, error.message);
+    logger.error(
+      { event: "pdf_fetch_failed", url, err: error },
+      `[PDF Service] Failed to fetch ${url}`,
+    );
     return null;
   }
 }
@@ -212,7 +216,10 @@ export const generateFolderPdf = async (patient, folderName, res) => {
       const pages = await merged.copyPages(pdfDoc, pdfDoc.getPageIndices());
       for (const p of pages) merged.addPage(p);
     } catch (e) {
-      console.error(`[PDF Service] Skipping ${file.fileName}:`, e.message);
+      logger.error(
+        { event: "pdf_merge_skip", fileName: file.fileName, err: e },
+        `[PDF Service] Skipping ${file.fileName}`,
+      );
     }
   }
 
@@ -263,7 +270,10 @@ export const generatePatientPdfMerged = async (patient, res) => {
         const pages = await merged.copyPages(pdfDoc, pdfDoc.getPageIndices());
         for (const p of pages) merged.addPage(p);
       } catch (e) {
-        console.error(`[PDF Service] Skipping ${file.fileName}:`, e.message);
+        logger.error(
+          { event: "pdf_merge_skip", fileName: file.fileName, err: e },
+          `[PDF Service] Skipping ${file.fileName}`,
+        );
       }
     }
   }
@@ -332,7 +342,10 @@ export const generatePatientPdfPerFolder = async (patient, res) => {
         const pages = await folderMerged.copyPages(pdfDoc, pdfDoc.getPageIndices());
         for (const p of pages) folderMerged.addPage(p);
       } catch (e) {
-        console.error(`[PDF Service] Skipping ${file.fileName}:`, e.message);
+        logger.error(
+          { event: "pdf_merge_skip", fileName: file.fileName, err: e },
+          `[PDF Service] Skipping ${file.fileName}`,
+        );
       }
     }
 

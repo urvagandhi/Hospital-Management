@@ -103,7 +103,7 @@ const uploadIdempotencyGuard = async (req, res, next) => {
       return res.status(cached.status || 200).json(cached.body);
     }
   } catch (err) {
-    console.error("[uploadIdempotencyGuard]", err.message);
+    req.log.error({ event: "upload_idempotency_lookup_failed", err }, "[uploadIdempotencyGuard]");
   }
   next();
 };

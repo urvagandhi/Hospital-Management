@@ -45,10 +45,10 @@ async function getAllStoredPublicIds() {
  */
 export const scanOrphans = async (req, res) => {
   try {
-    console.log('[Admin] Starting orphan scan...');
+    req.log.info({ event: "orphan_scan_started" }, "[Admin] Starting orphan scan...");
 
     const storedIds = await getAllStoredPublicIds();
-    console.log(`[Admin] DB has ${storedIds.size} cloudinaryPublicIds`);
+    req.log.info({ event: "orphan_scan_db_ids", count: storedIds.size }, `[Admin] DB has ${storedIds.size} cloudinaryPublicIds`);
 
     const orphans = [];
     let cloudinaryTotal = 0;
@@ -59,7 +59,7 @@ export const scanOrphans = async (req, res) => {
         resources = await listCloudinaryResources(prefix, resourceType);
       } catch (err) {
         // Prefix may not exist yet — skip silently
-        console.warn(`[Admin] Could not list prefix "${prefix}":`, err.message);
+        req.log.warn({ event: "orphan_scan_prefix_list_failed", prefix, err }, `[Admin] Could not list prefix "${prefix}": ${err.message}`);
         continue;
       }
       cloudinaryTotal += resources.length;
@@ -79,7 +79,10 @@ export const scanOrphans = async (req, res) => {
 
     const totalOrphanBytes = orphans.reduce((sum, o) => sum + (o.bytes || 0), 0);
 
-    console.log(`[Admin] Scan complete. Cloudinary total: ${cloudinaryTotal}, orphans: ${orphans.length}`);
+    req.log.info(
+      { event: "orphan_scan_complete", cloudinary_total: cloudinaryTotal, orphan_count: orphans.length },
+      `[Admin] Scan complete. Cloudinary total: ${cloudinaryTotal}, orphans: ${orphans.length}`,
+    );
 
     return res.json({
       success: true,
@@ -92,7 +95,7 @@ export const scanOrphans = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[Admin] Orphan scan error:', err);
+    req.log.error({ event: "orphan_scan_error", err }, "[Admin] Orphan scan error");
     return res.status(500).json({ success: false, message: 'Orphan scan failed', error: err.message });
   }
 };
@@ -116,7 +119,7 @@ export const deleteOrphans = async (req, res) => {
       });
     }
 
-    console.log('[Admin] Starting orphan deletion (confirmed)...');
+    req.log.info({ event: "orphan_delete_started" }, "[Admin] Starting orphan deletion (confirmed)...");
 
     const storedIds = await getAllStoredPublicIds();
 
@@ -129,7 +132,7 @@ export const deleteOrphans = async (req, res) => {
       try {
         resources = await listCloudinaryResources(prefix, resourceType);
       } catch (err) {
-        console.warn(`[Admin] Could not list prefix "${prefix}":`, err.message);
+        req.log.warn({ event: "orphan_delete_prefix_list_failed", prefix, err }, `[Admin] Could not list prefix "${prefix}": ${err.message}`);
         continue;
       }
       cloudinaryTotal += resources.length;
@@ -148,7 +151,10 @@ export const deleteOrphans = async (req, res) => {
 
     const deletedBytes = deleted.reduce((sum, d) => sum + (d.bytes || 0), 0);
 
-    console.log(`[Admin] Deletion complete. Deleted: ${deleted.length}, Failed: ${failed.length}`);
+    req.log.info(
+      { event: "orphan_delete_complete", deleted_count: deleted.length, failed_count: failed.length },
+      `[Admin] Deletion complete. Deleted: ${deleted.length}, Failed: ${failed.length}`,
+    );
 
     return res.json({
       success: true,
@@ -162,7 +168,7 @@ export const deleteOrphans = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[Admin] Orphan deletion error:', err);
+    req.log.error({ event: "orphan_delete_error", err }, "[Admin] Orphan deletion error");
     return res.status(500).json({ success: false, message: 'Orphan deletion failed', error: err.message });
   }
 };

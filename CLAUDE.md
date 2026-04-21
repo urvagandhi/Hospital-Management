@@ -31,7 +31,7 @@ docker-compose.yml    Local stack
 
 | Layer | Stack |
 |---|---|
-| Backend | Node.js (ESM) · Express · Mongoose 7 · MongoDB · Upstash Redis (with in-memory fallback) · JWT · bcryptjs · Multer · Cloudinary · Brevo (prod email) / Mailtrap (dev) · Firebase Admin (FCM) · pdfkit / pdf-lib · archiver · node-cron |
+| Backend | Node.js (ESM) · Express · Mongoose 7 · MongoDB · Upstash Redis (with in-memory fallback) · JWT · bcryptjs · Multer · Cloudinary · Brevo (prod email) / Mailtrap (dev) · Firebase Admin (FCM) · pdfkit / pdf-lib · archiver · node-cron · pino (structured logs) + pino-http (request ids) |
 | Frontend | React 18 · TypeScript 5 · Vite · Tailwind CSS 3 · React Router 6 · Axios · Headless UI · React Context (no Redux/Zustand) |
 | Android | Kotlin · Room v4 · WorkManager (unique workers) · Retrofit · BiometricPrompt · FCM |
 | Sidecar | FastAPI · pikepdf · pypdfium2 · fpdf2 · GhostScript · Motor (async Mongo) |
@@ -111,6 +111,7 @@ API client: `services/api.ts` Axios wrapper with 401 retry (refresh-token rotati
 - **GeoIP dev override** — `GEOIP_DEV_OVERRIDE_IP=8.8.8.8` forces every geoip lookup to that IP (localhost would otherwise always resolve to "Local network"). Unset before shipping.
 - **Firebase alt auth** — `FIREBASE_SERVICE_ACCOUNT_JSON` or `FIREBASE_SERVICE_ACCOUNT_PATH` (alternative FCM auth paths).
 - **OTP config** — `OTP_EXPIRY_MINUTES` (default 10), `OTP_LENGTH` (default 6), `MAX_OTP_ATTEMPTS` (default 5).
+- **Logging** — `LOG_LEVEL` (default `info` in prod, `debug` in dev). pino emits JSON in prod, pino-pretty in dev. Every HTTP request has a `request_id` (from `X-Request-Id` header or generated) echoed back on the response and bound to `req.log`; use `req.log.*` inside handlers and module-level `logger` elsewhere. Redact list auto-scrubs Authorization/Cookie headers + top-level + nested `password/newPassword/oldPassword/currentPassword/confirmPassword/token/refreshToken/otp/authCode`. See [utils/logger.js](backend/src/utils/logger.js). `backend/scripts/` intentionally still uses raw `console.*` (CLI operator output).
 - Rate limit, frontend URL list.
 - See `.env.example` at repo root for the full list. **Drift note (2026-04-21):** `.env.example` is out of sync with code — missing 9 vars referenced in code and containing 13 dead vars (TOTP + SMS + legacy SMTP). See `docs/audit/00-drift.md` §5 for the full diff.
 
@@ -133,6 +134,7 @@ API client: `services/api.ts` Axios wrapper with 401 retry (refresh-token rotati
 - 🛠️ ~~`GET /api/hospitals` has no pagination~~ — RESOLVED 2026-04-21 (TD-005). Cursor pagination + server-side search + first-page totals shipped.
 - **Sidecar 504 error body says "100s limit" but real pipeline timeout is 300s.** Tracked as TD-014.
 - 🛠️ ~~Backend unused deps: `@getbrevo/brevo`, `axios`~~ — RESOLVED 2026-04-21 (TD-012). Removed from `backend/package.json`; `node_modules` confirmed gone.
+- 🛠️ ~~No centralised structured logging; `console.*` scattered across backend with inconsistent prefixes~~ — RESOLVED 2026-04-21 (TD-007). Pino + pino-http + redaction + request-id shipped; 0 `console.*` remain in `backend/src/`.
 
 ## 11. Web vs Android — what's shared and what isn't
 

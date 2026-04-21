@@ -8,6 +8,7 @@ import admin from "firebase-admin";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import logger from "../utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,7 +29,10 @@ function initializeFirebase() {
   else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
     const absolutePath = path.resolve(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
     if (!fs.existsSync(absolutePath)) {
-      console.error(`Firebase service account file not found: ${absolutePath}`);
+      logger.error(
+        { event: "firebase_service_account_missing", path: absolutePath },
+        `Firebase service account file not found: ${absolutePath}`
+      );
       return null;
     }
     const serviceAccount = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
@@ -39,21 +43,25 @@ function initializeFirebase() {
     const defaultPath = path.resolve(__dirname, "../../serviceAccountKey.json");
     if (fs.existsSync(defaultPath)) {
       if (process.env.NODE_ENV === "production") {
-        console.error(
+        logger.error(
+          { event: "firebase_file_credentials_in_prod" },
           "Firebase: Using file-based credentials in production is not recommended. " +
-          "Set FIREBASE_SERVICE_ACCOUNT_JSON environment variable instead."
+            "Set FIREBASE_SERVICE_ACCOUNT_JSON environment variable instead."
         );
       }
       const serviceAccount = JSON.parse(fs.readFileSync(defaultPath, "utf8"));
       credential = admin.credential.cert(serviceAccount);
     } else {
-      console.warn("Firebase: No service account configured. Push notifications will be disabled.");
+      logger.warn(
+        { event: "firebase_not_configured" },
+        "Firebase: No service account configured. Push notifications will be disabled."
+      );
       return null;
     }
   }
 
   firebaseApp = admin.initializeApp({ credential });
-  console.log("Firebase Admin SDK initialized");
+  logger.info({ event: "firebase_init" }, "Firebase Admin SDK initialized");
   return firebaseApp;
 }
 

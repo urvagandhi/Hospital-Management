@@ -5,6 +5,7 @@
  */
 
 import archiver from "archiver";
+import logger from "../utils/logger.js";
 
 /**
  * Fetch a file buffer from a Cloudinary (or any HTTPS) URL.
@@ -16,7 +17,10 @@ async function fetchFileBuffer(url) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return Buffer.from(await response.arrayBuffer());
   } catch (error) {
-    console.error(`[ZIP Service] Failed to fetch ${url}:`, error.message);
+    logger.error(
+      { event: "zip_fetch_failed", url, err: error },
+      `[ZIP Service] Failed to fetch ${url}`,
+    );
     return null;
   }
 }

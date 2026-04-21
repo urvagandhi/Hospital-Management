@@ -100,7 +100,7 @@ export async function sendTestNotification(req, res) {
       hint: hasToken ? undefined : "No FCM token registered on this account — open the Android app to register a device first.",
     });
   } catch (error) {
-    console.error("[notifications.controller] sendTestNotification error:", error.message);
+    req.log.error({ event: "notifications_test_failed", err: error }, "[notifications.controller] sendTestNotification error");
     res.status(500).json({ error: "Failed to send test notification" });
   }
 }

@@ -13,6 +13,8 @@
  * turn it into a UI/email-friendly string.
  */
 
+import logger from "../utils/logger.js";
+
 const CACHE = new Map(); // ip -> { value, expiresAt }
 const TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -84,7 +86,8 @@ export async function geolocateIp(rawIp) {
 
   const debug = process.env.NODE_ENV !== "production";
   if (debug) {
-    console.log(
+    logger.debug(
+      { event: "geoip_lookup_start", rawIp: rawIp || null, normalized: normalized || null, override: override || null },
       `[geoip] lookup raw=${rawIp || "null"} normalized=${normalized || "null"}${override ? ` override=${override}` : ""}`,
     );
   }
@@ -92,13 +95,20 @@ export async function geolocateIp(rawIp) {
   if (!ip) return UNKNOWN_LOCATION;
   if (isPrivateIp(ip)) {
     if (debug)
-      console.log(`[geoip] ${ip} is private/loopback → Local network`);
+      logger.debug(
+        { event: "geoip_private", ip },
+        `[geoip] ${ip} is private/loopback → Local network`,
+      );
     return PRIVATE_LOCATION;
   }
 
   // Cache hit
   const cached = CACHE.get(ip);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  if (cached && cached.expiresAt > Date.now()) {
+    if (debug)
+      logger.debug({ event: "geoip_cache_hit", ip }, `[geoip] cache hit for ${ip}`);
+    return cached.value;
+  }
 
   try {
     // fields mask keeps the response small and fast
@@ -128,7 +138,8 @@ export async function geolocateIp(rawIp) {
     };
     CACHE.set(ip, { value: location, expiresAt: Date.now() + TTL_MS });
     if (debug)
-      console.log(
+      logger.debug(
+        { event: "geoip_resolved", ip, displayName: location.displayName || null },
         `[geoip] ${ip} → ${location.displayName || "unknown public"}`,
       );
     return location;
@@ -136,7 +147,10 @@ export async function geolocateIp(rawIp) {
     // Cache the miss briefly (5 min) so we don't hammer the API on flaky IPs
     const shortMiss = { value: UNKNOWN_LOCATION, expiresAt: Date.now() + 5 * 60 * 1000 };
     CACHE.set(ip, shortMiss);
-    console.warn(`[geoip] lookup failed for ${ip}: ${err.message}`);
+    logger.warn(
+      { event: "geoip_lookup_failed", ip, err },
+      `[geoip] lookup failed for ${ip}: ${err.message}`,
+    );
     return UNKNOWN_LOCATION;
   }
 }

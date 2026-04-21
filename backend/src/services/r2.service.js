@@ -6,6 +6,7 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import config from "../config/env.js";
+import logger from "../utils/logger.js";
 
 /**
  * Initialize S3 client for Cloudflare R2
@@ -28,7 +29,7 @@ const s3Client = new S3Client({
  */
 export const uploadFile = async (buffer, key, mimeType = "application/octet-stream") => {
   try {
-    console.log("[R2] Uploading file:", key);
+    logger.info({ event: "r2_upload_start", key }, "[R2] Uploading file");
     const command = new PutObjectCommand({
       Bucket: config.R2_BUCKET_NAME,
       Key: key,
@@ -37,14 +38,14 @@ export const uploadFile = async (buffer, key, mimeType = "application/octet-stre
     });
 
     await s3Client.send(command);
-    console.log("[R2] File uploaded successfully:", key);
+    logger.info({ event: "r2_upload_ok", key }, "[R2] File uploaded successfully");
 
     return {
       key,
       size: buffer.length,
     };
   } catch (error) {
-    console.error("[R2] Upload error:", error);
+    logger.error({ event: "r2_upload_failed", key, err: error }, "[R2] Upload error");
     throw new Error(`Failed to upload file: ${error.message}`);
   }
 };
@@ -57,7 +58,7 @@ export const uploadFile = async (buffer, key, mimeType = "application/octet-stre
  */
 export const getSignedFileUrl = async (key, expiresIn = 3600) => {
   try {
-    console.log("[R2] Generating signed URL:", key);
+    logger.info({ event: "r2_signed_url", key }, "[R2] Generating signed URL");
     const command = new GetObjectCommand({
       Bucket: config.R2_BUCKET_NAME,
       Key: key,
@@ -66,7 +67,7 @@ export const getSignedFileUrl = async (key, expiresIn = 3600) => {
     const signedUrl = await getSignedUrl(s3Client, command, { expiresIn });
     return signedUrl;
   } catch (error) {
-    console.error("[R2] Signed URL error:", error);
+    logger.error({ event: "r2_signed_url_failed", key, err: error }, "[R2] Signed URL error");
     throw new Error(`Failed to generate signed URL: ${error.message}`);
   }
 };
@@ -78,7 +79,7 @@ export const getSignedFileUrl = async (key, expiresIn = 3600) => {
  */
 export const getFileStream = async (key) => {
   try {
-    console.log("[R2] Getting file stream:", key);
+    logger.info({ event: "r2_stream_start", key }, "[R2] Getting file stream");
     const command = new GetObjectCommand({
       Bucket: config.R2_BUCKET_NAME,
       Key: key,
@@ -87,7 +88,7 @@ export const getFileStream = async (key) => {
     const response = await s3Client.send(command);
     return response.Body;
   } catch (error) {
-    console.error("[R2] Stream error:", error);
+    logger.error({ event: "r2_stream_failed", key, err: error }, "[R2] Stream error");
     throw new Error(`Failed to get file stream: ${error.message}`);
   }
 };
@@ -99,7 +100,7 @@ export const getFileStream = async (key) => {
  */
 export const listFolderObjects = async (prefix) => {
   try {
-    console.log("[R2] Listing objects with prefix:", prefix);
+    logger.info({ event: "r2_list_start", prefix }, "[R2] Listing objects");
     const files = [];
     let continuationToken;
 
@@ -125,10 +126,10 @@ export const listFolderObjects = async (prefix) => {
       continuationToken = response.NextContinuationToken;
     } while (continuationToken);
 
-    console.log("[R2] Found", files.length, "objects");
+    logger.info({ event: "r2_list_ok", prefix, count: files.length }, `[R2] Found ${files.length} objects`);
     return files;
   } catch (error) {
-    console.error("[R2] List error:", error);
+    logger.error({ event: "r2_list_failed", prefix, err: error }, "[R2] List error");
     throw new Error(`Failed to list objects: ${error.message}`);
   }
 };
@@ -140,16 +141,16 @@ export const listFolderObjects = async (prefix) => {
  */
 export const deleteFile = async (key) => {
   try {
-    console.log("[R2] Deleting file:", key);
+    logger.info({ event: "r2_delete_start", key }, "[R2] Deleting file");
     const command = new DeleteObjectCommand({
       Bucket: config.R2_BUCKET_NAME,
       Key: key,
     });
 
     await s3Client.send(command);
-    console.log("[R2] File deleted successfully:", key);
+    logger.info({ event: "r2_delete_ok", key }, "[R2] File deleted successfully");
   } catch (error) {
-    console.error("[R2] Delete error:", error);
+    logger.error({ event: "r2_delete_failed", key, err: error }, "[R2] Delete error");
     throw new Error(`Failed to delete file: ${error.message}`);
   }
 };
@@ -163,7 +164,7 @@ export const deleteFile = async (key) => {
  */
 export const getSignedUploadUrl = async (key, mimeType, expiresIn = 3600) => {
   try {
-    console.log("[R2] Generating signed upload URL:", key);
+    logger.info({ event: "r2_signed_upload_url", key }, "[R2] Generating signed upload URL");
     const command = new PutObjectCommand({
       Bucket: config.R2_BUCKET_NAME,
       Key: key,
@@ -173,7 +174,7 @@ export const getSignedUploadUrl = async (key, mimeType, expiresIn = 3600) => {
     const signedUrl = await getSignedUrl(s3Client, command, { expiresIn });
     return signedUrl;
   } catch (error) {
-    console.error("[R2] Signed Upload URL error:", error);
+    logger.error({ event: "r2_signed_upload_url_failed", key, err: error }, "[R2] Signed Upload URL error");
     throw new Error(`Failed to generate signed upload URL: ${error.message}`);
   }
 };
@@ -185,7 +186,7 @@ export const getSignedUploadUrl = async (key, mimeType, expiresIn = 3600) => {
  */
 export const deleteFolder = async (prefix) => {
   try {
-    console.log("[R2] Deleting folder with prefix:", prefix);
+    logger.info({ event: "r2_folder_delete_start", prefix }, "[R2] Deleting folder");
     let deletedCount = 0;
     let continuationToken;
 
@@ -216,10 +217,13 @@ export const deleteFolder = async (prefix) => {
       continuationToken = listResult.NextContinuationToken;
     } while (continuationToken);
 
-    console.log("[R2] Deleted", deletedCount, "files");
+    logger.info(
+      { event: "r2_folder_delete_ok", prefix, deletedCount },
+      `[R2] Deleted ${deletedCount} files`,
+    );
     return deletedCount;
   } catch (error) {
-    console.error("[R2] Folder delete error:", error);
+    logger.error({ event: "r2_folder_delete_failed", prefix, err: error }, "[R2] Folder delete error");
     throw new Error(`Failed to delete folder: ${error.message}`);
   }
 };
@@ -231,7 +235,7 @@ export const deleteFolder = async (prefix) => {
  */
 export const getFileMetadata = async (key) => {
   try {
-    console.log("[R2] Getting file metadata:", key);
+    logger.info({ event: "r2_metadata_start", key }, "[R2] Getting file metadata");
     const command = new HeadObjectCommand({
       Bucket: config.R2_BUCKET_NAME,
       Key: key,
@@ -244,7 +248,7 @@ export const getFileMetadata = async (key) => {
       mimeType: response.ContentType,
     };
   } catch (error) {
-    console.error("[R2] Metadata error:", error);
+    logger.error({ event: "r2_metadata_failed", key, err: error }, "[R2] Metadata error");
     throw new Error(`Failed to get file metadata: ${error.message}`);
   }
 };
