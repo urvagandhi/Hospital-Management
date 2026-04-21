@@ -110,6 +110,24 @@ export const initContactChange = async (payload: { newEmail?: string; newPhone?:
     }
 };
 
+export const resendContactChangeOtp = async () => {
+    try {
+        const response = await api.post<{
+            success: boolean;
+            message: string;
+            data: {
+                field: "email" | "phone";
+                otpChannel: string;
+                otpExpiresInSeconds: number;
+                retryAfterSeconds: number;
+            };
+        }>("/hospitals/me/change-contact/resend");
+        return response.data;
+    } catch (err) {
+        throw apiError(err, "Failed to resend verification code");
+    }
+};
+
 export const verifyContactChange = async (otp: string): Promise<Hospital> => {
     try {
         const response = await api.post<HospitalResponse>(
@@ -170,49 +188,6 @@ export const adminForceDeleteHospital = async (id: string, password: string, rea
 };
 
 // ─────────────────────────────────────────────────────────────
-// App Version (B3)
-// ─────────────────────────────────────────────────────────────
-export interface AppVersion {
-    _id: string;
-    platform: "android" | "ios";
-    minVersion: string;
-    latestVersion: string;
-    forceUpdate: boolean;
-    updateUrl: string;
-    releaseNotes: string;
-    createdAt: string;
-}
-
-export const listAppVersions = async (platform?: string): Promise<AppVersion[]> => {
-    try {
-        const res = await api.get<{ success: boolean; data: AppVersion[] }>(
-            `/version/all${platform ? `?platform=${platform}` : ""}`,
-        );
-        return res.data.data;
-    } catch (err) {
-        throw apiError(err, "Failed to load versions");
-    }
-};
-
-export const createAppVersion = async (payload: Partial<AppVersion>) => {
-    try {
-        const res = await api.post<{ success: boolean; data: AppVersion }>("/version", payload);
-        return res.data.data;
-    } catch (err) {
-        throw apiError(err, "Failed to create version");
-    }
-};
-
-export const updateAppVersion = async (id: string, payload: Partial<AppVersion>) => {
-    try {
-        const res = await api.put<{ success: boolean; data: AppVersion }>(`/version/${id}`, payload);
-        return res.data.data;
-    } catch (err) {
-        throw apiError(err, "Failed to update version");
-    }
-};
-
-// ─────────────────────────────────────────────────────────────
 // Signed file URL (B5)
 // ─────────────────────────────────────────────────────────────
 export const getFileSignedUrl = async (
@@ -267,13 +242,11 @@ export default {
     getHospitalById,
     patchProfile,
     initContactChange,
+    resendContactChangeOtp,
     verifyContactChange,
     getNotificationPrefs,
     updateNotificationPrefs,
     adminForceDeleteHospital,
-    listAppVersions,
-    createAppVersion,
-    updateAppVersion,
     getFileSignedUrl,
     downloadFileCompressed,
 };

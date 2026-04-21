@@ -76,7 +76,11 @@ export const authService = {
     try {
       const tempToken = sessionStorage.getItem("tempToken");
       const config = tempToken ? { headers: { Authorization: `Bearer ${tempToken}` } } : {};
-      const response = await api.post("/auth/login/resend-auth-code", {}, config);
+      const response = await api.post<{ success: boolean; message: string; data?: { retryAfterSeconds: number } }>(
+        "/auth/login/resend-auth-code",
+        {},
+        config,
+      );
       return response.data;
     } catch (error: unknown) {
       throw toApiError(error, "Failed to resend Auth Code");

@@ -21,6 +21,8 @@ import NotificationSettings from "../pages/NotificationSettings";
 import Terms from "../pages/Terms";
 import Privacy from "../pages/Privacy";
 import ComponentsPreview from "../pages/ComponentsPreview";
+import NotFound from "../pages/NotFound";
+import LoadingSpinners from "../pages/LoadingSpinners";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -52,6 +54,9 @@ export const AppRoutes: React.FC = () => {
 
       {/* HMS Design System showcase — public, no auth needed */}
       <Route path="/components-preview" element={<ComponentsPreview />} />
+
+      {/* Loading spinner gallery — design preview */}
+      <Route path="/spinners-preview" element={<LoadingSpinners />} />
 
       {/* Protected Routes */}
       <Route
@@ -88,8 +93,8 @@ export const AppRoutes: React.FC = () => {
         <Route path="/patients/:patientId/folders/:folderName" element={<FolderView />} />
       </Route>
 
-      {/* Catch all — redirect to dashboard (which redirects to login if needed) */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* Catch all — render the 404 page */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
