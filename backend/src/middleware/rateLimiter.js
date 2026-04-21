@@ -7,14 +7,22 @@ import rateLimit from "express-rate-limit";
 import config from "../config/env.js";
 
 /**
- * General API rate limiter (relaxed in dev)
+ * General API rate limiter (relaxed in dev).
+ *
+ * Notes:
+ *  • OPTIONS preflights are skipped — they're browser overhead, not user
+ *    traffic, and counting them burns the quota fast on pages with many
+ *    cross-origin calls (Navbar `/hospitals/me` + Sessions list + ...).
+ *  • Dev bumped to 1000/window to keep StrictMode double-effects + HMR
+ *    reloads from tripping the ceiling.
  */
 export const generalLimiter = rateLimit({
   windowMs: config.RATE_LIMIT_WINDOW_MS,
-  max: config.NODE_ENV === "development" ? 200 : config.RATE_LIMIT_MAX_REQUESTS,
+  max: config.NODE_ENV === "development" ? 1000 : config.RATE_LIMIT_MAX_REQUESTS,
   message: "Too many requests from this IP, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === "OPTIONS",
 });
 
 /**

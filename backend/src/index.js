@@ -37,8 +37,18 @@ function inferHealthCheckSource(userAgent = "") {
   return "unknown";
 }
 
-// ============ TRUST PROXY (Required for Render/Heroku) ============
-app.set("trust proxy", 1);
+// ============ TRUST PROXY (Required for Render/Heroku/Cloudflare) ============
+// Must be a SPECIFIC number of hops — not `true`. `true` tells Express to
+// trust every proxy in the chain, which express-rate-limit rejects because
+// a client could forge X-Forwarded-For to bypass rate limits
+// (ERR_ERL_PERMISSIVE_TRUST_PROXY). Use the actual hop count for the
+// deployment:
+//   • Render alone             → 1
+//   • Render + Cloudflare/CDN  → 2
+//   • Render + CF + extra LB   → 3
+// If you still see internal 10.x / 172.16.x addresses in Sessions after
+// login, bump this by 1.
+app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS || 2));
 
 // ============ REQUEST LOGGING MIDDLEWARE ============
 app.use((req, res, next) => {
@@ -61,15 +71,11 @@ app.use((req, res, next) => {
 // ============ SECURITY MIDDLEWARE ============
 app.use(helmet()); // Set security HTTP headers
 
-// ============ RATE LIMITING ============
-app.use(generalLimiter);
-
-// ============ BODY PARSING ============
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
-app.use(cookieParser());
-
 // ============ CORS CONFIGURATION ============
+// IMPORTANT: CORS must run BEFORE the rate limiter. Otherwise a 429 response
+// skips the CORS middleware entirely, drops the Access-Control-Allow-Origin
+// header, and the browser reports it as a CORS error — masking the real
+// rate-limit failure (which we saw on the Sessions page in dev).
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -97,6 +103,14 @@ app.use(
     optionsSuccessStatus: 200,
   }),
 );
+
+// ============ RATE LIMITING ============
+app.use(generalLimiter);
+
+// ============ BODY PARSING ============
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(cookieParser());
 
 // ============ API ROUTES ============
 app.use("/api/auth", authRoutes);
