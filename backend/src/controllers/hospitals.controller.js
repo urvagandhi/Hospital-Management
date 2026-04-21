@@ -220,6 +220,15 @@ export const updateHospital = async (req, res) => {
       });
     }
 
+    // Snapshot pre-change values so the audit log can record a diff.
+    const preChange = {
+      hospitalName: hospital.hospitalName,
+      email: hospital.email,
+      phone: hospital.phone,
+      address: hospital.address,
+      isActive: hospital.isActive,
+    };
+
     // Check if email is already taken by another hospital
     if (email !== hospital.email) {
       const existingHospital = await Hospital.findOne({
@@ -270,6 +279,33 @@ export const updateHospital = async (req, res) => {
     }
 
     await hospital.save();
+
+    // Always-on audit: record every successful update, noting which fields
+    // actually changed so compliance can trace who edited what (TD-001).
+    // The activeTransition PROFILE_PATCHED entries below remain as richer,
+    // purpose-specific records.
+    const changedFields = [];
+    if (preChange.hospitalName !== hospital.hospitalName) changedFields.push("hospitalName");
+    if (preChange.email !== hospital.email) changedFields.push("email");
+    if (preChange.phone !== hospital.phone) changedFields.push("phone");
+    if ((preChange.address || "") !== (hospital.address || "")) changedFields.push("address");
+    if (preChange.isActive !== hospital.isActive) changedFields.push("isActive");
+    if (req.file) changedFields.push("logoUrl");
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "HOSPITAL_UPDATED",
+      status: "SUCCESS",
+      ipAddress: req.ip || req.connection?.remoteAddress,
+      userAgent: req.headers["user-agent"],
+      details: {
+        targetHospitalId: String(hospital._id),
+        initiatedBy: req.hospital?.id ? String(req.hospital.id) : null,
+        selfUpdate: Boolean(req.isSelf),
+        changedFields,
+        activeTransition,
+      },
+    }).catch((e) => req.log.error({ event: "audit_log_hospital_updated_failed", err: e }, "AuditLog error (hospital updated)"));
 
     // On isActive transition, revoke sessions (if disabled) and notify via email.
     // Fire-and-forget — do not block the response.

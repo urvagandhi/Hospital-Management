@@ -25,6 +25,8 @@ const auditLogSchema = new mongoose.Schema(
         "LOGOUT",
         "AUTH_CODE_REVERIFIED",
         "AUTH_CODE_REVERIFY_FAILED",
+        "AUTH_CODE_RESEND",
+        "BIOMETRIC_REGISTERED",
         // Password
         "PASSWORD_CHANGE",
         "PASSWORD_CHANGED",
@@ -37,16 +39,27 @@ const auditLogSchema = new mongoose.Schema(
         "PROFILE_UPDATE",
         "PROFILE_PATCHED",
         "CONTACT_CHANGE_INIT",
+        "CONTACT_CHANGE_RESEND",
         "CONTACT_CHANGED",
         "CONTACT_CHANGE_FAILED",
-        // Registration
+        // Registration / admin hospital management
         "HOSPITAL_REGISTRATION",
         "HOSPITAL_REGISTRATION_VERIFIED",
+        "HOSPITAL_UPDATED",
+        "HOSPITAL_RESEND_WELCOME",
         // Background / data
         "AUTO_DELETE",
+        "ORPHAN_CLEANUP",
         "PATIENT_VIEW",
+        "PATIENT_CREATED",
+        "PATIENT_UPDATED",
         "PATIENT_EXPORT_PDF",
         "PATIENT_EXPORT_ZIP",
+        "PATIENT_FILE_DELETE",
+        // Patient mutations
+        "FOLDER_CREATED",
+        "FILE_UPLOADED",
+        "FILE_RENAMED",
       ],
     },
     status: {

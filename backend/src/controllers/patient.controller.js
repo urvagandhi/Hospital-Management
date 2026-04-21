@@ -51,6 +51,13 @@ export const createPatient = async (req, res) => {
       remarks,
     });
 
+    logAudit(hospitalId, "PATIENT_CREATED", req, {
+      patientMongoId: String(patient._id),
+      patientId: patient.patientId,
+      patientName: patient.patientName,
+      hasRemarks: Boolean(patient.remarks),
+    });
+
     return res.status(201).json({
       success: true,
       data: patient,
@@ -172,6 +179,17 @@ export const updatePatient = async (req, res) => {
       remarks,
     });
 
+    const changedFields = [];
+    if (patientName !== undefined) changedFields.push("patientName");
+    if (remarks !== undefined) changedFields.push("remarks");
+
+    logAudit(hospitalId, "PATIENT_UPDATED", req, {
+      patientId,
+      patientMongoId: String(patient._id),
+      humanPatientId: patient.patientId,
+      changedFields,
+    });
+
     return res.status(200).json({
       success: true,
       data: patient,
@@ -206,6 +224,13 @@ export const createFolder = async (req, res) => {
     req.log.info({ event: "folder_create_attempt", folderName, patientId }, "[Patient Controller] Creating folder");
 
     const patient = await patientService.createFolder(hospitalId, patientId, folderName.trim());
+
+    logAudit(hospitalId, "FOLDER_CREATED", req, {
+      patientId,
+      patientMongoId: String(patient._id),
+      humanPatientId: patient.patientId,
+      folderName: folderName.trim(),
+    });
 
     return res.status(201).json({
       success: true,
@@ -305,6 +330,18 @@ export const uploadFile = async (req, res) => {
       message: "File uploaded successfully",
     };
 
+    logAudit(hospitalId, "FILE_UPLOADED", req, {
+      patientId,
+      patientMongoId: String(patient._id),
+      humanPatientId: patient.patientId,
+      folderName,
+      fileName: file.originalname,
+      size: file.size || file.bytes,
+      mimeType: file.mimetype,
+      accessMode,
+      resourceType,
+    });
+
     // Cache the response against the client's Idempotency-Key so an offline-sync
     // retry for the *same* logical upload returns the original result instead of
     // creating a duplicate file entry on the patient record.
@@ -342,6 +379,15 @@ export const renameFile = async (req, res) => {
     }
 
     const patient = await patientService.renameFile(hospitalId, patientId, folderName, fileId, newFileName.trim());
+
+    logAudit(hospitalId, "FILE_RENAMED", req, {
+      patientId,
+      patientMongoId: String(patient._id),
+      humanPatientId: patient.patientId,
+      folderName,
+      fileId,
+      newFileName: newFileName.trim(),
+    });
 
     return res.status(200).json({
       success: true,

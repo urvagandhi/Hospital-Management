@@ -8,6 +8,7 @@
  *   DELETE /api/admin/cloudinary/orphans      — actually delete them (requires confirm:true in body)
  */
 
+import AuditLog from '../models/AuditLog.js';
 import Patient from '../models/Patient.js';
 import { cloudinary, listCloudinaryResources, deleteFile } from '../services/storage.service.js';
 
@@ -155,6 +156,22 @@ export const deleteOrphans = async (req, res) => {
       { event: "orphan_delete_complete", deleted_count: deleted.length, failed_count: failed.length },
       `[Admin] Deletion complete. Deleted: ${deleted.length}, Failed: ${failed.length}`,
     );
+
+    // Fire-and-forget audit log — admin-initiated bulk Cloudinary cleanup.
+    AuditLog.create({
+      userId: req.hospital?.id,
+      action: "ORPHAN_CLEANUP",
+      status: failed.length === 0 ? "SUCCESS" : "FAILURE",
+      ipAddress: req.ip || req.connection?.remoteAddress,
+      userAgent: req.headers["user-agent"],
+      details: {
+        cloudinaryTotal,
+        dbReferencedCount: storedIds.size,
+        deletedCount: deleted.length,
+        deletedBytes,
+        failedCount: failed.length,
+      },
+    }).catch((e) => req.log.error({ event: "audit_log_orphan_cleanup_failed", err: e }, "[AuditLog] orphan cleanup"));
 
     return res.json({
       success: true,
