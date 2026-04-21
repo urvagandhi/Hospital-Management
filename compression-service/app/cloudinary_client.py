@@ -2,8 +2,10 @@ import asyncio
 import logging
 import time
 from pathlib import Path
+from typing import Optional
 
 import cloudinary
+import cloudinary.api
 import cloudinary.uploader
 import cloudinary.utils
 import httpx
@@ -78,6 +80,39 @@ async def check_cache(content_hash: str, http_client: httpx.AsyncClient) -> str 
 def generate_delivery_url(content_hash: str) -> str:
     """Public URL for a merged PDF — no signing needed."""
     return _merged_url(f"{_CACHE_PREFIX}/{content_hash}.pdf")
+
+
+async def fetch_merged_size(content_hash: str) -> Optional[int]:
+    """Last-resort size recovery on cache hit when the sidecar meta row is
+    missing (legacy caches / failed upsert). Calls the Cloudinary Admin API
+    — one extra HTTPS round-trip, so only use when `merged_cache.get_meta`
+    returned None. Returns `bytes` as int, or None on any error.
+    `tier_used` cannot be recovered here — Cloudinary doesn't know which tier
+    of our ladder produced the file, only our service does.
+    """
+    public_id = f"{_CACHE_PREFIX}/{content_hash}.pdf"
+
+    def _blocking() -> Optional[int]:
+        try:
+            resource = cloudinary.api.resource(
+                public_id,
+                resource_type="raw",
+                type="upload",
+            )
+            size = resource.get("bytes")
+            return int(size) if size is not None else None
+        except Exception:
+            logger.warning(
+                "Cloudinary resource fallback failed",
+                extra={
+                    "event": "cloudinary_resource_fallback_error",
+                    "metrics": {"public_id": public_id},
+                },
+            )
+            return None
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _blocking)
 
 
 class SourceFetchError(Exception):
