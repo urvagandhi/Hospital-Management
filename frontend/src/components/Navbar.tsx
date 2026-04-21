@@ -1,23 +1,46 @@
-import { Menu, Transition } from "@headlessui/react";
+/**
+ * Navbar — top chrome for MainLayout pages.
+ *
+ * Layout (3 zones):
+ *   LEFT   : app logo + "Hospital Management" wordmark · vertical divider ·
+ *            hospital chip (logo/initial + name + online dot)
+ *   CENTER : nav links (Dashboard always, Hospitals admin-only)
+ *   RIGHT  : settings gear (opens account dropdown) · avatar
+ *            (opens HospitalProfileModal directly)
+ *
+ * No notifications bell, no search. Inline SVG only. The network status
+ * indicator lives as a small dot next to the hospital name; the full
+ * NetworkStatusBanner still handles real offline states from MainLayout.
+ */
+
+import { Menu, MenuButton, Transition } from "@headlessui/react";
 import React, { Fragment, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import appLogo from "../assets/logo.png";
 import { useAuth } from "../hooks/useAuth";
 import { HospitalProfileModal } from "./HospitalProfileModal";
 import { getCurrentHospital, Hospital } from "../services/hospitalService";
-import { NetworkStatusPill } from "./NetworkStatus";
-import { getInitials, getAvatarGradient, isPlaceholderLogo } from "../utils/avatar";
+import { useNetworkStatus } from "./NetworkStatus";
+import {
+  getInitials,
+  getAvatarGradient,
+  isPlaceholderLogo,
+} from "../utils/avatar";
 
 export const Navbar: React.FC = () => {
   const { state, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { hospital: authHospital } = state;
   const [hospitalInfo, setHospitalInfo] = useState<Hospital | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const networkStatus = useNetworkStatus();
+  const isOnline = networkStatus === "online";
 
   useEffect(() => {
     let cancelled = false;
-
     const fetchHospitalInfo = async () => {
       if (state.isAuthenticated) {
         try {
@@ -28,20 +51,24 @@ export const Navbar: React.FC = () => {
         }
       }
     };
-
     fetchHospitalInfo();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [state.isAuthenticated, authHospital]);
 
-  // Use fetched hospital info if available, otherwise use auth state
   const hospital = hospitalInfo || authHospital;
-
   const isAdmin = hospital?.role === "admin";
 
-  const handleLogoutClick = () => {
-    setIsLogoutConfirmOpen(true);
-  };
+  const navItems: Array<{ to: string; label: string; show: boolean }> = [
+    { to: "/dashboard", label: "Dashboard", show: true },
+    { to: "/hospitals", label: "Hospitals", show: !!isAdmin },
+  ];
 
+  const isActive = (to: string) =>
+    location.pathname === to || location.pathname.startsWith(`${to}/`);
+
+  const handleLogoutClick = () => setIsLogoutConfirmOpen(true);
   const confirmLogout = async () => {
     await logout();
     setIsLogoutConfirmOpen(false);
@@ -49,88 +76,161 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 w-full fixed top-0 z-50">
+    <nav className="bg-surface-white/90 backdrop-blur-sm shadow-card border-b border-neutral-200 w-full fixed top-0 z-50">
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          {/* Left Side: Logo & Navigation */}
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center gap-3">
-              <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${getAvatarGradient(hospital?.hospitalName)} flex items-center justify-center overflow-hidden shadow-sm`}>
-                {hospital?.logoUrl && !isPlaceholderLogo(hospital.logoUrl) ? (
-                  <img className="h-full w-full object-cover" src={hospital.logoUrl} alt={hospital.hospitalName} />
-                ) : (
-                  <span className="text-white font-bold text-sm">{getInitials(hospital?.hospitalName)}</span>
-                )}
-              </div>
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-500">{hospital?.hospitalName || "Hospital Manager"}</span>
-            </div>
-
-            {isAdmin && (
-              <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
-                <Link
-                  to="/dashboard"
-                  className="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-500 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  to="/hospitals"
-                  className="border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-500 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
-                >
-                  Hospitals
-                </Link>
-              </div>
-            )}
+        <div className="flex items-center justify-between h-16 gap-4">
+          {/* LEFT: App brand only */}
+          <div className="flex-1 min-w-0 flex items-center">
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-2 shrink-0 hover:opacity-90 transition-opacity"
+            >
+              <img
+                src={appLogo}
+                alt="HMS"
+                className="h-8 w-8 rounded-lg object-cover shadow-card"
+              />
+              <span className="hidden sm:inline font-heading text-base lg:text-lg font-bold tracking-tight bg-gradient-primary bg-clip-text text-transparent">
+                HospitALL
+              </span>
+            </Link>
           </div>
 
-          {/* Right Side: Status + User Dropdown */}
-          <div className="flex items-center gap-3">
-            <NetworkStatusPill />
-            <Menu as="div" className="relative">
-              <div className="flex items-center gap-3">
-                <span className="hidden md:block text-sm font-medium text-gray-700">{hospital?.email}</span>
-                <Menu.Button className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-shadow">
-                  <span className="sr-only">Open user menu</span>
-                  <div className={`h-9 w-9 rounded-full bg-gradient-to-br ${getAvatarGradient(hospital?.hospitalName)} flex items-center justify-center text-white font-bold border border-white/40 overflow-hidden text-xs`}>
-                    {hospital?.logoUrl && !isPlaceholderLogo(hospital.logoUrl) ? (
-                      <img className="h-full w-full object-cover" src={hospital.logoUrl} alt={hospital.hospitalName} />
-                    ) : (
-                      getInitials(hospital?.hospitalName)
+          {/* CENTER: Nav links */}
+          <div className="hidden md:flex flex-1 items-center justify-center gap-2">
+            {navItems
+              .filter((item) => item.show)
+              .map((item) => {
+                const active = isActive(item.to);
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    aria-current={active ? "page" : undefined}
+                    className={`relative px-4 py-2 text-sm font-semibold transition-colors rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 ${
+                      active
+                        ? "text-primary-700"
+                        : "text-neutral-500 hover:text-primary-600 hover:bg-primary-50/60"
+                    }`}
+                  >
+                    {item.label}
+                    {active && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-3 right-3 -bottom-[1px] h-[3px] rounded-full bg-gradient-primary"
+                      />
                     )}
-                  </div>
-                </Menu.Button>
-              </div>
+                  </Link>
+                );
+              })}
+          </div>
+
+          {/* RIGHT: Hospital chip + Settings + Avatar */}
+          <div className="flex-1 flex items-center justify-end gap-2 sm:gap-5">
+            {/* Hospital chip — generic hospital SVG icon + name + online dot */}
+            {hospital && (
+              <button
+                type="button"
+                onClick={() => setIsProfileOpen(true)}
+                title="View hospital profile"
+                className="hidden md:flex items-center gap-2 min-w-0 pl-2 pr-3 py-1.5 rounded-full bg-neutral-50 hover:bg-primary-50 border border-neutral-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+              >
+                <span className="h-7 w-7 shrink-0 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 10 12 3l9 7" />
+                    <path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" />
+                    <path d="M10 21v-5h4v5" />
+                    <line x1="12" y1="7" x2="12" y2="11" />
+                    <line x1="10" y1="9" x2="14" y2="9" />
+                  </svg>
+                </span>
+                <span className="text-sm font-semibold text-neutral-700 truncate max-w-[140px] lg:max-w-[220px]">
+                  {hospital.hospitalName}
+                </span>
+                <span
+                  title={isOnline ? "Online" : "Offline"}
+                  className={`relative ml-1 h-2 w-2 rounded-full shrink-0 ${
+                    isOnline ? "bg-success" : "bg-danger"
+                  }`}
+                >
+                  {isOnline && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-0 rounded-full bg-success opacity-60 animate-ping"
+                    />
+                  )}
+                </span>
+              </button>
+            )}
+
+            {/* Settings dropdown */}
+            <Menu as="div" className="relative">
+              <MenuButton
+                aria-label="Account settings"
+                className="p-2 rounded-full text-neutral-500 hover:text-primary-600 hover:bg-primary-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-5 h-5"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              </MenuButton>
               <Transition
                 as={Fragment}
-                enter="transition ease-out duration-200"
+                enter="transition ease-out duration-150"
                 enterFrom="transform opacity-0 scale-95"
                 enterTo="transform opacity-100 scale-100"
                 leave="transition ease-in duration-75"
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
               >
-                <Menu.Items className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-xl bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50 divide-y divide-gray-100 overflow-hidden">
-                  {/* Identity card */}
-                  <div>
-                    <Menu.Item>
-                      {({ active }) => (
-                        <button onClick={() => setIsProfileOpen(true)} className={`${active ? "bg-gray-50" : ""} w-full text-left px-4 py-3 group`}>
-                          <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">{hospital?.hospitalName}</p>
-                          <p className="text-xs text-gray-500 truncate mt-0.5">{hospital?.email}</p>
-                          <p className="text-[10px] text-blue-500 mt-1 uppercase font-semibold tracking-wider">Quick view →</p>
-                        </button>
-                      )}
-                    </Menu.Item>
-                  </div>
-
+                <Menu.Items className="origin-top-right absolute right-0 mt-2 w-64 rounded-2xl shadow-modal bg-surface-white ring-1 ring-neutral-200 focus:outline-none z-50 overflow-hidden divide-y divide-neutral-100">
                   {/* ACCOUNT */}
                   <div className="py-1">
-                    <p className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Account</p>
+                    <p className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                      Account
+                    </p>
                     <Menu.Item>
                       {({ active }) => (
-                        <Link to="/profile" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
-                          <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        <Link
+                          to="/profile"
+                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${
+                            active
+                              ? "bg-primary-50 text-primary-700"
+                              : "text-neutral-700"
+                          }`}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`mr-3 h-5 w-5 ${
+                              active ? "text-primary-500" : "text-neutral-400"
+                            }`}
+                            aria-hidden="true"
+                          >
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
                           </svg>
                           Edit Profile
                         </Link>
@@ -138,9 +238,28 @@ export const Navbar: React.FC = () => {
                     </Menu.Item>
                     <Menu.Item>
                       {({ active }) => (
-                        <Link to="/notifications" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
-                          <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        <Link
+                          to="/notifications"
+                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${
+                            active
+                              ? "bg-primary-50 text-primary-700"
+                              : "text-neutral-700"
+                          }`}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`mr-3 h-5 w-5 ${
+                              active ? "text-primary-500" : "text-neutral-400"
+                            }`}
+                            aria-hidden="true"
+                          >
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                           </svg>
                           Notifications
                         </Link>
@@ -150,12 +269,33 @@ export const Navbar: React.FC = () => {
 
                   {/* SECURITY */}
                   <div className="py-1">
-                    <p className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Security</p>
+                    <p className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                      Security
+                    </p>
                     <Menu.Item>
                       {({ active }) => (
-                        <Link to="/password" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
-                          <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        <Link
+                          to="/password"
+                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${
+                            active
+                              ? "bg-primary-50 text-primary-700"
+                              : "text-neutral-700"
+                          }`}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`mr-3 h-5 w-5 ${
+                              active ? "text-primary-500" : "text-neutral-400"
+                            }`}
+                            aria-hidden="true"
+                          >
+                            <rect x="3" y="11" width="18" height="11" rx="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                           </svg>
                           Password
                         </Link>
@@ -163,27 +303,62 @@ export const Navbar: React.FC = () => {
                     </Menu.Item>
                     <Menu.Item>
                       {({ active }) => (
-                        <Link to="/sessions" className={`${active ? "bg-gray-50" : ""} group flex items-center px-4 py-2 text-sm text-gray-700`}>
-                          <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        <Link
+                          to="/sessions"
+                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${
+                            active
+                              ? "bg-primary-50 text-primary-700"
+                              : "text-neutral-700"
+                          }`}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`mr-3 h-5 w-5 ${
+                              active ? "text-primary-500" : "text-neutral-400"
+                            }`}
+                            aria-hidden="true"
+                          >
+                            <rect x="5" y="2" width="14" height="20" rx="2" />
+                            <line x1="12" y1="18" x2="12.01" y2="18" />
                           </svg>
-                          Sessions & Auth Code
+                          Sessions &amp; Auth Code
                         </Link>
                       )}
                     </Menu.Item>
                   </div>
 
+                  {/* SIGN OUT */}
                   <div className="py-1">
                     <Menu.Item>
                       {({ active }) => (
-                        <button onClick={handleLogoutClick} className={`${active ? "bg-red-50 text-red-700" : "text-gray-700"} group flex w-full items-center px-4 py-2 text-sm`}>
-                          <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                            />
+                        <button
+                          onClick={handleLogoutClick}
+                          className={`group flex w-full items-center px-4 py-2 text-sm transition-colors ${
+                            active
+                              ? "bg-danger/5 text-danger"
+                              : "text-neutral-700"
+                          }`}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`mr-3 h-5 w-5 ${
+                              active ? "text-danger" : "text-neutral-400"
+                            }`}
+                            aria-hidden="true"
+                          >
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
                           </svg>
                           Sign out
                         </button>
@@ -193,60 +368,109 @@ export const Navbar: React.FC = () => {
                 </Menu.Items>
               </Transition>
             </Menu>
+
+            {/* Avatar → opens HospitalProfileModal directly */}
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen(true)}
+              aria-label="Hospital profile"
+              className="relative rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 transition-shadow"
+            >
+              <span
+                className={`block h-9 w-9 rounded-full ${getAvatarGradient(
+                  hospital?.hospitalName,
+                )} flex items-center justify-center text-white font-bold overflow-hidden text-xs ring-2 ring-white shadow-card`}
+              >
+                {hospital?.logoUrl && !isPlaceholderLogo(hospital.logoUrl) ? (
+                  <img
+                    className="h-full w-full object-cover"
+                    src={hospital.logoUrl}
+                    alt={hospital.hospitalName}
+                  />
+                ) : (
+                  getInitials(hospital?.hospitalName)
+                )}
+              </span>
+            </button>
           </div>
         </div>
       </div>
 
-      <HospitalProfileModal hospital={hospital} isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      <HospitalProfileModal
+        hospital={hospital}
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
 
-      {/* Logout Confirmation Modal */}
-      {isLogoutConfirmOpen && (
-        <div className="fixed inset-0 z-[100] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" onClick={() => setIsLogoutConfirmOpen(false)}></div>
-
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
-              <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" aria-hidden="true">
-                      <path
+      {/* Logout confirmation modal — MUST portal to document.body. The nav is
+          `fixed z-50` which creates its own stacking context; rendering the
+          modal inline would trap its backdrop inside the nav region (CLAUDE.md §8). */}
+      {isLogoutConfirmOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-modal-title"
+          >
+            <div
+              className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm"
+              onClick={() => setIsLogoutConfirmOpen(false)}
+            />
+            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+              <div className="relative transform overflow-hidden rounded-2xl bg-surface-white text-left shadow-modal ring-1 ring-neutral-200 transition-all sm:my-8 sm:w-full sm:max-w-md">
+                <div className="px-6 pt-6 pb-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-danger/10 text-danger">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                    <h3 className="text-base font-semibold leading-6 text-gray-900" id="modal-title">
-                      Sign Out
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">Are you sure you want to sign out from the system?</p>
+                        className="h-6 w-6"
+                        aria-hidden="true"
+                      >
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3
+                        id="logout-modal-title"
+                        className="font-heading text-lg font-bold text-neutral-900"
+                      >
+                        Sign out
+                      </h3>
+                      <p className="mt-1 text-sm text-neutral-500">
+                        Are you sure you want to sign out from the system?
+                      </p>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                <button
-                  type="button"
-                  className="inline-flex w-full justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto"
-                  onClick={confirmLogout}
-                >
-                  Sign Out
-                </button>
-                <button
-                  type="button"
-                  className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                  onClick={() => setIsLogoutConfirmOpen(false)}
-                >
-                  Cancel
-                </button>
+                <div className="px-6 py-4 bg-neutral-50 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsLogoutConfirmOpen(false)}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold text-neutral-700 bg-surface-white border border-neutral-200 hover:bg-neutral-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmLogout}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-danger hover:bg-danger/90 shadow-danger transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </nav>
   );
 };
