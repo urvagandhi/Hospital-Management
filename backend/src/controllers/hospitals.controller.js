@@ -17,25 +17,92 @@ import {
 } from "../services/mail.service.js";
 import {
   setContactChangeRequest,
+  getContactChangeRequest,
   verifyContactChangeOtp,
   deleteContactChangeRequest,
 } from "../services/redis.service.js";
 
 /**
- * Get all hospitals
+ * Get all hospitals (cursor-paginated, admin-only).
+ *
+ * Query params:
+ *   ?limit=50        page size, capped at 100 (default 50)
+ *   ?cursor=<_id>    _id of the last hospital from the previous page
+ *   ?search=<str>    case-insensitive substring match against name / email /
+ *                    phone / authCode (server-side — removes the old
+ *                    in-memory filter in the admin UI)
+ *
+ * Sort: `_id` descending. ObjectIds are time-ordered so this matches the
+ * previous `createdAt: -1` behaviour while giving a stable cursor field that
+ * doesn't need a compound tie-breaker.
+ *
+ * First-page responses additionally include a `totals` block so the admin
+ * dashboard's stat cards don't need a second request.
+ *
  * GET /api/hospitals
  */
 export const getAllHospitals = async (req, res) => {
   try {
-    const hospitals = await Hospital.find()
-      .select("-passwordHash -fcmToken -biometricKeys -failedLoginAttempts -lockUntil -__v")
-      .sort({ createdAt: -1 });
+    const requestedLimit = parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 100)
+      : 50;
 
-    return res.status(200).json({
+    const cursor = typeof req.query.cursor === "string" ? req.query.cursor.trim() : "";
+    const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+
+    const query = {};
+
+    if (cursor) {
+      // Cursor validation: only pass Mongo ObjectIds; ignore garbage.
+      if (/^[0-9a-fA-F]{24}$/.test(cursor)) {
+        query._id = { $lt: cursor };
+      }
+    }
+
+    if (search) {
+      // Escape regex metachars so a search like "dr." doesn't blow up.
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(escaped, "i");
+      query.$or = [
+        { hospitalName: rx },
+        { email: rx },
+        { phone: rx },
+        { authCode: rx },
+      ];
+    }
+
+    // Fetch one extra record to detect "more available" without a count query.
+    const rows = await Hospital.find(query)
+      .select("-passwordHash -fcmToken -biometricKeys -failedLoginAttempts -lockUntil -__v")
+      .sort({ _id: -1 })
+      .limit(limit + 1);
+
+    const hasMore = rows.length > limit;
+    const hospitals = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? String(hospitals[hospitals.length - 1]._id) : null;
+
+    const response = {
       success: true,
       data: hospitals,
       count: hospitals.length,
-    });
+      nextCursor,
+      limit,
+    };
+
+    // Only compute + return totals on the first page (no cursor) so subsequent
+    // pages stay cheap. Ignores the search filter — totals are global.
+    if (!cursor) {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [total, active, recentWeek] = await Promise.all([
+        Hospital.countDocuments({}),
+        Hospital.countDocuments({ isActive: true }),
+        Hospital.countDocuments({ createdAt: { $gte: weekAgo } }),
+      ]);
+      response.totals = { total, active, recentWeek };
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     console.error("Get hospitals error:", error);
     return res.status(500).json({
@@ -523,7 +590,7 @@ export const initContactChange = async (req, res) => {
     const otpRecipient = field === "email" ? newValue : hospital.email;
     const otpChannel = field === "email" ? "new_email" : "current_email";
     try {
-      await sendOTPEmail(otpRecipient, otp, "login");
+      await sendOTPEmail(otpRecipient, otp, "contact_change");
     } catch (e) {
       console.error("[initContactChange] OTP email failed:", e.message);
     }
@@ -551,6 +618,103 @@ export const initContactChange = async (req, res) => {
   } catch (error) {
     console.error("[initContactChange] error:", error);
     return res.status(500).json({ success: false, message: "Failed to initiate contact change" });
+  }
+};
+
+/**
+ * POST /api/hospitals/me/change-contact/resend
+ *
+ * Re-sends the OTP for the currently pending contact change. Requires an
+ * existing pending request in Redis (created by /init). Generates a fresh
+ * OTP (invalidating the previous one) and resets the 10-minute TTL.
+ *
+ * Rate-limited in-memory to once per 60 s per hospital — mirrors the
+ * `resendLoginAuthCode` pattern so no Redis round-trip for the cooldown.
+ */
+const RESEND_CONTACT_OTP_COOLDOWN_SECONDS = 60;
+const resendContactOtpCooldown = new Map(); // hospitalId → timestamp(ms)
+
+export const resendContactChangeOtp = async (req, res) => {
+  const hospitalId = req.hospital?.id;
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  const userAgent = req.headers["user-agent"];
+
+  try {
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    // Cooldown
+    const last = resendContactOtpCooldown.get(hospitalId);
+    if (last) {
+      const elapsed = Date.now() - last;
+      const remaining = Math.ceil(
+        (RESEND_CONTACT_OTP_COOLDOWN_SECONDS * 1000 - elapsed) / 1000,
+      );
+      if (remaining > 0) {
+        return res.status(429).json({
+          success: false,
+          message: `Please wait ${remaining} second(s) before requesting another code.`,
+          data: { retryAfterSeconds: remaining },
+        });
+      }
+    }
+
+    // Must have a pending contact change
+    const pending = await getContactChangeRequest(hospitalId);
+    if (!pending) {
+      return res.status(410).json({
+        success: false,
+        message: "No pending contact change. Please start over.",
+      });
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+
+    // Fresh OTP, reset TTL
+    const otp = generateOtp6();
+    await setContactChangeRequest(
+      hospitalId,
+      pending.field,
+      pending.newValue,
+      otp,
+      CONTACT_OTP_TTL_SECONDS,
+    );
+
+    const otpRecipient = pending.field === "email" ? pending.newValue : hospital.email;
+    const otpChannel = pending.field === "email" ? "new_email" : "current_email";
+    try {
+      await sendOTPEmail(otpRecipient, otp, "contact_change");
+    } catch (e) {
+      console.error("[resendContactChangeOtp] OTP email failed:", e.message);
+    }
+
+    resendContactOtpCooldown.set(hospitalId, Date.now());
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "CONTACT_CHANGE_RESEND",
+      status: "SUCCESS",
+      ipAddress,
+      userAgent,
+      details: { field: pending.field, otpChannel },
+    }).catch((e) => console.error("AuditLog error (contact resend):", e));
+
+    const maskedRecipient = otpRecipient.replace(/(.{1,2}).*(@.*)/, "$1***$2");
+    return res.status(200).json({
+      success: true,
+      message: pending.field === "email"
+        ? `A new code was sent to the new email (${maskedRecipient}).`
+        : `A new code was sent to your registered email (${maskedRecipient}).`,
+      data: {
+        field: pending.field,
+        otpChannel,
+        otpExpiresInSeconds: CONTACT_OTP_TTL_SECONDS,
+        retryAfterSeconds: RESEND_CONTACT_OTP_COOLDOWN_SECONDS,
+      },
+    });
+  } catch (error) {
+    console.error("[resendContactChangeOtp] error:", error);
+    return res.status(500).json({ success: false, message: "Failed to resend OTP" });
   }
 };
 
@@ -832,6 +996,7 @@ export default {
   updateHospital,
   patchMe,
   initContactChange,
+  resendContactChangeOtp,
   verifyContactChange,
   getNotificationPreferences,
   updateNotificationPreferences,
