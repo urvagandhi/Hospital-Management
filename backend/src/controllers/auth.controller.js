@@ -8,7 +8,8 @@ import crypto from "crypto";
 import AuditLog from "../models/AuditLog.js";
 import Hospital from "../models/Hospital.js";
 import Session from "../models/Session.js";
-import { sendAccountLockedEmail, sendForgotPasswordOtpEmail, sendOTPEmail, sendPasswordChangedEmail, sendPasswordResetNoticeEmail, sendSessionRevokedEmail, sendWelcomeEmail } from "../services/mail.service.js";
+import { geolocateIp } from "../services/geoip.service.js";
+import { sendAccountLockedEmail, sendForgotPasswordOtpEmail, sendLogoutConfirmationEmail, sendOTPEmail, sendPasswordChangedEmail, sendPasswordResetNoticeEmail, sendSessionRevokedEmail, sendWelcomeEmail } from "../services/mail.service.js";
 import { notifyNewLogin, notifyPasswordChanged, notifySessionRevoked } from "../services/push.service.js";
 import {
   consumeBiometricChallenge,
@@ -1145,17 +1146,24 @@ export const refreshToken = async (req, res) => {
 
     const tokens = await refreshAccessToken(token);
 
-    // Get hospital data to send back
-    const session = await Session.findOne({ refreshToken: token });
-    const hospital = await Hospital.findById(session.hospitalId);
+    // After rotation, `token` no longer matches any session — use the hospitalId
+    // surfaced by refreshAccessToken() instead of re-querying by the old token.
+    const hospital = await Hospital.findById(tokens.hospitalId);
 
-    // Set new access token cookie
+    // Set new access + refresh cookies. Refresh rotation REQUIRES overwriting
+    // the httpOnly refresh cookie so the next refresh presents the new token.
     const isProduction = process.env.NODE_ENV === "production";
     res.cookie("accessToken", tokens.accessToken, {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
       maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+    res.cookie("refreshToken", tokens.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year — matches login
     });
 
     return res.status(200).json({
@@ -1177,49 +1185,100 @@ export const refreshToken = async (req, res) => {
 };
 
 /**
- * Logout - Invalidate session
+ * Logout - Invalidate (HARD-delete) session
  * POST /api/auth/logout
+ *
+ * Idempotent: returns 200 even if no session was found (e.g. retry after
+ * network failure, or token already expired). Manual logout always hard-
+ * deletes so the row never counts toward the 2-mobile-session limit.
  */
 export const logout = async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
 
-    let invalidated = false;
+    // Capture the session BEFORE deletion so we can email/audit/cleanup.
     let sessionDoc = null;
 
-    // Try to invalidate by refresh token first
     if (refreshToken) {
-      sessionDoc = await Session.findOne({ refreshToken }).select("hospitalId isMobile").lean();
-      invalidated = await invalidateSession(refreshToken);
+      sessionDoc = await Session.findOne({ refreshToken })
+        .select("_id hospitalId isMobile userAgent ipAddress")
+        .lean();
     }
 
-    // Fallback: invalidate by session ID from the access token
-    if (!invalidated) {
+    // Fallback: locate by sessionId from the access token (covers cases where
+    // the refresh-cookie was already cleared but the access-token is still in
+    // the Authorization header).
+    if (!sessionDoc) {
       const accessToken = req.cookies?.accessToken ||
         (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
       if (accessToken) {
         try {
           const { verifyToken } = await import("../utils/jwt.js");
           const decoded = verifyToken(accessToken);
-          if (decoded.sessionId) {
-            sessionDoc = await Session.findById(decoded.sessionId).select("hospitalId isMobile").lean();
-            await Session.updateOne({ _id: decoded.sessionId }, { isActive: false });
-            invalidated = true;
+          if (decoded?.sessionId) {
+            sessionDoc = await Session.findById(decoded.sessionId)
+              .select("_id hospitalId isMobile userAgent ipAddress")
+              .lean();
           }
-        } catch (_) { /* token may be expired, ignore */ }
+        } catch (_) { /* expired/invalid access token — proceed to clear cookies */ }
       }
     }
 
-    // Clear stored FCM token when a mobile session logs out so we don't
-    // keep pushing to a device that's no longer signed in. Safe to do even
-    // if another mobile device is active — it will re-register its own
-    // token on next app launch via POST /api/auth/fcm-token.
-    if (sessionDoc?.isMobile && sessionDoc.hospitalId) {
-      Hospital.findByIdAndUpdate(sessionDoc.hospitalId, { $unset: { fcmToken: "" } })
-        .catch((e) => console.error("[logout] clear fcmToken failed:", e.message));
+    if (sessionDoc?._id) {
+      // HARD delete — leaves no ghost entry that would count toward the
+      // 2-mobile-session limit. The forced/admin-revoke paths intentionally
+      // soft-delete so the old device's next API call gets a 401-with-reason;
+      // for *self-initiated* logout that's not needed.
+      await Session.deleteOne({ _id: sessionDoc._id });
+
+      // Audit (fire-and-forget — never block logout).
+      AuditLog.create({
+        userId: sessionDoc.hospitalId,
+        action: "LOGOUT",
+        status: "SUCCESS",
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.headers["user-agent"],
+        details: { sessionId: String(sessionDoc._id) },
+      }).catch((e) => console.error("[logout] audit failed:", e.message));
+
+      // Send confirmation email + smart fcmToken cleanup. Both fire-and-
+      // forget so notification failures never break logout.
+      Hospital.findById(sessionDoc.hospitalId).select("email").lean()
+        .then((h) => {
+          if (h?.email) {
+            sendLogoutConfirmationEmail(h.email, {
+              userAgent: sessionDoc.userAgent,
+              ipAddress: sessionDoc.ipAddress,
+              when: new Date(),
+            }).catch((e) => console.error("[logout] email failed:", e.message));
+          }
+        })
+        .catch((e) => console.error("[logout] hospital lookup failed:", e.message));
+
+      // FCM token is stored once on the Hospital doc and shared across
+      // devices. Only wipe it if no other mobile session remains — otherwise
+      // we'd silently disable push for the still-signed-in device.
+      if (sessionDoc.isMobile && sessionDoc.hospitalId) {
+        Session.countDocuments({
+          hospitalId: sessionDoc.hospitalId,
+          isMobile: true,
+          isActive: true,
+          expiresAt: { $gt: new Date() },
+        })
+          .then((remaining) => {
+            if (remaining === 0) {
+              return Hospital.findByIdAndUpdate(
+                sessionDoc.hospitalId,
+                { $unset: { fcmToken: "" } },
+              );
+            }
+            return null;
+          })
+          .catch((e) => console.error("[logout] fcmToken cleanup failed:", e.message));
+      }
     }
 
-    // Clear cookies
+    // Always clear cookies + return 200 (idempotent).
     res.clearCookie("accessToken");
     res.clearCookie("refreshToken");
 
@@ -1556,9 +1615,22 @@ export const listActiveSessions = async (req, res) => {
       isActive: true,
       expiresAt: { $gt: new Date() },
     })
-      .select("_id deviceId platform isMobile userAgent ipAddress lastSeenAt lastSeenIp createdAt")
+      .select("_id deviceId platform isMobile userAgent ipAddress lastSeenAt lastSeenIp location createdAt")
       .sort({ createdAt: -1 })
       .lean();
+
+    // Lazy-backfill: older sessions created before location was added have
+    // no displayName. Kick off a geo lookup for each missing one. Doesn't
+    // block the current response — next list call will have them.
+    for (const s of sessions) {
+      if (!s.location || !s.location.displayName) {
+        geolocateIp(s.ipAddress)
+          .then((location) =>
+            Session.updateOne({ _id: s._id }, { $set: { location } }),
+          )
+          .catch(() => {});
+      }
+    }
 
     const data = sessions.map((s) => ({
       id: String(s._id),
@@ -1571,6 +1643,7 @@ export const listActiveSessions = async (req, res) => {
       ipAddress: s.ipAddress,
       lastSeenAt: s.lastSeenAt,
       lastSeenIp: s.lastSeenIp,
+      location: s.location || null,
       createdAt: s.createdAt,
       isCurrent: currentSessionId && String(s._id) === String(currentSessionId),
     }));
