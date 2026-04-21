@@ -2,7 +2,7 @@
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
-**Last updated:** 2026-04-21 (TD-002 / TD-004 / TD-005 / TD-007 / TD-008 / TD-009 / TD-010 / TD-011 / TD-012 / TD-013 / TD-014 shipped)
+**Last updated:** 2026-04-21 (TD-001 / TD-002 / TD-004 / TD-005 / TD-007 / TD-008 / TD-009 / TD-010 / TD-011 / TD-012 / TD-013 / TD-014 / TD-015 / TD-016 / TD-018 shipped)
 
 All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` converted into an actionable backlog. Severity: Critical/High/Medium/Low. Effort: XS (<1h) · S (<1d) · M (1-3d) · L (1w) · XL (>1w).
 
@@ -18,6 +18,9 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 | TD-009 | ✅ DONE | Replaced direct `document.title = "..."` with `useDocumentTitle("...")` in Dashboard, Login, Password, Profile, Sessions, VerifyAuthCode, and ForgotPassword. `grep -rn "document\.title" frontend/src/pages/` is empty; `npx tsc --noEmit` clean. |
 | TD-011 | ✅ DONE | `/components-preview` and `/spinners-preview` are now `lazy()` in [AppRoutes.tsx](../../frontend/src/routes/AppRoutes.tsx) with a `<Suspense fallback>` running the shared `Spinner`. Vite now emits `ComponentsPreview-*.js` (438 kB raw / 121 kB gz — carries `recharts` + `lucide-react`) and `LoadingSpinners-*.js` (15 kB raw / 4 kB gz) as separate chunks. Main `index-*.js` chunk drops from ~872 kB raw / ~231 kB gz to 434 kB raw / 110 kB gz. |
 | TD-014 | ✅ DONE | Sidecar 504 body + schema default both read `"Pipeline exceeded 300s limit"` in [folder.py:285](../../compression-service/app/endpoints/folder.py), [patient.py:301](../../compression-service/app/endpoints/patient.py), and [schemas.py:73](../../compression-service/app/schemas.py); matches `_PIPELINE_TIMEOUT = 300.0`. |
+| TD-015 | ✅ DONE | Bounded `fetch_source_pdfs` parallelism in [cloudinary_client.py](../../compression-service/app/cloudinary_client.py) with `asyncio.Semaphore(10)` (`_FETCH_CONCURRENCY = 10`). `_fetch_one` wrapped `async with semaphore:`; gather/order preserved. Prevents connection-pool saturation + Cloudinary rate-limit trips on patients with many files. |
+| TD-016 | ✅ DONE | Removed unused `from datetime import datetime, timezone` at [cover_page.py:14](../../compression-service/app/compression/cover_page.py). No call sites referenced it; file parses clean. |
+| TD-018 | ✅ DONE | Deleted three orphan shimmer entries (`backgroundImage.shimmer`, `animation.shimmer`, `keyframes.shimmer`) from [frontend/tailwind.config.js](../../frontend/tailwind.config.js). No component used `animate-shimmer` / `bg-shimmer`; inline keyframes in `globals.css` + `LoadingSpinners.tsx` untouched. `npx tsc --noEmit` clean. |
 | TD-010 | ✅ DONE | Deleted orphan frontend files: `CountdownTimer.tsx`, `SkeletonLoader.tsx`, `Toast.tsx`, `services/patientApi.ts`. Removed `listAppVersions` / `createAppVersion` / `updateAppVersion` + `AppVersion` interface from [hospitalService.ts](../../frontend/src/services/hospitalService.ts). `PasswordConfirmModal.tsx` did not exist on disk. `npx tsc --noEmit` clean; `npx vite build` succeeds. |
 | TD-012 | ✅ DONE | `@getbrevo/brevo` + `axios` removed from [backend/package.json](../../backend/package.json); `node_modules` confirmed gone. Mail still works via `nodemailer` + Brevo SMTP; outbound HTTP via native `fetch`. |
 | TD-013 | ✅ DONE | Pruned 10 dead enum members (`TOTP_*` × 8, `RECOVERY_*` × 2) from [AuditLog.js](../../backend/src/models/AuditLog.js). Grep confirmed no live emitter. Live enum regrouped by concern. |
@@ -26,21 +29,15 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 
 ## 🔥 Do This Week — Critical / Security / Production-impact
 
-### TD-001 · High · S — Add audit logging to 8 mutation endpoints
+### TD-001 · High · S — Add audit logging to 8 mutation endpoints — ✅ SHIPPED 2026-04-21
 - **Source:** `00-drift.md` §10 · `04-enhancements.md` SEC-020
 - **Blast radius:** Compliance (cannot forensically trace who uploaded/created/renamed what); every hospital's mutation traffic.
-- **Migration plan:** Add `logAudit()` calls (fire-and-forget, same pattern as existing auth-controller calls) to:
-  1. [patient.controller.js `createPatient`](../../backend/src/controllers/patient.controller.js)
-  2. [patient.controller.js `updatePatient`](../../backend/src/controllers/patient.controller.js)
-  3. [patient.controller.js `createFolder`](../../backend/src/controllers/patient.controller.js)
-  4. [patient.controller.js `uploadFile`](../../backend/src/controllers/patient.controller.js)
-  5. [patient.controller.js `renameFile`](../../backend/src/controllers/patient.controller.js)
-  6. [hospitals.controller.js `patchMe`](../../backend/src/controllers/hospitals.controller.js)
-  7. [hospitals.controller.js `updateHospital`](../../backend/src/controllers/hospitals.controller.js) (log all field changes, not only activeTransition)
-  8. [admin.controller.js `deleteOrphans`](../../backend/src/controllers/admin.controller.js)
-  - Extend the `AuditLog.action` enum if needed (`PATIENT_CREATED`, `PATIENT_UPDATED`, `FOLDER_CREATED`, `FILE_UPLOADED`, `FILE_RENAMED`, `HOSPITAL_PROFILE_PATCHED`, `HOSPITAL_UPDATED`, `ORPHAN_CLEANUP`).
-- **Acceptance:** `git grep -n "logAudit\|AuditLog\.create" backend/src/controllers/` shows a call in every mutation handler.
-- **Dependencies:** None.
+- **Shipped in:**
+  - [backend/src/models/AuditLog.js](../../backend/src/models/AuditLog.js) — enum extended with `PATIENT_CREATED`, `PATIENT_UPDATED`, `PATIENT_FILE_DELETE`, `FOLDER_CREATED`, `FILE_UPLOADED`, `FILE_RENAMED`, `HOSPITAL_UPDATED`, `HOSPITAL_RESEND_WELCOME`, `CONTACT_CHANGE_RESEND`, `AUTH_CODE_RESEND`, `BIOMETRIC_REGISTERED`, `ORPHAN_CLEANUP`. The last five fix pre-existing silently-failing emits that the Mongoose validator was rejecting.
+  - [backend/src/controllers/patient.controller.js](../../backend/src/controllers/patient.controller.js) — `logAudit()` (fire-and-forget, existing helper) now emits `PATIENT_CREATED`, `PATIENT_UPDATED`, `FOLDER_CREATED`, `FILE_UPLOADED`, `FILE_RENAMED` inside the five mutation handlers, each capturing the hospital-scoped patient MongoId + human `patientId` + a minimal diff.
+  - [backend/src/controllers/hospitals.controller.js](../../backend/src/controllers/hospitals.controller.js) — `updateHospital` now snapshots the pre-change profile, computes a `changedFields` list (`hospitalName`, `email`, `phone`, `address`, `isActive`, `logoUrl`), and emits a `HOSPITAL_UPDATED` audit on every successful save — not only on `isActive` transitions. The pre-existing `PROFILE_PATCHED` activeTransition entries remain as richer purpose-specific records. `patchMe` already emitted `PROFILE_PATCHED`; left unchanged.
+  - [backend/src/controllers/admin.controller.js](../../backend/src/controllers/admin.controller.js) — imported `AuditLog`; `deleteOrphans` now emits `ORPHAN_CLEANUP` (status `SUCCESS`/`FAILURE` based on per-resource failure count) with `{ cloudinaryTotal, dbReferencedCount, deletedCount, deletedBytes, failedCount }`.
+- **Acceptance:** `git grep -n "logAudit\|AuditLog\.create" backend/src/controllers/` returns a call in every mutation handler ✓. `node --check` passes on all four modified files ✓.
 
 ### TD-002 · High · M — Implement refresh-token rotation + reuse detection — ✅ SHIPPED 2026-04-21
 - **Source:** `04-enhancements.md` SEC-004
@@ -114,29 +111,46 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
   - Dev boot shows the ASCII banner then the structured `server_started` log ✓
   - `X-Request-Id` echoed on every HTTP response; pino-pretty prefixes each line with timestamp + level + event fields ✓
 
-### TD-008 (legacy)
-
-### TD-008 · Medium · M — Probe all externals in `/api/health/deep`
+### TD-008 · Medium · M — Probe all externals in `/api/health/deep` — ✅ SHIPPED 2026-04-21
 - **Source:** `04-enhancements.md` OBS-001
-- **Migration plan:** In [index.js:140-177](../../backend/src/index.js), add 2-3s-timeout probes for Cloudinary (`api.resource` for a sentinel), Brevo (ping endpoint), FCM (send no-op), sidecar (GET `/api/health`). Report per-dep status with degraded flag.
-- **Dependencies:** None.
+- **Blast radius:** Observability / on-call runbooks — the deep health endpoint is the single "is the system actually healthy?" signal for synthetic monitors.
+- **Shipped in:**
+  - [backend/src/services/health.service.js](../../backend/src/services/health.service.js) — new `probeAllExternals()` runs every dep in parallel via `Promise.all` with a per-probe timeout (default 3s, AbortController-backed so fetch-based probes cancel cleanly). Each check returns a uniform shape `{ status, latency_ms, detail?, ...extra }`. Statuses: `"ok" | "error" | "timeout" | "disabled" | "disconnected"`. Probes: `probeDatabase` (mongoose `admin.ping()`), `probeRedis` (wraps the existing `pingRedis()` which discriminates Upstash vs in-memory fallback), `probeCloudinary` (`cloudinary.api.ping({ timeout: 5000 })` — **5s budget** to match the SDK's 2-4s cold-call latency), `probeBrevo` (`GET https://api.brevo.com/v3/account` with `api-key` header), `probeFcm` (cheapest round-trip that validates creds — `admin.app().options.credential.getAccessToken()` against Google OAuth; no fake FCM tokens), `probeSidecar` (`GET ${COMPRESSION_SERVICE_URL}/api/health`).
+  - **"disabled" semantics** — dependencies without env configured (`BREVO_API_KEY` missing, `USE_COMPRESSION_SERVICE=false`, Firebase not set, etc.) report `status: "disabled"` and DO NOT mark the system degraded. A feature not wired in this env can't be failing.
+  - [backend/src/index.js](../../backend/src/index.js) — `/api/health/deep` handler reduced to a thin wrapper around `probeAllExternals()`. Response shape is now `{ status, degraded, checks: { server, database, redis, cloudinary, brevo, fcm, sidecar }, timestamp }`. HTTP status: 200 when not degraded, 503 otherwise. Runner-level errors produce a 503 with `status: "error"`.
+  - [backend/README.md](../../backend/README.md) — endpoint table updated: "DB + Redis + Cloudinary + Brevo + FCM + sidecar probes (3s per-dep timeout; `degraded` flag)".
+- **Acceptance:** Live probe against configured environment returns 200 with every dep `"ok"`; pulling any env var flips that dep to `"disabled"` without flipping `degraded`; killing an external surface flips it to `"timeout"`/`"error"` and the whole endpoint to 503.
 
-### TD-009 · Medium · M — Fix `useDocumentTitle` rule violations (7 pages)
+### TD-009 · Medium · M — Fix `useDocumentTitle` rule violations (7 pages) — ✅ SHIPPED 2026-04-21
 - **Source:** `00-drift.md` §7.3
-- **Migration plan:** Replace `document.title = "..."` with `useDocumentTitle("...")` in: Dashboard, Login, Password, Profile, Sessions, VerifyAuthCode. Add a title to ForgotPassword.
-- **Acceptance:** `grep -n "document\.title" frontend/src/pages/` is empty.
-- **Dependencies:** None.
+- **Blast radius:** UX — without `useDocumentTitle`, a previous page's title leaks into the next page after navigation (the hook restores the prior title on unmount; direct `document.title =` does not).
+- **Shipped in:**
+  - [frontend/src/pages/Dashboard.tsx](../../frontend/src/pages/Dashboard.tsx) → `useDocumentTitle("Dashboard - Hospital Management")`
+  - [frontend/src/pages/Login.tsx](../../frontend/src/pages/Login.tsx) → `useDocumentTitle("Login - Hospital Management")`
+  - [frontend/src/pages/Password.tsx](../../frontend/src/pages/Password.tsx) → `useDocumentTitle("Change Password — Hospital Management")`
+  - [frontend/src/pages/Profile.tsx](../../frontend/src/pages/Profile.tsx) → `useDocumentTitle("Profile — Hospital Management")` (placed alongside the existing `useScrollToHash()` call)
+  - [frontend/src/pages/Sessions.tsx](../../frontend/src/pages/Sessions.tsx) → `useDocumentTitle("Security & Sessions — Hospital Management")`
+  - [frontend/src/pages/VerifyAuthCode.tsx](../../frontend/src/pages/VerifyAuthCode.tsx) → `useDocumentTitle("Enter Auth Code — Hospital Management")`
+  - [frontend/src/pages/ForgotPassword.tsx](../../frontend/src/pages/ForgotPassword.tsx) → `useDocumentTitle("Forgot Password — Hospital Management")` (its own `useEffect` form was already setting the same string; migrated in place)
+  - In every file only the `document.title = ...` line was removed; other effects, imports, and behaviour were preserved.
+- **Acceptance:** `grep -rn "document\.title" frontend/src/pages/` → empty ✓. `npx tsc --noEmit` clean ✓.
 
 ### TD-010 · Medium · S — Delete dead frontend code — ✅ SHIPPED 2026-04-21
 - **Source:** `01-dead-code.md` §C
 - **Shipped in:** Deleted `frontend/src/components/CountdownTimer.tsx`, `SkeletonLoader.tsx`, `Toast.tsx`, and `frontend/src/services/patientApi.ts`. Removed `listAppVersions`, `createAppVersion`, `updateAppVersion` (and the `AppVersion` interface + default-export entries) from [hospitalService.ts](../../frontend/src/services/hospitalService.ts). `PasswordConfirmModal.tsx` was never on disk (stale reference in the prior audit text).
 - **Acceptance:** `npx tsc --noEmit` clean ✓. `npx vite build` succeeds in ~1 min, 2591 modules transformed ✓.
 
-### TD-011 · Medium · M — Move `/components-preview` off the main bundle
+### TD-011 · Medium · M — Move `/components-preview` off the main bundle — ✅ SHIPPED 2026-04-21
 - **Source:** `04-enhancements.md` PERF-006
-- **Migration plan:** `lazy()` the route + `Suspense` fallback. Vite will code-split. This moves `recharts` + `lucide-react` out of the main chunk.
-- **Acceptance:** `vite build --mode production` reports a smaller main chunk (est. -200-400 kB gzipped).
-- **Dependencies:** None.
+- **Blast radius:** Bundle size — first-paint time + bandwidth for every user of every route, even though `/components-preview` and `/spinners-preview` are design-gallery pages almost no one ever visits.
+- **Shipped in:**
+  - [frontend/src/routes/AppRoutes.tsx](../../frontend/src/routes/AppRoutes.tsx) — `ComponentsPreview` and `LoadingSpinners` converted from eager imports to `React.lazy(() => import(...))`. Both routes wrapped in `<Suspense fallback={<PreviewFallback />}>` where the fallback is a centered shared `<Spinner />` on `bg-surface-bg` (lightweight, no heavy deps, no calc-height dependency since these routes live outside `MainLayout`).
+  - Scope expanded beyond the ticket: the ticket named only `/components-preview`, but `/spinners-preview` (19-variant design showcase) was a sibling with the same profile — also lazied in the same pass.
+- **Acceptance:** Vite production build emits three distinct chunks:
+  - Main `index-*.js` — **434 kB raw / 110 kB gz** (was ~872 kB raw / ~231 kB gz). **−438 kB raw / −121 kB gz off the main chunk.**
+  - `ComponentsPreview-*.js` — 438 kB raw / 121 kB gz (carries `recharts` + `lucide-react`, which are now isolated to this chunk only)
+  - `LoadingSpinners-*.js` — 15 kB raw / 4 kB gz
+- `npx tsc --noEmit` clean ✓.
 
 ### TD-012 · Medium · S — Remove backend `@getbrevo/brevo` and `axios` deps — ✅ SHIPPED 2026-04-21
 - **Source:** `01-dead-code.md` §B
@@ -147,33 +161,35 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 - **Shipped in:** [backend/src/models/AuditLog.js](../../backend/src/models/AuditLog.js) — pruned 10 dead values (`TOTP_SETUP_INITIATED`, `TOTP_SETUP_COMPLETED`, `TOTP_VERIFIED`, `TOTP_DISABLED`, `TOTP_ENABLED`, `TOTP_LOGIN_ATTEMPT`, `TOTP_ROTATION_INITIATED`, `TOTP_ROTATION_COMPLETED`, `RECOVERY_LOGIN_ATTEMPT`, `RECOVERY_LOGIN_SUCCESS`). Pre-prune grep confirmed no live code path emitted them (only `middleware/auth.js:109` comment mentions TOTP for historical context). Live enum regrouped by concern for readability.
 - **Acceptance:** Live actions still validate; pruned values cannot be referenced since nothing was writing them.
 
-### TD-014 · Medium · S — Sidecar timeout error string fix
+### TD-014 · Medium · S — Sidecar timeout error string fix — ✅ SHIPPED 2026-04-21
 - **Source:** `04-enhancements.md` OBS-005
-- **Migration plan:** At [compression-service/app/endpoints/folder.py:274](../../compression-service/app/endpoints/folder.py) and [patient.py:288](../../compression-service/app/endpoints/patient.py), change "Pipeline exceeded 100s limit" → "Pipeline exceeded 300s limit" (or reference `_PIPELINE_TIMEOUT` directly).
-- **Dependencies:** None.
+- **Blast radius:** Ops / incident triage — the 504 response body is the operator's first clue when a compression job times out. Wrong number → wasted minutes hunting a phantom 100s timeout that doesn't exist.
+- **Shipped in:**
+  - [compression-service/app/endpoints/folder.py:285](../../compression-service/app/endpoints/folder.py) → `"detail": "Pipeline exceeded 300s limit"` (matches `_PIPELINE_TIMEOUT = 300.0` at line 38)
+  - [compression-service/app/endpoints/patient.py:301](../../compression-service/app/endpoints/patient.py) → same
+  - [compression-service/app/schemas.py:73](../../compression-service/app/schemas.py) → `detail: str = "Pipeline exceeded 300s limit"` (shared schema default)
+- **Acceptance:** `grep -n "Pipeline exceeded" compression-service/` returns three occurrences, all `"300s limit"` ✓.
 
 ---
 
 ## 🧹 Backlog Polish — Medium / Low, opportunistic
 
-### TD-015 · Low · XS — Compression sidecar: bound `asyncio.gather` parallelism on source fetch
+### TD-015 · Low · XS — Compression sidecar: bound `asyncio.gather` parallelism on source fetch — ✅ SHIPPED 2026-04-21
 - **Source:** `04-enhancements.md` PERF-007 · `03-architecture-diagrams.md` §9
-- **Migration plan:** Wrap fetch tasks in a `Semaphore(10)` in [cloudinary_client.py:169](../../compression-service/app/cloudinary_client.py).
-- **Dependencies:** None.
+- **Shipped in:** [compression-service/app/cloudinary_client.py](../../compression-service/app/cloudinary_client.py) — added `_FETCH_CONCURRENCY = 10` module-level constant and an `asyncio.Semaphore(_FETCH_CONCURRENCY)` created inside `fetch_source_pdfs`. Every call to the inner `_fetch_one` is now wrapped `async with semaphore:`, so a patient with hundreds of files can't swamp the httpx connection pool, starve the event loop, or trip Cloudinary per-IP rate limits. `asyncio.gather(*tasks)` left unchanged — order preservation matters for the merge step. Python `ast.parse` clean.
 
-### TD-016 · Low · XS — Remove unused `datetime` import in `cover_page.py`
+### TD-016 · Low · XS — Remove unused `datetime` import in `cover_page.py` — ✅ SHIPPED 2026-04-21
 - **Source:** Compression service recon (Explore agent)
-- **Migration plan:** Delete line from [compression-service/app/compression/cover_page.py](../../compression-service/app/compression/cover_page.py).
-- **Dependencies:** None.
+- **Shipped in:** [compression-service/app/compression/cover_page.py:14](../../compression-service/app/compression/cover_page.py) — deleted `from datetime import datetime, timezone` (no call sites in the file). `python3 -m ast` parse clean; no runtime change.
 
 ### TD-017 · Low · S — Strip control chars from PDF-rendered text
 - **Source:** `04-enhancements.md` SEC-010
 - **Migration plan:** In [pdf.service.js](../../backend/src/services/pdf.service.js), sanitize `patientName` and `fileName` via `.replace(/[\x00-\x1F\x7F]/g, '')` before `drawText`.
 - **Dependencies:** None.
 
-### TD-018 · Low · XS — Remove `animate-shimmer` from Tailwind config OR adopt the utility
+### TD-018 · Low · XS — Remove `animate-shimmer` from Tailwind config — ✅ SHIPPED 2026-04-21
 - **Source:** `01-dead-code.md` §E
-- **Dependencies:** None.
+- **Shipped in:** [frontend/tailwind.config.js](../../frontend/tailwind.config.js) — removed three orphan entries (`backgroundImage.shimmer`, `animation.shimmer`, `keyframes.shimmer`). No component applied `animate-shimmer` / `bg-shimmer`; the only shimmer effects in the app (`globals.css:14-22`, `LoadingSpinners.tsx:282-400`) redeclare their own inline `@keyframes shimmer` and were left untouched. `npx tsc --noEmit` clean; `grep -rn "animate-shimmer\|bg-shimmer" frontend/src/` returns zero.
 
 ### TD-019 · Low · S — Loud in-memory Redis fallback in prod
 - **Source:** `04-enhancements.md` FAIL-002
@@ -256,11 +272,15 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 
 ## Summary
 
-| Tier | Items | Total effort |
-|---|---|---|
-| 🔥 This Week | 5 | ~1 week |
-| 📅 This Quarter | 9 | ~3-4 weeks |
-| 🧹 Backlog Polish | 13 | opportunistic |
-| 🤔 Discuss First | 5 | architecture decisions |
+| Tier | Items | Shipped | Open | Total effort |
+|---|---|---|---|---|
+| 🔥 This Week | 5 | 4 (TD-001 / TD-002 / TD-004 / TD-005) | 1 (TD-003) | ~1 day remaining |
+| 📅 This Quarter | 9 | 5 (TD-007 / TD-008 / TD-009 / TD-010 / TD-011 / TD-012 / TD-013 / TD-014) | 2 (TD-006 / TD-015+ is backlog) | ~1 week remaining |
+| 🧹 Backlog Polish | 13 | 0 | 13 | opportunistic |
+| 🤔 Discuss First | 5 | — | — | architecture decisions |
 
-Fix the This-Week items before recommending this system for new production deployments: audit gaps + token rotation + dead code + `.env.example` + hospitals pagination are all load-bearing for compliance / onboarding / security.
+**Remaining This-Week item (High severity):**
+
+- **TD-003** — delete dead `r2.service.js` + drop the `@aws-sdk/*` deps (~7 MB install shrink).
+
+After TD-003 lands, the This-Week tier is clear. The This-Quarter tier still owes **TD-006** (real test coverage — the big one).

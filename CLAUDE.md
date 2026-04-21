@@ -113,7 +113,7 @@ API client: `services/api.ts` Axios wrapper with 401 retry (refresh-token rotati
 - **OTP config** — `OTP_EXPIRY_MINUTES` (default 10), `OTP_LENGTH` (default 6), `MAX_OTP_ATTEMPTS` (default 5).
 - **Logging** — `LOG_LEVEL` (default `info` in prod, `debug` in dev). pino emits JSON in prod, pino-pretty in dev. Every HTTP request has a `request_id` (from `X-Request-Id` header or generated) echoed back on the response and bound to `req.log`; use `req.log.*` inside handlers and module-level `logger` elsewhere. Redact list auto-scrubs Authorization/Cookie headers + top-level + nested `password/newPassword/oldPassword/currentPassword/confirmPassword/token/refreshToken/otp/authCode`. See [utils/logger.js](backend/src/utils/logger.js). `backend/scripts/` intentionally still uses raw `console.*` (CLI operator output).
 - Rate limit, frontend URL list.
-- See `.env.example` at repo root for the full list. **Drift note (2026-04-21):** `.env.example` is out of sync with code — missing 9 vars referenced in code and containing 13 dead vars (TOTP + SMS + legacy SMTP). See `docs/audit/00-drift.md` §5 for the full diff.
+- See `.env.example` at repo root for the full list. ~~Drift note (2026-04-21): `.env.example` out of sync with code~~ — RESOLVED 2026-04-21 (TD-004). 13 dead vars removed, 11 undocumented vars added, `LOG_LEVEL` documented. `.env.example` and code are now in sync.
 
 ## 10. Known code smells / watch-list
 
@@ -128,11 +128,12 @@ API client: `services/api.ts` Axios wrapper with 401 retry (refresh-token rotati
 - Auto-delete is permanent; plan migration before adding any "trash"/restore UI.
 - GeoIP uses a free public API (`ip-api.com`, 45 req/min) with no key. Fine for current volume; if usage grows, swap to `ipinfo.io`/`ipapi.co` with a token.
 - 🛠️ ~~Refresh token not rotated~~ — RESOLVED 2026-04-21 (TD-002). Rotation + reuse detection shipped. See §5 above.
-- **Audit coverage gap.** 8 mutation endpoints do NOT audit-log today (createPatient, updatePatient, createFolder, uploadFile, renameFile, patchMe, updateHospital, deleteOrphans) — violates §12 convention. Tracked as TD-001.
+- 🛠️ ~~Audit coverage gap~~ — RESOLVED 2026-04-21 (TD-001). All 8 mutation endpoints now emit an audit entry: `PATIENT_CREATED` (createPatient), `PATIENT_UPDATED` (updatePatient), `FOLDER_CREATED` (createFolder), `FILE_UPLOADED` (uploadFile), `FILE_RENAMED` (renameFile), `PROFILE_PATCHED` (patchMe, pre-existing), `HOSPITAL_UPDATED` + activeTransition `PROFILE_PATCHED` (updateHospital), `ORPHAN_CLEANUP` (deleteOrphans). The `AuditLog.action` enum also picked up `PATIENT_FILE_DELETE`, `HOSPITAL_RESEND_WELCOME`, `CONTACT_CHANGE_RESEND`, `AUTH_CODE_RESEND`, `BIOMETRIC_REGISTERED` — these were pre-existing emits the validator had been silently rejecting.
 - **`r2.service.js` is dead code** (260 lines, 0 callers) + heavy deps `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner`. Tracked as TD-003.
 - 🛠️ ~~`services/patientApi.ts` (frontend) is dead code~~ — RESOLVED 2026-04-21 (TD-010). File deleted; Dashboard's inline fetcher was already the only live caller.
 - 🛠️ ~~`GET /api/hospitals` has no pagination~~ — RESOLVED 2026-04-21 (TD-005). Cursor pagination + server-side search + first-page totals shipped.
-- **Sidecar 504 error body says "100s limit" but real pipeline timeout is 300s.** Tracked as TD-014.
+- 🛠️ ~~Sidecar 504 error body said "100s limit" while real pipeline timeout is 300s~~ — RESOLVED 2026-04-21 (TD-014). [folder.py:285](compression-service/app/endpoints/folder.py), [patient.py:301](compression-service/app/endpoints/patient.py), [schemas.py:73](compression-service/app/schemas.py) all now read `"Pipeline exceeded 300s limit"`.
+- 🛠️ Sidecar `fetch_source_pdfs` was unbounded `asyncio.gather` — RESOLVED 2026-04-21 (TD-015). Now capped at 10 concurrent downloads via `asyncio.Semaphore` (`_FETCH_CONCURRENCY = 10` in [cloudinary_client.py](compression-service/app/cloudinary_client.py)). Protects against connection-pool saturation + Cloudinary per-IP rate limits on patients with many files.
 - 🛠️ ~~Backend unused deps: `@getbrevo/brevo`, `axios`~~ — RESOLVED 2026-04-21 (TD-012). Removed from `backend/package.json`; `node_modules` confirmed gone.
 - 🛠️ ~~No centralised structured logging; `console.*` scattered across backend with inconsistent prefixes~~ — RESOLVED 2026-04-21 (TD-007). Pino + pino-http + redaction + request-id shipped; 0 `console.*` remain in `backend/src/`.
 
@@ -178,7 +179,7 @@ The release APK runs correctly via sideload but has never been uploaded to Googl
 
 ## 12. Conventions (do not violate without discussion)
 
-- All patient-touching endpoints **must** audit-log via `logAudit()` / `AuditLog.create()` and strip internal IDs (`cloudinaryPublicId`, `resourceType`, `accessMode`) via `Patient.toJSON`. **As of 2026-04-21 this rule has 8 known violations** — see `docs/audit/00-drift.md` §10. Fix any existing mutation endpoint you touch.
+- All patient-touching endpoints **must** audit-log via `logAudit()` / `AuditLog.create()` and strip internal IDs (`cloudinaryPublicId`, `resourceType`, `accessMode`) via `Patient.toJSON`. All 8 previously-uncovered mutation endpoints were wired up 2026-04-21 (TD-001); if you add a new mutation handler, emit an audit entry in the same fire-and-forget pattern and register the `action` value in [backend/src/models/AuditLog.js](backend/src/models/AuditLog.js) (the Mongoose `enum` silently rejects unknown values).
 - Admin-only routes enforced server-side (`verifyAdmin`). Do not rely only on FE hiding.
 - `GET /api/audits` is admin-only, hospital-scoped — `userId` is forced server-side, do not accept it from client.
 - Folder names are slugified for Cloudinary paths; never send raw names as public_ids.

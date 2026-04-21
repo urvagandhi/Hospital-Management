@@ -255,33 +255,35 @@ Incorrect claim:
 | CLAUDE.md §5 | Refresh token TTL 365 days | ⚠️ | [.env.example:24](../../.env.example) sets `REFRESH_TOKEN_EXPIRY=7d`. Doc-code mismatch; pin to 365d for mobile. |
 | CLAUDE.md §5 | Mobile 7-day Auth Code re-verify | ✅ | [middleware/auth.js](../../backend/src/middleware/auth.js) enforces `AUTH_CODE_REQUIRED`. |
 | backend.md §6 | Auto-delete daily 00:00 UTC, 90 days | ✅ | [jobs/autoDelete.job.js:12](../../backend/src/jobs/autoDelete.job.js) `cron.schedule("0 0 * * *", ...)`, calls `deleteOldPatients(90)`. |
-| Conventions §12 | Patient endpoints audit-log every action | ⚠️ | Mutation audit coverage has GAPS — see §10 below. |
+| Conventions §12 | Patient endpoints audit-log every action | 🛠️ | Mutation audit coverage shipped 2026-04-21 (TD-001) — see §10. |
 | Conventions §12 | `GET /api/audits` admin-only, `userId` forced server-side | ✅ | [audit.controller.js:43](../../backend/src/controllers/audit.controller.js) forces `userId: hospitalId`. |
 
 ---
 
-## 10. Audit Logging Gaps (Convention Violation)
+## 10. Audit Logging Gaps (Convention Violation) — 🛠️ RESOLVED 2026-04-21
 
-CLAUDE.md §12 asserts "All patient-touching endpoints audit-log." **Violated** — these mutations have no `AuditLog.create()` / `logAudit()` call:
+CLAUDE.md §12 asserts "All patient-touching endpoints audit-log." **Originally violated** — the table below tracked 8 mutations that skipped `AuditLog.create()` / `logAudit()`. Shipped under TD-001:
 
-| Endpoint | Controller | Line | Severity |
+| Endpoint | Controller | Handler | Audit action now emitted |
 |---|---|---|---|
-| POST `/api/patients` | patient.controller.js | `createPatient` | HIGH |
-| PUT `/api/patients/:patientId` | patient.controller.js | `updatePatient` | HIGH |
-| POST `/api/patients/:patientId/folders` | patient.controller.js | `createFolder` | MEDIUM |
-| POST `/api/patients/:patientId/files/:folderName` | patient.controller.js | `uploadFile` | HIGH |
-| PATCH `/api/patients/:patientId/files/:folderName/:fileId/rename` | patient.controller.js | `renameFile` | MEDIUM |
-| PATCH `/api/hospitals/me` | hospitals.controller.js | `patchMe` | MEDIUM |
-| PUT `/api/hospitals/:id` | hospitals.controller.js | `updateHospital` (only enable/disable is logged) | MEDIUM |
-| DELETE `/api/admin/cloudinary/orphans` | admin.controller.js | `deleteOrphans` | MEDIUM |
+| POST `/api/patients` | patient.controller.js | `createPatient` | `PATIENT_CREATED` |
+| PUT `/api/patients/:patientId` | patient.controller.js | `updatePatient` | `PATIENT_UPDATED` |
+| POST `/api/patients/:patientId/folders` | patient.controller.js | `createFolder` | `FOLDER_CREATED` |
+| POST `/api/patients/:patientId/files/:folderName` | patient.controller.js | `uploadFile` | `FILE_UPLOADED` |
+| PATCH `/api/patients/:patientId/files/:folderName/:fileId/rename` | patient.controller.js | `renameFile` | `FILE_RENAMED` |
+| PATCH `/api/hospitals/me` | hospitals.controller.js | `patchMe` | `PROFILE_PATCHED` (pre-existing) |
+| PUT `/api/hospitals/:id` | hospitals.controller.js | `updateHospital` | `HOSPITAL_UPDATED` + activeTransition `PROFILE_PATCHED` |
+| DELETE `/api/admin/cloudinary/orphans` | admin.controller.js | `deleteOrphans` | `ORPHAN_CLEANUP` |
 
-*Endpoints WITH audit coverage:* DELETE file, downloads (ZIP/PDF), all auth mutations, admin force-delete hospital, contact-change flow, resend-welcome.
+`AuditLog.action` enum also picked up `PATIENT_FILE_DELETE`, `HOSPITAL_RESEND_WELCOME`, `CONTACT_CHANGE_RESEND`, `AUTH_CODE_RESEND`, `BIOMETRIC_REGISTERED` — pre-existing emits that the Mongoose validator was silently rejecting.
+
+*Endpoints WITH audit coverage (prior to TD-001):* DELETE file, downloads (ZIP/PDF), all auth mutations, admin force-delete hospital, contact-change flow, resend-welcome.
 
 ---
 
 ## 11. Summary of Drift — Top 10 by Impact
 
-1. **Audit logging missing on 8 mutation endpoints** (§10) — violates explicit convention; compliance risk.
+1. 🛠️ ~~**Audit logging missing on 8 mutation endpoints** (§10) — violates explicit convention; compliance risk.~~ — RESOLVED 2026-04-21 (TD-001).
 2. **Refresh token rotation claim is implicit and wrong**: refresh token is reused across refreshes (§4). Token theft → indefinite access until session TTL.
 3. **`GET /api/hospitals` has no pagination** ([hospitals.controller.js:31](../../backend/src/controllers/hospitals.controller.js)); selects all, sorted by `createdAt`. Scales poorly. (Baseline does not flag.)
 4. **TOTP enum + env scaffolding are dead** across `AuditLog.actions` and `.env.example` (§3.4, §5.2) — confusing for new engineers.
