@@ -12,6 +12,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../hooks/useAuth";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import api from "../services/api";
 import { persistentLogger } from "../utils/persistentLogger";
 
@@ -128,9 +129,7 @@ const Dashboard: React.FC = () => {
 
   const activeFilterCount = countActiveFilters(filters);
 
-  useEffect(() => {
-    document.title = "Dashboard - Hospital Management";
-  }, []);
+  useDocumentTitle("Dashboard - Hospital Management");
 
   // Close filter popover on outside click / Escape.
   useEffect(() => {

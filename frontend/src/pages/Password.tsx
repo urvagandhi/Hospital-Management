@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { ErrorMessage } from "../components/ErrorMessage";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../hooks/useAuth";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import authService from "../services/authService";
 
 // ── Dynamic password policy ───────────────────────────────────────────────
@@ -148,9 +149,7 @@ const Password: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    document.title = "Change Password — Hospital Management";
-  }, []);
+  useDocumentTitle("Change Password — Hospital Management");
 
   useEffect(() => {
     if (!state.isAuthenticated && !state.loading) navigate("/login");

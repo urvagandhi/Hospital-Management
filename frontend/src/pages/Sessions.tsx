@@ -18,6 +18,7 @@ import { ErrorMessage } from "../components/ErrorMessage";
 import PageLoader from "../components/PageLoader";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../hooks/useAuth";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import authService from "../services/authService";
 
 interface SessionLocation {
@@ -179,9 +180,7 @@ const Sessions: React.FC = () => {
   const [bulkRevoking, setBulkRevoking] = useState(false);
   const [confirmBulkOpen, setConfirmBulkOpen] = useState(false);
 
-  useEffect(() => {
-    document.title = "Security & Sessions — Hospital Management";
-  }, []);
+  useDocumentTitle("Security & Sessions — Hospital Management");
 
   useEffect(() => {
     if (!state.isAuthenticated && !state.loading) navigate("/login");

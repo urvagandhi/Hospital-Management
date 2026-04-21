@@ -10,6 +10,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../hooks/useAuth";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 // import { authService } from "../services/authService"; // re-enable for Resend Code
 
 const OTP_LENGTH = 6;
@@ -29,9 +30,7 @@ export const VerifyAuthCode: React.FC = () => {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  useEffect(() => {
-    document.title = "Enter Auth Code — Hospital Management";
-  }, []);
+  useDocumentTitle("Enter Auth Code — Hospital Management");
 
   // Redirect if no tempToken — user arrived without completing step 1
   useEffect(() => {

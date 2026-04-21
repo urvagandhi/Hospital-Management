@@ -19,6 +19,7 @@ import { ErrorMessage } from "../components/ErrorMessage";
 import { LogoHeader } from "../components/LogoHeader";
 import { OtpInput } from "../components/OtpInput";
 import { TextInput } from "../components/TextInput";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import authService from "../services/authService";
 
 type Step = "identifier" | "otp" | "reset" | "done";
@@ -65,9 +66,7 @@ export const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [resendIn, setResendIn] = useState(0);
 
-  useEffect(() => {
-    document.title = "Forgot Password — Hospital Management";
-  }, []);
+  useDocumentTitle("Forgot Password — Hospital Management");
 
   // Clear any stale reset token on mount to avoid mixing flows.
   useEffect(() => {

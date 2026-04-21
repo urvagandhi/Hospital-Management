@@ -21,6 +21,7 @@ import { OtpInput } from "../components/OtpInput";
 import PageLoader from "../components/PageLoader";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../hooks/useAuth";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useScrollToHash } from "../hooks/useScrollToHash";
 import {
   Hospital,
@@ -44,6 +45,7 @@ const Profile: React.FC = () => {
   const networkStatus = useNetworkStatus();
   const isOnline = networkStatus === "online";
   useScrollToHash();
+  useDocumentTitle("Profile — Hospital Management");
 
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,10 +82,6 @@ const Profile: React.FC = () => {
     );
     return () => clearInterval(t);
   }, [resendCooldown]);
-
-  useEffect(() => {
-    document.title = "Profile — Hospital Management";
-  }, []);
 
   useEffect(() => {
     if (!state.isAuthenticated && !state.loading) navigate("/login");

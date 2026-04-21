@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import appLogo from "../assets/logo.png";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../hooks/useAuth";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 // Change this to your organisation's IT support address.
 const SUPPORT_EMAIL = "support@hospitalmanagement.com";
@@ -39,9 +40,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, state } = useAuth();
 
-  useEffect(() => {
-    document.title = "Login - Hospital Management";
-  }, []);
+  useDocumentTitle("Login - Hospital Management");
 
   const [formData, setFormData] = useState({ identifier: "", password: "" });
   const [errors, setErrors] = useState({ identifier: "", password: "" });
