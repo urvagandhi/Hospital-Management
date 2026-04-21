@@ -88,6 +88,10 @@ class ProfileActivity : BaseActivity() {
 
         observe()
         vm.loadProfile()
+    }
+
+    override fun onResume() {
+        super.onResume()
         refreshCacheInfo()
     }
 
@@ -257,11 +261,10 @@ class ProfileActivity : BaseActivity() {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val dao = AppDatabase.getDatabase(this@ProfileActivity).downloadCacheDao()
             val totalBytes = dao.totalCacheBytes() ?: 0L
-            val cacheDir = java.io.File(filesDir, "download_cache")
-            val fileCount = cacheDir.listFiles()?.count { !it.name.endsWith(".tmp") && !it.name.endsWith(".meta") } ?: 0
+            val fileCount = dao.totalCacheCount()
             val sizeMb = "%.1f".format(totalBytes / (1024.0 * 1024.0))
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                binding.tvCacheInfo.text = "Downloaded files: $fileCount items, $sizeMb MB"
+                binding.tvCacheInfo.text = "$fileCount items · $sizeMb MB"
             }
         }
     }
@@ -277,8 +280,8 @@ class ProfileActivity : BaseActivity() {
                     val cacheDir = java.io.File(filesDir, "download_cache")
                     cacheDir.listFiles()?.forEach { it.delete() }
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        binding.tvCacheInfo.text = "Downloaded files: 0 items, 0.0 MB"
                         GlassSnackbar.show(this@ProfileActivity, "Cache cleared", GlassSnackbar.Variant.SUCCESS)
+                        refreshCacheInfo()
                     }
                 }
             }

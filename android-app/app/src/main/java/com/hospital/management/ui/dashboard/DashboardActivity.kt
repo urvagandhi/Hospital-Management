@@ -193,22 +193,65 @@ class DashboardActivity : BaseActivity() {
     }
 
     private fun showLogoutDialog() {
-        AlertDialog.Builder(this, R.style.AlertDialogTheme)
-            .setTitle("Logout")
-            .setMessage("Are you sure you want to logout?")
-            .setPositiveButton("Yes") { _, _ ->
-                logout()
+        // Read pending-uploads count for THIS hospital before showing the
+        // dialog. If there are unsynced docs, the user gets a stronger warning
+        // because logout will discard them (healthcare-compliance: we never
+        // upload doc A's queued scans under doc B's later session).
+        lifecycleScope.launch {
+            val hospitalId = tokenManager.getHospitalId().orEmpty()
+            val pendingCount = if (hospitalId.isNotEmpty()) {
+                try {
+                    AppDatabase.getDatabase(this@DashboardActivity)
+                        .documentDao()
+                        .getPendingCountForHospital(hospitalId)
+                } catch (_: Throwable) { 0 }
+            } else 0
+
+            val online = isNetworkAvailable()
+            val (title, message, confirmLabel) = when {
+                pendingCount > 0 && !online -> Triple(
+                    "Discard unsynced scans?",
+                    "You have $pendingCount document(s) waiting to upload but you're offline. " +
+                        "Logging out now will discard them — they cannot be transferred to another " +
+                        "account on this device. Logout anyway?",
+                    "Discard & Logout",
+                )
+                pendingCount > 0 -> Triple(
+                    "$pendingCount upload(s) still syncing",
+                    "There are $pendingCount document(s) still uploading. " +
+                        "Logging out will cancel them. Wait for sync to finish, or logout anyway?",
+                    "Discard & Logout",
+                )
+                else -> Triple(
+                    "Logout",
+                    "Are you sure you want to logout?",
+                    "Logout",
+                )
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+
+            AlertDialog.Builder(this@DashboardActivity, R.style.AlertDialogTheme)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton(confirmLabel) { _, _ -> logout() }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
     }
 
+    @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
     private fun logout() {
-        authViewModel.logout()
-        RetrofitClient.reset()
-        val intent = Intent(this@DashboardActivity, LoginActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
+        // Single canonical logout path. SessionManager.logoutUser:
+        //   • Cancels in-flight sync worker
+        //   • Deletes pending uploads owned by this hospital
+        //   • Calls /api/auth/logout (or queues OfflineLogoutWorker if offline)
+        //   • Clears local tokens
+        //   • Navigates to LoginActivity
+        // Runs on GlobalScope (NOT lifecycleScope) so it survives the
+        // imminent finish() of this activity. NonCancellable inside
+        // SessionManager.logoutUser further protects the backend call.
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+            SessionManager.logoutUser(this@DashboardActivity.applicationContext)
+        }
         if (android.os.Build.VERSION.SDK_INT >= 34) {
             overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, android.R.anim.fade_in, android.R.anim.fade_out)
         } else {
