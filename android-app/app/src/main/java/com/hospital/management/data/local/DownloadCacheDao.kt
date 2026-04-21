@@ -20,6 +20,9 @@ interface DownloadCacheDao {
     @Query("SELECT SUM(sizeBytes) FROM download_cache")
     suspend fun totalCacheBytes(): Long?
 
+    @Query("SELECT COUNT(*) FROM download_cache")
+    suspend fun totalCacheCount(): Int
+
     /**
      * Returns LRU entries eligible for eviction.
      * Excludes anything accessed within the last 60 seconds (safety window for

@@ -2,9 +2,14 @@ package com.hospital.management.utils
 
 import android.content.Context
 import android.content.Intent
+import androidx.work.WorkManager
+import com.hospital.management.HospitalApplication
 import com.hospital.management.data.api.RetrofitClient
+import com.hospital.management.data.local.AppDatabase
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.ui.auth.LoginActivity
+import com.hospital.management.worker.DownloadWorker
+import com.hospital.management.worker.OfflineLogoutWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -88,13 +93,105 @@ object SessionManager {
     /**
      * Logout user and clear all session data.
      * Suspends until tokens are fully cleared before navigating.
+     *
+     * Best-effort calls the backend `/api/auth/logout` so the server hard-
+     * deletes the session record (otherwise it lingers as a "ghost" that
+     * counts toward the 2-mobile-session limit). Notification failures and
+     * 401s never block local cleanup — the user must always end up signed
+     * out locally even if the network is down.
+     */
+    /**
+     * Logout user and clear all session data.
+     *
+     * Sequence (this order matters):
+     *   1. Snapshot the refresh token + hospitalId BEFORE clearing locals.
+     *   2. Cancel any in-flight upload-sync worker so it can't race the
+     *      pending-doc deletion below.
+     *   3. Cancel + delete every pending upload owned by this hospital so
+     *      patient documents are not silently uploaded to a different
+     *      account if a new user logs in next (healthcare-compliance).
+     *   4. Try the direct backend logout call (NonCancellable so it survives
+     *      activity teardown).
+     *   5. If the direct call succeeded, we're done. If it failed (offline,
+     *      5xx, exception), enqueue an OfflineLogoutWorker carrying the
+     *      refresh-token snapshot — it retries with backoff until the
+     *      backend acknowledges, then the server-side session row is
+     *      hard-deleted, FCM token cleaned up, and the logout email sent.
+     *   6. Clear local tokens and navigate to login.
      */
     suspend fun logoutUser(context: Context) {
         _isSessionActive = false
-        kotlinx.coroutines.withContext(Dispatchers.IO) {
-            getTokenManager(context).clearAll()
+        val appCtx = context.applicationContext
+
+        kotlinx.coroutines.withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+            val tm = getTokenManager(context)
+
+            // 1. Snapshot — must happen BEFORE clearAll().
+            val refreshTokenSnapshot = tm.getRefreshToken()
+            val hospitalIdSnapshot = tm.getHospitalId().orEmpty()
+            val hadValidToken = tm.hasValidToken()
+
+            // 2. Stop the upload-sync worker so it can't race the cancellation below.
+            try {
+                WorkManager.getInstance(appCtx).cancelUniqueWork("auto_sync_documents")
+            } catch (_: Throwable) { /* WorkManager unavailable is fine */ }
+
+            // 2a. Cancel any in-flight download workers. The auth token they
+            //     captured at enqueue time is about to be revoked, and a
+            //     download continuing after logout would drop patient PDFs
+            //     onto a device where a different hospital may log in next —
+            //     same healthcare-compliance rationale as the upload cleanup
+            //     below. Also dismiss any ongoing/failed download
+            //     notifications so they don't linger post-logout.
+            try {
+                WorkManager.getInstance(appCtx).cancelAllWorkByTag(DownloadWorker.TAG_DOWNLOAD)
+            } catch (_: Throwable) { /* WorkManager unavailable is fine */ }
+            try {
+                val nm = appCtx.getSystemService(Context.NOTIFICATION_SERVICE)
+                    as? android.app.NotificationManager
+                nm?.activeNotifications?.forEach { sbn ->
+                    if (sbn.notification?.channelId == HospitalApplication.CHANNEL_DOWNLOADS) {
+                        nm.cancel(sbn.id)
+                    }
+                }
+            } catch (_: Throwable) { /* permission / API gaps — best-effort */ }
+
+            // 3. Cancel pending uploads owned by this hospital. Any docs
+            //    not owned by this hospital (legacy/foreign) are also
+            //    purged — the sync worker would drop them anyway, but
+            //    cleaning here keeps the local DB tidy.
+            if (hospitalIdSnapshot.isNotEmpty()) {
+                try {
+                    val dao = AppDatabase.getDatabase(appCtx).documentDao()
+                    val cancelled = dao.deleteAllForHospital(hospitalIdSnapshot)
+                    if (cancelled > 0) {
+                        android.util.Log.w("SessionManager", "Logout cancelled $cancelled pending upload(s) for hospital $hospitalIdSnapshot")
+                    }
+                } catch (e: Throwable) {
+                    android.util.Log.w("SessionManager", "Failed to clear pending uploads on logout: ${e.message}")
+                }
+            }
+
+            // 4. Direct backend logout (best-effort, survives cancellation).
+            var directOk = false
+            if (hadValidToken) {
+                try {
+                    val resp = RetrofitClient.getApiService(appCtx).logout()
+                    directOk = resp.isSuccessful
+                } catch (_: Throwable) { /* offline / 5xx → fall through to worker */ }
+            }
+
+            // 5. If direct call didn't land, queue the retrying worker so the
+            //    server-side session is cleaned up when network returns.
+            if (!directOk && !refreshTokenSnapshot.isNullOrEmpty()) {
+                OfflineLogoutWorker.enqueue(appCtx, refreshTokenSnapshot)
+            }
+
+            // 6. Clear local state.
+            tm.clearAll()
         }
-        // Reset Retrofit client to clear cookies and stale auth state
+
+        // Reset Retrofit client (clear cookies + cached instance).
         RetrofitClient.reset()
         cachedTokenManager = null
 

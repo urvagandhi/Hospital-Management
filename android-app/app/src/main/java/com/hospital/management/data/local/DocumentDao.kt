@@ -48,4 +48,22 @@ interface DocumentDao {
     // Reset any docs stuck in UPLOADING (e.g. from a crashed worker) back to PENDING so they're retried
     @Query("UPDATE offline_documents SET status = 'PENDING' WHERE status = 'UPLOADING'")
     suspend fun resetStuckUploading()
+
+    // ── Owner-scoped queries ──────────────────────────────────────────
+    // The owner_hospital_id column tags every queued doc with the hospital
+    // that scanned it. The sync worker uses these to enforce that uploads
+    // never cross account boundaries — see SyncDocumentsWorker.
+    @Query("SELECT COUNT(*) FROM offline_documents WHERE owner_hospital_id = :hospitalId AND status != 'COMPLETED' AND retryCount < 5")
+    suspend fun getPendingCountForHospital(hospitalId: String): Int
+
+    @Query("DELETE FROM offline_documents WHERE owner_hospital_id = :hospitalId")
+    suspend fun deleteAllForHospital(hospitalId: String): Int
+
+    // Drops legacy rows (owner='') AND rows belonging to other accounts.
+    // Used by the sync worker to garbage-collect orphans before any upload.
+    @Query("DELETE FROM offline_documents WHERE owner_hospital_id != :hospitalId")
+    suspend fun deleteAllNotOwnedBy(hospitalId: String): Int
+
+    @Query("SELECT * FROM offline_documents WHERE owner_hospital_id = :hospitalId AND status IN ('PENDING', 'FAILED') ORDER BY timestamp ASC")
+    suspend fun getPendingForHospital(hospitalId: String): List<OfflineDocument>
 }

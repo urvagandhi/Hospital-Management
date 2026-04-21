@@ -21,8 +21,7 @@ interface ApiService {
         @GET("/api/hospitals/{id}")
         suspend fun getHospitalById(@Path("id") id: String): Response<com.hospital.management.data.models.HospitalResponse>
     @POST("/api/auth/login")
-    @JvmSuppressWildcards
-    suspend fun login(@Body body: Map<String, Any>): Response<LoginResponse>
+    suspend fun login(@Body body: LoginRequest): Response<LoginResponse>
 
     // ── Self-service registration ──
     @POST("/api/auth/register")
@@ -69,6 +68,10 @@ interface ApiService {
     ): Response<LoginResponse>
 
     // Session management
+    @POST("/api/auth/logout")
+    @JvmSuppressWildcards
+    suspend fun logout(@Body body: Map<String, String> = emptyMap()): Response<Map<String, Any>>
+
     @GET("/api/auth/session/validate")
     suspend fun validateSession(): Response<Map<String, Any>>
 

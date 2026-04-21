@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [OfflineDocument::class, CachedPatient::class, CachedFileItem::class, DownloadCache::class],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,6 +42,18 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE offline_documents ADD COLUMN upload_profile_used INTEGER NOT NULL DEFAULT -1")
+            }
+        }
+
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Tag pending uploads with the hospital that owned them at scan
+                // time. Existing rows get '' — the sync worker treats those as
+                // orphaned and deletes them so they cannot leak into a different
+                // account on next login (healthcare-compliance requirement).
+                db.execSQL(
+                    "ALTER TABLE offline_documents ADD COLUMN owner_hospital_id TEXT NOT NULL DEFAULT ''"
+                )
             }
         }
 
@@ -104,7 +116,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "hospital_management_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
