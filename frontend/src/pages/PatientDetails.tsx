@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import api from "../services/api";
-import { persistentLogger } from "../utils/persistentLogger";
-import ZipSizeModal from "../components/ZipSizeModal";
+import { useNavigate, useParams } from "react-router-dom";
 import PdfModeModal from "../components/PdfModeModal";
+import Spinner from "../components/Spinner";
+import ZipSizeModal from "../components/ZipSizeModal";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import api from "../services/api";
+import { getFolderColor, getFolderIcon } from "../utils/folderVisuals";
+import { persistentLogger } from "../utils/persistentLogger";
 
 interface FileItem {
   fileName: string;
@@ -32,35 +35,11 @@ interface SizeCheckFolder {
   fileCount: number;
 }
 
-const folderIcons: Record<string, string> = {
-  "claim documents": "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-  id: "M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0",
-  "consultation papers": "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01",
-  "hospital indoor case, ot note, daily note": "M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2",
-  reports: "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-  "bills and prescriptions": "M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z",
-  "hospital bill": "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z",
-  others: "M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z",
-  extra: "M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8",
-  consents: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
-};
-
-const folderColors = [
-  { bg: "bg-blue-50", icon: "text-blue-500", hover: "hover:border-blue-200" },
-  { bg: "bg-emerald-50", icon: "text-emerald-500", hover: "hover:border-emerald-200" },
-  { bg: "bg-violet-50", icon: "text-violet-500", hover: "hover:border-violet-200" },
-  { bg: "bg-amber-50", icon: "text-amber-500", hover: "hover:border-amber-200" },
-  { bg: "bg-rose-50", icon: "text-rose-500", hover: "hover:border-rose-200" },
-  { bg: "bg-cyan-50", icon: "text-cyan-500", hover: "hover:border-cyan-200" },
-  { bg: "bg-indigo-50", icon: "text-indigo-500", hover: "hover:border-indigo-200" },
-  { bg: "bg-teal-50", icon: "text-teal-500", hover: "hover:border-teal-200" },
-  { bg: "bg-orange-50", icon: "text-orange-500", hover: "hover:border-orange-200" },
-  { bg: "bg-lime-50", icon: "text-lime-600", hover: "hover:border-lime-200" },
-];
 
 const PatientDetails: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
+  useDocumentTitle("Patient Details — Hospital Management");
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -75,6 +54,59 @@ const PatientDetails: React.FC = () => {
   const [pdfModal, setPdfModal] = useState(false);
 
   const [syncing, setSyncing] = useState(false);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Edit Patient — intentionally mobile-only (CLAUDE.md §11: web is read-mostly
+  // for mutations). The code is preserved in comments below; uncomment the
+  // state, handlers, button, and modal JSX to re-enable web editing.
+  // ─────────────────────────────────────────────────────────────────────────
+  // const [editOpen, setEditOpen] = useState(false);
+  // const [editForm, setEditForm] = useState({ patientName: "", remarks: "" });
+  // const [editSaving, setEditSaving] = useState(false);
+  // const [editError, setEditError] = useState<string | null>(null);
+  //
+  // const openEdit = () => {
+  //   if (!patient) return;
+  //   setEditForm({
+  //     patientName: patient.patientName,
+  //     remarks: patient.remarks || "",
+  //   });
+  //   setEditError(null);
+  //   setEditOpen(true);
+  // };
+  //
+  // const saveEdit = async () => {
+  //   if (!patient) return;
+  //   const name = editForm.patientName.trim();
+  //   if (!name) {
+  //     setEditError("Patient name cannot be empty.");
+  //     return;
+  //   }
+  //   if (editForm.remarks.length > 500) {
+  //     setEditError("Remarks must be 500 characters or less.");
+  //     return;
+  //   }
+  //   setEditSaving(true);
+  //   setEditError(null);
+  //   try {
+  //     const body = {
+  //       patientName: name,
+  //       remarks: editForm.remarks.trim(),
+  //     };
+  //     await api.put(`/patients/${patient._id}`, body);
+  //     setPatient((p) =>
+  //       p ? { ...p, patientName: body.patientName, remarks: body.remarks } : p,
+  //     );
+  //     setEditOpen(false);
+  //   } catch (err: unknown) {
+  //     const e = err as { response?: { data?: { message?: string } }; message?: string };
+  //     setEditError(
+  //       e.response?.data?.message || e.message || "Failed to save patient.",
+  //     );
+  //   } finally {
+  //     setEditSaving(false);
+  //   }
+  // };
 
   useEffect(() => {
     fetchPatient();
@@ -188,12 +220,9 @@ const PatientDetails: React.FC = () => {
     }
   };
 
-  const getInitials = (name: string) =>
-    name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-8">
+      <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-8">
         <div className="max-w-7xl mx-auto">
           {/* Skeleton */}
           <div className="animate-pulse space-y-6">
@@ -220,7 +249,7 @@ const PatientDetails: React.FC = () => {
 
   if (!patient) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex items-center justify-center">
+      <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -239,117 +268,234 @@ const PatientDetails: React.FC = () => {
   const totalFileCount = patient.folders.reduce((sum, f) => sum + f.files.length, 0);
   const hasNoFiles = totalFileCount === 0;
   const foldersWithFiles = patient.folders.filter((f) => f.files.length > 0).length;
+  // const patientInitials = patient.patientName
+  //   .split(" ")
+  //   .map((n) => n[0])
+  //   .filter(Boolean)
+  //   .slice(0, 2)
+  //   .join("")
+  //   .toUpperCase();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Back button */}
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 mb-6 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Dashboard
-        </button>
-
-        {/* Patient Info Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
-          <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 px-6 sm:px-8 py-5">
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10" />
-              <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-white/10" />
-            </div>
-            <div className="relative flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center text-white text-lg font-bold">
-                  {getInitials(patient.patientName)}
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                    {patient.patientName}
-                    <button
-                      onClick={refreshPatient}
-                      disabled={syncing}
-                      title="Refresh data"
-                      className="p-1 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      <svg className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </button>
-                  </h1>
-                  <p className="text-blue-100 text-sm">{patient.patientId}</p>
-                </div>
-              </div>
-              <div className="hidden sm:flex items-center gap-2">
-                <button
-                  onClick={handleDownloadAllPdf}
-                  disabled={pdfLoading || hasNoFiles}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-white/15 text-white rounded-xl hover:bg-white/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors backdrop-blur-sm"
+    <div className="relative min-h-[calc(100vh-4rem)] bg-surface-bg overflow-hidden">
+      {/* Decorative primary glow — single element for the whole page */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 -right-16 w-96 h-96 rounded-full bg-primary-100/50 blur-3xl"
+      />
+      <header className="relative">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Top row: back + identity + actions */}
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <button
+                onClick={() => navigate("/dashboard")}
+                aria-label="Back to dashboard"
+                className="w-10 h-10 shrink-0 rounded-full text-neutral-500 hover:text-primary-600 hover:bg-primary-100 flex items-center justify-center transition-colors"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-5 h-5"
+                  aria-hidden="true"
                 >
-                  {pdfLoading ? (
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  )}
-                  PDF
-                </button>
-                <button
-                  onClick={handleDownloadAllZip}
-                  disabled={zipLoading || hasNoFiles}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-white/15 text-white rounded-xl hover:bg-white/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors backdrop-blur-sm"
-                >
-                  {zipLoading ? (
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                  )}
-                  ZIP
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Patient info row */}
-          <div className="px-6 sm:px-8 py-4 flex flex-wrap gap-x-8 gap-y-3 border-b border-gray-100">
-            {patient.remarks && (
-              <div className="flex items-center gap-2 text-sm">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
                 </svg>
-                <span className="text-gray-500">Remarks:</span>
-                <span className="text-gray-900 font-medium">{patient.remarks}</span>
+              </button>
+
+              {/* Patient initials avatar */}
+              {/* <div
+                aria-hidden="true"
+                className="hidden sm:flex h-12 w-12 shrink-0 rounded-xl bg-gradient-primary text-white font-heading font-bold text-base items-center justify-center shadow-primary ring-2 ring-white"
+              >
+                {patientInitials || "?"}
+              </div> */}
+
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1.5">
+                  <h1 className="font-heading text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight truncate">
+                    {patient.patientName}
+                  </h1>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary-50 text-primary-700 font-mono text-xs font-semibold ring-1 ring-inset ring-primary-600/15 tracking-wider">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-3 h-3"
+                      aria-hidden="true"
+                    >
+                      <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                      <line x1="7" y1="7" x2="7.01" y2="7" />
+                    </svg>
+                    {patient.patientId}
+                  </span>
+                  <button
+                    onClick={refreshPatient}
+                    disabled={syncing}
+                    title="Refresh"
+                    aria-label="Refresh patient"
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-40"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`}
+                      aria-hidden="true"
+                    >
+                      <polyline points="23 4 23 10 17 10" />
+                      <polyline points="1 20 1 14 7 14" />
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-sm text-neutral-500 flex items-center gap-1.5">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 4h16v4H4z" />
+                    <path d="M4 12h16v8H4z" />
+                  </svg>
+                  {totalFileCount} file{totalFileCount !== 1 ? "s" : ""} in{" "}
+                  {foldersWithFiles} folder{foldersWithFiles !== 1 ? "s" : ""}
+                </p>
               </div>
-            )}
-            <div className="flex items-center gap-2 text-sm ml-auto">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full ring-1 ring-inset ring-blue-600/20">
-                {totalFileCount} file{totalFileCount !== 1 ? "s" : ""} in {foldersWithFiles} folder{foldersWithFiles !== 1 ? "s" : ""}
-              </span>
+            </div>
+
+            {/* Action bar */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Edit Patient — mobile-only (CLAUDE.md §11). Uncomment to re-enable.
+              <button
+                type="button"
+                onClick={openEdit}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-white text-primary-700 border border-neutral-200 hover:bg-primary-50 hover:border-primary-200 text-sm font-semibold shadow-card transition-colors"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4"
+                  aria-hidden="true"
+                >
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Edit Patient
+              </button>
+              */}
+              <button
+                type="button"
+                onClick={handleDownloadAllPdf}
+                disabled={pdfLoading || hasNoFiles}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 hover:border-red-200 text-sm font-semibold shadow-card transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-red-50"
+              >
+                {pdfLoading ? (
+                  <Spinner variant="scan" size="sm" />
+                ) : (
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <path d="M9 13v5" />
+                    <path d="m6.5 15.5 2.5-2.5 2.5 2.5" />
+                  </svg>
+                )}
+                Download All PDF
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadAllZip}
+                disabled={zipLoading || hasNoFiles}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-primary text-white font-semibold text-sm shadow-primary hover:shadow-card-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {zipLoading ? (
+                  <Spinner variant="scan" size="sm" />
+                ) : (
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M10 7h4" />
+                    <path d="M10 11h4" />
+                    <path d="M10 15h4" />
+                  </svg>
+                )}
+                Download All ZIP
+              </button>
             </div>
           </div>
 
-          {/* Mobile download buttons */}
-          <div className="sm:hidden px-6 py-3 flex gap-2 border-b border-gray-100">
-            <button
-              onClick={handleDownloadAllPdf}
-              disabled={pdfLoading || hasNoFiles}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 disabled:opacity-40 transition-colors"
-            >
-              Download PDF
-            </button>
-            <button
-              onClick={handleDownloadAllZip}
-              disabled={zipLoading || hasNoFiles}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 disabled:opacity-40 transition-colors"
-            >
-              Download ZIP
-            </button>
+          {/* Remarks — always visible, primary-accented */}
+          <div className="mt-5 relative bg-white rounded-xl border border-primary-100 pl-5 pr-5 py-4 overflow-hidden">
+            <span
+              aria-hidden="true"
+              className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-primary"
+            />
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-primary-700 mb-1.5">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-3.5 h-3.5"
+                aria-hidden="true"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Clinical Remarks
+            </div>
+            {patient.remarks ? (
+              <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
+                {patient.remarks}
+              </p>
+            ) : (
+              <p className="text-sm italic text-neutral-400">
+                No remarks added for this patient.
+              </p>
+            )}
           </div>
         </div>
+      </header>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Folders Header */}
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-gray-900">Document Folders</h2>
@@ -359,8 +505,8 @@ const PatientDetails: React.FC = () => {
         {/* Folders Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {patient.folders.map((folder, idx) => {
-            const color = folderColors[idx % folderColors.length];
-            const iconPath = folderIcons[folder.name] || "M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z";
+            const color = getFolderColor(idx);
+            const iconPath = getFolderIcon(folder.name);
             const hasFiles = folder.files.length > 0;
 
             return (
@@ -376,9 +522,8 @@ const PatientDetails: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={iconPath} />
                       </svg>
                     </div>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      hasFiles ? "bg-blue-50 text-blue-600" : "bg-gray-50 text-gray-400"
-                    }`}>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${hasFiles ? "bg-blue-50 text-blue-600" : "bg-gray-50 text-gray-400"
+                      }`}>
                       {folder.files.length} file{folder.files.length !== 1 ? "s" : ""}
                     </span>
                   </div>
@@ -420,6 +565,75 @@ const PatientDetails: React.FC = () => {
         onConfirm={(mode) => triggerPdfDownload(mode)}
         loading={pdfLoading}
       />
+
+      {/* Edit Patient modal — mobile-only (CLAUDE.md §11). Uncomment to re-enable on web.
+      {editOpen && (
+        <div
+          className="fixed inset-0 z-[100] overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-patient-title"
+        >
+          <div
+            className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm"
+            onClick={() => !editSaving && setEditOpen(false)}
+          />
+          <div className="flex min-h-full items-end justify-center p-4 sm:items-center sm:p-0">
+            <div className="relative w-full sm:max-w-md bg-surface-white rounded-2xl shadow-modal ring-1 ring-neutral-200 overflow-hidden">
+              <div className="px-6 pt-6 pb-2 flex items-start justify-between">
+                <div>
+                  <h3
+                    id="edit-patient-title"
+                    className="font-heading text-lg font-bold text-neutral-900"
+                  >
+                    Edit Patient
+                  </h3>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Update the patient's name or clinical remarks.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => !editSaving && setEditOpen(false)}
+                  aria-label="Close"
+                  className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-6 py-4 space-y-4">
+                {editError && (
+                  <div role="alert" className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger/5 px-3 py-2 text-sm text-danger">
+                    <span>{editError}</span>
+                  </div>
+                )}
+                <label className="block">
+                  <span className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1.5">Patient Name</span>
+                  <input type="text" value={editForm.patientName} onChange={(e) => setEditForm((f) => ({ ...f, patientName: e.target.value }))} disabled={editSaving} className="w-full bg-surface-white border border-neutral-200 rounded-xl px-3 py-2.5 text-sm" />
+                </label>
+                <label className="block">
+                  <span className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1.5">
+                    <span>Remarks</span>
+                    <span className="text-neutral-400 normal-case tracking-normal">{editForm.remarks.length}/500</span>
+                  </span>
+                  <textarea rows={4} value={editForm.remarks} onChange={(e) => setEditForm((f) => ({ ...f, remarks: e.target.value.slice(0, 500) }))} disabled={editSaving} className="w-full bg-surface-white border border-neutral-200 rounded-xl px-3 py-2.5 text-sm resize-none" />
+                </label>
+              </div>
+              <div className="px-6 py-4 bg-neutral-50 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <button type="button" onClick={() => !editSaving && setEditOpen(false)} disabled={editSaving} className="px-4 py-2 rounded-xl text-sm font-semibold text-neutral-700 bg-surface-white border border-neutral-200">Cancel</button>
+                <button type="button" onClick={saveEdit} disabled={editSaving} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-primary">
+                  {editSaving && <Spinner variant="heartbeat" size="sm" />}
+                  {editSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      */}
     </div>
   );
 };
@@ -462,14 +676,13 @@ const FolderDownloadBtn: React.FC<{
     <button
       onClick={handleClick}
       disabled={loading}
-      className={`flex-1 text-xs px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 disabled:opacity-50 transition-colors font-medium ${
-        isPdf
+      className={`flex-1 text-xs px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 disabled:opacity-50 transition-colors font-medium ${isPdf
           ? "bg-red-50 text-red-600 hover:bg-red-100"
           : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-      }`}
+        }`}
     >
       {loading ? (
-        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+        <Spinner variant="scan" size="xs" />
       ) : (
         <>
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>

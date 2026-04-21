@@ -5,8 +5,9 @@
  */
 
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import appLogo from "../assets/logo.png";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 const TERMS_VERSION = "1.0";
 const LAST_UPDATED = "2026-04-14";
@@ -127,7 +128,16 @@ const sections = [
 ];
 
 const Terms: React.FC = () => {
+  useDocumentTitle("Terms of Service — Hospital Management");
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Return to the previous page (e.g. /login) rather than always going home.
+  // Fall back to "/" when the user opened this URL directly and has no history.
+  const handleBack = () => {
+    if (location.key && location.key !== "default") navigate(-1);
+    else navigate("/");
+  };
 
   return (
     <div className="bg-white min-h-screen">
@@ -139,7 +149,7 @@ const Terms: React.FC = () => {
             <span className="text-sm font-semibold text-gray-900">HospitAll</span>
           </div>
           <button
-            onClick={() => navigate("/")}
+            onClick={handleBack}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

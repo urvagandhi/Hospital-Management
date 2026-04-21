@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import {
   AuditLogEntry,
   listAuditActions,
@@ -11,6 +12,7 @@ const statusBadge: Record<string, string> = {
 };
 
 const ActivityLog: React.FC = () => {
+  useDocumentTitle("Activity Log — Hospital Management");
   const [items, setItems] = useState<AuditLogEntry[]>([]);
   const [actions, setActions] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -67,7 +69,7 @@ const ActivityLog: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Activity Log</h1>
         <p className="text-sm text-gray-500 mb-6">

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/Button";
 import { TextInput } from "../components/TextInput";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import api from "../services/api";
 import authService from "../services/authService";
 
@@ -22,6 +23,7 @@ interface ChangePasswordResponse {
 
 const ChangePassword: React.FC = () => {
   const navigate = useNavigate();
+  useDocumentTitle("Set New Password — Hospital Management");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);

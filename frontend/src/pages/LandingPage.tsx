@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import appLogo from "../assets/logo.png";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 const LandingPage: React.FC = () => {
+  useDocumentTitle("HospitALL — Hospital Records Management");
   const navigate = useNavigate();
   const { state } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
