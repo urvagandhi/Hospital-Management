@@ -27,12 +27,12 @@ class SyncDocumentsWorker(
 
     companion object {
         private const val TAG = "SyncDocumentsWorker"
-        // Was 5 — far too aggressive for big-file uploads on flaky cellular,
-        // because the OkHttp 30s readTimeout would burn the whole budget in
-        // one bad evening. With timeout now at 300s, 50 attempts is plenty of
-        // patience, and WorkManager exponential backoff (capped at ~5 min)
-        // means 50 attempts stretches over hours, not minutes.
-        private const val MAX_RETRY_COUNT = 50
+        // No retry cap — every queued file MUST eventually upload.
+        // Failures keep status=PENDING; the worker returns Result.retry()
+        // and WorkManager exponential backoff (capped near 5 min) plus
+        // network-restore + app-open triggers in HospitalApplication keep
+        // attempting indefinitely. retryCount is preserved on the row for
+        // diagnostics only — it no longer gates execution.
         private const val MIN_PROGRESS_INTERVAL_MS = 500L
         private const val SPEED_WINDOW_MS = 1_000L
     }
@@ -119,18 +119,17 @@ class SyncDocumentsWorker(
                 Log.d(TAG, "Starting sync for ${pendingDocs.size} pending documents")
                 var successCount = 0
                 var retryableFailureCount = 0
-                var skippedExhaustedCount = 0
                 val totalFiles = pendingDocs.size
 
                 for ((index, doc) in pendingDocs.withIndex()) {
                     if (isStopped) break
 
-                    // Skip permanently failed documents (exceeded max retries)
-                    if (doc.retryCount >= MAX_RETRY_COUNT) {
-                        Log.w(TAG, "Skipping document that exceeded max retries: ${doc.fileUri}")
-                        skippedExhaustedCount++
-                        continue
-                    }
+                    // No retry cap — every queued doc must eventually upload.
+                    // WorkManager exponential backoff (~30s → 5min cap) plus
+                    // network-availability + app-open triggers in
+                    // HospitalApplication mean we won't burn battery
+                    // hammering. retryCount is still tracked for diagnostics
+                    // but no longer gates execution.
 
                     try {
                         repository.updateStatus(doc, SyncStatus.UPLOADING)
@@ -206,14 +205,20 @@ class SyncDocumentsWorker(
                                successCount++
                            } else {
                                Log.e(TAG, "Upload failed for document: ${result.message}")
-                               val shouldRetry = result.retryable
+                               // Always reset to PENDING so future sync runs (auto on
+                               // network restore, manual on app open) pick this doc up
+                               // again — the user explicitly wants every queued file
+                               // to upload eventually, no matter how many retries it
+                               // takes. retryCount is still incremented for diagnostics.
                                val updatedDoc = doc.copy(
-                                   status = SyncStatus.FAILED,
-                                   retryCount = if (shouldRetry) doc.retryCount + 1 else MAX_RETRY_COUNT,
+                                   status = SyncStatus.PENDING,
+                                   retryCount = doc.retryCount + 1,
                                    errorMessage = result.message?.take(200) ?: "Upload returned error"
                                )
                                documentDao.update(updatedDoc)
-                               if (shouldRetry) retryableFailureCount++
+                               // Count both retryable and non-retryable failures the same way:
+                               // we want WorkManager to keep retrying with backoff.
+                               retryableFailureCount++
                            }
                         } else {
                             // File not found locally — likely already uploaded by a
@@ -224,12 +229,16 @@ class SyncDocumentsWorker(
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error syncing document", e)
+                        // Same as the result-not-success branch: keep PENDING so
+                        // the next sync run picks it up again. Never permanently
+                        // abandon a queued doc.
                         val updatedDoc = doc.copy(
-                            status = SyncStatus.FAILED,
+                            status = SyncStatus.PENDING,
                             retryCount = doc.retryCount + 1,
                             errorMessage = e.message?.take(200)
                         )
                         documentDao.update(updatedDoc)
+                        retryableFailureCount++
                     }
                 }
 
@@ -251,17 +260,16 @@ class SyncDocumentsWorker(
                     )
                 }
 
-                val actionableCount = pendingDocs.size - skippedExhaustedCount
-                if (actionableCount <= 0) {
+                if (successCount == pendingDocs.size) {
+                    // Everything cleared — let WorkManager mark this run done.
                     Result.success()
-                } else if (successCount == actionableCount) {
-                    Result.success()
-                } else if (retryableFailureCount > 0) {
-                    // Retry when at least one failure is recoverable.
-                    Result.retry()
                 } else {
-                    // Only unretryable failures remain; avoid infinite failing sync loops.
-                    Result.success()
+                    // Anything still pending (failed this round) → ask
+                    // WorkManager to retry with exponential backoff. Network
+                    // callback in HospitalApplication will also re-enqueue
+                    // when connectivity returns. The combination guarantees
+                    // every queued doc keeps trying until it lands.
+                    Result.retry()
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Sync worker failed", e)
