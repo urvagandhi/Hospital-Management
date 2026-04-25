@@ -23,7 +23,7 @@
     "@aws-sdk/s3-request-presigner": "^3.932.0",
     "@upstash/redis": "^1.37.0",
     "archiver": "^7.0.1",
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
