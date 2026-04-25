@@ -336,34 +336,52 @@ class UploadActivity : BaseActivity() {
                 val idempotencyKey = docRepository.newIdempotencyKey()
 
                 if (isOnline) {
-                    binding.tvUploadProgress.text = "Uploading PDF..."
-                    val result = docRepository.uploadDocument(patientId, folderName, pdfFile, idempotencyKey, uploadProfileUsed)
+                    // Hand off to a foreground UploadWorker so the upload survives
+                    // app backgrounding / Doze, and the user sees a system-style
+                    // progress notification with byte-level percentage. The worker
+                    // posts a "Upload complete" notification on success that taps
+                    // through to the dashboard. We finish() the Activity right
+                    // after enqueue — the notification carries the UX from here.
+                    val ownerHospitalId = tokenManager.getHospitalId() ?: ""
+                    val constraints = androidx.work.Constraints.Builder()
+                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                        .build()
+                    val inputData = androidx.work.Data.Builder()
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_PATIENT_ID, patientId)
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_FOLDER_NAME, folderName)
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_URI, android.net.Uri.fromFile(pdfFile).toString())
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_NAME, pdfFile.name)
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_IDEMPOTENCY_KEY, idempotencyKey)
+                        .putInt(com.hospital.management.worker.UploadWorker.KEY_UPLOAD_PROFILE_USED, uploadProfileUsed)
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_OWNER_HOSPITAL_ID, ownerHospitalId)
+                        .build()
+                    val request = androidx.work.OneTimeWorkRequestBuilder<com.hospital.management.worker.UploadWorker>()
+                        .setInputData(inputData)
+                        .setConstraints(constraints)
+                        .addTag(com.hospital.management.worker.UploadWorker.TAG_UPLOAD)
+                        .setBackoffCriteria(
+                            androidx.work.BackoffPolicy.EXPONENTIAL,
+                            30,
+                            java.util.concurrent.TimeUnit.SECONDS
+                        )
+                        .build()
+
+                    androidx.work.WorkManager.getInstance(applicationContext)
+                        .enqueueUniqueWork(
+                            "upload_${idempotencyKey}",
+                            androidx.work.ExistingWorkPolicy.KEEP,
+                            request
+                        )
 
                     binding.progressBar.visibility = View.GONE
                     binding.btnUpload.isEnabled = true
                     binding.tvUploadProgress.visibility = View.GONE
-
-                    if (result.isSuccess) {
-                        // Delete local PDF after successful upload
-                        pdfFile.delete()
-                        Toast.makeText(this@UploadActivity, "PDF uploaded successfully!", Toast.LENGTH_SHORT).show()
-                        finish()
-                    } else {
-                        if (result.retryable) {
-                            // Retryable failures (network/server) are safe to queue for later sync.
-                            // Tag with current hospitalId so the sync worker can refuse to upload
-                            // it under a different account if the user logs out and another logs in.
-                            val ownerHospitalId = tokenManager.getHospitalId() ?: ""
-                            docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), ownerHospitalId, idempotencyKey, uploadProfileUsed)
-                            Toast.makeText(this@UploadActivity, "Upload failed. Saved offline.", Toast.LENGTH_LONG).show()
-                            finish()
-                        } else {
-                            // Permanent failures (e.g. payload rejected) should not be queued as pending.
-                            pdfFile.delete()
-                            val backendMessage = result.message?.takeIf { it.isNotBlank() } ?: "Upload rejected by server"
-                            Toast.makeText(this@UploadActivity, backendMessage, Toast.LENGTH_LONG).show()
-                        }
-                    }
+                    Toast.makeText(
+                        this@UploadActivity,
+                        getString(R.string.upload_in_progress_toast),
+                        Toast.LENGTH_LONG
+                    ).show()
+                    finish()
                 } else {
                     // Offline - save PDF locally with its key + owner tag
                     val ownerHospitalId = tokenManager.getHospitalId() ?: ""

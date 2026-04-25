@@ -6,8 +6,10 @@ import com.hospital.management.data.api.ApiService
 import com.hospital.management.data.local.DocumentDao
 import com.hospital.management.data.local.OfflineDocument
 import com.hospital.management.data.local.SyncStatus
+import com.hospital.management.worker.ProgressRequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.io.IOException
@@ -33,7 +35,8 @@ class DocumentRepository(
         folderName: String,
         file: File,
         idempotencyKey: String,
-        uploadProfileUsed: Int = -1
+        uploadProfileUsed: Int = -1,
+        onByteProgress: ((uploadedBytes: Long, totalBytes: Long) -> Unit)? = null,
     ): UploadAttempt {
         return try {
             val mediaType = when {
@@ -41,7 +44,15 @@ class DocumentRepository(
                 file.name.endsWith(".png", ignoreCase = true) -> "image/png"
                 else -> "image/jpeg"
             }
-            val requestFile = file.asRequestBody(mediaType.toMediaTypeOrNull())
+            val rawRequestFile: RequestBody = file.asRequestBody(mediaType.toMediaTypeOrNull())
+            // ProgressRequestBody is stateless — every retry of this suspend call
+            // builds a fresh wrapper, so byte counters always start at 0 instead
+            // of resuming mid-stream (which would corrupt notification progress).
+            val requestFile: RequestBody = if (onByteProgress != null) {
+                ProgressRequestBody(rawRequestFile, onByteProgress)
+            } else {
+                rawRequestFile
+            }
             val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
 
             val response = apiService.uploadFile(patientId, folderName, body, idempotencyKey, uploadProfileUsed)
