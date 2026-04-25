@@ -40,18 +40,18 @@
                 android:id="@+id/bannerTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/inter_semi_bold"
+                android:fontFamily="@font/inter_semibold"
                 android:textSize="13sp"
-                android:textColor="@color/color_text_primary"
+                android:textColor="@color/color_on_surface"
                 tools:text="Background activity" />
 
             <TextView
                 android:id="@+id/bannerSubtext"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/inter_regular"
+                android:fontFamily="@font/inter"
                 android:textSize="12sp"
-                android:textColor="@color/color_text_secondary"
+                android:textColor="@color/color_on_surface_variant"
                 tools:text="2 uploading · 1 syncing" />
         </LinearLayout>
     </LinearLayout>
