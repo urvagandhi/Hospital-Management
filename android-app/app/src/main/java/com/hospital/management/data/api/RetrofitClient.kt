@@ -15,7 +15,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
-    const val BASE_URL = "https://hospital-management-8lbf.onrender.com"
+    // TD-A05 (2026-04-25): backed by BuildConfig.BASE_URL (per-buildType in
+    // app/build.gradle). Kept as a `val` re-export so callers like
+    // OfflineLogoutWorker can keep referencing RetrofitClient.BASE_URL.
+    val BASE_URL: String = BuildConfig.BASE_URL
 
     @Volatile
     private var retrofit: Retrofit? = null

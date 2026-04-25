@@ -66,7 +66,7 @@ class HospitalApplication : Application() {
         }
 
         // Initialize NetworkMonitor singleton (online/offline indicator)
-        NetworkMonitor.init(this, "https://hospital-management-8lbf.onrender.com")
+        NetworkMonitor.init(this, BuildConfig.BASE_URL)
 
         // Register network connectivity listener for auto-sync
         registerNetworkCallback()
