@@ -110,6 +110,17 @@ if (config.NODE_ENV === "production") {
   if (!config.CLOUDINARY_CLOUD_NAME && !config.R2_ACCESS_KEY_ID) {
     logger.warn({ event: "env_storage_missing" }, "WARNING: Neither Cloudinary nor R2 storage configured for production");
   }
+  // TD-D4 (2026-04-25): the compression sidecar is mandatory in prod. Without
+  // it, big-patient PDF/ZIP exports fall back to in-process pdf-lib merge,
+  // which OOMs the Node process on patients with many large files. Render
+  // currently has USE_COMPRESSION_SERVICE=true; this guard prevents a future
+  // deploy from silently regressing to the OOM path. Set to "false" in prod
+  // only when a follow-up ticket builds the merge path natively into Node.
+  if (!config.USE_COMPRESSION_SERVICE) {
+    throw new Error(
+      "OPS ALERT: USE_COMPRESSION_SERVICE must be 'true' in production. The in-process pdf-lib fallback OOMs at scale; the sidecar is mandatory.",
+    );
+  }
 }
 
 if (config.USE_COMPRESSION_SERVICE) {
