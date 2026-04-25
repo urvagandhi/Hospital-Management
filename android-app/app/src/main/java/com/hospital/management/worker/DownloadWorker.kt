@@ -424,12 +424,15 @@ class DownloadWorker(
     }
 
     private fun finalizeReady(finalFile: File) {
-        // Clear ongoing foreground notification and post a "Ready" notification
-        // that survives after the worker exits.
+        // Foreground service teardown will remove the notification posted under
+        // notificationId once doWork() returns. Post the Ready notification
+        // under a distinct id so it survives, then cancel the foreground id.
+        val readyId = DownloadNotifier.completionNotificationIdFor(id)
         val notification = DownloadNotifier.buildReady(
-            applicationContext, notificationId, finalFile, fileName, mimeType
+            applicationContext, readyId, finalFile, fileName, mimeType
         )
-        DownloadNotifier.post(applicationContext, notificationId, notification)
+        DownloadNotifier.post(applicationContext, readyId, notification)
+        DownloadNotifier.cancel(applicationContext, notificationId)
     }
 
     private fun cancelled(): Result {
@@ -454,12 +457,16 @@ class DownloadWorker(
             fileName = fileNameForNotif,
             errorReason = reason
         )
+        // Same survives-foreground-teardown rationale as finalizeReady:
+        // post under the completion id, then cancel the foreground id.
+        val failedId = DownloadNotifier.completionNotificationIdFor(id)
         val notification = DownloadNotifier.buildFailed(
-            applicationContext, notificationId, id, progress,
+            applicationContext, failedId, id, progress,
             retryable = false,
             retryInputData = buildRetryInputData()
         )
-        DownloadNotifier.post(applicationContext, notificationId, notification)
+        DownloadNotifier.post(applicationContext, failedId, notification)
+        DownloadNotifier.cancel(applicationContext, notificationId)
         return Result.failure(
             Data.Builder()
                 .putString(KEY_ERROR_REASON, reason)

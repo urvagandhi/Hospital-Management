@@ -71,6 +71,25 @@ object DownloadNotifier {
             .toInt()
             .let { if (it == 0) 1 else it and 0x7FFFFFFF }
 
+    /**
+     * Notification id for terminal-state notifications (READY / FAILED) that
+     * must persist after the foreground worker stops.
+     *
+     * When a CoroutineWorker returns, WorkManager calls
+     * `stopForeground(STOP_FOREGROUND_REMOVE)` on the foreground service, which
+     * also removes the notification posted under the foreground id. Posting the
+     * Ready notification under the SAME id therefore wipes it ~milliseconds
+     * after we post — exactly the "download bar disappears, no completion
+     * notification" symptom users report.
+     *
+     * Using a distinct id keeps the Ready / Failed notification alive
+     * independent of the foreground service teardown.
+     */
+    fun completionNotificationIdFor(workId: UUID): Int =
+        (notificationIdFor(workId) xor 0x4D).let {
+            if (it == 0) 2 else it and 0x7FFFFFFF
+        }
+
     fun hasPostPermission(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return ContextCompat.checkSelfPermission(
