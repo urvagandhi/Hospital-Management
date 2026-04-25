@@ -7,12 +7,21 @@ import dotenv from "dotenv";
 
 import fs from "fs";
 import path from "path";
-import logger from "../utils/logger.js";
+
+function bootstrapLog(level, message, data = null) {
+  if (data) {
+    // eslint-disable-next-line no-console
+    console[level](message, data);
+    return;
+  }
+  // eslint-disable-next-line no-console
+  console[level](message);
+}
 
 // Load .env.development for development if it exists
 const devEnvPath = path.resolve(process.cwd(), ".env.development");
 if (fs.existsSync(devEnvPath)) {
-  logger.info({ event: "env_loaded", source: ".env.development" }, "Loading environment from .env.development");
+  bootstrapLog("info", "[env] Loading environment from .env.development", { source: ".env.development" });
   dotenv.config({ path: devEnvPath });
 } else {
   dotenv.config();
@@ -53,7 +62,7 @@ const config = {
 
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "15000"),
-  RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "10"),
+  RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "60"),
 
   // Cloudflare R2
   R2_ENDPOINT: process.env.R2_ENDPOINT || "https://your-account.r2.cloudflarestorage.com",
@@ -108,7 +117,9 @@ if (config.NODE_ENV === "production") {
     throw new Error("MONGODB_URI must be set in production");
   }
   if (!config.CLOUDINARY_CLOUD_NAME && !config.R2_ACCESS_KEY_ID) {
-    logger.warn({ event: "env_storage_missing" }, "WARNING: Neither Cloudinary nor R2 storage configured for production");
+    bootstrapLog("warn", "[env] WARNING: Neither Cloudinary nor R2 storage configured for production", {
+      event: "env_storage_missing",
+    });
   }
   // TD-D4 (2026-04-25): the compression sidecar is mandatory in prod. Without
   // it, big-patient PDF/ZIP exports fall back to in-process pdf-lib merge,

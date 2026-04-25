@@ -19,14 +19,14 @@ import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import appLogo from "../assets/logo.png";
 import { useAuth } from "../hooks/useAuth";
-import { HospitalProfileModal } from "./HospitalProfileModal";
 import { getCurrentHospital, Hospital } from "../services/hospitalService";
-import { useNetworkStatus } from "./NetworkStatus";
 import {
-  getInitials,
   getAvatarGradient,
+  getInitials,
   isPlaceholderLogo,
 } from "../utils/avatar";
+import { HospitalProfileModal } from "./HospitalProfileModal";
+import { useNetworkStatus } from "./NetworkStatus";
 
 export const Navbar: React.FC = () => {
   const { state, logout } = useAuth();
@@ -41,16 +41,34 @@ export const Navbar: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
+
+    const hasUsableAuthHospital = Boolean(authHospital?.hospitalName || authHospital?.email || authHospital?.phone);
+
+    if (!state.isAuthenticated) {
+      setHospitalInfo(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Keep local display in sync with auth state; avoid refetching `/hospitals/me`
+    // on every mount when auth already has profile data.
+    if (hasUsableAuthHospital) {
+      setHospitalInfo(authHospital);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const fetchHospitalInfo = async () => {
-      if (state.isAuthenticated) {
-        try {
-          const data = await getCurrentHospital();
-          if (!cancelled) setHospitalInfo(data);
-        } catch {
-          if (!cancelled) setHospitalInfo(authHospital);
-        }
+      try {
+        const data = await getCurrentHospital();
+        if (!cancelled) setHospitalInfo(data);
+      } catch {
+        if (!cancelled) setHospitalInfo(authHospital);
       }
     };
+
     fetchHospitalInfo();
     return () => {
       cancelled = true;
@@ -107,11 +125,10 @@ export const Navbar: React.FC = () => {
                     key={item.to}
                     to={item.to}
                     aria-current={active ? "page" : undefined}
-                    className={`relative px-4 py-2 text-sm font-semibold transition-colors rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 ${
-                      active
+                    className={`relative px-4 py-2 text-sm font-semibold transition-colors rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 ${active
                         ? "text-primary-700"
                         : "text-neutral-500 hover:text-primary-600 hover:bg-primary-50/60"
-                    }`}
+                      }`}
                   >
                     {item.label}
                     {active && (
@@ -158,9 +175,8 @@ export const Navbar: React.FC = () => {
                 </span>
                 <span
                   title={isOnline ? "Online" : "Offline"}
-                  className={`relative ml-1 h-2 w-2 rounded-full shrink-0 ${
-                    isOnline ? "bg-success" : "bg-danger"
-                  }`}
+                  className={`relative ml-1 h-2 w-2 rounded-full shrink-0 ${isOnline ? "bg-success" : "bg-danger"
+                    }`}
                 >
                   {isOnline && (
                     <span
@@ -211,11 +227,10 @@ export const Navbar: React.FC = () => {
                       {({ active }) => (
                         <Link
                           to="/profile"
-                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${
-                            active
+                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${active
                               ? "bg-primary-50 text-primary-700"
                               : "text-neutral-700"
-                          }`}
+                            }`}
                         >
                           <svg
                             viewBox="0 0 24 24"
@@ -224,9 +239,8 @@ export const Navbar: React.FC = () => {
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className={`mr-3 h-5 w-5 ${
-                              active ? "text-primary-500" : "text-neutral-400"
-                            }`}
+                            className={`mr-3 h-5 w-5 ${active ? "text-primary-500" : "text-neutral-400"
+                              }`}
                             aria-hidden="true"
                           >
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -240,11 +254,10 @@ export const Navbar: React.FC = () => {
                       {({ active }) => (
                         <Link
                           to="/notifications"
-                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${
-                            active
+                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${active
                               ? "bg-primary-50 text-primary-700"
                               : "text-neutral-700"
-                          }`}
+                            }`}
                         >
                           <svg
                             viewBox="0 0 24 24"
@@ -253,9 +266,8 @@ export const Navbar: React.FC = () => {
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className={`mr-3 h-5 w-5 ${
-                              active ? "text-primary-500" : "text-neutral-400"
-                            }`}
+                            className={`mr-3 h-5 w-5 ${active ? "text-primary-500" : "text-neutral-400"
+                              }`}
                             aria-hidden="true"
                           >
                             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -276,11 +288,10 @@ export const Navbar: React.FC = () => {
                       {({ active }) => (
                         <Link
                           to="/password"
-                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${
-                            active
+                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${active
                               ? "bg-primary-50 text-primary-700"
                               : "text-neutral-700"
-                          }`}
+                            }`}
                         >
                           <svg
                             viewBox="0 0 24 24"
@@ -289,9 +300,8 @@ export const Navbar: React.FC = () => {
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className={`mr-3 h-5 w-5 ${
-                              active ? "text-primary-500" : "text-neutral-400"
-                            }`}
+                            className={`mr-3 h-5 w-5 ${active ? "text-primary-500" : "text-neutral-400"
+                              }`}
                             aria-hidden="true"
                           >
                             <rect x="3" y="11" width="18" height="11" rx="2" />
@@ -305,11 +315,10 @@ export const Navbar: React.FC = () => {
                       {({ active }) => (
                         <Link
                           to="/sessions"
-                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${
-                            active
+                          className={`group flex items-center px-4 py-2 text-sm transition-colors ${active
                               ? "bg-primary-50 text-primary-700"
                               : "text-neutral-700"
-                          }`}
+                            }`}
                         >
                           <svg
                             viewBox="0 0 24 24"
@@ -318,9 +327,8 @@ export const Navbar: React.FC = () => {
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className={`mr-3 h-5 w-5 ${
-                              active ? "text-primary-500" : "text-neutral-400"
-                            }`}
+                            className={`mr-3 h-5 w-5 ${active ? "text-primary-500" : "text-neutral-400"
+                              }`}
                             aria-hidden="true"
                           >
                             <rect x="5" y="2" width="14" height="20" rx="2" />
@@ -338,11 +346,10 @@ export const Navbar: React.FC = () => {
                       {({ active }) => (
                         <button
                           onClick={handleLogoutClick}
-                          className={`group flex w-full items-center px-4 py-2 text-sm transition-colors ${
-                            active
+                          className={`group flex w-full items-center px-4 py-2 text-sm transition-colors ${active
                               ? "bg-danger/5 text-danger"
                               : "text-neutral-700"
-                          }`}
+                            }`}
                         >
                           <svg
                             viewBox="0 0 24 24"
@@ -351,9 +358,8 @@ export const Navbar: React.FC = () => {
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className={`mr-3 h-5 w-5 ${
-                              active ? "text-danger" : "text-neutral-400"
-                            }`}
+                            className={`mr-3 h-5 w-5 ${active ? "text-danger" : "text-neutral-400"
+                              }`}
                             aria-hidden="true"
                           >
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

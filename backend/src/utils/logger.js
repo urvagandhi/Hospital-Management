@@ -15,11 +15,24 @@
  */
 
 import crypto from "crypto";
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 import pino from "pino";
 import pinoHttp from "pino-http";
 
+// Logger can be imported before config/env.js by other modules.
+// Load env files here as well so LOG_PRETTY and LOG_LEVEL are always honored.
+const devEnvPath = path.resolve(process.cwd(), ".env.development");
+if (fs.existsSync(devEnvPath)) {
+  dotenv.config({ path: devEnvPath });
+} else {
+  dotenv.config();
+}
+
 const isProd = process.env.NODE_ENV === "production";
 const isTest = process.env.NODE_ENV === "test";
+const forcePretty = process.env.LOG_PRETTY === "true";
 
 const REDACT_PATHS = [
   'req.headers.authorization',
@@ -71,19 +84,19 @@ const logger = pino({
     paths: REDACT_PATHS,
     censor: "[REDACTED]",
   },
-  ...(isProd
+  ...((isProd && !forcePretty)
     ? {}
     : {
-        transport: {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "SYS:standard",
-            ignore: "pid,hostname,service,env",
-            singleLine: false,
-          },
+      transport: {
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          translateTime: "SYS:standard",
+          ignore: "pid,hostname,service,env",
+          singleLine: false,
         },
-      }),
+      },
+    }),
 });
 
 /**

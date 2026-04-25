@@ -106,6 +106,29 @@ class ApiService {
 
         const originalRequest = error.config;
 
+        if (error.response?.status === 429) {
+          const payload = error.response.data as
+            | { message?: string; data?: { retryAfterSeconds?: number } }
+            | string
+            | undefined;
+
+          const retryAfterSeconds =
+            typeof payload === "object" && payload?.data?.retryAfterSeconds
+              ? payload.data.retryAfterSeconds
+              : undefined;
+
+          const serverMessage =
+            typeof payload === "string"
+              ? payload
+              : payload?.message;
+
+          const fallback = retryAfterSeconds
+            ? `Too many requests. Please retry in ${retryAfterSeconds} second(s).`
+            : "Too many requests. Please retry in a few seconds.";
+
+          error.message = serverMessage || fallback;
+        }
+
         // Handle 401 Unauthorized
         if (error.response?.status === 401 && originalRequest && !originalRequest.url?.includes("/auth/login")) {
           // Account disabled by admin — skip refresh, force logout immediately
