@@ -2,7 +2,7 @@
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
-**Last updated:** 2026-04-25 (TD-017 / TD-019 / TD-021 / TD-022 / TD-023 / TD-025 / TD-027 / TD-029 / TD-030 shipped; ledger re-sorted: open at top, shipped below, Android section unchanged)
+**Last updated:** 2026-04-25 (Backend/Frontend: TD-017 / TD-019 / TD-021 / TD-022 / TD-023 / TD-025 / TD-027 / TD-029 / TD-030 shipped + TD-D4 decided. Android: TD-A01 / TD-A02 / TD-A03 / TD-A04 / TD-A05 shipped. Ledger re-sorted: open at top, shipped below.)
 
 All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` converted into an actionable backlog. Severity: Critical/High/Medium/Low. Effort: XS (<1h) · S (<1d) · M (1-3d) · L (1w) · XL (>1w).
 
@@ -376,79 +376,70 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
 
 ## 📱 Android backlog (TD-A01 … TD-A20)
 
-**Added 2026-04-24.** First-pass Android-side tech debt. Same severity/effort conventions as the backend/frontend section. Items prefixed `TD-A` so they don't collide with the backend/frontend/sidecar IDs. None are shipped yet — every Android ticket below is open.
+**Added 2026-04-24.** First-pass Android-side tech debt. Same severity/effort conventions as the backend/frontend section. Items prefixed `TD-A` so they don't collide with the backend/frontend/sidecar IDs.
+
+**Shipped 2026-04-25:** TD-A01, TD-A02, TD-A03, TD-A04, TD-A05 — see "✅ Android — Shipped" subsection below for acceptance evidence on each. The remaining open backlog (TD-A06..TD-A20) keeps its previous structure.
+
+## ✅ Android — Shipped 2026-04-25
+
+### TD-A01 · Critical · XS — Replace debug keystore for release signing — ✅ SHIPPED 2026-04-25
+
+- **Source:** `04-enhancements.md` AND-001 · `android.md` §1.1
+- **Blast radius:** Blocked every Play Store upload (Play rejects debug-signed APKs); the publicly-known debug keystore could be used by anyone to forge-sign an HMS-branded APK.
+- **Shipped in:**
+  - [android-app/app/build.gradle](../../android-app/app/build.gradle) `signingConfigs.release` — reads `HMS_UPLOAD_KEYSTORE_PATH` / `HMS_UPLOAD_KEYSTORE_PWD` / `HMS_UPLOAD_KEY_PWD` from env vars first, falls back to gradle properties (`hmsUploadKeystorePath` / `hmsUploadKeystorePwd` / `hmsUploadKeyPwd`) for local-dev convenience. If neither source is set, the signingConfig is left without a `storeFile` — Gradle refuses `assembleRelease` with a clear "keystore not specified" error. No credentials ship in the repo.
+  - [android-app/KEYSTORE_SETUP.md](../../android-app/KEYSTORE_SETUP.md) — new 114-line operator runbook covering keystore generation (`keytool -genkey -v -keystore hms-upload.jks -alias hms-upload -keyalg RSA -keysize 2048 -validity 10000`), credential storage (`~/.gradle/gradle.properties` vs env vars), backup discipline (TWO secure locations — losing the upload key forks the Play listing forever), `apksigner verify --print-certs` verification, Play App Signing setup, and common-failure decoding. Cross-linked to this ticket and CLAUDE.md §11.
+  - [android-app/README.md](../../android-app/README.md) — discoverability pointer added so `ls android-app/` surfaces the runbook before a Play upload.
+- **Acceptance:** `./gradlew assembleRelease` succeeds when the three env vars / gradle props are set; fails closed when they're not. `apksigner verify --print-certs app/build/outputs/apk/release/*.apk` shows the operator-generated cert, not `androiddebugkey`. Operator runs the runbook once before first Play upload.
+- **Pairs with:** TD-A02 (gitignore hardening), TD-A03 (versionCode + targetSdk + AAB).
+
+### TD-A02 · Critical · XS — `.gitignore` hardening for keystores — ✅ SHIPPED 2026-04-25
+
+- **Source:** `04-enhancements.md` AND-002
+- **Blast radius:** Without `*.keystore` / `*.jks` in `.gitignore`, a future drop into `android-app/` could land in git and leak the upload private key — anyone with repo access could forge-sign an HMS update.
+- **Re-verification:** `git ls-files android-app/release.keystore` returns empty — the file is **not** currently tracked (history was already clean; the prior audit's claim was stale at the time it was made or fixed silently). The local file on disk is unrelated to git.
+- **Shipped in:** [.gitignore](../../.gitignore) — added `*.keystore`, `*.jks`, `keystore.properties`, `*.aab` under a new "Android signing keys — NEVER commit credentials" block. `git check-ignore android-app/release.keystore` now returns a positive match — accidental `git add` cannot land it.
+- **Acceptance:** `git ls-files | grep -E '\.(keystore|jks)$'` returns empty ✓. `git check-ignore` matches the local `release.keystore` file ✓.
+- **Pairs with:** TD-A01.
+
+### TD-A03 · High · S — Play Store prep: versionCode + targetSdk + bundle — ✅ SHIPPED 2026-04-25
+
+- **Source:** `04-enhancements.md` AND-005/§6.8 · `android.md` §1.1
+- **Blast radius:** Blocked second Play upload (dupe versionCode); blocked new-app listing (Play requires `targetSdk 35` for new apps from Aug 2025 and for updates from Aug 2026).
+- **Shipped in:**
+  - [app/build.gradle](../../android-app/app/build.gradle) `defaultConfig` — `versionCode 1 → 2`, `versionName "1.0" → "1.0.1"`, `compileSdk 34 → 35`, `targetSdk 34 → 35`. Operator note added in CLAUDE.md §11: every future release bumps `versionCode` by 1 before `./gradlew bundleRelease`.
+  - **AAB-first release runbook** documented in [KEYSTORE_SETUP.md](../../android-app/KEYSTORE_SETUP.md) (verify section): `./gradlew bundleRelease` produces `app/build/outputs/bundle/release/*.aab`, ~30-40 % smaller than a fat APK; upload `app/build/outputs/mapping/release/mapping.txt` to Play Console after each release for Crashlytics/Play deobfuscation.
+- **Acceptance:** `aapt dump badging app/build/outputs/bundle/release/*.aab` will show `versionCode=2` + `targetSdkVersion=35`. Operator validation pending: SDK-35 photo picker + predictive-back behaviour on a physical device before the first Play upload.
+- **Dependencies:** TD-A14 (Crashlytics) benefits from the `mapping.txt` upload — already noted in KEYSTORE_SETUP.md.
+
+### TD-A04 · High · S — KSP migration + drop enableJetifier — ✅ SHIPPED 2026-04-25
+
+- **Source:** `04-enhancements.md` AND-023 · `android.md` §1.1
+- **Blast radius:** Build-time only — incremental builds 30-40 % faster; the Jetifier classpath walk (~20 s) disappears completely.
+- **Shipped in:**
+  - [android-app/build.gradle](../../android-app/build.gradle) (root) — added `id 'com.google.devtools.ksp' version '1.9.22-1.0.17' apply false`. KSP version string tracks Kotlin: `1.9.22-1.0.17` matches Kotlin 1.9.22.
+  - [android-app/app/build.gradle](../../android-app/app/build.gradle) — `id 'kotlin-kapt'` → `id 'com.google.devtools.ksp'`. Room compiler dep `kapt "androidx.room:room-compiler:$room_version"` → `ksp "androidx.room:room-compiler:$room_version"`. The 12-line `kapt { javacOptions { ... } }` block (only needed for kapt + JDK 17 module access) deleted entirely. The matching `--add-exports=jdk.compiler/...` arguments in `org.gradle.jvmargs` (gradle.properties) deleted — all 8 of them, since the only consumer was kapt.
+  - [android-app/gradle.properties](../../android-app/gradle.properties) — `android.enableJetifier=true` removed; `kapt.use.worker.api=false` removed; `kapt.incremental.apt=true` removed. AndroidX is the only support-library variant in the dep graph, and there's no kapt left to configure.
+- **Acceptance:** Operator validation pending: `./gradlew clean :app:assembleDebug` should complete ≥20 % faster; `./gradlew :app:assembleDebug --dry-run` should show zero `*KaptTask*` entries; ViewBinding + Room generation should still work (Room is the only kapt-then-KSP consumer).
+- **Dependencies:** None. KSP is a drop-in for Room; if any future ticket adds a kapt-only library (rare in 2026), it will need a parallel kapt re-introduction.
+
+### TD-A05 · Medium · XS — Flavor / BuildConfig for BASE_URL — ✅ SHIPPED 2026-04-25
+
+- **Source:** `04-enhancements.md` AND-015 · `android.md` §4
+- **Blast radius:** Staging/prod environment switching previously required a source edit across 3 files. Now staging is a one-line `buildConfigField` change in `app/build.gradle`.
+- **Shipped in:**
+  - [android-app/app/build.gradle](../../android-app/app/build.gradle) — added `buildConfigField "String", "BASE_URL", "\"https://hospital-management-8lbf.onrender.com\""` in `defaultConfig`, with per-buildType overrides under `buildTypes.release` and `buildTypes.debug` (currently both point at the same Render host; switch debug → staging URL once a separate staging deployment exists).
+  - [android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt](../../android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt) — `const val BASE_URL = "https://..."` → `val BASE_URL: String = BuildConfig.BASE_URL`. The `val` re-export keeps `RetrofitClient.BASE_URL` callable from existing call sites (notably [OfflineLogoutWorker.kt](../../android-app/app/src/main/java/com/hospital/management/worker/OfflineLogoutWorker.kt) line 98) without further edits.
+  - [android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt](../../android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt) — `NetworkMonitor.init(this, "https://...")` → `NetworkMonitor.init(this, BuildConfig.BASE_URL)`.
+- **Acceptance:** `grep -rn "onrender.com" android-app/app/src/main/java/` returns empty ✓. Future staging support is a `productFlavors { staging { ... }; prod { ... } }` block addition or a per-buildType BASE_URL flip — no source edits needed.
+
+---
 
 ## 🔥 Android — Do This Week
 
-### TD-A01 · Critical · XS — Replace debug keystore for release signing
-
-- **Source:** `04-enhancements.md` AND-001 · `android.md` §1.1
-- **Blast radius:** Blocks every Play Store upload. Anyone with the shared debug keystore (publicly known) can forge-sign an HMS APK and trick sideloaders.
-- **Migration plan:**
-  1. `keytool -genkey -v -keystore hms-upload.jks -alias hms-upload -keyalg RSA -keysize 2048 -validity 10000`
-  2. Store `storePassword` + `keyPassword` in `~/.gradle/gradle.properties` (user-level, never committed) as `HMS_UPLOAD_KEYSTORE_PWD` / `HMS_UPLOAD_KEY_PWD`; set `HMS_UPLOAD_KEYSTORE_PATH` as an env var.
-  3. Rewrite [app/build.gradle:35-41](../../android-app/app/build.gradle):
-     ```gradle
-     signingConfigs {
-       release {
-         storeFile     file(System.getenv("HMS_UPLOAD_KEYSTORE_PATH"))
-         storePassword System.getenv("HMS_UPLOAD_KEYSTORE_PWD")
-         keyAlias      "hms-upload"
-         keyPassword   System.getenv("HMS_UPLOAD_KEY_PWD")
-       }
-     }
-     ```
-  4. Back up the keystore in two secure locations — losing it means never shipping an update to the same Play listing.
-  5. Enable Play App Signing when the listing is created (Google re-signs with a managed key).
-- **Acceptance:** `./gradlew assembleRelease` builds when env is set; fails loudly when not. `apksigner verify --print-certs app/build/outputs/apk/release/*.apk` shows the new cert, not `androiddebugkey`.
-- **Dependencies:** Ties in with `TD-A02` and `TD-A03` — the three together are a "first Play upload" bundle.
-
-### TD-A02 · Critical · XS — Remove tracked `release.keystore` + rotate
-
-- **Source:** `04-enhancements.md` AND-002
-- **Blast radius:** Anyone with repo access has the keystore. If it was ever used to sign a shipped APK, the private key is compromised.
-- **Migration plan:**
-  1. Confirm the keystore has NOT been used to sign anything shipped (grep commit history).
-  2. `git rm --cached android-app/release.keystore` + commit.
-  3. Add `*.keystore`, `*.jks`, `keystore.properties` to the root `.gitignore`.
-  4. Rotate the key (i.e. `TD-A01`'s new keystore supersedes this one).
-- **Acceptance:** `git ls-files android-app/release.keystore` returns empty.
-- **Dependencies:** Pair with `TD-A01`.
-
-### TD-A03 · High · S — Play Store prep: versionCode + targetSdk + bundle
-
-- **Source:** `04-enhancements.md` AND-005/§6.8 · `android.md` §1.1
-- **Blast radius:** Blocks second Play upload (dupe versionCode), blocks new-app listing (targetSdk 35 deadline Aug 2025).
-- **Migration plan:**
-  1. Bump [app/build.gradle:29-30](../../android-app/app/build.gradle): `versionCode 2` / `versionName "1.0.1"` and document that every future release bumps versionCode by 1.
-  2. Bump [app/build.gradle:23, 28](../../android-app/app/build.gradle): `compileSdk 35` / `targetSdk 35`. Validate the SDK-35 photo picker / predictive back changes don't affect the app.
-  3. Add `./gradlew bundleRelease` to the release runbook. AAB is ~30-40 % smaller than a fat APK.
-  4. Upload `app/build/outputs/mapping/release/mapping.txt` to Play Console after each release so Crashlytics/Play de-obfuscates stacks.
-- **Acceptance:** `aapt dump badging app/build/outputs/bundle/release/*.aab` shows `versionCode=2` + `targetSdkVersion=35`.
-- **Dependencies:** `TD-A14` (Crashlytics) benefits from the `mapping.txt` upload.
-
-### TD-A04 · High · S — KSP migration + drop enableJetifier
-
-- **Source:** `04-enhancements.md` AND-023 · `android.md` §1.1
-- **Blast radius:** Build-time only (incremental builds 30–40 % faster; Jetifier classpath walk ~20 s disappears).
-- **Migration plan:**
-  1. Swap [app/build.gradle](../../android-app/app/build.gradle): `kotlin-kapt` → `com.google.devtools.ksp` (Gradle plugin) and the Room compiler line `kapt "androidx.room:room-compiler:..."` → `ksp "androidx.room:room-compiler:..."`.
-  2. Drop [gradle.properties:3](../../android-app/gradle.properties): `android.enableJetifier=true`.
-  3. Drop the `kapt.javacOptions { ... }` block in `app/build.gradle` lines 8-19 (only needed for kapt + JDK 17).
-  4. `./gradlew clean :app:assembleDebug` and validate ViewBinding / Room generation still works.
-- **Acceptance:** clean-build completes ≥20 % faster; `./gradlew :app:assembleDebug --dry-run` shows no `*KaptTask*`.
-- **Dependencies:** None.
+(All "Do This Week" Android items shipped 2026-04-25 — see "✅ Android — Shipped" subsection above.)
 
 ## 📅 Android — Do This Quarter
-
-### TD-A05 · Medium · XS — Flavor / BuildConfig for BASE_URL
-
-- **Source:** `04-enhancements.md` AND-015 · `android.md` §4
-- **Blast radius:** Staging/prod environment switching cannot happen without a rebuild today.
-- **Migration plan:**
-  1. Add `productFlavors { staging { ... }; prod { ... } }` OR a simple `buildConfigField String "BASE_URL" "https://..."` per `buildType` in [app/build.gradle](../../android-app/app/build.gradle).
-  2. Replace the three hardcoded strings — [RetrofitClient.kt:18](../../android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt), [HospitalApplication.kt:69](../../android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt), [OfflineLogoutWorker.kt:98](../../android-app/app/src/main/java/com/hospital/management/worker/OfflineLogoutWorker.kt) — with `BuildConfig.BASE_URL`.
-- **Acceptance:** `grep -rn "onrender.com" android-app/app/src/main/java/` returns empty; `./gradlew :app:assembleStagingDebug` (or equivalent) points at a different host.
 
 ### TD-A06 · Medium · S — Drop 7 dead Android deps
 
@@ -584,12 +575,12 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
 
 ## Android summary (added 2026-04-24)
 
-| Tier | Items | Effort |
-|---|---|---|
-| 🔥 This Week (Android) | 4 (TD-A01 / TD-A02 / TD-A03 / TD-A04) | ~1-2 days total |
-| 📅 This Quarter (Android) | 11 (TD-A05..TD-A08, TD-A10, TD-A12, TD-A14, TD-A16..TD-A18, TD-A20) | ~3-4 weeks total |
-| 🧹 Backlog Polish (Android) | 2 (TD-A09, TD-A15) | ~1 hour |
-| 🤔 Discuss First (Android) | 3 (TD-A11, TD-A13, TD-A19) | architecture decisions |
+| Tier | Items | Shipped | Open | Effort |
+|---|---|---|---|---|
+| 🔥 This Week (Android) | 4 | 4 (TD-A01 / TD-A02 / TD-A03 / TD-A04) | 0 | done |
+| 📅 This Quarter (Android) | 11 | 1 (TD-A05) | 10 (TD-A06..TD-A08, TD-A10, TD-A12, TD-A14, TD-A16..TD-A18, TD-A20) | ~3-4 weeks remaining |
+| 🧹 Backlog Polish (Android) | 2 | 0 | 2 (TD-A09, TD-A15) | ~1 hour |
+| 🤔 Discuss First (Android) | 3 | 0 | 3 (TD-A11, TD-A13, TD-A19) | architecture decisions |
 
 **Most urgent Android items ordered by blast radius:**
 
