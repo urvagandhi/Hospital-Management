@@ -291,8 +291,29 @@ export const refreshAccessToken = async (refreshToken) => {
     });
 
     if (!session) {
-      // JWT was signed by us but no active session holds this token.
-      // Could be replay of a rotated token — attempt reuse defense.
+      // Distinguish two scenarios that both produce "no active session":
+      //   (a) Rotation reuse — refresh token was rotated out and OVERWRITTEN
+      //       in the DB. Presented token now appears in NO session row at
+      //       all → genuine replay → run reuse defense, revoke siblings.
+      //   (b) Explicit revoke — refresh token still exists in a session row,
+      //       but that row is `isActive: false` (idle sweep, admin revoke,
+      //       session-conflict eviction, etc.). The token was NEVER rotated;
+      //       the session was killed. Don't punish other devices for this.
+      //
+      // Without this distinction the idle sweep cascades: device A goes
+      // idle → its row flips inactive → device A's next refresh hits this
+      // path → reuse defense revokes device B too. Cross-device logout from
+      // a single user closing one tab.
+      const revokedRow = await Session.findOne({ refreshToken })
+        .select("_id revokedReason isActive")
+        .lean();
+
+      if (revokedRow && !revokedRow.isActive) {
+        // Explicitly revoked — clean failure, no cascade.
+        throw new Error("Session was revoked. Please log in again.");
+      }
+
+      // Truly rotated out (or token forged) — run reuse defense.
       await handlePossibleRefreshReuse(decoded.id);
       throw new Error("Invalid or expired refresh token");
     }

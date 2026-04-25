@@ -1560,9 +1560,9 @@ export const listActiveSessions = async (req, res) => {
     const currentSessionId = req.sessionId;
     if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    // Hide sessions idle for >15 min. The cron sweep retires them eventually,
-    // but the list filter gives instant correct UX even between sweeps.
-    const IDLE_MS = 15 * 60 * 1000;
+    // Hide sessions idle for >60 min. Must match jobs/idleSweep.job.js
+    // exactly — list filter gives instant correct UX even between sweeps.
+    const IDLE_MS = 60 * 60 * 1000;
     const idleCutoff = new Date(Date.now() - IDLE_MS);
 
     const sessions = await Session.find({

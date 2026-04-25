@@ -17,7 +17,11 @@ import Session from "../models/Session.js";
 import AuditLog from "../models/AuditLog.js";
 import logger from "../utils/logger.js";
 
-const IDLE_MS = 15 * 60 * 1000;
+// 60 min idle window. 15 min was too aggressive for hospital workflow —
+// a clinician reading a PDF or filling a long form makes no API calls and
+// looks "idle". Web has no heartbeat (only mobile heartbeats every 60s),
+// so any threshold under ~30 min logs out passive readers mid-task.
+const IDLE_MS = 60 * 60 * 1000;
 
 const sweepIdleSessions = async () => {
   const cutoff = new Date(Date.now() - IDLE_MS);

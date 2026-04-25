@@ -84,12 +84,32 @@ export const verifyAccessToken = async (req, res, next) => {
       }
     }
 
-    // Update lastSeenAt on every authenticated request (non-blocking)
+    // Update lastSeenAt on every authenticated request (non-blocking).
+    // Also re-resolve location when the IP changes — otherwise the row's
+    // location stays frozen at the IP captured when the session was first
+    // created (e.g. against a local dev backend) even after the device
+    // moves to a real network. Only re-geoips on actual IP changes so we
+    // don't hammer the GeoIP provider on every request.
     const ipAddress = getClientIp(req);
-    Session.updateOne(
-      { _id: session._id },
-      { lastSeenAt: new Date(), lastSeenIp: ipAddress },
-    ).exec().catch(() => {});
+    if (ipAddress && ipAddress !== session.lastSeenIp) {
+      Session.updateOne(
+        { _id: session._id },
+        { lastSeenAt: new Date(), lastSeenIp: ipAddress },
+      ).exec().catch(() => {});
+
+      // Lazy-import to avoid a top-level circular dependency hazard.
+      import("../services/geoip.service.js")
+        .then(({ geolocateIp }) => geolocateIp(ipAddress))
+        .then((location) =>
+          Session.updateOne({ _id: session._id }, { $set: { location } }).exec(),
+        )
+        .catch(() => {});
+    } else {
+      Session.updateOne(
+        { _id: session._id },
+        { lastSeenAt: new Date() },
+      ).exec().catch(() => {});
+    }
 
     req.hospital = { id: decoded.id };
     req.sessionId = decoded.sessionId;

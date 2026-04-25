@@ -38,6 +38,7 @@ interface SessionItem {
   isMobile?: boolean;
   userAgent?: string;
   ipAddress?: string;
+  lastSeenIp?: string;
   lastSeenAt?: string;
   createdAt?: string;
   isCurrent?: boolean;
@@ -588,7 +589,7 @@ const Sessions: React.FC = () => {
                                   {locationLabel(s.location)}
                                 </span>
                               )}
-                              {s.ipAddress && (
+                              {(s.lastSeenIp || s.ipAddress) && (
                                 <span className="inline-flex items-center gap-1 font-mono">
                                   <svg
                                     viewBox="0 0 24 24"
@@ -604,7 +605,7 @@ const Sessions: React.FC = () => {
                                     <line x1="2" y1="12" x2="22" y2="12" />
                                     <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                                   </svg>
-                                  {s.ipAddress}
+                                  {s.lastSeenIp || s.ipAddress}
                                 </span>
                               )}
                               <span className="inline-flex items-center gap-1">
