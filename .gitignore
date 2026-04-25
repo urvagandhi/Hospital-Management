@@ -45,3 +45,12 @@ Thumbs.db
 # Gradle
 .gradle/
 local.properties
+
+# Claude Code local settings (contains user-scoped permissions; not portable)
+.claude/
+
+# graphify knowledge graph (generated; rebuild with /graphify .)
+graphify-out/
+
+# FUSE / network-mount stale-handle artifacts
+.fuse_hidden*

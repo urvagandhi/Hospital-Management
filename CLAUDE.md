@@ -206,3 +206,22 @@ Full Android audit: [docs/audit/android.md](docs/audit/android.md). Summary of w
 - Folder names are slugified for Cloudinary paths; never send raw names as public_ids.
 - Signed URLs TTL = 5 min; cache them no longer than that.
 - Audit writes are fire-and-forget — never block a request on audit success.
+
+## graphify
+
+This project has a graphify knowledge graph at graphify-out/.
+
+Rules:
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+
+**Known graph extraction artifacts (verified 2026-04-25 — DO NOT recommend refactors based on these flags without verifying actual edges first):**
+
+- **Bridge-node questions for `logAudit()` / `updateHospital()` / `uploadFile()`** are misleading phrasing. graphify's `suggest_questions` builds the "X bridges A to B" sentence from community labels, not actual edges. `logAudit()` is a hub-spoke (every patient mutation calls it — required by §12), not a bridge. `updateHospital()` and `uploadFile()` ARE genuine cross-cutting concerns (admin/self UI + email side effects; Cloudinary + idempotency + audit + thumbnail) but they represent intentional, correct architecture — leave them alone.
+- **Low cohesion on `Architecture Diagrams (30 mermaid)` (0.03) and `Backend API README` (0.02)** is a false alarm. They are doc-hub nodes that reference everything by design; cohesion is the wrong metric. Tagged `is_doc_hub=True` in graph.json on 2026-04-25 (18 nodes total) so future re-clusters skip them.
+- **Low cohesion on `redis.service.js` (0.03)** is a false positive. It's a kv-store wrapper holding several unrelated keyspaces (`otp:*`, `partial_reg:*`, `last_otp_sent:*`, `forgot_otp:*`, `reset_token:*`, `idempotent_upload:*`) that don't call each other but live in one file by design. Don't split.
+- **"Weakly-connected" nodes** (e.g. `ZipDownloadRequest`, `CachedFileItem`, `CachedPatient`, plus Python docstrings used as labels in `audit.py` / `config.py`) show low edge count because they're DTOs / parameter types, not call-graph nodes. The sidecar is HTTP-isolated from the backend by design — correct architecture, not a documentation gap.
+- **Duplicate file nodes** (AST + semantic both create one for the same `.js`/`.ts`/`.kt`/`.md` file at the same `source_file` path) double-count edges and create spurious bridges. We merged 207 such pairs on 2026-04-25 — re-run the dedup pass after every fresh extraction.
+- **Generic AST tokens (`Error`, `log()`, `.get()`, `.delete()`, `.post()`, `.constructor()`, `fn()`, `D()`, `connect()`, `cmdSet()`)** are extraction noise — every catch block, every `Log.d()`, every basic accessor becomes a graph node. Prune before reporting top god-nodes (we removed 18 nodes / 250 edges on 2026-04-25).
