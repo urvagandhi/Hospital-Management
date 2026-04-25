@@ -39,7 +39,7 @@
     "firebase-admin": "^13.8.0",
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.5.0",
+    "mongoose": "^9.5.0",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^2.2.1",
     "node-cron": "^4.2.1",
