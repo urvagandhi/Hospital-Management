@@ -42,7 +42,7 @@ jobs:
             -o /tmp/login_resp.json \
             https://hospital-management-8lbf.onrender.com/api/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"admin@sunrisehealth.in","password":"Test@1234"}'
+            -d '{"email":"admin@citymedical.com","password":"Test@1234"}'
 
           # Log only non-sensitive fields (skip the huge logoUrl)
           echo "success=$(jq -r '.success' /tmp/login_resp.json)"
@@ -68,7 +68,7 @@ jobs:
             https://hospital-management-8lbf.onrender.com/api/auth/login/verify-auth-code \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ steps.login.outputs.token }}" \
-            -d '{"authCode":"854866"}'
+            -d '{"authCode":"136960"}'
 
           echo "success=$(jq -r '.success' /tmp/auth_resp.json)"
           echo "message=$(jq -r '.message' /tmp/auth_resp.json)"
