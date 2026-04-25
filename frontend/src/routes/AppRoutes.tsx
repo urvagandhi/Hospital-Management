@@ -4,6 +4,7 @@ import AdminRoute from "../components/AdminRoute";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Spinner from "../components/Spinner";
 import { MainLayout } from "../layouts/MainLayout";
+import ActivityLog from "../pages/ActivityLog";
 import ChangePassword from "../pages/ChangePassword";
 import Dashboard from "../pages/Dashboard";
 import FolderView from "../pages/FolderView";
@@ -12,16 +13,15 @@ import HospitalRegistration from "../pages/HospitalRegistration";
 import HospitalsList from "../pages/HospitalsList";
 import LandingPage from "../pages/LandingPage";
 import Login from "../pages/Login";
-import PatientDetails from "../pages/PatientDetails";
-import Profile from "../pages/Profile";
-import Password from "../pages/Password";
-import Sessions from "../pages/Sessions";
-import VerifyAuthCode from "../pages/VerifyAuthCode";
-import ActivityLog from "../pages/ActivityLog";
-import NotificationSettings from "../pages/NotificationSettings";
-import Terms from "../pages/Terms";
-import Privacy from "../pages/Privacy";
 import NotFound from "../pages/NotFound";
+import NotificationSettings from "../pages/NotificationSettings";
+import Password from "../pages/Password";
+import PatientDetails from "../pages/PatientDetails";
+import Privacy from "../pages/Privacy";
+import Profile from "../pages/Profile";
+import Sessions from "../pages/Sessions";
+import Terms from "../pages/Terms";
+import VerifyAuthCode from "../pages/VerifyAuthCode";
 
 // Design-system preview pages are public, rarely visited, and pull in heavy
 // deps (recharts + lucide-react via ComponentsPreview). Code-split them so

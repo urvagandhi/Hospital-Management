@@ -68,25 +68,6 @@ export const authService = {
     }
   },
 
-  /**
-   * Re-send the hospital's Auth Code to their registered email when the
-   * welcome email was lost. Requires the AUTH_CODE temp token.
-   */
-  resendLoginAuthCode: async (): Promise<{ success: boolean; message: string; data?: { retryAfterSeconds: number } }> => {
-    try {
-      const tempToken = sessionStorage.getItem("tempToken");
-      const config = tempToken ? { headers: { Authorization: `Bearer ${tempToken}` } } : {};
-      const response = await api.post<{ success: boolean; message: string; data?: { retryAfterSeconds: number } }>(
-        "/auth/login/resend-auth-code",
-        {},
-        config,
-      );
-      return response.data;
-    } catch (error: unknown) {
-      throw toApiError(error, "Failed to resend Auth Code");
-    }
-  },
-
   refreshToken: async (): Promise<RefreshTokenResponse> => {
     try {
       const response = await api.post<RefreshTokenResponse>("/auth/refresh-token", {});

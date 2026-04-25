@@ -375,27 +375,10 @@ export const getActiveSessions = async (hospitalId) => {
   }
 };
 
-/**
- * Clean up expired sessions (manual cleanup)
- * @returns {Promise<object>} Deletion result
- */
-export const cleanupExpiredSessions = async () => {
-  try {
-    const result = await Session.deleteMany({
-      expiresAt: { $lt: new Date() },
-    });
-
-    return result;
-  } catch (error) {
-    throw new Error(`Failed to cleanup sessions: ${error.message}`);
-  }
-};
-
 export default {
   createSession,
   refreshAccessToken,
   invalidateSession,
   invalidateAllSessions,
   getActiveSessions,
-  cleanupExpiredSessions,
 };

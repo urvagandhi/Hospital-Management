@@ -18,7 +18,6 @@ import auditRoutes from "./routes/audit.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import exportRoutes from "./routes/export.routes.js";
 import hospitalsRoutes from "./routes/hospitals.routes.js";
-import notificationsRoutes from "./routes/notifications.routes.js";
 import patientRoutes from "./routes/patient.routes.js";
 import logger, { httpLogger } from "./utils/logger.js";
 
@@ -109,7 +108,6 @@ app.use("/api/hospitals", hospitalsRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/audits", auditRoutes);
 app.use("/api/version", appVersionRoutes);
-app.use("/api/notifications", notificationsRoutes);
 app.use("/api/admin", adminRoutes);
 
 // ============ HEALTH CHECK ============

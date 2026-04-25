@@ -78,9 +78,6 @@ interface ApiService {
     @POST("/api/auth/session/check-conflict")
     suspend fun checkSessionConflict(@Body body: Map<String, String>): Response<Map<String, Any>>
 
-    @POST("/api/auth/session/force-logout")
-    suspend fun forceLogoutOtherSessions(): Response<Map<String, Any>>
-
     @POST("/api/auth/session/reverify-auth-code")
     suspend fun reverifyAuthCode(@Body body: Map<String, String>): Response<Map<String, Any>>
 
@@ -144,13 +141,6 @@ interface ApiService {
     // Health check
     @GET("/api/health")
     suspend fun healthCheck(): Response<Map<String, Any>>
-
-    // Export archive
-    @POST("/api/export/archive")
-    @Streaming
-    suspend fun exportArchive(
-        @Body body: Map<String, Any>
-    ): Response<ResponseBody>
 
     @POST("/api/patients")
     suspend fun createPatient(

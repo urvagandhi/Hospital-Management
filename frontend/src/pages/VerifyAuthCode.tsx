@@ -82,25 +82,6 @@ export const VerifyAuthCode: React.FC = () => {
     }
   };
 
-  // Resend Code — disabled for now. Re-enable alongside the state/imports above
-  // and the JSX block below.
-  // const handleResend = async () => {
-  //   if (isResending || resendCooldown > 0) return;
-  //   setIsResending(true);
-  //   setError("");
-  //   setInfo("");
-  //   try {
-  //     const res = await authService.resendLoginAuthCode();
-  //     setInfo(res.message || "Auth Code re-sent to your email.");
-  //     setResendCooldown(res.data?.retryAfterSeconds ?? 60);
-  //   } catch (err: any) {
-  //     const retry = err?.data?.retryAfterSeconds;
-  //     if (typeof retry === "number") setResendCooldown(retry);
-  //     setError(err?.message || "Failed to resend Auth Code.");
-  //   } finally {
-  //     setIsResending(false);
-  //   }
-  // };
 
   const handleUseDifferentAccount = () => {
     sessionStorage.removeItem("tempToken");
