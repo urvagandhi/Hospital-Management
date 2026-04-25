@@ -82,6 +82,7 @@ export const getPatients = async (req, res) => {
     const {
       limit: rawLimit = 20,
       skip: rawSkip = 0,
+      cursor: rawCursor,
       search,
       createdFrom: rawCreatedFrom,
       createdTo: rawCreatedTo,
@@ -107,9 +108,12 @@ export const getPatients = async (req, res) => {
     const hasRemarks =
       rawHasRemarks === "yes" || rawHasRemarks === "no" ? rawHasRemarks : undefined;
 
-    const { patients, total } = await patientService.getPatients(hospitalId, {
+    const cursor = typeof rawCursor === "string" && rawCursor.trim() ? rawCursor.trim() : undefined;
+
+    const { patients, total, hasMore, nextCursor } = await patientService.getPatients(hospitalId, {
       limit,
       skip,
+      cursor,
       search,
       createdFrom,
       createdTo,
@@ -123,6 +127,9 @@ export const getPatients = async (req, res) => {
         total,
         limit,
         skip,
+        hasMore,
+        nextCursor,
+        cursor: cursor || null,
       },
     });
   } catch (error) {

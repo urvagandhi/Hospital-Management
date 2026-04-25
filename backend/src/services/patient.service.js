@@ -9,6 +9,35 @@ import Patient from "../models/Patient.js";
 import logger from "../utils/logger.js";
 import { cloudinary } from "./storage.service.js";
 
+function encodePatientsCursor(doc) {
+  if (!doc?.createdAt || !doc?._id) return null;
+  return Buffer.from(
+    JSON.stringify({
+      createdAt: new Date(doc.createdAt).toISOString(),
+      id: String(doc._id),
+    }),
+  ).toString("base64url");
+}
+
+function decodePatientsCursor(cursor) {
+  if (!cursor || typeof cursor !== "string") return null;
+  try {
+    const decoded = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    if (!decoded?.createdAt || !decoded?.id) return null;
+
+    const createdAt = new Date(decoded.createdAt);
+    if (Number.isNaN(createdAt.getTime())) return null;
+    if (!mongoose.Types.ObjectId.isValid(decoded.id)) return null;
+
+    return {
+      createdAt,
+      id: new mongoose.Types.ObjectId(decoded.id),
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Create a new patient with auto-generated patientId
  * @param {string} hospitalId
@@ -64,19 +93,31 @@ export const getPatients = async (hospitalId, options = {}) => {
     const {
       limit = 20,
       skip = 0,
+      cursor,
       search,
       createdFrom,
       createdTo,
       hasRemarks,
     } = options;
+    const cursorPayload = decodePatientsCursor(cursor);
     logger.info(
-      { event: "patients_fetch_start", hospitalId, limit, skip, search, createdFrom, createdTo, hasRemarks },
+      {
+        event: "patients_fetch_start",
+        hospitalId,
+        limit,
+        skip,
+        hasCursor: Boolean(cursor),
+        validCursor: Boolean(cursorPayload),
+        search,
+        createdFrom,
+        createdTo,
+        hasRemarks,
+      },
       "[Patient Service] Fetching patients",
     );
 
     const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
 
-    const query = { hospitalId: hospitalObjectId };
     const clauses = [];
 
     if (search && search.trim()) {
@@ -108,23 +149,60 @@ export const getPatients = async (hospitalId, options = {}) => {
       });
     }
 
-    if (clauses.length > 0) {
-      query.$and = clauses;
+    const buildQuery = (extraClauses = []) => {
+      const query = { hospitalId: hospitalObjectId };
+      const andClauses = [...clauses, ...extraClauses];
+      if (andClauses.length > 0) query.$and = andClauses;
+      return query;
+    };
+
+    const total = await Patient.countDocuments(buildQuery());
+
+    let patients = [];
+    let hasMore = false;
+    let nextCursor = null;
+
+    if (cursorPayload) {
+      const cursorClause = {
+        $or: [
+          { createdAt: { $lt: cursorPayload.createdAt } },
+          {
+            createdAt: cursorPayload.createdAt,
+            _id: { $lt: cursorPayload.id },
+          },
+        ],
+      };
+
+      const docs = await Patient.find(buildQuery([cursorClause]))
+        .limit(limit + 1)
+        .select("-folders.files.fileUrl")
+        .sort({ createdAt: -1, _id: -1 });
+
+      hasMore = docs.length > limit;
+      patients = hasMore ? docs.slice(0, limit) : docs;
+      nextCursor = hasMore ? encodePatientsCursor(patients[patients.length - 1]) : null;
+    } else {
+      patients = await Patient.find(buildQuery())
+        .limit(limit)
+        .skip(skip)
+        .select("-folders.files.fileUrl")
+        .sort({ createdAt: -1, _id: -1 });
+
+      hasMore = skip + patients.length < total;
     }
 
-    const patients = await Patient.find(query)
-      .limit(limit)
-      .skip(skip)
-      .select("-folders.files.fileUrl")
-      .sort({ createdAt: -1 });
-
-    const total = await Patient.countDocuments(query);
-
     logger.info(
-      { event: "patients_fetch_ok", hospitalId, count: patients.length, total },
+      {
+        event: "patients_fetch_ok",
+        hospitalId,
+        count: patients.length,
+        total,
+        hasMore,
+        nextCursorPresent: Boolean(nextCursor),
+      },
       `[Patient Service] Found ${patients.length} patients`,
     );
-    return { patients, total };
+    return { patients, total, hasMore, nextCursor };
   } catch (error) {
     logger.error({ event: "patients_fetch_failed", err: error }, "[Patient Service] Fetch error");
     throw error;
