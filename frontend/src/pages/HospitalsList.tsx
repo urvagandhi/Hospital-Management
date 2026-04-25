@@ -10,11 +10,10 @@
  *   • Admin force-delete modal (password + reason + DELETE confirm)
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ErrorMessage } from "../components/ErrorMessage";
-import PageLoader from "../components/PageLoader";
 import Spinner from "../components/Spinner";
 import { useAuth } from "../hooks/useAuth";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
@@ -40,10 +39,9 @@ interface Hospital {
 const INPUT_BASE =
   "w-full px-4 py-2.5 bg-surface-white border rounded-xl text-sm text-neutral-900 placeholder:text-neutral-400 transition-all focus:outline-none focus:ring-4";
 const inputClass = (hasError: boolean, danger = false) =>
-  `${INPUT_BASE} ${
-    hasError || danger
-      ? "border-danger focus:border-danger focus:ring-danger/10"
-      : "border-neutral-200 focus:border-primary-400 focus:ring-primary-100"
+  `${INPUT_BASE} ${hasError || danger
+    ? "border-danger focus:border-danger focus:ring-danger/10"
+    : "border-neutral-200 focus:border-primary-400 focus:ring-primary-100"
   }`;
 
 export const HospitalsList: React.FC = () => {
@@ -54,13 +52,15 @@ export const HospitalsList: React.FC = () => {
   const isAdmin = hospital?.role === "admin";
 
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   // Server-side pagination state (TD-005).
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [totals, setTotals] = useState<{ total: number; active: number; recentWeek: number } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Edit modal
   const [editingHospital, setEditingHospital] = useState<Hospital | null>(null);
@@ -96,63 +96,91 @@ export const HospitalsList: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Debounce search so we don't spam /hospitals on every keystroke.
+  // 120ms debounce — matches Dashboard patient search; fast enough to feel instant.
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 120);
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  // First-page fetch whenever the debounced search changes.
+  // First-page fetch whenever the debounced search changes. AbortController
+  // cancels stragglers so out-of-order responses can't overwrite fresher ones.
   useEffect(() => {
-    loadHospitals({ reset: true, search: debouncedSearch });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const fetchHospitals = async () => {
+      try {
+        setSearching(true);
+        setError(null);
+
+        const params = new URLSearchParams();
+        params.set("limit", "50");
+        if (debouncedSearch) params.set("search", debouncedSearch);
+
+        const response = await api.get<{
+          data: Hospital[];
+          nextCursor: string | null;
+          totals?: { total: number; active: number; recentWeek: number };
+        }>(`/hospitals?${params.toString()}`, { signal: controller.signal });
+
+        if (controller.signal.aborted) return;
+        const rows = response.data.data || [];
+        setHospitals(rows);
+        setNextCursor(response.data.nextCursor || null);
+        if (response.data.totals) setTotals(response.data.totals);
+      } catch (err: any) {
+        const name = err?.name;
+        const code = err?.code;
+        if (name === "CanceledError" || name === "AbortError" || code === "ERR_CANCELED") {
+          return;
+        }
+        setError(
+          err.response?.data?.message || err.message || "Failed to load hospitals",
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setSearching(false);
+          setInitialLoading(false);
+        }
+      }
+    };
+
+    fetchHospitals();
+    return () => controller.abort();
   }, [debouncedSearch]);
 
-  const loadHospitals = async ({
-    reset,
-    search,
-    cursor,
-  }: {
-    reset: boolean;
-    search: string;
-    cursor?: string | null;
-  }) => {
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore) return;
     try {
-      if (reset) setLoading(true);
-      else setLoadingMore(true);
+      setLoadingMore(true);
       setError(null);
 
       const params = new URLSearchParams();
       params.set("limit", "50");
-      if (search) params.set("search", search);
-      if (cursor) params.set("cursor", cursor);
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      params.set("cursor", nextCursor);
 
       const response = await api.get<{
         data: Hospital[];
         nextCursor: string | null;
-        totals?: { total: number; active: number; recentWeek: number };
       }>(`/hospitals?${params.toString()}`);
 
       const rows = response.data.data || [];
-      setHospitals((prev) => (reset ? rows : [...prev, ...rows]));
+      setHospitals((prev) => [...prev, ...rows]);
       setNextCursor(response.data.nextCursor || null);
-      if (reset && response.data.totals) {
-        setTotals(response.data.totals);
-      }
     } catch (err: any) {
       setError(
         err.response?.data?.message || err.message || "Failed to load hospitals",
       );
     } finally {
-      setLoading(false);
       setLoadingMore(false);
     }
   };
 
   const handleLoadMore = () => {
-    if (!nextCursor || loadingMore) return;
-    loadHospitals({ reset: false, search: debouncedSearch, cursor: nextCursor });
+    loadMore();
   };
 
   // ── Derived ──────────────────────────────────────────────────────────────
@@ -355,12 +383,12 @@ export const HospitalsList: React.FC = () => {
       setTotals((prev) =>
         prev
           ? {
-              ...prev,
-              total: Math.max(0, prev.total - 1),
-              active: deletingHospital.isActive
-                ? Math.max(0, prev.active - 1)
-                : prev.active,
-            }
+            ...prev,
+            total: Math.max(0, prev.total - 1),
+            active: deletingHospital.isActive
+              ? Math.max(0, prev.active - 1)
+              : prev.active,
+          }
           : prev,
       );
       setDeletingHospital(null);
@@ -376,7 +404,83 @@ export const HospitalsList: React.FC = () => {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
-  if (loading) return <PageLoader label="Loading hospitals…" />;
+  // First mount: show skeleton cards (matches Dashboard's pattern). Subsequent
+  // searches keep the grid rendered and dim it instead.
+  if (initialLoading) {
+    return (
+      <div className="relative min-h-[calc(100vh-4rem)] bg-surface-bg overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-24 -right-16 w-96 h-96 rounded-full bg-primary-100/50 blur-3xl"
+        />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          {/* Header — real heading + subtitle, not skeletonized */}
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <h1 className="font-heading text-3xl sm:text-4xl font-bold tracking-tight text-neutral-900">
+                Registered{" "}
+                <span className="bg-gradient-primary bg-clip-text text-transparent">
+                  Hospitals
+                </span>
+              </h1>
+              <p className="mt-2 text-sm text-neutral-500 leading-relaxed">
+                Manage and monitor every hospital in the system.
+              </p>
+            </div>
+            {isAdmin && (
+              <div className="h-11 w-44 bg-neutral-100 rounded-xl animate-pulse" />
+            )}
+          </div>
+
+          {/* Stat cards skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-surface-white rounded-2xl shadow-card border border-neutral-200 p-5 animate-pulse"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="h-4 w-20 bg-neutral-100 rounded" />
+                  <div className="h-10 w-10 bg-neutral-100 rounded-xl" />
+                </div>
+                <div className="h-8 w-16 bg-neutral-100 rounded" />
+              </div>
+            ))}
+          </div>
+
+          {/* Search bar skeleton */}
+          <div className="bg-surface-white rounded-2xl shadow-card border border-neutral-200 p-5 mb-6 animate-pulse">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="h-4 w-40 bg-neutral-100 rounded" />
+              <div className="h-11 w-full sm:w-80 bg-neutral-100 rounded-xl" />
+            </div>
+          </div>
+
+          {/* Card grid skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-surface-white rounded-2xl border border-neutral-200 shadow-card overflow-hidden animate-pulse"
+              >
+                <div className="h-32 bg-neutral-100" />
+                <div className="p-5 space-y-3">
+                  <div className="h-5 w-3/4 bg-neutral-100 rounded" />
+                  <div className="h-4 w-1/2 bg-neutral-100 rounded" />
+                  <div className="h-4 w-2/3 bg-neutral-100 rounded" />
+                  <div className="flex gap-2 pt-3 border-t border-neutral-100">
+                    <div className="h-8 flex-1 bg-neutral-100 rounded-lg" />
+                    <div className="h-8 flex-1 bg-neutral-100 rounded-lg" />
+                    <div className="h-8 flex-1 bg-neutral-100 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] bg-surface-bg overflow-hidden">
@@ -530,9 +634,16 @@ export const HospitalsList: React.FC = () => {
                 placeholder="Search by name, email, or phone…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`${inputClass(false)} sm:w-80 pl-9`}
+                className={`${inputClass(false)} sm:w-80 pl-9 pr-10`}
               />
-              {searchTerm && (
+              {searching ? (
+                <span
+                  aria-label="Searching"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-500 pointer-events-none"
+                >
+                  <Spinner variant="tri-ring" size="sm" />
+                </span>
+              ) : searchTerm ? (
                 <button
                   type="button"
                   onClick={() => setSearchTerm("")}
@@ -553,7 +664,7 @@ export const HospitalsList: React.FC = () => {
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
@@ -641,16 +752,14 @@ export const HospitalsList: React.FC = () => {
                         )}
                       </h3>
                       <span
-                        className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full ${
-                          h.isActive
+                        className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full ${h.isActive
                             ? "bg-success/10 text-success"
                             : "bg-danger/10 text-danger"
-                        }`}
+                          }`}
                       >
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            h.isActive ? "bg-success" : "bg-danger"
-                          }`}
+                          className={`w-1.5 h-1.5 rounded-full ${h.isActive ? "bg-success" : "bg-danger"
+                            }`}
                           aria-hidden="true"
                         />
                         {h.isActive ? "Active" : "Inactive"}
@@ -753,11 +862,10 @@ export const HospitalsList: React.FC = () => {
                     {/* Resend status */}
                     {resendMessage?.id === h._id && (
                       <div
-                        className={`mt-3 text-xs px-3 py-2 rounded-lg border ${
-                          resendMessage.ok
+                        className={`mt-3 text-xs px-3 py-2 rounded-lg border ${resendMessage.ok
                             ? "bg-success/10 text-success border-success/20"
                             : "bg-danger/10 text-danger border-danger/20"
-                        }`}
+                          }`}
                       >
                         {resendMessage.text}
                       </div>
@@ -1416,11 +1524,10 @@ const StatCard: React.FC<{
   <div className="relative overflow-hidden bg-surface-white rounded-2xl border border-neutral-200 p-6 shadow-card hover:shadow-card-hover transition-shadow">
     <div className="flex items-center gap-4">
       <div
-        className={`shrink-0 flex items-center justify-center w-12 h-12 rounded-xl ring-1 ring-inset ${
-          tone === "success"
+        className={`shrink-0 flex items-center justify-center w-12 h-12 rounded-xl ring-1 ring-inset ${tone === "success"
             ? "bg-success/10 text-success ring-success/20"
             : "bg-primary-50 text-primary-600 ring-primary-600/15"
-        }`}
+          }`}
       >
         {icon}
       </div>
@@ -1433,9 +1540,8 @@ const StatCard: React.FC<{
     </div>
     <div
       aria-hidden="true"
-      className={`absolute -right-3 -bottom-3 w-20 h-20 rounded-full ${
-        tone === "success" ? "bg-success/5" : "bg-primary-100/40"
-      }`}
+      className={`absolute -right-3 -bottom-3 w-20 h-20 rounded-full ${tone === "success" ? "bg-success/5" : "bg-primary-100/40"
+        }`}
     />
   </div>
 );
@@ -1447,14 +1553,12 @@ const Detail: React.FC<{
   children: React.ReactNode;
 }> = ({ icon, tone = "neutral", align = "center", children }) => (
   <div
-    className={`flex gap-2.5 text-sm text-neutral-600 ${
-      align === "start" ? "items-start" : "items-center"
-    }`}
+    className={`flex gap-2.5 text-sm text-neutral-600 ${align === "start" ? "items-start" : "items-center"
+      }`}
   >
     <div
-      className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
-        tone === "primary" ? "bg-primary-50" : "bg-neutral-100"
-      } ${align === "start" ? "mt-0.5" : ""}`}
+      className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${tone === "primary" ? "bg-primary-50" : "bg-neutral-100"
+        } ${align === "start" ? "mt-0.5" : ""}`}
     >
       {icon}
     </div>
@@ -1494,28 +1598,28 @@ const ModalShell: React.FC<{
   maxWidthClass?: string;
   children: React.ReactNode;
 }> = ({ onClose, maxWidthClass = "sm:max-w-md", children }) =>
-  // Portal to body so the backdrop can't be trapped by a page-level stacking
-  // context (CLAUDE.md §8 — same rule HospitalProfileModal and ConfirmDialog follow).
-  createPortal(
-    <div
-      className="fixed inset-0 z-[100] overflow-y-auto"
-      role="dialog"
-      aria-modal="true"
-    >
+    // Portal to body so the backdrop can't be trapped by a page-level stacking
+    // context (CLAUDE.md §8 — same rule HospitalProfileModal and ConfirmDialog follow).
+    createPortal(
       <div
-        className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="flex min-h-full items-end justify-center p-4 sm:items-center sm:p-0">
+        className="fixed inset-0 z-[100] overflow-y-auto"
+        role="dialog"
+        aria-modal="true"
+      >
         <div
-          className={`relative w-full ${maxWidthClass} bg-surface-white rounded-2xl shadow-modal ring-1 ring-neutral-200 overflow-hidden animate-scale-in`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {children}
+          className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm"
+          onClick={onClose}
+        />
+        <div className="flex min-h-full items-end justify-center p-4 sm:items-center sm:p-0">
+          <div
+            className={`relative w-full ${maxWidthClass} bg-surface-white rounded-2xl shadow-modal ring-1 ring-neutral-200 overflow-hidden animate-scale-in`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {children}
+          </div>
         </div>
-      </div>
-    </div>,
-    document.body,
-  );
+      </div>,
+      document.body,
+    );
 
 export default HospitalsList;

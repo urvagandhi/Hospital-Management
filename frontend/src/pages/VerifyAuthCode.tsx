@@ -305,15 +305,15 @@ export const VerifyAuthCode: React.FC = () => {
                 onFocus={() => setActiveIndex(index)}
                 onPaste={handleCellPaste}
                 className={`
-                  w-full h-14 sm:h-16 rounded-xl text-center text-2xl font-mono font-bold
-                  border-2 bg-surface-white text-neutral-900 transition-all duration-200 outline-none
+                  w-full h-14 sm:h-16 rounded-xl text-center text-2xl font-heading font-semibold
+                  border-2 transition-all duration-150 outline-none
                   disabled:opacity-60 disabled:cursor-not-allowed
                   ${
-                    isActive
-                      ? "border-primary-500 ring-2 ring-primary-100"
-                      : filled
-                        ? "border-neutral-300"
-                        : "border-neutral-200 hover:border-primary-300"
+                    filled || isActive
+                      ? `bg-primary-50 border-primary-500 text-primary-700 ${
+                          isActive ? "ring-2 ring-primary-100" : ""
+                        }`
+                      : "bg-surface-white border-neutral-200 text-neutral-900 hover:border-primary-300"
                   }
                 `}
               />

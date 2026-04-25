@@ -90,9 +90,12 @@ export const getAllHospitals = async (req, res) => {
       limit,
     };
 
-    // Only compute + return totals on the first page (no cursor) so subsequent
-    // pages stay cheap. Ignores the search filter — totals are global.
-    if (!cursor) {
+    // Only compute + return totals on the unfiltered first page (no cursor and
+    // no search). Totals are global and search-independent, so the frontend's
+    // already-cached value from the initial mount stays valid across every
+    // keystroke. This avoids 3 full-collection countDocuments per keystroke
+    // and is the dominant fix for slow search UX.
+    if (!cursor && !search) {
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const [total, active, recentWeek] = await Promise.all([
         Hospital.countDocuments({}),
