@@ -3,11 +3,12 @@
  * Catches React errors and displays fallback UI
  */
 
-import React, { ReactNode, ReactElement } from "react";
+import React, { ReactElement, ReactNode } from "react";
 import { Button } from "./Button";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
+  fullScreen?: boolean;
 }
 
 interface ErrorBoundaryState {
@@ -44,8 +45,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   render(): ReactElement {
     if (this.state.hasError) {
+      const containerClass = this.props.fullScreen === false
+        ? "min-h-[calc(100vh-4rem)] bg-surface-bg flex items-center justify-center px-4"
+        : "min-h-screen bg-gray-50 flex items-center justify-center px-4";
+
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className={containerClass}>
           <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
