@@ -89,6 +89,25 @@ class DownloadWorker(
          *    "message": "..."?}
          */
         const val KEY_STATUS_URL = "status_url"
+        /**
+         * Optional — HTTP method for the byte-stream phase. Defaults to "GET".
+         * Set to "POST" for server-side bulk download endpoints
+         * (`/api/patients/{id}/download/pdf`, `/api/patients/{id}/download/zip`,
+         *  `/api/patients/{id}/folders/{folder}/download/{pdf|zip}`).
+         *
+         * POST flows skip:
+         *   - HEAD probing (most bulk endpoints don't support it),
+         *   - resume / Range (POST responses are not resumable),
+         *   - Last-Modified-keyed disk cache (server merges are dynamic).
+         * Each POST hits the server fresh and streams the response body to disk.
+         */
+        const val KEY_HTTP_METHOD = "http_method"
+        /**
+         * Optional — when [KEY_HTTP_METHOD] is "POST", the JSON string sent as
+         * the request body (Content-Type: application/json). Empty string or
+         * null = no body (e.g. patient-zip-all endpoint accepts an empty POST).
+         */
+        const val KEY_REQUEST_BODY_JSON = "request_body_json"
 
         // Output keys
         const val KEY_CACHED_PATH = "cached_path"
@@ -157,6 +176,9 @@ class DownloadWorker(
         val authToken = inputData.getString(KEY_AUTH_TOKEN)
         val authHost = inputData.getString(KEY_AUTH_HOST)
         val maxRetries = inputData.getInt(KEY_MAX_RETRIES, DEFAULT_MAX_RETRIES)
+        val httpMethod = (inputData.getString(KEY_HTTP_METHOD) ?: "GET").uppercase()
+        val requestBodyJson = inputData.getString(KEY_REQUEST_BODY_JSON)
+        val isPost = httpMethod == "POST"
 
         try {
             // ── PHASE 1: PREPARING ──────────────────────────────────────────
@@ -179,58 +201,97 @@ class DownloadWorker(
                 seedDownloadUrl!! // null-check done above
             }
 
-            val headResult = headRequest(downloadUrl, authToken, authHost)
+            // POST flows can't reliably probe via HEAD (server-side merge
+            // endpoints often reject HEAD), don't resume (the response body is
+            // a fresh dynamic merge each call), and shouldn't fast-path the
+            // disk cache since the inputs (folder set, mode) live in the body
+            // we can't validate via Last-Modified. Mark them stale + skip both
+            // probes, but still write to a content-hashed temp file so the
+            // existing finalize/MediaStore flow stays the same.
+            val headResult = if (isPost) {
+                HeadResult(lastModified = "", acceptRanges = false)
+            } else {
+                headRequest(downloadUrl, authToken, authHost)
+            }
             if (isStopped) return@withContext cancelled()
 
             val lastModified = headResult.lastModified
-            val contentHash = computeHash(downloadUrl, lastModified)
-            val isStale = lastModified.isEmpty()
+            // For POST flows, hash the URL + body so concurrent same-URL POSTs
+            // with different bodies (e.g. merged vs per-folder PDF) don't
+            // collide on disk.
+            val contentHash = if (isPost) {
+                computeHash("$downloadUrl|POST|${requestBodyJson ?: ""}", "")
+            } else {
+                computeHash(downloadUrl, lastModified)
+            }
+            val isStale = isPost || lastModified.isEmpty()
 
-            // Cache hit fast path
-            val cached = cacheDao.getByHash(contentHash)
-            if (cached != null && !cached.isStale) {
-                val cachedFile = File(cached.localPath)
-                if (cachedFile.exists()) {
-                    cacheDao.touchAccess(contentHash)
-                    Log.i(TAG, "cache_hit=true file=$fileName hash=${contentHash.take(12)}")
-                    saveToMediaStore(cachedFile, fileName, mimeType, subPath)
-                    finalizeReady(cachedFile)
-                    return@withContext Result.success(
-                        Data.Builder()
-                            .putString(KEY_CACHED_PATH, cached.localPath)
-                            .putString(KEY_STATUS, DownloadStage.READY.name)
-                            .build()
-                    )
+            // Cache hit fast path — POST flows skip this; the merge result is
+            // dynamic and we shouldn't serve stale bytes.
+            if (!isPost) {
+                val cached = cacheDao.getByHash(contentHash)
+                if (cached != null && !cached.isStale) {
+                    val cachedFile = File(cached.localPath)
+                    if (cachedFile.exists()) {
+                        cacheDao.touchAccess(contentHash)
+                        Log.i(TAG, "cache_hit=true file=$fileName hash=${contentHash.take(12)}")
+                        saveToMediaStore(cachedFile, fileName, mimeType, subPath)
+                        finalizeReady(cachedFile)
+                        return@withContext Result.success(
+                            Data.Builder()
+                                .putString(KEY_CACHED_PATH, cached.localPath)
+                                .putString(KEY_STATUS, DownloadStage.READY.name)
+                                .build()
+                        )
+                    }
+                    cacheDao.deleteByHash(contentHash)
                 }
-                cacheDao.deleteByHash(contentHash)
             }
 
-            Log.i(TAG, "cache_hit=false file=$fileName hash=${contentHash.take(12)}")
+            Log.i(TAG, "cache_hit=false method=$httpMethod file=$fileName hash=${contentHash.take(12)}")
 
             val cacheDir = File(applicationContext.filesDir, CACHE_DIR_NAME).also { it.mkdirs() }
             val tmpFile = File(cacheDir, "$contentHash.tmp")
             val finalFile = File(cacheDir, "$contentHash${extensionFor(fileName)}")
             val partialMetaFile = File(cacheDir, "$contentHash.meta")
 
-            // Resume verification — only trust .tmp when Last-Modified matches
+            // Resume verification — only trust .tmp when Last-Modified matches.
+            // POST flows always start from byte 0 (server can't honour Range).
             var resumeOffset = 0L
-            if (tmpFile.exists() && partialMetaFile.exists()) {
-                val storedLastModified = partialMetaFile.readText().trim()
-                if (lastModified.isNotEmpty() && storedLastModified == lastModified) {
-                    resumeOffset = tmpFile.length()
-                    Log.d(TAG, "resume from byte=$resumeOffset")
-                } else {
-                    tmpFile.delete(); partialMetaFile.delete()
+            if (!isPost) {
+                if (tmpFile.exists() && partialMetaFile.exists()) {
+                    val storedLastModified = partialMetaFile.readText().trim()
+                    if (lastModified.isNotEmpty() && storedLastModified == lastModified) {
+                        resumeOffset = tmpFile.length()
+                        Log.d(TAG, "resume from byte=$resumeOffset")
+                    } else {
+                        tmpFile.delete(); partialMetaFile.delete()
+                    }
+                } else if (tmpFile.exists()) {
+                    tmpFile.delete()
                 }
-            } else if (tmpFile.exists()) {
-                tmpFile.delete()
+                if (lastModified.isNotEmpty()) partialMetaFile.writeText(lastModified)
+            } else {
+                // Wipe any stragglers from a prior run — POST isn't resumable.
+                if (tmpFile.exists()) tmpFile.delete()
+                if (partialMetaFile.exists()) partialMetaFile.delete()
             }
-            if (lastModified.isNotEmpty()) partialMetaFile.writeText(lastModified)
 
             val parsedUrl = URL(downloadUrl)
             val conn = (parsedUrl.openConnection() as HttpURLConnection).apply {
+                // Bulk merges (PDF / ZIP) on the server can take a while —
+                // give POST a longer read timeout to match the inline path
+                // observers were used to. GET keeps the existing 60s.
                 connectTimeout = 15_000
-                readTimeout = 60_000
+                readTimeout = if (isPost) 300_000 else 60_000
+                if (isPost) {
+                    requestMethod = "POST"
+                    doOutput = true
+                    if (!requestBodyJson.isNullOrEmpty()) {
+                        setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                        setRequestProperty("Accept", mimeType)
+                    }
+                }
                 if (resumeOffset > 0 && headResult.acceptRanges) {
                     setRequestProperty("Range", "bytes=$resumeOffset-")
                 }
@@ -241,6 +302,15 @@ class DownloadWorker(
 
             try {
                 conn.connect()
+                // Write POST body after connect() so HttpURLConnection has
+                // committed headers — this is the standard pattern for the
+                // legacy URLConnection API.
+                if (isPost && !requestBodyJson.isNullOrEmpty()) {
+                    conn.outputStream.use { os ->
+                        os.write(requestBodyJson.toByteArray(Charsets.UTF_8))
+                        os.flush()
+                    }
+                }
                 when (conn.responseCode) {
                     in 200..206 -> { /* OK */ }
                     401, 403 -> return@withContext failWith(
@@ -337,6 +407,8 @@ class DownloadWorker(
             partialMetaFile.delete()
 
             val now = System.currentTimeMillis()
+            // POST results are always stored as stale so the next request
+            // re-fetches from the server — see isStale assignment above.
             cacheDao.upsert(
                 DownloadCache(
                     contentHash = contentHash,
