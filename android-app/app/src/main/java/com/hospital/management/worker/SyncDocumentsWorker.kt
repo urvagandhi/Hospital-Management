@@ -27,7 +27,12 @@ class SyncDocumentsWorker(
 
     companion object {
         private const val TAG = "SyncDocumentsWorker"
-        private const val MAX_RETRY_COUNT = 5
+        // Was 5 — far too aggressive for big-file uploads on flaky cellular,
+        // because the OkHttp 30s readTimeout would burn the whole budget in
+        // one bad evening. With timeout now at 300s, 50 attempts is plenty of
+        // patience, and WorkManager exponential backoff (capped at ~5 min)
+        // means 50 attempts stretches over hours, not minutes.
+        private const val MAX_RETRY_COUNT = 50
         private const val MIN_PROGRESS_INTERVAL_MS = 500L
         private const val SPEED_WINDOW_MS = 1_000L
     }

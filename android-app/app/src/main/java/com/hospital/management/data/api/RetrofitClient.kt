@@ -59,9 +59,17 @@ object RetrofitClient {
             .cookieJar(cookieJar)
             .addInterceptor(UserAgentInterceptor(context))
             .addInterceptor(AuthInterceptor(context))
+            // 30s was too short for big multipart uploads (15-18 MB scans on
+            // cellular or a cold Render dyno would hit SocketTimeoutException
+            // mid-write and the doc would land in PENDING forever after 5
+            // retries). 300s aligns with the backend / sidecar's 5-minute
+            // ceiling — anything longer than that is a real failure, not a
+            // slow network. connectTimeout stays short — TCP handshake should
+            // never need that long.
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(300, TimeUnit.SECONDS)
+            .writeTimeout(300, TimeUnit.SECONDS)
+            .callTimeout(0, TimeUnit.SECONDS) // 0 = no overall call cap; per-stage timeouts above are the limits
 
         // In release builds, attach a network-level logging interceptor that
         // writes every request/response line to FileLogger (on-device file).
