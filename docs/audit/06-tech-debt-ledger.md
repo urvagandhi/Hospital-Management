@@ -14,7 +14,7 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 |---|---|---|---|---|
 | 🔥 This Week | 5 | 4 (TD-001 / TD-002 / TD-004 / TD-005) | 1 (TD-003) | ~1 day remaining |
 | 📅 This Quarter | 9 | 8 (TD-007 / TD-008 / TD-009 / TD-010 / TD-011 / TD-012 / TD-013 / TD-014) | 1 (TD-006) | ~1 week remaining |
-| 🧹 Backlog Polish | 14 | 10 (TD-015 / TD-016 / TD-017 / TD-018 / TD-019 / TD-021 / TD-022 / TD-023 / TD-025 / TD-027) | 3 (TD-020 / TD-024 / TD-026) | opportunistic |
+| 🧹 Backlog Polish | 14 | 11 (TD-015 / TD-016 / TD-017 / TD-018 / TD-019 / TD-021 / TD-022 / TD-023 / TD-024 / TD-025 / TD-027) | 2 (TD-020 / TD-026) | opportunistic |
 | 🌍 Cross-cutting | 1 | 1 (TD-030) | 0 | done |
 | 🛡️ XSS hardening | 1 | 1 (TD-029) | 0 | done |
 | 🤔 Discuss First | 5 | 2 (TD-D3 → shipped as TD-029; TD-D4 → option b shipped 2026-04-25) | 3 (TD-D1 / TD-D2 / TD-D5) | architecture decisions |
@@ -23,7 +23,7 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 
 1. **TD-003** (High · S) — delete dead `r2.service.js` + drop the `@aws-sdk/*` deps (~7 MB install shrink).
 2. **TD-006** (High · L) — establish real test coverage; blocked behind a Jest ESM-config fix (see TD-022 note).
-3. **TD-020 / TD-024 / TD-026** (Low) — opportunistic.
+3. **TD-020 / TD-026** (Low) — opportunistic. (TD-024 shipped 2026-04-25.)
 
 After TD-003 lands, the This-Week tier is clear. The This-Quarter tier still owes **TD-006** (the big one).
 
@@ -65,9 +65,11 @@ Priority-ordered. Tackle 🔥 first, then 📅, then 🧹. 🤔 items need a dec
 - **Discuss first:** Backend is plain JS; sharing types requires picking an architectural direction (TS migration vs `.d.ts` shims vs Zod-in-workspace vs OpenAPI codegen). Each is a separate design decision before any code lands. Recommend opening this as TD-D6 once the team has bandwidth to commit.
 - **Dependencies:** None.
 
-#### TD-024 · Low · XS — CI integrity: add `npm ci` script + Dependabot
+#### TD-024 · ✅ SHIPPED 2026-04-25 — CI integrity: add `npm ci` script + Dependabot
 
 - **Source:** `04-enhancements.md` SEC-019
+- **What shipped:** `ci` script added to [backend/package.json](../../backend/package.json) and [frontend/package.json](../../frontend/package.json); [.github/dependabot.yml](../../.github/dependabot.yml) covers npm × 2, pip (sidecar), gradle (android), github-actions on a weekly Monday cadence with minor+patch grouping for npm; [.github/workflows/ci.yml](../../.github/workflows/ci.yml) runs `npm ci` + lint/type-check/build on every push to `main` and PR to fail fast on lockfile drift.
+- **Operator follow-up:** First Dependabot wave will land Monday — expect 5-PR-per-ecosystem ceiling; review and merge minor+patch groups, take majors one at a time.
 - **Dependencies:** None.
 
 #### TD-026 · Low · M — Extract oversized pages into component files
