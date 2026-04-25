@@ -2,7 +2,7 @@
 <!-- Self-contained banner that surfaces in-flight WorkManager jobs (downloads,
      uploads, sync) at the top of the Dashboard. Auto-hides when no work is in
      RUNNING/ENQUEUED state. Bound by WorkProgressBanner.kt. -->
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.hospital.management.ui.components.WorkProgressBanner xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/workProgressBanner"
@@ -56,4 +56,4 @@
         </LinearLayout>
     </LinearLayout>
 
-</androidx.cardview.widget.CardView>
+</com.hospital.management.ui.components.WorkProgressBanner>

@@ -2,9 +2,7 @@ package com.hospital.management.ui.components
 
 import android.content.Context
 import android.util.AttributeSet
-import android.view.LayoutInflater
 import android.view.View
-import android.widget.LinearLayout
 import androidx.cardview.widget.CardView
 import androidx.lifecycle.LifecycleOwner
 import androidx.work.WorkInfo
@@ -38,14 +36,9 @@ class WorkProgressBanner @JvmOverloads constructor(
     private val titleView by lazy { findViewById<android.widget.TextView>(R.id.bannerTitle) }
     private val subtextView by lazy { findViewById<android.widget.TextView>(R.id.bannerSubtext) }
 
-    init {
-        // The XML root IS this CardView (we're inflating into it). If this
-        // view is constructed from code without an XML inflate, fall back
-        // to inflating the inner content.
-        if (childCount == 0) {
-            LayoutInflater.from(context).inflate(R.layout.view_work_progress_banner, this, true)
-        }
-    }
+    // No init-block inflate — the XML root IS this view, and the inflater
+    // attaches the inner LinearLayout/TextView children directly. Re-inflating
+    // R.layout.view_work_progress_banner here would recurse infinitely.
 
     /**
      * Wire the banner to the given lifecycle owner. Safe to call from
