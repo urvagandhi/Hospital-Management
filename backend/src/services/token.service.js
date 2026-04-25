@@ -304,9 +304,10 @@ export const refreshAccessToken = async (refreshToken) => {
       // idle → its row flips inactive → device A's next refresh hits this
       // path → reuse defense revokes device B too. Cross-device logout from
       // a single user closing one tab.
-      const revokedRow = await Session.findOne({ refreshToken })
-        .select("_id revokedReason isActive")
-        .lean();
+      // No `.select().lean()` chain — the unit-test mock for Session.findOne
+      // returns a plain Promise (not a Mongoose Query), so chaining breaks
+      // CI. The row is one document; reading the full thing is cheap.
+      const revokedRow = await Session.findOne({ refreshToken });
 
       if (revokedRow && !revokedRow.isActive) {
         // Explicitly revoked — clean failure, no cascade.
