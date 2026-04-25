@@ -1,22 +1,28 @@
 /**
  * GeoIP service — resolves a raw IP address to a human-readable location.
  *
- * Provider: ip-api.com (free tier, no API key, 45 req/min/IP). The response
- * is shaped as { status, country, regionName, city, ... }.
+ * Provider chain (ordered; first successful response wins, subsequent failures
+ * fall through to the next):
+ *   1. ipinfo.io — keyed tier via `IPINFO_TOKEN`; activated only when the env
+ *      is set. Higher quality data, per-token quota (50 k/month on free tier).
+ *   2. ip-api.com — keyless fallback, 45 req/min/IP. Always available.
  *
- * Cache: in-process Map with 24h TTL. Private/loopback IPs short-circuit to
- * `{ isPrivate: true, displayName: "Local network" }`. The cache never
- * persists to disk — a restart re-fetches, which is fine given the TTL.
+ * Cache: in-process Map with 24h TTL on success and 5-min TTL on miss. Private /
+ * loopback IPs short-circuit to `{ isPrivate: true, displayName: "Local network" }`.
+ * The cache never persists to disk — a restart re-fetches, which is fine given
+ * the TTL.
  *
- * All callers are fire-and-forget: geolocate() never throws, always resolves
- * to a location-like object (possibly null-ish). Use `formatLocation()` to
- * turn it into a UI/email-friendly string.
+ * All callers are fire-and-forget: `geolocateIp` never throws, always resolves
+ * to a location-like object (possibly null-ish). Use `formatLocation()` to turn
+ * it into a UI/email-friendly string.
  */
 
 import logger from "../utils/logger.js";
 
 const CACHE = new Map(); // ip -> { value, expiresAt }
 const TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const MISS_TTL_MS = 5 * 60 * 1000; // 5 min negative cache
+const PROVIDER_TIMEOUT_MS = 2500;
 
 const PRIVATE_PATTERNS = [
   /^10\./, // 10.0.0.0/8
@@ -70,6 +76,63 @@ function buildDisplayName({ city, region, country }) {
   return parts.length ? parts.join(", ") : null;
 }
 
+async function fetchWithTimeout(url, { headers } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: controller.signal, headers });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ── Providers ────────────────────────────────────────────────────────────
+
+const ipinfoProvider = {
+  name: "ipinfo",
+  enabled() {
+    return Boolean((process.env.IPINFO_TOKEN || "").trim());
+  },
+  async lookup(ip) {
+    const token = (process.env.IPINFO_TOKEN || "").trim();
+    const url = `https://ipinfo.io/${encodeURIComponent(ip)}/json?token=${encodeURIComponent(token)}`;
+    const res = await fetchWithTimeout(url);
+    if (!res.ok) throw new Error(`ipinfo HTTP ${res.status}`);
+    const body = await res.json();
+    if (body?.error) throw new Error(`ipinfo error=${body.error.title || body.error.code || "unknown"}`);
+    return {
+      city: body.city || null,
+      region: body.region || null,
+      country: null, // ipinfo returns only 2-letter code in `country`; keep full name null
+      countryCode: body.country || null,
+    };
+  },
+};
+
+const ipApiProvider = {
+  name: "ip-api",
+  enabled() {
+    return true; // always available (keyless)
+  },
+  async lookup(ip) {
+    const url = `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,regionName,city`;
+    const res = await fetchWithTimeout(url);
+    if (!res.ok) throw new Error(`ip-api HTTP ${res.status}`);
+    const body = await res.json();
+    if (body?.status !== "success") {
+      throw new Error(`ip-api status=${body?.status || "unknown"}`);
+    }
+    return {
+      city: body.city || null,
+      region: body.regionName || null,
+      country: body.country || null,
+      countryCode: body.countryCode || null,
+    };
+  },
+};
+
+const PROVIDERS = [ipinfoProvider, ipApiProvider];
+
 /**
  * Resolve an IP to { city, region, country, countryCode, isPrivate, displayName }.
  * Never throws. Returns UNKNOWN_LOCATION on network / parse failure.
@@ -110,49 +173,44 @@ export async function geolocateIp(rawIp) {
     return cached.value;
   }
 
-  try {
-    // fields mask keeps the response small and fast
-    const url = `http://ip-api.com/json/${encodeURIComponent(
-      ip,
-    )}?fields=status,country,countryCode,regionName,city`;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2500);
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
-    if (!res.ok) throw new Error(`ip-api HTTP ${res.status}`);
-    const body = await res.json();
-    if (body?.status !== "success") {
-      throw new Error(`ip-api status=${body?.status || "unknown"}`);
-    }
-    const location = {
-      city: body.city || null,
-      region: body.regionName || null,
-      country: body.country || null,
-      countryCode: body.countryCode || null,
-      isPrivate: false,
-      displayName: buildDisplayName({
-        city: body.city,
-        region: body.regionName,
-        country: body.country,
-      }),
-    };
-    CACHE.set(ip, { value: location, expiresAt: Date.now() + TTL_MS });
-    if (debug)
-      logger.debug(
-        { event: "geoip_resolved", ip, displayName: location.displayName || null },
-        `[geoip] ${ip} → ${location.displayName || "unknown public"}`,
+  const errors = [];
+  for (const provider of PROVIDERS) {
+    if (!provider.enabled()) continue;
+    try {
+      const raw = await provider.lookup(ip);
+      const location = {
+        city: raw.city || null,
+        region: raw.region || null,
+        country: raw.country || null,
+        countryCode: raw.countryCode || null,
+        isPrivate: false,
+        displayName: buildDisplayName(raw),
+      };
+      CACHE.set(ip, { value: location, expiresAt: Date.now() + TTL_MS });
+      if (debug)
+        logger.debug(
+          { event: "geoip_resolved", ip, provider: provider.name, displayName: location.displayName || null },
+          `[geoip] ${ip} → ${location.displayName || "unknown public"} via ${provider.name}`,
+        );
+      return location;
+    } catch (err) {
+      errors.push({ provider: provider.name, message: err.message });
+      logger.warn(
+        { event: "geoip_provider_failed", ip, provider: provider.name, err },
+        `[geoip] ${provider.name} failed for ${ip}: ${err.message}`,
       );
-    return location;
-  } catch (err) {
-    // Cache the miss briefly (5 min) so we don't hammer the API on flaky IPs
-    const shortMiss = { value: UNKNOWN_LOCATION, expiresAt: Date.now() + 5 * 60 * 1000 };
-    CACHE.set(ip, shortMiss);
-    logger.warn(
-      { event: "geoip_lookup_failed", ip, err },
-      `[geoip] lookup failed for ${ip}: ${err.message}`,
-    );
-    return UNKNOWN_LOCATION;
+      // fall through to next provider
+    }
   }
+
+  // All providers exhausted — short-cache the miss so we don't hammer APIs on
+  // flaky / invalid IPs.
+  CACHE.set(ip, { value: UNKNOWN_LOCATION, expiresAt: Date.now() + MISS_TTL_MS });
+  logger.warn(
+    { event: "geoip_lookup_failed", ip, attempts: errors },
+    `[geoip] all providers failed for ${ip}`,
+  );
+  return UNKNOWN_LOCATION;
 }
 
 /**
