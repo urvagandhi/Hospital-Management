@@ -33,6 +33,15 @@ object NetworkMonitor {
     private var healthCheckJob: Job? = null
     private var baseUrl: String = ""
 
+    // Anti-flicker: require N consecutive ping failures before flipping
+    // ONLINE → OFFLINE. A single transient failure (HTTP request killed by
+    // an Activity backgrounding/foregrounding, scanner overlay pausing the
+    // process, momentary radio handoff) is not enough — we'd flash an
+    // offline pill for 2-3 s and then snap back. Two strikes catches real
+    // outages while ignoring lifecycle hiccups.
+    private const val OFFLINE_FAILURE_THRESHOLD = 2
+    private var consecutiveFailures = 0
+
     fun init(context: Context, serverBaseUrl: String) {
         if (initialized) return
         initialized = true
@@ -75,11 +84,17 @@ object NetworkMonitor {
                 // then verify in background (with retries)
                 FileLogger.i(TAG, "NetworkCallback.onAvailable — verifying with ping")
                 _status.value = NetworkStatus.ONLINE
+                consecutiveFailures = 0
                 CoroutineScope(Dispatchers.IO).launch {
                     delay(1000)
                     val ok = pingHealthWithRetry()
-                    if (!ok) {
-                        FileLogger.w(TAG, "onAvailable ping failed → setting OFFLINE")
+                    if (ok) {
+                        consecutiveFailures = 0
+                    } else {
+                        // pingHealthWithRetry already does 3 attempts. If
+                        // all 3 fail, that's strong evidence — treat as
+                        // OFFLINE. Don't gate on the threshold here.
+                        FileLogger.w(TAG, "onAvailable ping failed (3 attempts) → setting OFFLINE")
                         _status.value = NetworkStatus.OFFLINE
                     }
                 }
@@ -93,6 +108,7 @@ object NetworkMonitor {
                 if (!stillConnected) {
                     FileLogger.w(TAG, "NetworkCallback.onLost — no remaining network → OFFLINE")
                     _status.value = NetworkStatus.OFFLINE
+                    consecutiveFailures = OFFLINE_FAILURE_THRESHOLD // OS confirms offline; lock it in
                 } else {
                     FileLogger.i(TAG, "NetworkCallback.onLost — fallback network still active, staying ONLINE")
                 }
@@ -108,11 +124,27 @@ object NetworkMonitor {
                     _status.value = NetworkStatus.RECONNECTING
                     if (pingHealth()) {
                         _status.value = NetworkStatus.ONLINE
+                        consecutiveFailures = 0
                     } else {
                         _status.value = NetworkStatus.OFFLINE
                     }
                 } else {
-                    if (!pingHealth()) _status.value = NetworkStatus.OFFLINE
+                    // Anti-flicker: only flip ONLINE → OFFLINE after
+                    // OFFLINE_FAILURE_THRESHOLD consecutive failures. A single
+                    // failed ping during an Activity transition (scanner ↔ app,
+                    // background ↔ foreground) was previously enough to flash
+                    // the offline pill and immediately snap back, which felt
+                    // broken to users.
+                    if (pingHealth()) {
+                        consecutiveFailures = 0
+                    } else {
+                        consecutiveFailures++
+                        FileLogger.w(TAG, "ping failed ($consecutiveFailures/$OFFLINE_FAILURE_THRESHOLD) — staying ONLINE pending threshold")
+                        if (consecutiveFailures >= OFFLINE_FAILURE_THRESHOLD) {
+                            FileLogger.w(TAG, "ping failed $consecutiveFailures times in a row → OFFLINE")
+                            _status.value = NetworkStatus.OFFLINE
+                        }
+                    }
                 }
             }
         }
