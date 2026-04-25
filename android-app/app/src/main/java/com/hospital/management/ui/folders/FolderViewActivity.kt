@@ -2,7 +2,6 @@ package com.hospital.management.ui.folders
 
 import com.hospital.management.R
 import com.hospital.management.data.api.RetrofitClient
-import com.hospital.management.data.api.ZipDownloadRequest
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -26,13 +25,23 @@ import android.text.InputType
 import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.ImageView
+import androidx.work.Constraints
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.hospital.management.worker.DownloadWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 
 class FolderViewActivity : BaseActivity() {
 
@@ -437,35 +446,33 @@ class FolderViewActivity : BaseActivity() {
     private fun downloadPdf(mode: String) {
         if (isDownloading) return
         isDownloading = true
-        val rootView = findViewById<View>(android.R.id.content)
+        // Filename + mime depend on mode: per-folder bundles each folder as a
+        // separate PDF inside a ZIP, merged returns one PDF.
+        val ext = if (mode == "per-folder") "zip" else "pdf"
+        val mime = if (mode == "per-folder") "application/zip" else "application/pdf"
+        val safeName = patientName
+            .replace(Regex("[^a-zA-Z0-9]"), "_")
+            .trim('_')
+            .ifEmpty { "patient" }
+        val fileName = "${safeName}_records.$ext"
 
-        lifecycleScope.launch {
-            try {
-                Snackbar.make(rootView, "Preparing PDF download...", Snackbar.LENGTH_SHORT).show()
-                val apiService = RetrofitClient.getApiService(this@FolderViewActivity)
-                val response = withContext(Dispatchers.IO) {
-                    apiService.downloadPatientPdf(patientId, mapOf("mode" to mode))
-                }
+        // Body is a typed JSON object — Gson + R8 fragility doesn't apply
+        // here because we hand-build the string ourselves.
+        val bodyJson = JSONObject().put("mode", mode).toString()
 
-                if (response.isSuccessful && response.body() != null) {
-                    val ext = if (mode == "per-folder") "zip" else "pdf"
-                    val mime = if (mode == "per-folder") "application/zip" else "application/pdf"
-                    val safeName = patientName.replace(Regex("[^a-zA-Z0-9 ]"), "").trim().replace("\\s+".toRegex(), "_")
-                    val fileName = "${safeName}_all_records.$ext"
-
-                    withContext(Dispatchers.IO) {
-                        saveToDownloads(response.body()!!, fileName, mime)
-                    }
-                    Snackbar.make(rootView, "Saved to ${getDownloadSubPath()}/$fileName", Snackbar.LENGTH_LONG).show()
-                } else {
-                    Snackbar.make(rootView, "Download failed. Please try again.", Snackbar.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                Snackbar.make(rootView, "Download failed: ${e.message}", Snackbar.LENGTH_LONG).show()
-            } finally {
-                isDownloading = false
-            }
-        }
+        enqueueBulkDownloadWorker(
+            relativePath = "/api/patients/$patientId/download/pdf",
+            fileName = fileName,
+            mimeType = mime,
+            method = "POST",
+            requestBodyJson = bodyJson,
+            uniqueWorkName = "patient_pdf_${patientId}_$mode"
+        )
+        Snackbar.make(findViewById<View>(android.R.id.content),
+            "Preparing PDF download...", Snackbar.LENGTH_SHORT).show()
+        // Worker handles re-entrancy via unique work; release the click guard
+        // immediately so the user can pick a different mode while bytes flow.
+        isDownloading = false
     }
 
     // ─── ZIP Download ───────────────────────────────────────────
@@ -586,36 +593,124 @@ class FolderViewActivity : BaseActivity() {
     }
 
     private fun triggerZipDownload(selectedFolders: List<String>?) {
-        if (!isDownloading) isDownloading = true
+        val safeName = patientName
+            .replace(Regex("[^a-zA-Z0-9]"), "_")
+            .trim('_')
+            .ifEmpty { "patient" }
+        val fileName = "${safeName}_records.zip"
+
+        // selectedFolders == null → "download every folder", server expects an
+        // empty body. Otherwise pass {"folders": [...]} which mirrors the
+        // ZipDownloadRequest shape on the inline path.
+        val bodyJson = if (selectedFolders != null) {
+            JSONObject().put("folders", JSONArray(selectedFolders)).toString()
+        } else null
+
+        // Differentiate by selection so two zip downloads with different
+        // selections don't collide on the unique-work key.
+        val selectionKey = selectedFolders?.joinToString(",")?.hashCode()?.toString() ?: "all"
+        enqueueBulkDownloadWorker(
+            relativePath = "/api/patients/$patientId/download/zip",
+            fileName = fileName,
+            mimeType = "application/zip",
+            method = "POST",
+            requestBodyJson = bodyJson,
+            uniqueWorkName = "patient_zip_${patientId}_$selectionKey"
+        )
+        Snackbar.make(findViewById<View>(android.R.id.content),
+            "Downloading ZIP...", Snackbar.LENGTH_SHORT).show()
+        // Reset the click guard — the worker drives the rest.
+        isDownloading = false
+    }
+
+    // ─── DownloadWorker bridge ──────────────────────────────────
+
+    /**
+     * Routes patient-wide bulk downloads through DownloadWorker. Mirrors
+     * `FolderDetailsActivity.enqueueBulkDownloadWorker` — see its docstring.
+     * Kept inline here (vs. extracted to a util) because FolderViewActivity
+     * has no [TokenManager] field on the same class root used by Folder
+     * Details and we want each Activity to own its lifecycle observer.
+     */
+    private fun enqueueBulkDownloadWorker(
+        relativePath: String,
+        fileName: String,
+        mimeType: String,
+        method: String,
+        requestBodyJson: String?,
+        uniqueWorkName: String
+    ) {
         val rootView = findViewById<View>(android.R.id.content)
-
         lifecycleScope.launch {
-            try {
-                Snackbar.make(rootView, "Downloading ZIP...", Snackbar.LENGTH_SHORT).show()
-                val apiService = RetrofitClient.getApiService(this@FolderViewActivity)
+            val accessToken = tokenManager.getAccessToken()
+            val authHost = try { java.net.URL(RetrofitClient.BASE_URL).host } catch (_: Exception) { null }
+            val downloadUrl = "${RetrofitClient.BASE_URL}$relativePath"
 
-                val response = withContext(Dispatchers.IO) {
-                    if (selectedFolders != null) {
-                        apiService.downloadPatientZip(patientId, ZipDownloadRequest(selectedFolders))
-                    } else {
-                        apiService.downloadPatientZipAll(patientId)
-                    }
-                }
+            val builder = Data.Builder()
+                .putString(DownloadWorker.KEY_DOWNLOAD_URL, downloadUrl)
+                .putString(DownloadWorker.KEY_FILE_NAME, fileName)
+                .putString(DownloadWorker.KEY_MIME_TYPE, mimeType)
+                .putString(DownloadWorker.KEY_PATIENT_NAME, patientName)
+                .putString(DownloadWorker.KEY_HOSPITAL_NAME, hospitalName)
+                .putString(DownloadWorker.KEY_DOWNLOAD_SUB_PATH, getDownloadSubPath())
+                .putString(DownloadWorker.KEY_AUTH_TOKEN, accessToken)
+                .putString(DownloadWorker.KEY_AUTH_HOST, authHost)
+                .putString(DownloadWorker.KEY_HTTP_METHOD, method)
+            if (!requestBodyJson.isNullOrEmpty()) {
+                builder.putString(DownloadWorker.KEY_REQUEST_BODY_JSON, requestBodyJson)
+            }
 
-                if (response.isSuccessful && response.body() != null) {
-                    val safeName = patientName.replace(Regex("[^a-zA-Z0-9 ]"), "").trim().replace("\\s+".toRegex(), "_")
-                    val fileName = "${safeName}_all_records.zip"
-                    withContext(Dispatchers.IO) {
-                        saveToDownloads(response.body()!!, fileName, "application/zip")
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val request = OneTimeWorkRequestBuilder<DownloadWorker>()
+                .setInputData(builder.build())
+                .setConstraints(constraints)
+                .addTag(DownloadWorker.TAG_DOWNLOAD)
+                .build()
+
+            val workManager = WorkManager.getInstance(this@FolderViewActivity)
+            workManager.enqueueUniqueWork(uniqueWorkName, ExistingWorkPolicy.KEEP, request)
+
+            Snackbar.make(rootView,
+                getString(R.string.download_snackbar_started, fileName),
+                Snackbar.LENGTH_LONG)
+                .setAction(R.string.cancel) { workManager.cancelWorkById(request.id) }
+                .show()
+
+            workManager.getWorkInfoByIdLiveData(request.id).observe(this@FolderViewActivity) { workInfo ->
+                if (workInfo == null) return@observe
+                when (workInfo.state) {
+                    WorkInfo.State.RUNNING -> { /* progress bar surfaces via the foreground notification */ }
+                    WorkInfo.State.SUCCEEDED -> {
+                        Toast.makeText(
+                            this@FolderViewActivity,
+                            getString(R.string.download_toast_done, fileName),
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
-                    Snackbar.make(rootView, "Saved to ${getDownloadSubPath()}/$fileName", Snackbar.LENGTH_LONG).show()
-                } else {
-                    Snackbar.make(rootView, "Download failed. Please try again.", Snackbar.LENGTH_LONG).show()
+                    WorkInfo.State.FAILED -> {
+                        val reason = workInfo.outputData.getString(DownloadWorker.KEY_ERROR_REASON) ?: ""
+                        val detail = workInfo.outputData.getString(DownloadWorker.KEY_STATUS) ?: ""
+                        val msg = when (reason) {
+                            DownloadWorker.ERROR_AUTH_EXPIRED -> getString(R.string.download_err_auth)
+                            DownloadWorker.ERROR_STORAGE_FULL -> getString(R.string.download_err_storage)
+                            DownloadWorker.ERROR_SERVER -> getString(R.string.download_err_server)
+                            DownloadWorker.ERROR_CANCELLED -> getString(R.string.download_toast_cancelled)
+                            else -> getString(R.string.download_err_network_with_detail, detail)
+                        }
+                        Toast.makeText(this@FolderViewActivity, msg, Toast.LENGTH_LONG).show()
+                    }
+                    WorkInfo.State.CANCELLED -> {
+                        Toast.makeText(
+                            this@FolderViewActivity,
+                            R.string.download_toast_cancelled,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    else -> { /* ENQUEUED / BLOCKED */ }
                 }
-            } catch (e: Exception) {
-                Snackbar.make(rootView, "Download failed: ${e.message}", Snackbar.LENGTH_LONG).show()
-            } finally {
-                isDownloading = false
             }
         }
     }
