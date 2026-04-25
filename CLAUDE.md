@@ -2,12 +2,12 @@
 
 Condensed context for future Claude sessions. For deep detail see:
 - [Audit index](docs/audit/README.md) — start here
-- [Drift report](docs/audit/00-drift.md) — what changed since the last audit
-- [Dead code](docs/audit/01-dead-code.md), [Commented code](docs/audit/02-commented-code.md)
-- [Architecture diagrams](docs/audit/03-architecture-diagrams.md) — 17 Mermaid diagrams derived from code
-- [Enhancements](docs/audit/04-enhancements.md) — OWASP + performance + onboarding + scaling cliffs
-- [Tech debt ledger](docs/audit/06-tech-debt-ledger.md) — prioritised backlog
-- Refreshed [backend](docs/audit/backend.md), [frontend](docs/audit/frontend.md), [features](docs/audit/features.md)
+- [Drift report](docs/audit/00-drift.md) — what changed since the last audit (incl. §12 Android)
+- [Dead code](docs/audit/01-dead-code.md) (incl. §J Android), [Commented code](docs/audit/02-commented-code.md) (incl. §8 Android)
+- [Architecture diagrams](docs/audit/03-architecture-diagrams.md) — 30 Mermaid diagrams (§1–§17 backend/web/sidecar, §18–§30 Android)
+- [Enhancements](docs/audit/04-enhancements.md) — OWASP + performance + onboarding + scaling cliffs (incl. §6 Android + OWASP Mobile)
+- [Tech debt ledger](docs/audit/06-tech-debt-ledger.md) — prioritised backlog (incl. `TD-A01..TD-A20` Android)
+- Refreshed [backend](docs/audit/backend.md), [frontend](docs/audit/frontend.md), [features](docs/audit/features.md), [android](docs/audit/android.md)
 - [Existing SRS](doc/HMS_SRS_v2_0.docx) and [end-to-end PDF](doc/end_to_end_flow.pdf)
 
 ## 1. What this product is
@@ -71,7 +71,7 @@ Sidecar also writes `merged_pdf_cache` and `compression_audits` collections.
 
 ## 7. API surface (counts / see backend.md for full tables)
 
-**59 endpoints total.** Groupings: auth (25), patients (21 = 17 primary + 4 legacy GET aliases), hospitals (12), export (3), audit (2), admin (2), version (1), notifications (3), health (2). Base path: `/api`. Full table in `docs/audit/backend.md` §4.
+**52 endpoints total** (as of 2026-04-25). Groupings: auth (24), patients (20 = 16 primary + 4 legacy GET aliases), hospitals (12), export (1), audit (2), admin (2), version (1), health (2). Base path: `/api`. TD-030 (2026-04-25) dropped 7 dead endpoints in one sweep: the `/api/notifications` mount (3 endpoints: `/sample`, `/preview`, `/test`), `/api/export/sample-cover`, `/api/export/archive`, `/api/patients/.../stream`, `/api/auth/login/resend-auth-code`. Full table in `docs/audit/backend.md` §4.
 
 ## 8. Frontend surface
 
@@ -91,9 +91,9 @@ Shared `<Spinner>` component in `components/Spinner.tsx` — variants `heartbeat
 
 Avatar fallback across Navbar, LogoHeader, Profile, and HospitalsList uses a single `bg-gradient-primary` via `utils/avatar.ts → getAvatarGradient()`. The signature is preserved for legacy callers but the value is constant — previously a hash-picked palette, now one brand gradient. Callers must render the returned class WITHOUT a `bg-gradient-to-br` prefix.
 
-**Sessions page (`/sessions`)** shows geolocation next to each session's IP, and login / password-change / logout emails include the same. Uses `ip-api.com` (free, no key) via `backend/src/services/geoip.service.js` — 24h cache, private-IP detection (10/8, 172.16/12, 192.168/16, 127/8, ::1, fe80::) falls back to "Local network". Lookup is fire-and-forget on session create so login latency isn't blocked.
+**Sessions page (`/sessions`)** shows geolocation next to each session's IP, and login / password-change / logout emails include the same. Provider chain in `backend/src/services/geoip.service.js`: **ipinfo.io** (activated when `IPINFO_TOKEN` is set — 50k/month on the free tier, keyed) → **ip-api.com** keyless fallback (45 req/min/IP). First successful provider wins; timeouts/errors fall through to the next. 24h success cache + 5-min miss cache; private-IP detection (10/8, 172.16/12, 192.168/16, 127/8, ::1, fe80::) falls back to "Local network". Lookup is fire-and-forget on session create so login latency isn't blocked.
 
-State: React Context `AuthProvider`. Tokens in `sessionStorage` (XSS-exposed — flagged for redesign). Hospital object cached in `localStorage` (with logoUrl stripped if >1 KB). Refresh token lives in httpOnly cookie.
+State: React Context `AuthProvider`. **Access token is held in module-scoped memory** inside [services/api.ts](frontend/src/services/api.ts) — never persisted to `sessionStorage`/`localStorage` (TD-029, 2026-04-25). Tab-reopen / page-refresh bootstraps a fresh access token via the httpOnly `refreshToken` cookie + `/auth/refresh-token` round-trip in `AuthProvider.useEffect`. The short-lived `tempToken` (10–15 min, mid-login only) and `resetToken` (forgot-password) stay in `sessionStorage` because they need to survive an in-flow page navigation. Hospital object cached in `localStorage` (with logoUrl stripped if >1 KB). Refresh token lives in httpOnly cookie.
 
 API client: `services/api.ts` Axios wrapper with 401 retry (refresh-token rotation), account-disabled detection, base URL from `VITE_API_URL`.
 
@@ -105,7 +105,7 @@ API client: `services/api.ts` Axios wrapper with 401 retry (refresh-token rotati
 - **Mailtrap** — dev SMTP.
 - **Firebase** — `FIREBASE_PROJECT_ID/PRIVATE_KEY/CLIENT_EMAIL`.
 - **Upstash Redis** — `UPSTASH_REDIS_REST_URL/TOKEN` (falls back to in-memory silently).
-- **Compression sidecar** — `USE_COMPRESSION_SERVICE`, `COMPRESSION_SERVICE_URL`, `COMPRESSION_SERVICE_SECRET` (shared with sidecar's `INTERNAL_API_SECRET`).
+- **Compression sidecar** — `USE_COMPRESSION_SERVICE`, `COMPRESSION_SERVICE_URL`, `COMPRESSION_SERVICE_SECRET` (shared with sidecar's `INTERNAL_API_SECRET`). **Mandatory in prod (TD-D4, 2026-04-25):** [config/env.js](backend/src/config/env.js) refuses to boot when `NODE_ENV=production` AND `USE_COMPRESSION_SERVICE !== "true"`. The in-process pdf-lib fallback OOMs at scale on large patients; the sidecar is the only safe production path. Render is already set to `true`. To turn it off in prod requires either swapping the merge path to a natively-streaming Node implementation or accepting the OOM risk for small deployments only.
 - **Security** — `JWT_SECRET`, `REFRESH_TOKEN_SECRET` (64+ chars, no `dev-` prefix in prod).
 - **Proxy / IP** — `TRUST_PROXY_HOPS` (default `2`) controls how many hops Express trusts in `X-Forwarded-For`. Must be a specific integer — `true` is rejected by `express-rate-limit` with `ERR_ERL_PERMISSIVE_TRUST_PROXY`. Bump to `3` if Sessions shows internal `10.x`/`172.16.x` IPs after a real login.
 - **GeoIP dev override** — `GEOIP_DEV_OVERRIDE_IP=8.8.8.8` forces every geoip lookup to that IP (localhost would otherwise always resolve to "Local network"). Unset before shipping.
@@ -118,15 +118,15 @@ API client: `services/api.ts` Axios wrapper with 401 retry (refresh-token rotati
 ## 10. Known code smells / watch-list
 
 - No form-validation library; validation is hand-rolled and inconsistent across forms.
-- Tokens in `sessionStorage` (XSS risk) — consider httpOnly + in-memory.
+- 🛠️ ~~Tokens in `sessionStorage` (XSS risk)~~ — RESOLVED 2026-04-25 (TD-029). Access token now lives in module-scoped memory inside [api.ts](frontend/src/services/api.ts); tab-reopen bootstraps via the httpOnly refresh cookie. See §8.
 - Modal patterns still raw-div (not Headless UI Dialog) — OK for now; all are portaled + consistent.
-- Unused deps: `recharts`, `lucide-react`.
+- `recharts` + `lucide-react` are gallery-only deps, **intentionally kept** and isolated to the `ComponentsPreview-*.js` lazy chunk via `React.lazy()` in [AppRoutes.tsx:30](frontend/src/routes/AppRoutes.tsx) (TD-011). Zero bytes in the main bundle. Do not re-flag as "unused deps".
 - Manual UA parsing on `/sessions` (brittle); device-kind detection is best-effort.
 - Tailwind class strings long and ternary-heavy.
 - Admin nav invisible on mobile viewport.
 - Frontend assumes `OTP_LENGTH = 6`; silent break if backend changes.
 - Auto-delete is permanent; plan migration before adding any "trash"/restore UI.
-- GeoIP uses a free public API (`ip-api.com`, 45 req/min) with no key. Fine for current volume; if usage grows, swap to `ipinfo.io`/`ipapi.co` with a token.
+- 🛠️ ~~GeoIP uses a free public API (`ip-api.com`, 45 req/min) with no key~~ — RESOLVED 2026-04-25 (TD-027). Provider chain now prefers keyed `ipinfo.io` when `IPINFO_TOKEN` is set and falls back to `ip-api.com`. See §9.
 - 🛠️ ~~Refresh token not rotated~~ — RESOLVED 2026-04-21 (TD-002). Rotation + reuse detection shipped. See §5 above.
 - 🛠️ ~~Audit coverage gap~~ — RESOLVED 2026-04-21 (TD-001). All 8 mutation endpoints now emit an audit entry: `PATIENT_CREATED` (createPatient), `PATIENT_UPDATED` (updatePatient), `FOLDER_CREATED` (createFolder), `FILE_UPLOADED` (uploadFile), `FILE_RENAMED` (renameFile), `PROFILE_PATCHED` (patchMe, pre-existing), `HOSPITAL_UPDATED` + activeTransition `PROFILE_PATCHED` (updateHospital), `ORPHAN_CLEANUP` (deleteOrphans). The `AuditLog.action` enum also picked up `PATIENT_FILE_DELETE`, `HOSPITAL_RESEND_WELCOME`, `CONTACT_CHANGE_RESEND`, `AUTH_CODE_RESEND`, `BIOMETRIC_REGISTERED` — these were pre-existing emits the validator had been silently rejecting.
 - **`r2.service.js` is dead code** (260 lines, 0 callers) + heavy deps `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner`. Tracked as TD-003.
@@ -169,13 +169,34 @@ Release APK login was failing with a masked "Network error" because R8 rewrote t
 The release APK runs correctly via sideload but has never been uploaded to Google Play. Before the first Play upload:
 
 - **Replace debug keystore.** [app/build.gradle](android-app/app/build.gradle) `signingConfigs.release` points to `~/.android/debug.keystore` with alias `androiddebugkey` — Play rejects debug-signed uploads. Generate a real upload keystore with `keytool -genkey -v -keystore release.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000`, store credentials in `~/.gradle/gradle.properties` (user-level, never commit), back up the keystore in two secure places — losing it means never shipping updates to the same Play listing.
+- **🔴 `android-app/release.keystore` IS tracked in git today (2026-04-24 audit).** `git ls-files android-app/release.keystore` confirms a hit at the repo root. Must be removed + rotated before first Play upload. Tracked as [`06-tech-debt-ledger.md TD-A02`](docs/audit/06-tech-debt-ledger.md).
 - **Bump `versionCode` on every upload** (Play rejects duplicates). Currently `versionCode 1`, `versionName "1.0"`.
+- **`targetSdk` is `34`** (as of 2026-04-24) — Play requires `35` for new apps from Aug 2025 and for updates from Aug 2026. Tracked as `TD-A03`.
 - **Enable Play App Signing** when creating the listing — Google re-signs with their managed release key; your upload key is for uploading only.
 - **Upload `app/build/outputs/mapping/release/mapping.txt`** to Play Console after each release so Play can de-obfuscate crash reports.
 - **Prefer App Bundle** — `./gradlew bundleRelease` produces `.aab` which lets Play serve per-device-optimized APKs. Smaller downloads than a fat APK.
 - **Manifest declares `FOREGROUND_SERVICE_DATA_SYNC`** (for DownloadWorker) — this is a "special permission" on API 34+ and must be disclosed in Play Data Safety.
+- **`FileLogger` writes on-device logs in release builds** (7-day retention at `Android/data/com.hospital.management/files/logs/`). Disclose in Data Safety ("Diagnostics / Crash logs") OR tighten retention + redact `X-Hospital-Id` via [TD-A08](docs/audit/06-tech-debt-ledger.md).
+- **No crash reporter currently** — add Firebase Crashlytics before first Play upload. Tracked as `TD-A14`.
 - **Privacy Policy URL** — Play requires a publicly reachable URL; [frontend/src/pages/Privacy.tsx](frontend/src/pages/Privacy.tsx) exists, confirm it's reachable at a stable URL.
-- Full checklist (15 items incl. optional items like in-app update API, targetSdk currency, FileLogger privacy disclosure) is in `memory/project_android_play_store_checklist.md`.
+- Full checklist (15 items incl. optional items like in-app update API, targetSdk currency, FileLogger privacy disclosure) is in `memory/project_android_play_store_checklist.md`. Android-specific tech-debt items `TD-A01..TD-A20` in [docs/audit/06-tech-debt-ledger.md](docs/audit/06-tech-debt-ledger.md).
+
+### Android — architecture notes worth knowing (added 2026-04-24)
+
+Full Android audit: [docs/audit/android.md](docs/audit/android.md). Summary of what future Claude should not accidentally break:
+
+- **MVVM + Repository + UseCases, no DI framework.** Manual `ViewModelFactory` at [presentation/viewmodel/ViewModelFactory.kt](android-app/app/src/main/java/com/hospital/management/presentation/viewmodel/ViewModelFactory.kt). Every Activity hand-wires Retrofit + Repository; ~7 near-identical copies. Hilt migration is tracked as [TD-A10](docs/audit/06-tech-debt-ledger.md).
+- **Jetpack Compose is dependency-loaded but unused.** Zero `@Composable` anywhere; every screen is ViewBinding XML. 7 dead Compose + CameraX + DataStore + Coil + iText7 + Accompanist + Shimmer deps are ~10 MB APK bloat. Tracked as [TD-A06](docs/audit/06-tech-debt-ledger.md).
+- **Base URL `https://hospital-management-8lbf.onrender.com` is hardcoded in 3 places** ([RetrofitClient.kt:18](android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt), [HospitalApplication.kt:69](android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt), transitively in [OfflineLogoutWorker.kt:98](android-app/app/src/main/java/com/hospital/management/worker/OfflineLogoutWorker.kt)). No BuildConfig / flavor — staging vs prod requires source edit. Tracked as `TD-A05`.
+- **`AuthInterceptor` classifies 401s by substring-matching the response body** (`"SESSION_CONFLICT"`, `"AUTH_CODE_REQUIRED"`, `"ACCOUNT_DISABLED"`). A backend message reword silently breaks this. Coordinated fix (add stable `errorCode` field server-side + switch classifier to JSON lookup) is [TD-A07](docs/audit/06-tech-debt-ledger.md).
+- **`X-Upload-Profile` header** is sent by Android on every upload but the backend reads it nowhere. Vestigial. Tracked as [TD-A13](docs/audit/06-tech-debt-ledger.md) — discuss before wiring up vs removing.
+- **`DownloadWorker.pollUntilReady(statusUrl)` branch** ([DownloadWorker.kt:541-608](android-app/app/src/main/java/com/hospital/management/worker/DownloadWorker.kt)) has zero callers today — deliberately preserved for compression-sidecar Phase 3C. `INTENTIONAL_FEATURE_HOLD`; do not delete during dead-code sweeps.
+- **Orphan Android Activities: `PatientListActivity`, `PatientDetailsActivity`** declared in manifest ([AndroidManifest.xml:123-124](android-app/app/src/main/AndroidManifest.xml)) but zero `startActivity` callers. Dashboard routes patient taps straight to `FolderViewActivity`; the patient-edit dialog lives on FolderView, not PatientDetails. Candidates for deletion — [TD-A09](docs/audit/06-tech-debt-ledger.md).
+- **Room DB `fallbackToDestructiveMigration()` is on** ([AppDatabase.kt:120](android-app/app/src/main/java/com/hospital/management/data/local/AppDatabase.kt)). Any missed migration wipes queued uploads silently. When changing the schema, write a numbered migration — don't rely on the fallback.
+- **Cross-account-leak guard is load-bearing.** On logout, `SessionManager.logoutUser` deletes every queued upload owned by the logging-out hospital; on sync, `SyncDocumentsWorker` refuses to upload rows owned by any other hospital (including legacy `''` rows). [SessionManager.kt:159-173](android-app/app/src/main/java/com/hospital/management/utils/SessionManager.kt) + [SyncDocumentsWorker.kt:62-71](android-app/app/src/main/java/com/hospital/management/worker/SyncDocumentsWorker.kt). Don't weaken — it's healthcare-compliance.
+- **No crash reporter in release.** Only `FileLogger` (on-device, `adb pull` retrieval). Adding Firebase Crashlytics is [TD-A14](docs/audit/06-tech-debt-ledger.md).
+- **No tests at all.** Zero files in `test/` or `androidTest/`. Test seed tracked as [TD-A12](docs/audit/06-tech-debt-ledger.md); priority targets are `AuthInterceptor` rotation, `SessionManager` cross-account guard, and Room migration chain.
+- **60 s foreground session-validate heartbeat** ([HospitalApplication.kt:157-193](android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt)) + 30 s online `/api/health` polling in [NetworkMonitor](android-app/app/src/main/java/com/hospital/management/utils/NetworkMonitor.kt). Battery-drain combo on cellular; tracked as `TD-A16`.
 
 ## 12. Conventions (do not violate without discussion)
 

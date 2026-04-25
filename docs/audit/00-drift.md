@@ -29,8 +29,8 @@
 | backend.md §1 | Node 7.5.0 Mongoose, Express, `bcryptjs 2.4.3`, etc. | ✅ | [backend/package.json](../../backend/package.json) | All versions match. |
 | backend.md §1 | `@getbrevo/brevo ^5.0.3` used for prod email | ⚠️ | [backend/package.json:24](../../backend/package.json) | Dep present but **not imported anywhere** in `backend/src/`. Mail uses `nodemailer` + Brevo SMTP (not the Brevo SDK). See dead-code §B1. |
 | backend.md §1 | `axios 1.5.0` used as HTTP client | ⚠️ | [backend/package.json:27](../../backend/package.json) | Dep present but **not imported anywhere** in `backend/src/`. GeoIP uses native `fetch`. Dead-code §B2. |
-| frontend.md §1 | `recharts 3.8.1` "NOT currently used" | ⚠️ | [frontend/src/pages/ComponentsPreview.tsx:19](../../frontend/src/pages/ComponentsPreview.tsx) | Imported by the `/components-preview` design gallery. Still "unused in product flows" but technically loaded by a shipped route. |
-| frontend.md §1 | `lucide-react 1.8.0` "included but all icons are inline SVG" | ⚠️ | [frontend/src/pages/ComponentsPreview.tsx:15](../../frontend/src/pages/ComponentsPreview.tsx) | Same: only used in the design-gallery route. |
+| frontend.md §1 | `recharts 3.8.1` "NOT currently used" | ℹ️ RECLASSIFIED 2026-04-25 | [frontend/src/pages/ComponentsPreview.tsx:19](../../frontend/src/pages/ComponentsPreview.tsx) | Used by `/components-preview` design gallery and **intentionally retained**. Isolated to the `ComponentsPreview-*.js` lazy chunk via `React.lazy()` in [AppRoutes.tsx:30](../../frontend/src/routes/AppRoutes.tsx) (TD-011 shipped). Zero bytes in the main bundle. Not drift. |
+| frontend.md §1 | `lucide-react 1.8.0` "included but all icons are inline SVG" | ℹ️ RECLASSIFIED 2026-04-25 | [frontend/src/pages/ComponentsPreview.tsx:15](../../frontend/src/pages/ComponentsPreview.tsx) | Same: gallery-only, lazy-loaded, intentional. Not drift. |
 | frontend.md §1 | Vite `^8.0.3` | ✅ | [frontend/package.json:34](../../frontend/package.json) | Match. |
 | compression README | FastAPI 0.115.12, pikepdf 9.7.0 | ✅ | [compression-service/requirements.txt](../../compression-service/requirements.txt) | Match. |
 
@@ -38,7 +38,7 @@
 
 ## 2. Route / Endpoint Inventory (Backend)
 
-**Baseline claims:** 54 endpoints total (auth 20, patients 17, hospitals 8, export 3, audit 2, admin 2, version 1, notifications 3, health 2). **Actual:** 59 endpoints (auth 25, patients 21 incl. legacy aliases, hospitals 12, export 3, audit 2, admin 2, version 1, notifications 3, health 2) — see table.
+**Baseline claims:** 54 endpoints total (auth 20, patients 17, hospitals 8, export 3, audit 2, admin 2, version 1, notifications 3, health 2). **Actual as of 2026-04-25:** 52 endpoints (auth 24, patients 20 incl. legacy aliases, hospitals 12, export 1, audit 2, admin 2, version 1, health 2). Prior audit recorded 59 — TD-030 dropped 7 dead endpoints in one sweep on 2026-04-25: the `/api/notifications` mount (3), `/api/export/sample-cover`, `/api/export/archive`, `/api/patients/.../stream`, `/api/auth/login/resend-auth-code`. See table below.
 
 | Group | Baseline count | Actual count | Delta |
 |---|---|---|---|
@@ -289,7 +289,7 @@ CLAUDE.md §12 asserts "All patient-touching endpoints audit-log." **Originally 
 4. **TOTP enum + env scaffolding are dead** across `AuditLog.actions` and `.env.example` (§3.4, §5.2) — confusing for new engineers.
 5. **`.env.example` is missing 9 env vars that are actually consumed** (§5.1) — new developer sets up broken service.
 6. **Catch-all route claim is wrong in frontend.md §2**: renders NotFound, not redirects to dashboard (§6.2).
-7. **Endpoint count understates reality by 5** (§2.1) — 59 endpoints, not 54.
+7. **Endpoint count** (§2.1) — baseline 54 vs 52 actual as of 2026-04-25 (was 59 before TD-030 pruned 7 dead endpoints).
 8. **Session `location` sub-document is undocumented** in backend.md §3 (§3.3) — live feature missing from schema doc.
 9. **`useDocumentTitle` architectural rule has 7 violations** (§7.3) — the very bug it was introduced to prevent can still occur.
 10. **`r2.service.js` is dead code** (§4) — 260-line file, 8 exports, 0 callers. Remove or document as intentional fallback.
@@ -297,3 +297,44 @@ CLAUDE.md §12 asserts "All patient-touching endpoints audit-log." **Originally 
 ---
 
 *Proceed to `01-dead-code.md` for the full dead-code inventory.*
+
+---
+
+## 12. Android vs 2026-04-21 "MOBILE_ONLY" guesses (added 2026-04-24)
+
+The original drift capture ([01-dead-code.md §F](01-dead-code.md)) marked several endpoints `MOBILE_ONLY` because no frontend caller existed. Now that Android is in scope (see [`android.md`](android.md) + [`01-dead-code.md §J`](01-dead-code.md)), those guesses are verifiable:
+
+| Endpoint | 2026-04-21 guess | 2026-04-24 reality | Evidence |
+|---|---|---|---|
+| `POST /api/auth/register` | MOBILE_ONLY | ✅ Confirmed Android | [ApiService.kt:27-30](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) + [RegisterActivity.kt:101-103](../../android-app/app/src/main/java/com/hospital/management/ui/auth/RegisterActivity.kt) |
+| `POST /api/auth/register/verify-otp` | MOBILE_ONLY | ✅ Confirmed Android | [ApiService.kt:32-35](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) + RegisterOtpActivity |
+| `POST /api/auth/register/resend-otp` | MOBILE_ONLY | ✅ Confirmed Android | [ApiService.kt:37-40](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) + [RegisterOtpActivity.kt:137](../../android-app/app/src/main/java/com/hospital/management/ui/auth/RegisterOtpActivity.kt) |
+| `POST /api/auth/biometric/register` | MOBILE_ONLY | ✅ Confirmed Android | [ApiService.kt:55-58](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) + [LoginActivity.kt:309-314](../../android-app/app/src/main/java/com/hospital/management/ui/auth/LoginActivity.kt) |
+| `POST /api/auth/biometric/challenge` | MOBILE_ONLY | ✅ Confirmed Android | [ApiService.kt:60-63](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) + [LoginActivity.kt:409-412](../../android-app/app/src/main/java/com/hospital/management/ui/auth/LoginActivity.kt) |
+| `POST /api/auth/biometric/verify` | MOBILE_ONLY | ✅ Confirmed Android | [ApiService.kt:65-68](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) + [LoginActivity.kt:445-450](../../android-app/app/src/main/java/com/hospital/management/ui/auth/LoginActivity.kt) |
+| `POST /api/auth/session/check-conflict` | MOBILE_ONLY | ✅ Confirmed Android | [ApiService.kt:78-79](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) + [LoginActivity.kt:138](../../android-app/app/src/main/java/com/hospital/management/ui/auth/LoginActivity.kt) |
+| `POST /api/auth/session/force-logout` | MOBILE_ONLY | ⚠️ **Declared in ApiService but 0 call sites in Android.** Likely leftover from an earlier UX (replaced by per-session revoke). Safe to retire on backend + `ApiService`. | [ApiService.kt:81-82](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt), no callers |
+| `GET /api/auth/session/validate` | MOBILE_ONLY | ✅ Confirmed Android | [ApiService.kt:75-76](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt), called from [SplashActivity:222-231](../../android-app/app/src/main/java/com/hospital/management/ui/splash/SplashActivity.kt), [HospitalApplication:171](../../android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt), [HmsFirebaseMessagingService:119](../../android-app/app/src/main/java/com/hospital/management/services/HmsFirebaseMessagingService.kt) |
+| `POST /api/auth/session/reverify-auth-code` | MOBILE_ONLY | ✅ Confirmed Android | [ApiService.kt:84-85](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) + [BaseActivity.kt:256-273](../../android-app/app/src/main/java/com/hospital/management/ui/base/BaseActivity.kt) |
+| `POST /api/auth/fcm-token` | MOBILE_ONLY | ✅ Confirmed Android | [ApiService.kt:263-265](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) + LoginActivity / HmsFirebaseMessagingService / FcmTokenWorker |
+| `POST /api/patients` (create) | MOBILE_ONLY | ✅ Confirmed Android | [AdmissionActivity.kt:80-95](../../android-app/app/src/main/java/com/hospital/management/ui/admission/AdmissionActivity.kt) |
+| `PUT /api/patients/:patientId` | MOBILE_ONLY | ⚠️ Declared in `PatientUseCases.UpdatePatientUseCase` + wired in PatientDetailsActivity — but **PatientDetailsActivity is an orphan** ([`01-dead-code.md §J5`](01-dead-code.md)). `FolderViewActivity` has its own edit dialog that calls the same endpoint. ✅ **Effectively used via FolderView**, not via the orphan screen. |
+| `POST /api/patients/:patientId/folders` | MOBILE_ONLY | ✅ Confirmed Android | `FolderViewActivity.showCreateFolderDialog` → `PatientViewModel.createFolder` |
+| `POST /api/patients/:patientId/files/:folderName` (upload) | MOBILE_ONLY | ✅ Confirmed Android | [DocumentRepository.kt:47](../../android-app/app/src/main/java/com/hospital/management/data/repository/DocumentRepository.kt) (online) + [SyncDocumentsWorker.kt:109](../../android-app/app/src/main/java/com/hospital/management/worker/SyncDocumentsWorker.kt) (offline drain) |
+| `PATCH /api/patients/.../rename` | MOBILE_ONLY | ✅ Confirmed Android | FileAdapter long-press rename dialog |
+| `DELETE /api/patients/.../:fileId` | MOBILE_ONLY | ✅ Confirmed Android | FileAdapter long-press delete dialog |
+| `GET /api/patients/.../:fileId/stream` | MOBILE_ONLY | ✅ **DELETED 2026-04-25 (TD-030).** Was backend-only; no frontend + no Android caller. Route + `streamFile` handler removed. | n/a |
+| `POST /api/auth/login/resend-auth-code` | MOBILE_ONLY or dead | ✅ **DELETED 2026-04-25 (TD-030).** Dead on both clients; route + `resendLoginAuthCode` handler + frontend `authService.resendLoginAuthCode` export all removed. VerifyAuthCode's commented-out JSX scaffolding scrubbed. | n/a |
+| `POST /api/export/archive` | INVESTIGATE | ✅ **DELETED 2026-04-25 (TD-030).** Dead on both clients; route + `exportArchive` handler + `generateModulePdf`/`formatModuleName` helpers + Android `ApiService.exportArchive` declaration all removed. Also dropped now-unused `archiver` import in [export.controller.js](../../backend/src/controllers/export.controller.js). | n/a |
+| `GET /api/export/sample-cover`, `/api/notifications/{sample,preview,test}` | UNUSED? | ✅ **DELETED 2026-04-25 (TD-030).** All four design/testing-only endpoints removed; `/api/notifications` mount dropped entirely. | n/a — endpoints no longer exist |
+
+**New drift row worth surfacing:**
+
+| Status | Issue | Evidence |
+|---|---|---|
+| ➕ | **Android sends `X-Upload-Profile: Int` header on every file upload — backend ignores it.** `grep -rn "X-Upload-Profile\|uploadProfileUsed" backend/` returns zero. Android-side data class, Room column, and PdfUtils profile tag are all correctly populated, but nothing downstream consumes them. Either wire up a backend consumer (Phase 3C) or drop the header client-side. Tracked as [`TD-A13`](06-tech-debt-ledger.md). | [ApiService.kt:196-197](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) + [OfflineDocument.kt:25-26](../../android-app/app/src/main/java/com/hospital/management/data/local/OfflineDocument.kt) vs backend grep |
+| ➕ | **`DownloadWorker.KEY_STATUS_URL` polling branch has zero callers** but is deliberately preserved for Phase 3C. Dead-today-by-design; document as intentional. | [DownloadWorker.kt:541-608](../../android-app/app/src/main/java/com/hospital/management/worker/DownloadWorker.kt) |
+| ➕ | **Orphan Android Activities: `PatientListActivity`, `PatientDetailsActivity`** — declared in manifest but zero `startActivity` callers. Candidates for deletion ([`TD-A09`](06-tech-debt-ledger.md)). | Manifest lines [123-124](../../android-app/app/src/main/AndroidManifest.xml) vs grep |
+| ➕ | **`ApiService.getHospitalById`, `ApiService.forceLogoutOtherSessions`, `ApiService.exportArchive` have zero Android call sites** — declared but dead. | [ApiService.kt:22, 82, 151](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) |
+
+Net outcome: the `01-dead-code.md §F` "INVESTIGATE the three preview endpoints" recommendation is unchanged — they're still dead on both clients. The `exportArchive` endpoint is newly promoted from "INVESTIGATE" to "confirmed dead" and can be deleted in backend + ApiService in a coordinated PR.

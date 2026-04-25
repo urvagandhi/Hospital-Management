@@ -18,13 +18,13 @@
 | Modal portal rule | All 8 expected modals verified `createPortal + z-[100]`. No violations. | `00-drift.md` §7.2 |
 | `min-h-screen` rule | No violations inside MainLayout. | `00-drift.md` §7.1 |
 | Dead code | `services/patientApi.ts` (all exports), `CountdownTimer`, `SkeletonLoader`, `Toast` components: 0 importers. `hospitalService.listAppVersions/createAppVersion/updateAppVersion`: 0 callers. | `01-dead-code.md` §C |
-| Unused deps | `recharts`, `lucide-react` used ONLY by `/components-preview` | `01-dead-code.md` §A |
+| Gallery-only deps (intentional) | `recharts`, `lucide-react` used ONLY by `/components-preview` and isolated to a `React.lazy` chunk (TD-011 shipped). Kept by decision; zero bytes in main bundle. | `01-dead-code.md` §A |
 
 ---
 
 ## 1. Tech Stack
 
-React `^18.2.0` · TypeScript `^5.2.0` · Vite `^8.0.3` · React Router `^6.15.0` · Tailwind `^3.3.0` · Axios `^1.5.0` · `@headlessui/react ^2.2.9`. Deps `recharts ^3.8.1` and `lucide-react ^1.8.0` are loaded only by the design gallery page. ESM modules (`"type": "module"`). Strict TypeScript. No Redux/Zustand; state is React Context (`AuthProvider`) + browser storage.
+React `^18.2.0` · TypeScript `^5.2.0` · Vite `^8.0.3` · React Router `^6.15.0` · Tailwind `^3.3.0` · Axios `^1.5.0` · `@headlessui/react ^2.2.9`. Deps `recharts ^3.8.1` and `lucide-react ^1.8.0` are loaded only by the design gallery page (code-split into a lazy chunk — TD-011; not in the main bundle). ESM modules (`"type": "module"`). Strict TypeScript. No Redux/Zustand; state is React Context (`AuthProvider`) + browser storage.
 
 ---
 
@@ -140,7 +140,7 @@ Remediation: replace direct `document.title` assignments with the hook. Why it m
 1. No form-validation library.
 2. Access token in sessionStorage (XSS).
 3. Raw-div modals (no Headless UI Dialog) — acceptable now that all are portaled.
-4. Unused deps (`recharts`, `lucide-react`) — gallery-only.
+4. `recharts` + `lucide-react` — gallery-only but **intentionally retained + lazy-loaded** (TD-011). Zero main-bundle cost. Not a smell.
 5. Manual UA parsing on /sessions.
 6. Long ternary Tailwind class strings.
 7. Admin nav hidden on mobile.
@@ -152,7 +152,7 @@ Remediation: replace direct `document.title` assignments with the hook. Why it m
 
 11. `useDocumentTitle` rule is leaking (§9 above).
 12. 🛠️ ~~`services/patientApi.ts` is dead code~~ — resolved (TD-010).
-13. `ComponentsPreview.tsx` is 1600+ LOC and is the only route loading `recharts` + `lucide-react`. Route-split or extract.
+13. `ComponentsPreview.tsx` is 1600+ LOC and is the only route loading `recharts` + `lucide-react`. **Route-split shipped 2026-04-21 (TD-011)** — file itself is still oversized; extraction tracked separately as TD-026.
 
 ---
 

@@ -650,3 +650,669 @@ flowchart TD
 ---
 
 *17 diagrams, all derived from live code. Proceed to `04-enhancements.md` for the findings feed.*
+
+---
+
+## Part B — Android Architecture Diagrams
+
+Added 2026-04-24 with first-pass Android audit. 13 diagrams, all derived from `android-app/` source as of commit `1b3bf22`. Every diagram cites `path:line` evidence.
+
+---
+
+## 18. Android Module + Package Layout
+
+Single Gradle module (`:app`). Packages mapped by layer. Each arrow represents `import com.hospital.management.<target>.*` from at least one file in the source package.
+
+```mermaid
+flowchart LR
+  subgraph Apps["com.hospital.management"]
+    App["HospitalApplication"]
+  end
+  subgraph UI["ui.*"]
+    Splash["splash.SplashActivity"]
+    Auth["auth.* (8 activities)"]
+    Dash["dashboard.DashboardActivity"]
+    Patients["patients.* (orphan + adapter)"]
+    Folders["folders.* (4 activities + 2 adapters)"]
+    Admission["admission.AdmissionActivity"]
+    Scanner["scanner.ScannerActivity"]
+    Upload["upload.UploadActivity"]
+    Profile["profile.* (4 activities + adapter)"]
+    Base["base.BaseActivity"]
+    Components["components.* (Glass widgets, animations)"]
+  end
+  subgraph VM["presentation.viewmodel"]
+    AuthVM["AuthViewModel"]
+    PatVM["PatientViewModel"]
+    ProfVM["ProfileViewModel"]
+    Factory["ViewModelFactory"]
+  end
+  subgraph Domain["domain.usecase"]
+    AuthUC["AuthUseCases (6)"]
+    PatUC["PatientUseCases (11)"]
+  end
+  subgraph DataRepo["data.repository"]
+    AuthRepo["AuthRepository"]
+    PatRepo["PatientRepository"]
+    ProfRepo["ProfileRepository"]
+    DocRepo["DocumentRepository"]
+  end
+  subgraph DataApi["data.api"]
+    ApiSvc["ApiService (Retrofit)"]
+    AuthInt["AuthInterceptor"]
+    Client["RetrofitClient"]
+  end
+  subgraph DataLocal["data.local"]
+    DB["AppDatabase + 4 DAOs"]
+    TM["TokenManager (EncryptedSharedPreferences)"]
+  end
+  subgraph DataModels["data.models"]
+    Models["Gson DTOs (5 files)"]
+  end
+  subgraph Services["services"]
+    FCM["HmsFirebaseMessagingService"]
+  end
+  subgraph Workers["worker"]
+    Sync["SyncDocumentsWorker"]
+    DW["DownloadWorker"]
+    Logout["OfflineLogoutWorker"]
+    FcmW["FcmTokenWorker"]
+  end
+  subgraph Utils["utils"]
+    SM["SessionManager"]
+    NM["NetworkMonitor"]
+    FL["FileLogger"]
+    Bio["BiometricHelper"]
+    Sec["SecurityUtils"]
+    PdfU["PdfUtils"]
+  end
+
+  App --> UI
+  App --> DataLocal
+  App --> DataApi
+  App --> Workers
+  App --> Utils
+  UI --> VM
+  UI --> Utils
+  UI --> DataApi
+  UI --> DataLocal
+  VM --> Factory
+  VM --> Domain
+  Domain --> DataRepo
+  DataRepo --> DataApi
+  DataRepo --> DataLocal
+  DataRepo --> DataModels
+  DataApi --> DataModels
+  Client --> AuthInt
+  AuthInt --> TM
+  Workers --> DataApi
+  Workers --> DataLocal
+  Services --> DataApi
+  Services --> Workers
+  Utils --> DataLocal
+  Utils --> DataApi
+```
+
+**Source of truth:** [android-app/app/src/main/java/com/hospital/management/](../../android-app/app/src/main/java/com/hospital/management/) — top-level package tree + all `import com.hospital.management.*` lines.
+
+---
+
+## 19. Full Navigation Graph
+
+Every `startActivity`/`Intent` call site mapped. "Orphan" Activities (declared in manifest, zero inbound calls) are highlighted with a dashed border.
+
+```mermaid
+flowchart TB
+  Launcher(["LAUNCHER: SplashActivity"])
+  Splash["SplashActivity"]
+  subgraph Public["Public / Auth flows (isAuthScreen=true)"]
+    Login["LoginActivity"]
+    Auth2FA["AuthCodeVerificationActivity"]
+    ChgPw["ChangePasswordActivity (mustChangePassword)"]
+    Reg["RegisterActivity"]
+    RegOtp["RegisterOtpActivity"]
+    Forgot["ForgotPasswordActivity"]
+    ForgotOtp["ForgotPasswordOtpActivity"]
+    ForgotReset["ForgotPasswordResetActivity"]
+  end
+  subgraph Protected["Authenticated (BaseActivity receivers active)"]
+    Dash["DashboardActivity"]
+    Admission["AdmissionActivity (new patient)"]
+    FolderView["FolderViewActivity (folders of a patient)"]
+    FolderDet["FolderDetailsActivity (files of a folder)"]
+    Scanner["ScannerActivity (ML Kit)"]
+    Upload["UploadActivity"]
+    FileViewer["FileViewerActivity"]
+    Profile["ProfileActivity"]
+    Sessions["SessionsActivity"]
+    ChgPwSet["ChangePasswordSettingsActivity"]
+    Notifs["NotificationsActivity"]
+  end
+  subgraph Orphans["🟡 Orphan (manifest, no inbound calls)"]
+    PatList["PatientListActivity"]
+    PatDet["PatientDetailsActivity"]
+  end
+
+  Launcher --> Splash
+  Splash -->|hasValidToken + serverValid| Dash
+  Splash -->|no token / stale / revoked| Login
+  Login -->|forgot?| Forgot
+  Login -->|register| Reg
+  Login -->|requireAuthCode| Auth2FA
+  Login -->|requirePasswordChange| ChgPw
+  Login -->|biometric path| Dash
+  Auth2FA -->|success| Dash
+  ChgPw -->|success| Dash
+  Reg --> RegOtp
+  RegOtp -->|success prefillEmail| Login
+  Forgot --> ForgotOtp
+  ForgotOtp --> ForgotReset
+  ForgotReset --> Login
+
+  Dash -->|FAB New Admission| Admission
+  Dash -->|patient tap| FolderView
+  Dash -->|overflow → Profile| Profile
+  Dash -->|overflow → Password| ChgPwSet
+  Dash -->|overflow → Sessions| Sessions
+  Dash -->|overflow → Notifications| Notifs
+  FolderView -->|folder tap| FolderDet
+  FolderDet -->|add scanned doc| Scanner
+  Scanner --> Upload
+  Upload -->|success| FolderDet
+  FolderDet -->|file tap| FileViewer
+
+  Admission -.success.-> Dash
+
+  FCM[["FCM push: NEW_LOGIN / PASSWORD_CHANGED"]] -.deep link.-> Sessions
+
+  %% Orphans — never reached
+  PatList -.no inbound.- PatList
+  PatDet -.no inbound.- PatDet
+```
+
+**Source of truth:** [AndroidManifest.xml:42-127](../../android-app/app/src/main/AndroidManifest.xml) + grep of `Intent(this|..., <Activity>::class.java)` across `android-app/app/src/main/java/`.
+
+**Orphans:** [PatientListActivity.kt](../../android-app/app/src/main/java/com/hospital/management/ui/patients/PatientListActivity.kt) and [PatientDetailsActivity.kt](../../android-app/app/src/main/java/com/hospital/management/ui/patients/PatientDetailsActivity.kt) have zero `Intent(this, PatientList*...::class.java)` hits; see [`01-dead-code.md §J5`](01-dead-code.md).
+
+---
+
+## 20. Android Layered Architecture (example: POST `/api/auth/login`)
+
+Canonical request lifecycle inside the app. Mirrors `03` § "Backend Layered Architecture" but for the Android side.
+
+```mermaid
+flowchart LR
+  U[User taps Login] --> Act["LoginActivity.setupListeners()"]
+  Act -->|validation OK| Pre["POST /auth/session/check-conflict (pre-flight)"]
+  Pre -->|200 no conflict| VM["AuthViewModel.login(id, pw)"]
+  VM -->|UseCase wraps Repo| UC["LoginUseCase.invoke"]
+  UC -->|suspend repo call| Repo["AuthRepository.login"]
+  Repo -->|apiService.login(LoginRequest)| Retro["Retrofit → OkHttp"]
+  Retro -->|UserAgentInterceptor → AuthInterceptor| OK[OkHttpClient]
+  AuthInterceptorAttach["AuthInterceptor.attachAuthHeaders()<br/>X-Client-Type + X-Hospital-Id if present"] -.headers.- OK
+  OK -->|HTTPS POST| Backend[("/api/auth/login")]
+  Backend -->|LoginResponse| OK
+  OK --> Retro
+  Retro --> Repo
+  Repo --> UC
+  UC --> VM
+  VM -->|StateFlow emit| Act
+  Act -->|branch on AuthState| Next{RequireAuthCode / RequirePasswordChange / LoggedIn}
+```
+
+**Source of truth:** [LoginActivity.kt](../../android-app/app/src/main/java/com/hospital/management/ui/auth/LoginActivity.kt), [AuthViewModel.kt](../../android-app/app/src/main/java/com/hospital/management/presentation/viewmodel/AuthViewModel.kt), [AuthUseCases.kt](../../android-app/app/src/main/java/com/hospital/management/domain/usecase/AuthUseCases.kt), [AuthRepository.kt](../../android-app/app/src/main/java/com/hospital/management/data/repository/AuthRepository.kt), [ApiService.kt](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt), [RetrofitClient.kt](../../android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt), [AuthInterceptor.kt](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt).
+
+---
+
+## 21. Android Auth State Machine
+
+States the app's `AuthState` sealed class can be in, plus the broadcast-driven transitions that fire from `AuthInterceptor` (body-substring match on 401 error payload).
+
+```mermaid
+stateDiagram-v2
+  [*] --> LoggedOut
+  LoggedOut --> Loading : LoginActivity.login()
+  Loading --> RequireAuthCode : 200 + requireAuthCode=true
+  Loading --> RequirePasswordChange : 200 + requirePasswordChange=true
+  Loading --> LoggedIn : biometric verify (fresh tokens)
+  Loading --> ErrorState : 401 / network
+  RequireAuthCode --> Loading : verify-auth-code POST
+  RequirePasswordChange --> Loading : change-password POST
+  LoggedIn --> LoggedIn : /auth/refresh-token (transparent, via AuthInterceptor)
+  LoggedIn --> AuthCodeStale : 401 body~AUTH_CODE_REQUIRED → broadcast ACTION_AUTH_CODE_REQUIRED
+  AuthCodeStale --> LoggedIn : /auth/session/reverify-auth-code
+  LoggedIn --> SessionConflict : 401 body~SESSION_CONFLICT → broadcast ACTION_SESSION_REVOKED
+  LoggedIn --> AccountDisabled : 401 body~ACCOUNT_DISABLED → broadcast ACTION_SESSION_REVOKED
+  LoggedIn --> ClientInactivityExpired : 7 d since last interaction (SessionManager)
+  SessionConflict --> LoggedOut : BaseActivity Toast + SessionManager.logoutUser
+  AccountDisabled --> LoggedOut : same
+  ClientInactivityExpired --> LoggedOut : same
+  LoggedIn --> LoggedOut : user logout / DashboardActivity.showLogoutDialog
+  ErrorState --> LoggedOut : Snackbar dismissed
+```
+
+**Source of truth:** [AuthViewModel.kt:14-21 (sealed class)](../../android-app/app/src/main/java/com/hospital/management/presentation/viewmodel/AuthViewModel.kt), [AuthInterceptor.kt:96-120](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt), [BaseActivity.kt:78-116](../../android-app/app/src/main/java/com/hospital/management/ui/base/BaseActivity.kt), [SessionManager.kt:64-84](../../android-app/app/src/main/java/com/hospital/management/utils/SessionManager.kt).
+
+---
+
+## 22. Android Login Sequence (password path)
+
+Two-step login. Mirrors `03` §6 but includes the Android-only `/session/check-conflict` pre-flight and the post-login biometric enrolment dialog.
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant L as LoginActivity
+  participant VM as AuthViewModel
+  participant I as AuthInterceptor
+  participant API as Backend
+  participant TM as TokenManager (EncryptedSharedPreferences)
+  participant B as BiometricHelper
+
+  U->>L: type identifier + password
+  L->>API: POST /auth/session/check-conflict {identifier}
+  API-->>L: {conflict: bool, activeDevice?, sessionLimit?}
+  alt conflict
+    L->>U: MaterialAlertDialogBuilder "Active Session Found"
+    U->>L: Continue Login
+  end
+  L->>VM: login(id, pw)
+  VM->>API: POST /auth/login {identifier, email, password}
+  Note over I: AuthInterceptor attaches X-Client-Type=Android<br/>(no access token yet)
+  API-->>VM: LoginResponse { requireAuthCode, tempToken OR requirePasswordChange }
+  alt requirePasswordChange
+    VM-->>L: AuthState.RequirePasswordChange(tempToken)
+    L->>U: navigate to ChangePasswordActivity
+  else requireAuthCode
+    VM-->>L: AuthState.RequireAuthCode(tempToken)
+    L->>U: navigate to AuthCodeVerificationActivity
+    U->>L: enter 6-digit code (auto-submit)
+    L->>API: POST /auth/login/verify-auth-code (Bearer tempToken)
+    API-->>L: {accessToken, refreshToken, hospital}
+    L->>TM: saveTokens + saveHospitalInfo
+  end
+  L->>API: POST /auth/fcm-token (fire-and-forget)
+  L->>B: isBiometricEnabled(hospitalId) && hasKeyPair(hospitalId)?
+  alt never enrolled on this device
+    L->>U: "Enable Biometric Login?" AlertDialog
+    U->>L: Enable
+    L->>B: generateKeyPair(hospitalId)
+    B-->>L: publicKey Base64
+    L->>API: POST /auth/biometric/register {publicKey, deviceId=ANDROID_ID}
+    API-->>L: 200
+    L->>TM: setBiometricEnabled(hospitalId, true) + saveBiometricEmail
+  end
+  L->>U: navigateToDashboard()
+```
+
+**Source of truth:** [LoginActivity.kt:130-188 (conflict pre-flight)](../../android-app/app/src/main/java/com/hospital/management/ui/auth/LoginActivity.kt), [LoginActivity.kt:215-258 (FCM + biometric enrol)](../../android-app/app/src/main/java/com/hospital/management/ui/auth/LoginActivity.kt), [AuthCodeVerificationActivity.kt:67-118](../../android-app/app/src/main/java/com/hospital/management/ui/auth/AuthCodeVerificationActivity.kt), [BiometricHelper.kt:75-100 (keypair)](../../android-app/app/src/main/java/com/hospital/management/utils/BiometricHelper.kt).
+
+---
+
+## 23. Android Biometric Sequence
+
+Subsequent logins via RSA-SHA256 signing of a server challenge. Keystore key is bound to `BIOMETRIC_STRONG` + invalidated on biometric re-enrollment.
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant L as LoginActivity
+  participant TM as TokenManager
+  participant B as BiometricHelper
+  participant KS as AndroidKeyStore
+  participant OS as BiometricPrompt (OS)
+  participant API as Backend
+
+  L->>TM: getLastBiometricHospitalId
+  TM-->>L: hospitalId
+  L->>B: isBiometricEnabled + hasKeyPair(hospitalId)
+  B-->>L: true / true
+  L->>U: show "Biometric" button
+  U->>L: tap
+  L->>API: POST /auth/biometric/challenge {identifier, deviceId}
+  API-->>L: {challenge, hospitalId serverSide}
+  L->>L: assert serverHospitalId == keystore-bound hospitalId<br/>(if not → wipe, force password login)
+  L->>B: showBiometricPromptForSigning(challenge)
+  B->>KS: getKey(alias = "hospital_biometric_key_<id>")
+  KS-->>B: PrivateKey (Keystore-bound)
+  B->>B: sig.initSign(privateKey)
+  B->>OS: BiometricPrompt.authenticate(CryptoObject(sig))
+  OS->>U: fingerprint / face prompt
+  U->>OS: success
+  OS-->>B: AuthenticationResult { cryptoObject.signature }
+  B->>B: sig.update(challenge.toByteArray()); sig.sign()
+  B-->>L: signatureBase64
+  L->>API: POST /auth/biometric/verify {hospitalId, deviceId, signature}
+  API->>API: verify signature against stored publicKey
+  API-->>L: LoginResponse {accessToken, refreshToken, hospital}
+  L->>TM: saveTokens + saveHospitalInfo
+  L->>U: navigateToDashboard()
+  Note over B: If KeyPermanentlyInvalidatedException →<br/>onKeyInvalidated() → wipe local state,<br/>hide biometric button, password login
+```
+
+**Source of truth:** [LoginActivity.kt:380-522](../../android-app/app/src/main/java/com/hospital/management/ui/auth/LoginActivity.kt), [BiometricHelper.kt:132-205](../../android-app/app/src/main/java/com/hospital/management/utils/BiometricHelper.kt).
+
+---
+
+## 24. Android Token Refresh Flow
+
+Transparent refresh on 401. Single module-level `refreshLock` prevents parallel-401 stampede. Backend rotates the refresh token on every refresh (TD-002); Android saves the new refresh when present.
+
+```mermaid
+sequenceDiagram
+  participant A1 as Request A (e.g. GET /patients)
+  participant A2 as Request B (concurrent GET)
+  participant I as AuthInterceptor
+  participant TM as EncryptedSharedPreferences
+  participant RC as Bare OkHttpClient (refreshClient)
+  participant API as Backend
+
+  A1->>I: chain.proceed(request with old access token)
+  API-->>I: 401
+  I->>I: peekBody(1024)
+  I->>I: body not~SESSION_CONFLICT/ACCOUNT_DISABLED/AUTH_CODE_*
+  A2->>I: chain.proceed(other request)
+  API-->>I: 401 (same old token)
+  par Request A acquires lock
+    I->>I: synchronized(refreshLock)
+    I->>TM: getString("refresh_token")
+    TM-->>I: refreshToken
+    I->>RC: POST /auth/refresh-token {refreshToken}
+    API-->>RC: 200 {accessToken, refreshToken: NEW}
+    I->>TM: putString("access_token", new); putString("refresh_token", NEW)
+  and Request B waits on refreshLock
+    I->>I: synchronized — blocks
+    I->>I: on entry: check current token != sent → reuse the fresh one
+    Note over I: "Double-check reuse":<br/>if prefs.access_token ≠ bearer sent,<br/>another thread already refreshed. Skip call.
+  end
+  I->>API: retry Request A with NEW access token
+  API-->>I: 200
+  I-->>A1: response
+  I->>API: retry Request B with NEW access token
+  API-->>I: 200
+  I-->>A2: response
+  alt refresh fails (401/network)
+    I->>I: broadcast ACTION_SESSION_REVOKED reason=SESSION_EXPIRED
+    I-->>A1: pass-through 401
+  end
+```
+
+**Source of truth:** [AuthInterceptor.kt:78-169 (intercept)](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt), [AuthInterceptor.kt:199-242 (performRefresh)](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt).
+
+---
+
+## 25. Android File Upload Pipeline
+
+Online vs offline routing. Offline path persists the file URI + `owner_hospital_id` + stable `Idempotency-Key`; WorkManager drains the queue when network returns.
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant UP as UploadActivity
+  participant PU as PdfUtils
+  participant IU as ImageUtils
+  participant DR as DocumentRepository
+  participant DAO as DocumentDao (Room)
+  participant WM as WorkManager
+  participant SW as SyncDocumentsWorker
+  participant TM as TokenManager
+  participant API as Backend /files/:folder
+
+  U->>UP: tap Upload
+  UP->>PU: buildPdf(scannedPages, greyscale?)
+  PU-->>UP: PdfResult(file, profileUsed)
+  alt file.size > 20 MB
+    UP->>U: error "too large"
+  else online
+    UP->>DR: uploadDocument(file, idempotencyKey)
+    DR->>API: POST /files/:folder (multipart + Idempotency-Key + X-Upload-Profile)
+    API-->>DR: 200 | retryable | non-retryable
+    DR-->>UP: UploadAttempt
+  else offline
+    UP->>DR: saveOffline(uri, ownerHospitalId, idempotencyKey)
+    DR->>DAO: insert(OfflineDocument)
+    UP->>WM: enqueueUniqueWork("auto_sync_documents", KEEP)
+  end
+
+  Note over WM,SW: Later — network regained / app foreground
+  WM->>SW: doWork()
+  SW->>TM: hasValidToken? getHospitalId?
+  alt no auth
+    SW->>DAO: deleteAllNotOwnedBy("__none__") (orphan GC)
+    SW-->>WM: Result.success()
+  end
+  SW->>DAO: deleteAllNotOwnedBy(currentHospitalId) (cross-account GC)
+  SW->>DAO: resetStuckUploading
+  SW->>DAO: getPendingDocuments
+  loop for each pending
+    SW->>DR: uploadDocument(file, idempotencyKey)
+    DR->>API: POST /files/:folder
+    alt success
+      SW->>DAO: delete row + delete local file
+    else retryable
+      SW->>DAO: update(status=FAILED, retryCount+1)
+    end
+  end
+  SW-->>WM: Result.success / retry
+```
+
+**Source of truth:** [UploadActivity.kt](../../android-app/app/src/main/java/com/hospital/management/ui/upload/UploadActivity.kt), [DocumentRepository.kt](../../android-app/app/src/main/java/com/hospital/management/data/repository/DocumentRepository.kt), [SyncDocumentsWorker.kt](../../android-app/app/src/main/java/com/hospital/management/worker/SyncDocumentsWorker.kt), [OfflineDocument.kt](../../android-app/app/src/main/java/com/hospital/management/data/local/OfflineDocument.kt), [DocumentDao.kt:52-69](../../android-app/app/src/main/java/com/hospital/management/data/local/DocumentDao.kt).
+
+---
+
+## 26. Android Download Pipeline (foreground-service Worker)
+
+`DownloadWorker` is a `CoroutineWorker` promoted to a foreground service. Supports resume-from-byte (`Range: bytes=…`), Last-Modified-based cache invalidation, and 500 MB LRU cache with a 60 s eviction safety window.
+
+```mermaid
+flowchart TD
+  Req["FolderDetailsActivity.downloadFileCompressed()"] --> Enq["WorkManager.enqueueUniqueWork(download_<url-hash>, REPLACE)"]
+  Enq --> FG["doWork() → setForeground(PREPARING notification) within 10s"]
+  FG --> Poll{"KEY_STATUS_URL supplied?"}
+  Poll -->|yes (Phase 3C dormant)| PollLoop["pollUntilReady every 3.5s<br/>surfaces stage hint<br/>max 10 min"]
+  Poll -->|no (current path)| HEAD
+  PollLoop --> HEAD["HEAD request — get Last-Modified + Accept-Ranges"]
+  HEAD --> Hash["contentHash = SHA256(url | lastModified)"]
+  Hash --> Cache{cached & !isStale?}
+  Cache -->|hit| Touch["touchAccess(hash) → finalizeReady"]
+  Cache -->|miss| GET["GET with Range header if resume possible"]
+  GET -->|206 partial| Resume["seek RAF + write"]
+  GET -->|200 full| Restart["start from byte 0"]
+  GET -->|401/403| AuthFail["fail ERROR_AUTH_EXPIRED"]
+  GET -->|4xx| ClientErr["fail ERROR_SERVER"]
+  GET -->|5xx / network| Retry["maybeRetry(run < maxRetries → Result.retry w/ backoff)"]
+  Resume --> Write["stream to tmp + emit progress bytes/total/speed"]
+  Restart --> Write
+  Write --> Rename["rename tmp → final + cacheDao.upsert"]
+  Rename --> Evict{"totalBytes > 500 MB?"}
+  Evict -->|yes| LRU["delete oldest accessed > 60s ago until under budget"]
+  Evict -->|no| MediaStore["saveToMediaStore(Downloads/HospitalRecords/...)"]
+  LRU --> MediaStore
+  MediaStore --> Ready["finalizeReady → buildReady notification<br/>(tap → FileProvider ACTION_VIEW)"]
+  Touch --> Ready
+  Retry --> Backoff["WorkManager exponential backoff (30s × 2^attempt)"]
+```
+
+**Source of truth:** [DownloadWorker.kt](../../android-app/app/src/main/java/com/hospital/management/worker/DownloadWorker.kt), [DownloadCacheDao.kt](../../android-app/app/src/main/java/com/hospital/management/data/local/DownloadCacheDao.kt), [DownloadNotifier.kt](../../android-app/app/src/main/java/com/hospital/management/utils/DownloadNotifier.kt).
+
+---
+
+## 27. Android FCM Dispatch
+
+`HmsFirebaseMessagingService.onMessageReceived` branches by `data["type"]`. Notable: `SESSION_REVOKED` is validated against the server first before acting — the push is account-scoped, not device-scoped.
+
+```mermaid
+flowchart TD
+  Push[["FCM push — data.type"]] --> Type{type}
+  Type -->|NEW_LOGIN| NL["Notification + group summary → Sessions"]
+  Type -->|PASSWORD_CHANGED| PC["Notification → Sessions"]
+  Type -->|SESSION_REVOKED| SR["showNotification + handleSessionRevoked"]
+  Type -->|else| Gen["Generic notification → Launcher"]
+
+  SR --> HV{hasValidToken?}
+  HV -->|no| Ign1["ignore (already logged out)"]
+  HV -->|yes| Val["GET /auth/session/validate"]
+  Val -->|200| Ign2["Ignore — push was for another device"]
+  Val -->|!200| Wait["AuthInterceptor on next request catches 401 → broadcast revoke"]
+
+  OnNewToken[["FCM onNewToken"]] --> HasToken{accessToken present?}
+  HasToken -->|yes| Post["POST /auth/fcm-token"]
+  HasToken -->|no| Stash["savePendingToken(fcm_prefs) + enqueue FcmTokenWorker"]
+  Post -.fails.-> Stash
+  Stash --> Later{network+auth later}
+  Later --> Post
+```
+
+**Source of truth:** [HmsFirebaseMessagingService.kt](../../android-app/app/src/main/java/com/hospital/management/services/HmsFirebaseMessagingService.kt), [FcmTokenWorker.kt](../../android-app/app/src/main/java/com/hospital/management/worker/FcmTokenWorker.kt).
+
+---
+
+## 28. Session Heartbeat + Logout Guard Sequence
+
+Two cross-cutting concerns: the 60 s foreground `session/validate` heartbeat, and the six-step logout that keeps healthcare-compliance invariants.
+
+```mermaid
+sequenceDiagram
+  participant App as HospitalApplication
+  participant API as Backend /session/validate
+  participant U as User
+  participant SM as SessionManager
+  participant WM as WorkManager
+  participant DAO as DocumentDao
+  participant TM as TokenManager
+  participant OLW as OfflineLogoutWorker
+
+  Note over App: while foreground (activityReferences > 0)
+  loop every 60 s
+    App->>API: GET /auth/session/validate (bearer current access token)
+    API-->>App: 200 OK → continue
+  end
+  API-->>App: 401
+  App->>App: broadcast ACTION_SESSION_REVOKED (classified by body)
+
+  U->>SM: Logout (Dashboard overflow)
+  SM->>SM: snapshot refreshToken + hospitalId BEFORE clear
+  SM->>WM: cancelUniqueWork("auto_sync_documents")
+  SM->>WM: cancelAllWorkByTag(DownloadWorker.TAG_DOWNLOAD)
+  SM->>DAO: deleteAllForHospital(hospitalIdSnapshot)
+  SM->>API: POST /auth/logout (direct, NonCancellable)
+  alt online ok
+    API-->>SM: 200
+  else offline / 5xx
+    SM->>OLW: enqueue(refreshTokenSnapshot)
+    Note over OLW: bare OkHttp (no AuthInterceptor)<br/>retries w/ backoff until 2xx | 4xx
+  end
+  SM->>TM: clearAll
+  SM->>SM: RetrofitClient.reset (cookies + instance)
+  SM-->>U: LoginActivity.startActivity(NEW_TASK|CLEAR_TASK)
+```
+
+**Source of truth:** [HospitalApplication.kt:154-194 (heartbeat)](../../android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt), [SessionManager.kt:122-201 (logout)](../../android-app/app/src/main/java/com/hospital/management/utils/SessionManager.kt), [OfflineLogoutWorker.kt](../../android-app/app/src/main/java/com/hospital/management/worker/OfflineLogoutWorker.kt).
+
+---
+
+## 29. Android Room Entity Relationships
+
+Client-side cache schema (version 8). All relationships are "soft" — composite keys on `(patientId, folderName)` for files.
+
+```mermaid
+erDiagram
+  CACHED_PATIENTS ||--o{ CACHED_FILE_ITEMS : "(patientId) N:M via folderName"
+  OFFLINE_DOCUMENTS }o--|| CACHED_PATIENTS : "patientId (logical FK)"
+  DOWNLOAD_CACHE ||--|| REMOTE_URL : "hash(url+lastModified)"
+
+  CACHED_PATIENTS {
+    string id PK "Mongo _id"
+    string patientId "display SH-000001"
+    string patientName
+    string remarks
+    string hospitalId
+    string createdAt
+    int folderCount
+    string foldersJson "preserved across list refreshes"
+    long cachedAt
+  }
+  CACHED_FILE_ITEMS {
+    string fileId PK1
+    string patientId PK2
+    string folderName PK3
+    string fileName
+    string fileUrl
+    string thumbnailUrl
+    string mimeType
+    long size
+    string uploadedAt
+    long cachedAt
+  }
+  OFFLINE_DOCUMENTS {
+    long id PK "auto-increment"
+    string patientId
+    string folderName
+    string fileUri "file:// or content://"
+    long timestamp
+    enum status "PENDING|UPLOADING|FAILED|COMPLETED"
+    string errorMessage
+    int retryCount
+    string idempotencyKey "reused across retries"
+    int uploadProfileUsed "from PdfUtils"
+    string ownerHospitalId "v8 migration - cross-account guard"
+  }
+  DOWNLOAD_CACHE {
+    string contentHash PK "SHA256(url+lastModified)"
+    string downloadUrl
+    string localPath
+    string fileName
+    long sizeBytes
+    long lastAccessedAt
+    long createdAt
+    string lastModifiedHeader "HEAD request"
+    bool isStale
+  }
+```
+
+**Source of truth:** [AppDatabase.kt](../../android-app/app/src/main/java/com/hospital/management/data/local/AppDatabase.kt), [OfflineDocument.kt](../../android-app/app/src/main/java/com/hospital/management/data/local/OfflineDocument.kt), [CachedPatient.kt](../../android-app/app/src/main/java/com/hospital/management/data/local/CachedPatient.kt), [CachedFileItem.kt](../../android-app/app/src/main/java/com/hospital/management/data/local/CachedFileItem.kt), [DownloadCache.kt](../../android-app/app/src/main/java/com/hospital/management/data/local/DownloadCache.kt).
+
+---
+
+## 30. Background Work Map
+
+Triggers and constraints for every WorkManager request + the FCM service.
+
+```mermaid
+flowchart LR
+  subgraph Triggers
+    AppFG["App foreground<br/>HospitalApplication.onActivityStarted"]
+    Net["Network available<br/>ConnectivityManager.NetworkCallback"]
+    SyncBtn["Manual sync toolbar button"]
+    LogoutOffline["SessionManager.logoutUser fails to reach /auth/logout"]
+    FileDL["FolderDetailsActivity download tap"]
+    RetryDL["Download notification Retry action"]
+    FcmNewToken["HmsFirebaseMessagingService.onNewToken"]
+  end
+  subgraph Workers["WorkManager"]
+    SW[["SyncDocumentsWorker<br/>KEEP, NetworkType.CONNECTED<br/>30s exp backoff"]]
+    DW[["DownloadWorker<br/>REPLACE, NetworkType.CONNECTED<br/>foreground=DATA_SYNC"]]
+    OLW[["OfflineLogoutWorker<br/>KEEP (collapse dupes)<br/>bare OkHttp"]]
+    FcmW[["FcmTokenWorker<br/>one-shot"]]
+  end
+  subgraph Services
+    FcmSvc["HmsFirebaseMessagingService<br/>exported=false"]
+    DAR["DownloadActionReceiver<br/>Cancel/Retry routes"]
+  end
+
+  AppFG --> SW
+  Net --> SW
+  SyncBtn --> SW
+  FileDL --> DW
+  RetryDL --> DW
+  LogoutOffline --> OLW
+  FcmNewToken --> FcmW
+  DW --> DAR
+  FcmSvc --> FcmW
+```
+
+**Source of truth:** [HospitalApplication.kt:201-229 (auto sync)](../../android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt), [DashboardActivity.kt:159-193 (manual sync)](../../android-app/app/src/main/java/com/hospital/management/ui/dashboard/DashboardActivity.kt), [SessionManager.kt:175-188 (offline logout)](../../android-app/app/src/main/java/com/hospital/management/utils/SessionManager.kt), [OfflineLogoutWorker.kt:58-85](../../android-app/app/src/main/java/com/hospital/management/worker/OfflineLogoutWorker.kt), [FolderDetailsActivity.kt](../../android-app/app/src/main/java/com/hospital/management/ui/folders/FolderDetailsActivity.kt), [AndroidManifest.xml:157-160](../../android-app/app/src/main/AndroidManifest.xml).
+
+---
+
+*13 Android diagrams (§18–§30) + 17 backend / web / sidecar diagrams (§1–§17) = 30 total.*

@@ -78,10 +78,45 @@ For completeness — not subject to deletion/action. These are JSDoc / file-head
 
 | Classification | Count | Notes |
 |---|---|---|
-| `INTENTIONAL_FEATURE_HOLD` | 4 blocks | All in `PatientDetails.tsx`, all load-bearing per CLAUDE.md. |
+| `INTENTIONAL_FEATURE_HOLD` | 4 blocks (frontend) + 1 (Android, see §8) | All in `PatientDetails.tsx` on the web; Android has `DownloadWorker.pollUntilReady` dormant branch. |
 | `DEPRECATED` | 2 blocks | Small; safe to delete on next `PatientDetails.tsx` / `Dashboard.tsx` touch. |
 | `DEBUG_LEFTOVER` | 0 | Clean. |
 | `TODO_PLACEHOLDER` | 0 | Clean. |
 | `UNKNOWN` | 0 | No decisions needed. |
 
 **No user decisions required.** The codebase is well-curated; the only commented code is either explicitly intentional or trivially stale (replaced inline).
+
+---
+
+## 8. Android commented code
+
+Added 2026-04-24. Systematic scan of `android-app/app/src/main/java` for commented-out code (not KDoc / file-header prose).
+
+### 8.1 What was searched
+
+- `^\s*//\s*(val|var|fun|private|public|if|while|for|return|when|class)` — line-commented code patterns.
+- `/\* … \*/` multi-line blocks outside KDoc (`/** … */`).
+- `<!-- … -->` blocks in layout XML.
+- Any `TODO` / `FIXME` / `HACK` / `XXX` markers.
+
+### 8.2 Findings
+
+| Classification | Count | Notes |
+|---|---|---|
+| `INTENTIONAL_FEATURE_HOLD` | 1 (see §8.3) | `DownloadWorker.pollUntilReady` — not strictly *commented*, but the entire polling branch is unreachable today and deliberately preserved for Phase 3C. |
+| `DEPRECATED` | 0 | — |
+| `DEBUG_LEFTOVER` | 0 | No leftover `Log.d` / `println` in comments. |
+| `TODO_PLACEHOLDER` | 0 | **Zero** `TODO` / `FIXME` / `HACK` / `XXX` markers across 77 Kotlin files. |
+| `UNKNOWN` | 0 | — |
+
+Everything else matched by the regex is KDoc (`/** … */`), section-banner comments (`// ─── … ───`), or inline rationale comments (`/* best-effort */`, `/* ignore */`) — all prose, not disabled code.
+
+### 8.3 Intentional feature hold — document in CLAUDE.md
+
+> [`android-app/app/src/main/java/com/hospital/management/worker/DownloadWorker.kt`](../../android-app/app/src/main/java/com/hospital/management/worker/DownloadWorker.kt) lines 541-608 implement a Cloud-Run-style `pollUntilReady(statusUrl)` branch that is unreachable today — no caller passes `KEY_STATUS_URL`. The branch is deliberately preserved for the compression-sidecar **Phase 3C** integration (pre-rendered signed-URL fetch-after-ready flow). Do not remove it without a coordinated decision with the sidecar team.
+
+This is the same class of "intentional hold" as `PatientDetails.tsx` on the web — kept for a planned feature, not dead.
+
+### 8.4 Android code-hygiene note
+
+The Android tree is the cleanest surface in the codebase by this metric: zero `TODO`/`FIXME` markers, zero commented-out `val`/`var`/`fun` lines, zero leftover debug prints. Every non-KDoc comment is either a banner, a rationale, or a `// Why:` explaining a specific design trade-off (see `SessionManager.logoutUser` lines 100-121, `AuthInterceptor.intercept` lines 96-120, `DocumentDao.resetStuckUploading` lines 48-50).

@@ -11,7 +11,7 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 
 ## 0. Changes Since Previous Audit (2026-04-20)
 
-- Endpoint map refreshed against backend code (59 endpoints, corrections in `backend.md` §4 and `00-drift.md` §2).
+- Endpoint map refreshed against backend code (55 endpoints as of 2026-04-25 — TD-030 removed 4 design/testing-only routes; was 59 before. Corrections in `backend.md` §4 and `00-drift.md` §2).
 - `POST /api/hospitals/me/change-contact/resend` added — previously missing from §B2.
 - Catch-all `*` on the web renders `NotFound`, not a silent redirect (affects A-series back-navigation flows).
 - Web Edit-Patient flow is intentionally commented out (`02-commented-code.md` §1).
@@ -161,8 +161,7 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 ### D2. Push notifications (FCM)
 - Types: `NEW_LOGIN`, `PASSWORD_CHANGED`, `SESSION_REVOKED`, `CUSTOM`.
 - Sent to `hospital.fcmToken.token` if present and pref allows.
-- Preview endpoints public (no auth): `GET /api/notifications/sample` (HTML), `GET /api/notifications/preview` (JSON).
-- Admin test: `POST /api/notifications/test`.
+- Preview / test endpoints removed 2026-04-25 (TD-030) — `GET /api/notifications/sample`, `GET /api/notifications/preview`, `POST /api/notifications/test` + the whole `/api/notifications` mount are gone. Debug by reading push payloads directly in [push.service.js](../../backend/src/services/push.service.js) or observing FCM telemetry.
 
 ### D3. SMS gateway — deferred
 - No active integration. Auth Code + email OTP carry all 2FA/OTP. `.env.example` `SMS_GATEWAY_*` vars are dead.

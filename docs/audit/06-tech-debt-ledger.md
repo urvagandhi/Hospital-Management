@@ -2,53 +2,41 @@
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
-**Last updated:** 2026-04-21 (TD-001 / TD-002 / TD-004 / TD-005 / TD-007 / TD-008 / TD-009 / TD-010 / TD-011 / TD-012 / TD-013 / TD-014 / TD-015 / TD-016 / TD-018 shipped)
+**Last updated:** 2026-04-25 (TD-017 / TD-019 / TD-021 / TD-022 / TD-023 / TD-025 / TD-027 / TD-029 / TD-030 shipped; ledger re-sorted: open at top, shipped below, Android section unchanged)
 
 All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` converted into an actionable backlog. Severity: Critical/High/Medium/Low. Effort: XS (<1h) · S (<1d) · M (1-3d) · L (1w) · XL (>1w).
 
-## Shipped so far (2026-04-21)
+---
 
-| ID | Status | Notes |
-|---|---|---|
-| TD-002 | ✅ DONE | Refresh-token rotation + reuse detection in [token.service.js](../../backend/src/services/token.service.js). Replaying a rotated-out token revokes all active sessions + sends `sendSessionRevokedEmail` with reason `REFRESH_TOKEN_REUSE`. Cookie overwrite added in [auth.controller.js `refreshToken`](../../backend/src/controllers/auth.controller.js). Unit test: [refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js). |
-| TD-004 | ✅ DONE | `.env.example` cleaned: 13 dead vars removed (TOTP × 5, SMS × 2, legacy SMTP × 6), 11 undocumented vars added (OTP config, Firebase alt auth, compression service, trust proxy, geoip override, signed uploads), `REFRESH_TOKEN_EXPIRY` fixed `7d → 365d`. |
-| TD-005 | ✅ DONE | `GET /api/hospitals` now cursor-paginated (`?limit&cursor&search`, cap 100, default 50) with server-side search + first-page totals. `HospitalsList.tsx` wired to the new contract: debounced server search, "Load more" button, totals-aware stat cards, delete syncs totals. |
-| TD-007 | ✅ DONE | Centralised pino logger at [utils/logger.js](../../backend/src/utils/logger.js); `pino-http` adds a per-request `X-Request-Id` + `req.log` child in [index.js](../../backend/src/index.js). Pretty output in dev, JSON in prod, `LOG_LEVEL` env. Redact list covers Authorization/Cookie headers and top-level + nested `password / newPassword / oldPassword / currentPassword / confirmPassword / token / refreshToken / otp / authCode`. Zero `console.*` remain in `backend/src/`; 330+ call-sites migrated across 27 files (configs × 3, controllers × 8, middleware × 2, routes × 2, services × 10, jobs, seed, index). `backend/scripts/` intentionally left on `console.*` (CLI operator output). Dev-only ASCII boot banner preserved via `process.stdout.write`. Cloudinary probe in `/api/health/deep` bumped to 5s to match its cold-call latency. |
-| TD-008 | ✅ DONE | `/api/health/deep` now probes Mongo, Redis, Cloudinary, Brevo, FCM, and the compression sidecar in parallel with a 3s hard timeout per probe. Response shape: `{ status, degraded, checks: { server, database, redis, cloudinary, brevo, fcm, sidecar }, timestamp }`. Per-dep fields include `latency_ms` and an optional `detail`; unconfigured deps (`BREVO_API_KEY` missing, `USE_COMPRESSION_SERVICE=false`, etc.) report `status: "disabled"` and do NOT mark the system degraded. Probe logic lives in [health.service.js](../../backend/src/services/health.service.js). |
-| TD-009 | ✅ DONE | Replaced direct `document.title = "..."` with `useDocumentTitle("...")` in Dashboard, Login, Password, Profile, Sessions, VerifyAuthCode, and ForgotPassword. `grep -rn "document\.title" frontend/src/pages/` is empty; `npx tsc --noEmit` clean. |
-| TD-011 | ✅ DONE | `/components-preview` and `/spinners-preview` are now `lazy()` in [AppRoutes.tsx](../../frontend/src/routes/AppRoutes.tsx) with a `<Suspense fallback>` running the shared `Spinner`. Vite now emits `ComponentsPreview-*.js` (438 kB raw / 121 kB gz — carries `recharts` + `lucide-react`) and `LoadingSpinners-*.js` (15 kB raw / 4 kB gz) as separate chunks. Main `index-*.js` chunk drops from ~872 kB raw / ~231 kB gz to 434 kB raw / 110 kB gz. |
-| TD-014 | ✅ DONE | Sidecar 504 body + schema default both read `"Pipeline exceeded 300s limit"` in [folder.py:285](../../compression-service/app/endpoints/folder.py), [patient.py:301](../../compression-service/app/endpoints/patient.py), and [schemas.py:73](../../compression-service/app/schemas.py); matches `_PIPELINE_TIMEOUT = 300.0`. |
-| TD-015 | ✅ DONE | Bounded `fetch_source_pdfs` parallelism in [cloudinary_client.py](../../compression-service/app/cloudinary_client.py) with `asyncio.Semaphore(10)` (`_FETCH_CONCURRENCY = 10`). `_fetch_one` wrapped `async with semaphore:`; gather/order preserved. Prevents connection-pool saturation + Cloudinary rate-limit trips on patients with many files. |
-| TD-016 | ✅ DONE | Removed unused `from datetime import datetime, timezone` at [cover_page.py:14](../../compression-service/app/compression/cover_page.py). No call sites referenced it; file parses clean. |
-| TD-018 | ✅ DONE | Deleted three orphan shimmer entries (`backgroundImage.shimmer`, `animation.shimmer`, `keyframes.shimmer`) from [frontend/tailwind.config.js](../../frontend/tailwind.config.js). No component used `animate-shimmer` / `bg-shimmer`; inline keyframes in `globals.css` + `LoadingSpinners.tsx` untouched. `npx tsc --noEmit` clean. |
-| TD-010 | ✅ DONE | Deleted orphan frontend files: `CountdownTimer.tsx`, `SkeletonLoader.tsx`, `Toast.tsx`, `services/patientApi.ts`. Removed `listAppVersions` / `createAppVersion` / `updateAppVersion` + `AppVersion` interface from [hospitalService.ts](../../frontend/src/services/hospitalService.ts). `PasswordConfirmModal.tsx` did not exist on disk. `npx tsc --noEmit` clean; `npx vite build` succeeds. |
-| TD-012 | ✅ DONE | `@getbrevo/brevo` + `axios` removed from [backend/package.json](../../backend/package.json); `node_modules` confirmed gone. Mail still works via `nodemailer` + Brevo SMTP; outbound HTTP via native `fetch`. |
-| TD-013 | ✅ DONE | Pruned 10 dead enum members (`TOTP_*` × 8, `RECOVERY_*` × 2) from [AuditLog.js](../../backend/src/models/AuditLog.js). Grep confirmed no live emitter. Live enum regrouped by concern. |
+## Summary
+
+| Tier | Items | Shipped | Open | Total effort |
+|---|---|---|---|---|
+| 🔥 This Week | 5 | 4 (TD-001 / TD-002 / TD-004 / TD-005) | 1 (TD-003) | ~1 day remaining |
+| 📅 This Quarter | 9 | 8 (TD-007 / TD-008 / TD-009 / TD-010 / TD-011 / TD-012 / TD-013 / TD-014) | 1 (TD-006) | ~1 week remaining |
+| 🧹 Backlog Polish | 14 | 10 (TD-015 / TD-016 / TD-017 / TD-018 / TD-019 / TD-021 / TD-022 / TD-023 / TD-025 / TD-027) | 3 (TD-020 / TD-024 / TD-026) | opportunistic |
+| 🌍 Cross-cutting | 1 | 1 (TD-030) | 0 | done |
+| 🛡️ XSS hardening | 1 | 1 (TD-029) | 0 | done |
+| 🤔 Discuss First | 5 | 2 (TD-D3 → shipped as TD-029; TD-D4 → option b shipped 2026-04-25) | 3 (TD-D1 / TD-D2 / TD-D5) | architecture decisions |
+
+**Remaining priorities, in order of blast radius:**
+
+1. **TD-003** (High · S) — delete dead `r2.service.js` + drop the `@aws-sdk/*` deps (~7 MB install shrink).
+2. **TD-006** (High · L) — establish real test coverage; blocked behind a Jest ESM-config fix (see TD-022 note).
+3. **TD-020 / TD-024 / TD-026** (Low) — opportunistic.
+
+After TD-003 lands, the This-Week tier is clear. The This-Quarter tier still owes **TD-006** (the big one).
 
 ---
 
-## 🔥 Do This Week — Critical / Security / Production-impact
+## 🚧 Open — Backend / Frontend / Sidecar
 
-### TD-001 · High · S — Add audit logging to 8 mutation endpoints — ✅ SHIPPED 2026-04-21
-- **Source:** `00-drift.md` §10 · `04-enhancements.md` SEC-020
-- **Blast radius:** Compliance (cannot forensically trace who uploaded/created/renamed what); every hospital's mutation traffic.
-- **Shipped in:**
-  - [backend/src/models/AuditLog.js](../../backend/src/models/AuditLog.js) — enum extended with `PATIENT_CREATED`, `PATIENT_UPDATED`, `PATIENT_FILE_DELETE`, `FOLDER_CREATED`, `FILE_UPLOADED`, `FILE_RENAMED`, `HOSPITAL_UPDATED`, `HOSPITAL_RESEND_WELCOME`, `CONTACT_CHANGE_RESEND`, `AUTH_CODE_RESEND`, `BIOMETRIC_REGISTERED`, `ORPHAN_CLEANUP`. The last five fix pre-existing silently-failing emits that the Mongoose validator was rejecting.
-  - [backend/src/controllers/patient.controller.js](../../backend/src/controllers/patient.controller.js) — `logAudit()` (fire-and-forget, existing helper) now emits `PATIENT_CREATED`, `PATIENT_UPDATED`, `FOLDER_CREATED`, `FILE_UPLOADED`, `FILE_RENAMED` inside the five mutation handlers, each capturing the hospital-scoped patient MongoId + human `patientId` + a minimal diff.
-  - [backend/src/controllers/hospitals.controller.js](../../backend/src/controllers/hospitals.controller.js) — `updateHospital` now snapshots the pre-change profile, computes a `changedFields` list (`hospitalName`, `email`, `phone`, `address`, `isActive`, `logoUrl`), and emits a `HOSPITAL_UPDATED` audit on every successful save — not only on `isActive` transitions. The pre-existing `PROFILE_PATCHED` activeTransition entries remain as richer purpose-specific records. `patchMe` already emitted `PROFILE_PATCHED`; left unchanged.
-  - [backend/src/controllers/admin.controller.js](../../backend/src/controllers/admin.controller.js) — imported `AuditLog`; `deleteOrphans` now emits `ORPHAN_CLEANUP` (status `SUCCESS`/`FAILURE` based on per-resource failure count) with `{ cloudinaryTotal, dbReferencedCount, deletedCount, deletedBytes, failedCount }`.
-- **Acceptance:** `git grep -n "logAudit\|AuditLog\.create" backend/src/controllers/` returns a call in every mutation handler ✓. `node --check` passes on all four modified files ✓.
+Priority-ordered. Tackle 🔥 first, then 📅, then 🧹. 🤔 items need a decision before they become tickets.
 
-### TD-002 · High · M — Implement refresh-token rotation + reuse detection — ✅ SHIPPED 2026-04-21
-- **Source:** `04-enhancements.md` SEC-004
-- **Blast radius:** All sessions. Security critical.
-- **Shipped in:**
-  - [backend/src/services/token.service.js](../../backend/src/services/token.service.js) — `refreshAccessToken` now generates a fresh refresh token on every call, persists it on the session, and returns the new value alongside `hospitalId` for the controller. Added `handlePossibleRefreshReuse(hospitalId)` which, on a JWT-valid but DB-missing token, revokes all active sessions (`revokedReason: "REFRESH_TOKEN_REUSE"`) + fires `notifySessionRevoked` + `sendSessionRevokedEmail`. Guards the benign post-logout-retry case by checking whether ANY other sessions are still active (if zero, the reuse handler exits — no blast radius).
-  - [backend/src/controllers/auth.controller.js](../../backend/src/controllers/auth.controller.js) — `refreshToken` uses `tokens.hospitalId` instead of re-querying by the old token (which wouldn't match after rotation) and overwrites the httpOnly `refreshToken` cookie with the new value so the next refresh presents the rotated token.
-  - [backend/src/__tests__/refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js) — Jest unit test (in-process mocks; no live DB required). Covers rotation happy-path, reuse detection (active-session guard), post-logout benign case, and malformed-JWT short-circuit.
-- **Acceptance:** Two consecutive refreshes each issue different refresh tokens ✓. Replaying an old refresh token raises `"Invalid or expired refresh token"` (401) and revokes all other active sessions + emails the hospital ✓.
+### 🔥 Do This Week — Critical / Security / Production-impact
 
-### TD-003 · High · S — Remove dead `r2.service.js` + heavy S3 deps
+#### TD-003 · High · S — Remove dead `r2.service.js` + heavy S3 deps
+
 - **Source:** `01-dead-code.md` §D
 - **Blast radius:** `backend/package.json`, one file delete.
 - **Migration plan:**
@@ -59,13 +47,106 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 - **Acceptance:** `npm run start` boots. `grep -r "r2\.service\|r2Service" backend/src/` is empty. Install size drops by ~7 MB.
 - **Dependencies:** None.
 
+### 📅 Do This Quarter — High severity, planned work
+
+#### TD-006 · High · L — Establish real test coverage
+
+- **Source:** `04-enhancements.md` §5.5 / QUAL-007
+- **Migration plan:** Jest integration tests for the top 10 untested paths (listed in §5.5). Playwright E2E for login → Dashboard → PatientDetails. GitHub Action for CI.
+- **Acceptance:** > 50% backend branch coverage in critical controllers; at least 1 E2E happy-path.
+- **Dependencies:** Blocked behind a Jest ESM config fix (see TD-022 → "Known pre-existing issue"). `npm test` currently throws `SyntaxError: Cannot use import statement outside a module` because Jest isn't configured for ESM despite `"type": "module"` in `backend/package.json`. Resolve via `NODE_OPTIONS=--experimental-vm-modules` or a `babel-jest` CJS bridge before any new tests are written.
+
+### 🧹 Backlog Polish — Medium / Low, opportunistic
+
+#### TD-020 · Low · M — Share API types between frontend and backend
+
+- **Source:** `04-enhancements.md` QUAL-004 / CDRIFT-001
+- **Migration plan:** Extract request/response types to `backend/src/types/` and import from the frontend via a symlinked or pnpm-workspace package. Or adopt Zod schemas referenced in both.
+- **Discuss first:** Backend is plain JS; sharing types requires picking an architectural direction (TS migration vs `.d.ts` shims vs Zod-in-workspace vs OpenAPI codegen). Each is a separate design decision before any code lands. Recommend opening this as TD-D6 once the team has bandwidth to commit.
+- **Dependencies:** None.
+
+#### TD-024 · Low · XS — CI integrity: add `npm ci` script + Dependabot
+
+- **Source:** `04-enhancements.md` SEC-019
+- **Dependencies:** None.
+
+#### TD-026 · Low · M — Extract oversized pages into component files
+
+- **Source:** `04-enhancements.md` QUAL-005
+- **Migration plan:** Split `HospitalsList.tsx` (modals → separate files), `PatientDetails.tsx` (header, folder grid, modals), `ComponentsPreview.tsx` (sections). Aim for no file > 500 LOC.
+- **Current state (2026-04-25):** 9 pages still over 500 LOC (`ComponentsPreview` 1729, `HospitalsList` 1521, `Dashboard` 968, `Profile` 924, `HospitalRegistration` 732, `FolderView` 697, `PatientDetails` 696, `Sessions` 642, `LoadingSpinners` 599). No component subtrees exist under `frontend/src/components/{hospitals,patients}` yet.
+- **Dependencies:** None.
+
+### 🤔 Discuss First — Architectural decisions, not tickets
+
+#### TD-D1 — Soft-delete vs hard-delete for patients
+
+- **Source:** `04-enhancements.md` scaling, features.md C13
+- **Question:** Is 90-day hard-delete the right policy? Regulatory / "I accidentally deleted" recovery becomes impossible.
+- **Options:** (a) keep hard-delete, (b) soft-delete with 30-day trash + cron hard-delete, (c) tier-based retention per hospital.
+- **Who needs to decide:** Product + legal.
+
+#### TD-D2 — Web Edit-Patient: re-enable, move off, or commit to "mobile-only forever"
+
+- **Source:** `02-commented-code.md` §1
+- **Question:** Four blocks are commented out today. Is this a temporary hold or permanent policy?
+- **Options:** (a) remove dead commented code and commit to mobile-only, (b) re-enable, (c) keep commented with a date-stamped decision note.
+- **Who needs to decide:** Product.
+
+#### TD-D3 — Access token in sessionStorage (XSS exposure) → ✅ SHIPPED as TD-029
+
+Decided + shipped 2026-04-25. See **TD-029** in the Shipped section.
+
+#### TD-D4 — Compression sidecar default: on or off in new deployments? → ✅ DECIDED + SHIPPED 2026-04-25 (option b)
+
+- **Decision:** Hard-require via env-assertion (option b). Render production already has `USE_COMPRESSION_SERVICE=true`; the env guard prevents future deploys from silently regressing to the OOM-prone pdf-lib fallback.
+- **Shipped in:** [backend/src/config/env.js:113-123](../../backend/src/config/env.js) — when `NODE_ENV === "production"` AND `USE_COMPRESSION_SERVICE !== "true"`, the process throws on boot with `"OPS ALERT: USE_COMPRESSION_SERVICE must be 'true' in production. The in-process pdf-lib fallback OOMs at scale; the sidecar is mandatory."` Companion checks at lines 126-133 still validate that `COMPRESSION_SERVICE_URL` and `COMPRESSION_SERVICE_SECRET` are present whenever the flag is on.
+- **Docs:** [CLAUDE.md §9](../../CLAUDE.md) reflows the Compression sidecar bullet to call out the prod-mandatory rule + escape hatch (only safe to disable if a future ticket builds the merge path natively into Node).
+- **Acceptance:** `node --check backend/src/config/env.js` clean ✓. Local boot with `NODE_ENV=production USE_COMPRESSION_SERVICE=false` throws on import; with `=true` + url/secret set, boots normally; dev boot is unchanged (assertion only fires under `NODE_ENV=production`).
+
+#### TD-D5 — Multi-replica deployment of the backend
+
+- **Source:** `04-enhancements.md` RACE-005 + FAIL-002
+- **Question:** Auto-delete cron has no distributed lock; in-memory Redis fallback becomes per-instance. Do we plan for HA?
+- **Options:** (a) commit to single-instance forever (simpler), (b) add Mongo-based job lock + require Upstash in prod.
+- **Who needs to decide:** Ops.
+
+---
+
+## ✅ Shipped — Backend / Frontend / Sidecar
+
+Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance evidence. All entries are immutable history — do not edit after the ticket has shipped except to add follow-up notes.
+
+### TD-001 · High · S — Add audit logging to 8 mutation endpoints — ✅ SHIPPED 2026-04-21
+
+- **Source:** `00-drift.md` §10 · `04-enhancements.md` SEC-020
+- **Blast radius:** Compliance (cannot forensically trace who uploaded/created/renamed what); every hospital's mutation traffic.
+- **Shipped in:**
+  - [backend/src/models/AuditLog.js](../../backend/src/models/AuditLog.js) — enum extended with `PATIENT_CREATED`, `PATIENT_UPDATED`, `PATIENT_FILE_DELETE`, `FOLDER_CREATED`, `FILE_UPLOADED`, `FILE_RENAMED`, `HOSPITAL_UPDATED`, `HOSPITAL_RESEND_WELCOME`, `CONTACT_CHANGE_RESEND`, `AUTH_CODE_RESEND`, `BIOMETRIC_REGISTERED`, `ORPHAN_CLEANUP`. The last five fix pre-existing silently-failing emits that the Mongoose validator was rejecting.
+  - [backend/src/controllers/patient.controller.js](../../backend/src/controllers/patient.controller.js) — `logAudit()` (fire-and-forget, existing helper) now emits `PATIENT_CREATED`, `PATIENT_UPDATED`, `FOLDER_CREATED`, `FILE_UPLOADED`, `FILE_RENAMED` inside the five mutation handlers, each capturing the hospital-scoped patient MongoId + human `patientId` + a minimal diff.
+  - [backend/src/controllers/hospitals.controller.js](../../backend/src/controllers/hospitals.controller.js) — `updateHospital` now snapshots the pre-change profile, computes a `changedFields` list (`hospitalName`, `email`, `phone`, `address`, `isActive`, `logoUrl`), and emits a `HOSPITAL_UPDATED` audit on every successful save — not only on `isActive` transitions. The pre-existing `PROFILE_PATCHED` activeTransition entries remain as richer purpose-specific records. `patchMe` already emitted `PROFILE_PATCHED`; left unchanged.
+  - [backend/src/controllers/admin.controller.js](../../backend/src/controllers/admin.controller.js) — imported `AuditLog`; `deleteOrphans` now emits `ORPHAN_CLEANUP` (status `SUCCESS`/`FAILURE` based on per-resource failure count) with `{ cloudinaryTotal, dbReferencedCount, deletedCount, deletedBytes, failedCount }`.
+- **Acceptance:** `git grep -n "logAudit\|AuditLog\.create" backend/src/controllers/` returns a call in every mutation handler ✓. `node --check` passes on all four modified files ✓.
+
+### TD-002 · High · M — Implement refresh-token rotation + reuse detection — ✅ SHIPPED 2026-04-21
+
+- **Source:** `04-enhancements.md` SEC-004
+- **Blast radius:** All sessions. Security critical.
+- **Shipped in:**
+  - [backend/src/services/token.service.js](../../backend/src/services/token.service.js) — `refreshAccessToken` now generates a fresh refresh token on every call, persists it on the session, and returns the new value alongside `hospitalId` for the controller. Added `handlePossibleRefreshReuse(hospitalId)` which, on a JWT-valid but DB-missing token, revokes all active sessions (`revokedReason: "REFRESH_TOKEN_REUSE"`) + fires `notifySessionRevoked` + `sendSessionRevokedEmail`. Guards the benign post-logout-retry case by checking whether ANY other sessions are still active (if zero, the reuse handler exits — no blast radius).
+  - [backend/src/controllers/auth.controller.js](../../backend/src/controllers/auth.controller.js) — `refreshToken` uses `tokens.hospitalId` instead of re-querying by the old token (which wouldn't match after rotation) and overwrites the httpOnly `refreshToken` cookie with the new value so the next refresh presents the rotated token.
+  - [backend/src/__tests__/refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js) — Jest unit test (in-process mocks; no live DB required). Covers rotation happy-path, reuse detection (active-session guard), post-logout benign case, and malformed-JWT short-circuit.
+- **Acceptance:** Two consecutive refreshes each issue different refresh tokens ✓. Replaying an old refresh token raises `"Invalid or expired refresh token"` (401) and revokes all other active sessions + emails the hospital ✓.
+
 ### TD-004 · Medium · S — `.env.example` hygiene — ✅ SHIPPED 2026-04-21
+
 - **Source:** `00-drift.md` §5
 - **Blast radius:** Developer onboarding; nothing runtime.
 - **Shipped in:** [.env.example](../../.env.example) — 13 dead vars removed (TOTP × 5, SMS × 2, legacy SMTP × 6); 11 undocumented-but-referenced vars added with sensible defaults (`OTP_EXPIRY_MINUTES=10`, `OTP_LENGTH=6`, `MAX_OTP_ATTEMPTS=5`, `SIGNED_UPLOADS_ENABLED=false`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_SERVICE_ACCOUNT_PATH`, `USE_COMPRESSION_SERVICE=false`, `COMPRESSION_SERVICE_URL`, `COMPRESSION_SERVICE_SECRET`, `TRUST_PROXY_HOPS=2`, `GEOIP_DEV_OVERRIDE_IP`); `REFRESH_TOKEN_EXPIRY` fixed from `7d` to `365d`. R2 block retained with an explicit "currently unused" header pending TD-003.
 - **Acceptance:** Every `process.env.X` in `backend/src/` has a matching line in `.env.example`; no dead var remains.
 
 ### TD-005 · Medium · S — Add pagination to `GET /api/hospitals` — ✅ SHIPPED 2026-04-21
+
 - **Source:** `04-enhancements.md` SEC-001 / PERF-001
 - **Blast radius:** Admin UI (`HospitalsList.tsx`).
 - **Shipped in:**
@@ -73,17 +154,8 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
   - [frontend/src/pages/HospitalsList.tsx](../../frontend/src/pages/HospitalsList.tsx) — in-memory filter removed; search is now server-side with a 300 ms debounce (`debouncedSearch` effect refetches page 1). `nextCursor` / `loadingMore` state drive a "Load more" button appended after the card grid. Stat cards read from server-computed totals; delete handler decrements totals locally to stay in sync.
 - **Acceptance:** With 200 hospitals the admin page loads 50 rows immediately, server-side search filters as you type, "Load more" fetches the next page on demand. Totals reflect global counts, not just the loaded window.
 
----
-
-## 📅 Do This Quarter — High severity, planned work
-
-### TD-006 · High · L — Establish real test coverage
-- **Source:** `04-enhancements.md` §5.5 / QUAL-007
-- **Migration plan:** Jest integration tests for the top 10 untested paths (listed in §5.5). Playwright E2E for login → Dashboard → PatientDetails. GitHub Action for CI.
-- **Acceptance:** > 50% backend branch coverage in critical controllers; at least 1 E2E happy-path.
-- **Dependencies:** None.
-
 ### TD-007 · Medium · M — Centralised structured logging (pino) on backend — ✅ SHIPPED 2026-04-21
+
 - **Source:** `04-enhancements.md` OBS-004
 - **Blast radius:** Every log line in the backend — observability, secret-leak posture, ops correlation.
 - **Shipped in:**
@@ -112,6 +184,7 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
   - `X-Request-Id` echoed on every HTTP response; pino-pretty prefixes each line with timestamp + level + event fields ✓
 
 ### TD-008 · Medium · M — Probe all externals in `/api/health/deep` — ✅ SHIPPED 2026-04-21
+
 - **Source:** `04-enhancements.md` OBS-001
 - **Blast radius:** Observability / on-call runbooks — the deep health endpoint is the single "is the system actually healthy?" signal for synthetic monitors.
 - **Shipped in:**
@@ -122,6 +195,7 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 - **Acceptance:** Live probe against configured environment returns 200 with every dep `"ok"`; pulling any env var flips that dep to `"disabled"` without flipping `degraded`; killing an external surface flips it to `"timeout"`/`"error"` and the whole endpoint to 503.
 
 ### TD-009 · Medium · M — Fix `useDocumentTitle` rule violations (7 pages) — ✅ SHIPPED 2026-04-21
+
 - **Source:** `00-drift.md` §7.3
 - **Blast radius:** UX — without `useDocumentTitle`, a previous page's title leaks into the next page after navigation (the hook restores the prior title on unmount; direct `document.title =` does not).
 - **Shipped in:**
@@ -136,11 +210,13 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 - **Acceptance:** `grep -rn "document\.title" frontend/src/pages/` → empty ✓. `npx tsc --noEmit` clean ✓.
 
 ### TD-010 · Medium · S — Delete dead frontend code — ✅ SHIPPED 2026-04-21
+
 - **Source:** `01-dead-code.md` §C
 - **Shipped in:** Deleted `frontend/src/components/CountdownTimer.tsx`, `SkeletonLoader.tsx`, `Toast.tsx`, and `frontend/src/services/patientApi.ts`. Removed `listAppVersions`, `createAppVersion`, `updateAppVersion` (and the `AppVersion` interface + default-export entries) from [hospitalService.ts](../../frontend/src/services/hospitalService.ts). `PasswordConfirmModal.tsx` was never on disk (stale reference in the prior audit text).
 - **Acceptance:** `npx tsc --noEmit` clean ✓. `npx vite build` succeeds in ~1 min, 2591 modules transformed ✓.
 
 ### TD-011 · Medium · M — Move `/components-preview` off the main bundle — ✅ SHIPPED 2026-04-21
+
 - **Source:** `04-enhancements.md` PERF-006
 - **Blast radius:** Bundle size — first-paint time + bandwidth for every user of every route, even though `/components-preview` and `/spinners-preview` are design-gallery pages almost no one ever visits.
 - **Shipped in:**
@@ -153,15 +229,18 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 - `npx tsc --noEmit` clean ✓.
 
 ### TD-012 · Medium · S — Remove backend `@getbrevo/brevo` and `axios` deps — ✅ SHIPPED 2026-04-21
+
 - **Source:** `01-dead-code.md` §B
 - **Shipped in:** Removed both entries from [backend/package.json](../../backend/package.json); `npm uninstall @getbrevo/brevo axios` run by the user — `node_modules/@getbrevo` + `node_modules/axios` confirmed absent. Mail continues via `nodemailer` + Brevo SMTP; outbound HTTP uses native `fetch`.
 
 ### TD-013 · Medium · M — Remove dead `AuditLog.action` enum members (TOTP_*, RECOVERY_*) — ✅ SHIPPED 2026-04-21
+
 - **Source:** `00-drift.md` §3.4
 - **Shipped in:** [backend/src/models/AuditLog.js](../../backend/src/models/AuditLog.js) — pruned 10 dead values (`TOTP_SETUP_INITIATED`, `TOTP_SETUP_COMPLETED`, `TOTP_VERIFIED`, `TOTP_DISABLED`, `TOTP_ENABLED`, `TOTP_LOGIN_ATTEMPT`, `TOTP_ROTATION_INITIATED`, `TOTP_ROTATION_COMPLETED`, `RECOVERY_LOGIN_ATTEMPT`, `RECOVERY_LOGIN_SUCCESS`). Pre-prune grep confirmed no live code path emitted them (only `middleware/auth.js:109` comment mentions TOTP for historical context). Live enum regrouped by concern for readability.
 - **Acceptance:** Live actions still validate; pruned values cannot be referenced since nothing was writing them.
 
 ### TD-014 · Medium · S — Sidecar timeout error string fix — ✅ SHIPPED 2026-04-21
+
 - **Source:** `04-enhancements.md` OBS-005
 - **Blast radius:** Ops / incident triage — the 504 response body is the operator's first clue when a compression job times out. Wrong number → wasted minutes hunting a phantom 100s timeout that doesn't exist.
 - **Shipped in:**
@@ -170,117 +249,352 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
   - [compression-service/app/schemas.py:73](../../compression-service/app/schemas.py) → `detail: str = "Pipeline exceeded 300s limit"` (shared schema default)
 - **Acceptance:** `grep -n "Pipeline exceeded" compression-service/` returns three occurrences, all `"300s limit"` ✓.
 
----
-
-## 🧹 Backlog Polish — Medium / Low, opportunistic
-
 ### TD-015 · Low · XS — Compression sidecar: bound `asyncio.gather` parallelism on source fetch — ✅ SHIPPED 2026-04-21
+
 - **Source:** `04-enhancements.md` PERF-007 · `03-architecture-diagrams.md` §9
 - **Shipped in:** [compression-service/app/cloudinary_client.py](../../compression-service/app/cloudinary_client.py) — added `_FETCH_CONCURRENCY = 10` module-level constant and an `asyncio.Semaphore(_FETCH_CONCURRENCY)` created inside `fetch_source_pdfs`. Every call to the inner `_fetch_one` is now wrapped `async with semaphore:`, so a patient with hundreds of files can't swamp the httpx connection pool, starve the event loop, or trip Cloudinary per-IP rate limits. `asyncio.gather(*tasks)` left unchanged — order preservation matters for the merge step. Python `ast.parse` clean.
 
 ### TD-016 · Low · XS — Remove unused `datetime` import in `cover_page.py` — ✅ SHIPPED 2026-04-21
+
 - **Source:** Compression service recon (Explore agent)
 - **Shipped in:** [compression-service/app/compression/cover_page.py:14](../../compression-service/app/compression/cover_page.py) — deleted `from datetime import datetime, timezone` (no call sites in the file). `python3 -m ast` parse clean; no runtime change.
 
-### TD-017 · Low · S — Strip control chars from PDF-rendered text
+### TD-017 · Low · S — Strip control chars from PDF-rendered text — ✅ SHIPPED 2026-04-25
+
 - **Source:** `04-enhancements.md` SEC-010
-- **Migration plan:** In [pdf.service.js](../../backend/src/services/pdf.service.js), sanitize `patientName` and `fileName` via `.replace(/[\x00-\x1F\x7F]/g, '')` before `drawText`.
-- **Dependencies:** None.
+- **Blast radius:** Prevents NUL / control-byte injection from breaking PDF text layout, triggering pdf-lib encoding errors, or enabling subtle spoofing via ZWJ-adjacent control chars.
+- **Shipped in:** [backend/src/services/pdf.service.js](../../backend/src/services/pdf.service.js) — `stripControlChars(value) { return String(value).replace(/[\x00-\x1F\x7F]/g, ""); }` at line 56-58. Applied before every user-controlled `drawText` call: `patientName` (line 116-119 on the cover page) and each file's `fileName` (line 152, producing `cleanFileName` used at line 154). Numeric / system-generated fields (page counts, generation timestamps, hospital name from config) are not sanitised — only attacker-reachable strings go through it.
+- **Acceptance:** `grep -n "stripControlChars" backend/src/services/pdf.service.js` returns the function declaration + both call sites ✓. Unsanitised `drawText(patient.patientName…)` / `drawText(f.fileName…)` calls are zero ✓.
 
 ### TD-018 · Low · XS — Remove `animate-shimmer` from Tailwind config — ✅ SHIPPED 2026-04-21
+
 - **Source:** `01-dead-code.md` §E
 - **Shipped in:** [frontend/tailwind.config.js](../../frontend/tailwind.config.js) — removed three orphan entries (`backgroundImage.shimmer`, `animation.shimmer`, `keyframes.shimmer`). No component applied `animate-shimmer` / `bg-shimmer`; the only shimmer effects in the app (`globals.css:14-22`, `LoadingSpinners.tsx:282-400`) redeclare their own inline `@keyframes shimmer` and were left untouched. `npx tsc --noEmit` clean; `grep -rn "animate-shimmer\|bg-shimmer" frontend/src/` returns zero.
 
-### TD-019 · Low · S — Loud in-memory Redis fallback in prod
+### TD-019 · Low · S — Loud in-memory Redis fallback in prod — ✅ SHIPPED 2026-04-25
+
 - **Source:** `04-enhancements.md` FAIL-002
-- **Migration plan:** In [redis.service.js](../../backend/src/services/redis.service.js), if `NODE_ENV==="production"` AND Upstash env missing, log a loud `console.error` OR refuse to boot. Today it's silent.
-- **Dependencies:** None.
+- **Blast radius:** Silent in-memory fallback in prod loses OTPs on process restart and breaks cross-replica coordination. Ticket chose to go further than the original plan and **refuse to boot** in prod, not just log.
+- **Shipped in:** [backend/src/services/redis.service.js](../../backend/src/services/redis.service.js) — module-load check at [line 77-92](../../backend/src/services/redis.service.js): when `NODE_ENV === "production"` AND `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` are missing, emits `logger.fatal({ event: "redis_missing_credentials_production" }, …)` and throws `"Missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN in production"`. In dev the same path logs a visible `logger.warn({ event: "redis_fallback_memory", reason: "missing_credentials" }, "⚠️  Upstash credentials missing — using in-memory fallback (dev-only, non-persistent)")`. Additionally, the runtime fall-back path (Upstash reachable at boot, later unreachable) emits `logger.warn({ event: "redis_fallback_memory", reason: "upstash_unreachable", err }, …)` at lines 107, 123, 139, 155 each time a retry fails over.
+- **Acceptance:** Boot without Upstash creds + `NODE_ENV=production` → process exits with fatal. Boot with creds absent in dev → banner in logs, service continues. Runtime Upstash outage surfaces a structured warn with the error message, not silence.
 
-### TD-020 · Low · M — Share API types between frontend and backend
-- **Source:** `04-enhancements.md` QUAL-004 / CDRIFT-001
-- **Migration plan:** Extract request/response types to `backend/src/types/` and import from the frontend via a symlinked or pnpm-workspace package. Or adopt Zod schemas referenced in both.
-- **Dependencies:** None.
+### TD-021 · Low · S — Route-level ErrorBoundary in frontend — ✅ SHIPPED 2026-04-25
 
-### TD-021 · Low · S — Route-level ErrorBoundary in frontend
 - **Source:** `04-enhancements.md` OBS-003
-- **Dependencies:** None.
+- **Blast radius:** Before this, a render-time throw inside any authenticated page propagated to the top-level boundary at [App.tsx:16](../../frontend/src/App.tsx) and unmounted the navbar with the rest of the tree — user lost their nav context on every crash. Now the navbar survives; only the page content is replaced by the fallback UI with "Go Back" and "Refresh" buttons.
+- **Shipped in:**
+  - [frontend/src/layouts/MainLayout.tsx](../../frontend/src/layouts/MainLayout.tsx) — wrapped `<Outlet />` in `<ErrorBoundary key={location.pathname} fullScreen={false}>`. The `key={location.pathname}` remounts the boundary on route change, so a reset navigates cleanly to a fresh boundary instead of dragging the "hasError" state across pages. `fullScreen={false}` uses the `min-h-[calc(100vh-4rem)]` fallback container so the navbar stays in frame.
+  - [frontend/src/routes/AppRoutes.tsx](../../frontend/src/routes/AppRoutes.tsx) — dropped the redundant per-route `<ErrorBoundary>` wraps on `/dashboard` and `/patients/:patientId` (now covered by the MainLayout wrap), removed the now-unused `ErrorBoundary` import. Top-level `<ErrorBoundary>` at [App.tsx:16](../../frontend/src/App.tsx) is kept as the last-resort catch for public routes (Login, VerifyAuthCode, ForgotPassword, NotFound, Privacy, Terms, LandingPage, HospitalRegistration) which live outside `MainLayout`.
+- **Acceptance:** Every route rendered through `MainLayout` gets a boundary at the `<Outlet />` layer. `grep -n "ErrorBoundary" frontend/src/routes/AppRoutes.tsx` now returns zero hits — the responsibility lives entirely in `App.tsx` (public tree) + `MainLayout.tsx` (authenticated tree). `npx tsc --noEmit` clean ✓.
 
-### TD-022 · Low · S — Bump `bcryptjs` or migrate to native `bcrypt`
+### TD-022 · Low · S — Bump `bcryptjs` → 3.x — ✅ SHIPPED 2026-04-25
+
 - **Source:** `04-enhancements.md` SEC-015
-- **Migration plan:** `npm install bcryptjs@^3` OR switch to native `bcrypt` for performance. Re-run existing login tests.
-- **Dependencies:** None.
+- **Blast radius:** Password hashing — any regression here breaks every login. Kept in the same library (not migrated to native `bcrypt`) to avoid the native-build complexity; the v2 → v3 jump addresses the dep-age concern without API risk.
+- **Shipped in:**
+  - [backend/package.json](../../backend/package.json) — `bcryptjs` pin bumped `^2.4.3 → ^3.0.3`. `npm install` ran clean.
+  - Source untouched: [backend/src/utils/hash.js](../../backend/src/utils/hash.js) still calls `bcrypt.genSalt`/`bcrypt.hash`/`bcrypt.compare` exactly as before — the v2 → v3 API is compatible.
+- **Acceptance:**
+  - `npm install bcryptjs@^3.0.3` completes; `bcryptjs@3.0.3` resolves in the lockfile.
+  - Smoke test from REPL: new hash produced with `$2b$10$` prefix (identical format to v2 output), self-verify true, wrong-password verify false. Existing DB rows (all `$2b$10$...` from v2) verify untouched — bcrypt storage format is unchanged across the bump.
+  - `node --check backend/src/utils/hash.js` clean ✓. `node --check backend/src/utils/jwt.js` clean ✓.
+- **Deliberate non-scope:** Did **not** migrate to native `bcrypt` — the 3-5× performance win isn't justified against the native-build + Play Store mapping complexity on this workload (bcrypt cost 10, handful of logins/sec). Revisit if a future load profile demands it.
+- **Known pre-existing issue (not introduced by this ticket):** `npm test` currently fails with `SyntaxError: Cannot use import statement outside a module` on [refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js) — Jest's ESM support isn't configured despite `"type": "module"`. Unrelated to bcrypt; blocks `TD-006` (real test coverage) until Jest is configured for ESM (`NODE_OPTIONS=--experimental-vm-modules` or `babel-jest` + CJS compat layer).
 
-### TD-023 · Low · XS — Explicitly pin JWT `alg` on verify
+### TD-023 · Low · XS — Explicitly pin JWT `alg` on verify — ✅ SHIPPED 2026-04-25
+
 - **Source:** `04-enhancements.md` (hardening)
-- **Migration plan:** In [utils/jwt.js](../../backend/src/utils/jwt.js), pass `{ algorithms: ["HS256"] }` to `jwt.verify`. The library defaults are safe; the explicit pin is belt-and-braces.
-- **Dependencies:** None.
+- **Blast radius:** Belt-and-braces defence against alg-confusion attacks. `jsonwebtoken@9` already rejects `"alg":"none"` by default and picks the algorithm from the secret type, but explicit pinning makes intent auditable and prevents a future config drift (e.g. loading a PEM into `JWT_SECRET`) from silently accepting RS256 tokens forged against the public key.
+- **Shipped in:** [backend/src/utils/jwt.js](../../backend/src/utils/jwt.js) — both `jwt.verify` call sites now pass `{ algorithms: ["HS256"] }`: line 81 (`verifyTempTokenPurpose`) and line 113 (`verifyToken`, which is also the underlying call for `verifyRefreshToken` via the `secret` parameter). `jwt.sign` calls are unchanged — signing intent is already implicit in the secret type.
+- **Acceptance:** `grep -n "jwt.verify" backend/src/utils/jwt.js` returns both calls with `{ algorithms: ["HS256"] }` ✓. `node --check backend/src/utils/jwt.js` clean ✓.
 
-### TD-024 · Low · XS — CI integrity: add `npm ci` script + Dependabot
-- **Source:** `04-enhancements.md` SEC-019
-- **Dependencies:** None.
+### TD-025 · Low · S — Cursor pagination for `/api/patients` — ✅ SHIPPED 2026-04-25
 
-### TD-025 · Low · S — Cursor pagination for `/api/patients`
 - **Source:** `04-enhancements.md` PERF-002
-- **Migration plan:** Replace offset/limit in [patient.service.js](../../backend/src/services/patient.service.js) with `createdAt`+`_id` cursor. Preserve backward compatibility (keep offset as fallback) or bump API version.
-- **Dependencies:** None.
+- **Blast radius:** Prevents offset scan on large hospitals; Mongo `skip(N)` gets expensive past ~10 k patients. Stable against inserts-during-paginate (offset drifts; cursor doesn't).
+- **Shipped in:**
+  - [backend/src/services/patient.service.js](../../backend/src/services/patient.service.js) — helpers `encodePatientsCursor({ createdAt, _id })` → base64url JSON, and `decodePatientsCursor(cursor)` with type+NaN guards (rejects invalid tokens as `null`). `getPatients(hospitalId, { limit, skip, cursor, search, ... })` now honours `cursor` first (compound predicate `createdAt < cursorAt OR (createdAt === cursorAt AND _id < cursorId)` on a `sort({ createdAt: -1, _id: -1 })` query, fetches `limit+1` to detect `hasMore` without a count). Falls back to `skip`+`limit` when no cursor is supplied so existing mobile callers on the offset contract keep working. Returns `{ patients, total, hasMore, nextCursor }`.
+  - [backend/src/controllers/patient.controller.js](../../backend/src/controllers/patient.controller.js) `getPatients` — accepts `?limit` (1-100, default 20), `?skip` (legacy), `?cursor` (string, trimmed), passes through to the service. Echoes the request's `limit/skip/cursor` in the response envelope alongside `nextCursor` so clients can paginate forward without recomputing.
+- **Acceptance:** Cursor round-trip returns stable ordering under concurrent inserts; first page without cursor is identical in shape to the legacy offset contract; malformed cursors degrade to "no cursor" rather than 4xx.
 
-### TD-026 · Low · M — Extract oversized pages into component files
-- **Source:** `04-enhancements.md` QUAL-005
-- **Migration plan:** Split `HospitalsList.tsx` (modals → separate files), `PatientDetails.tsx` (header, folder grid, modals), `ComponentsPreview.tsx` (sections). Aim for no file > 500 LOC.
-- **Dependencies:** None.
+### TD-027 · Low · S — Swap `ip-api.com` for a keyed GeoIP provider — ✅ SHIPPED 2026-04-25
 
-### TD-027 · Low · S — Swap `ip-api.com` for a keyed GeoIP provider
 - **Source:** `04-enhancements.md` §5.10 scaling cliffs
-- **Migration plan:** Abstract [geoip.service.js](../../backend/src/services/geoip.service.js) behind a provider interface; add `ipinfo.io` implementation; keep `ip-api.com` as fallback.
-- **Dependencies:** None.
+- **Blast radius:** Removes the ip-api.com 45 req/min/IP scaling cliff. At current volume it's a soft cliff; once session creation goes above ~40/min/instance the keyless provider starts returning `fail` and every flapping IP short-cache-misses for 5 min. With a keyed ipinfo tier we get 50k/month headroom and can swap providers without touching callers.
+- **Shipped in:** [backend/src/services/geoip.service.js](../../backend/src/services/geoip.service.js) — rewritten around a provider interface `{ name, enabled(), lookup(ip) }`. `PROVIDERS = [ipinfoProvider, ipApiProvider]` iterated in order inside `geolocateIp`; first successful response wins, any error falls through to the next provider with a structured `{ event: "geoip_provider_failed", provider, err }` warn. Exhaustion caches the miss for 5 min (`MISS_TTL_MS`) so we don't hammer both APIs on flaky IPs. `ipinfoProvider.enabled()` guards on `IPINFO_TOKEN`; without the token the chain reduces to ip-api.com alone (behaviour identical to the pre-ticket state). Private-IP short-circuit, dev override (`GEOIP_DEV_OVERRIDE_IP`), 24h success cache, 2.5s per-request timeout, and fire-and-forget non-throwing contract all preserved. Public API (`geolocateIp`, `formatLocation`, default export) unchanged — every existing caller in [auth.controller.js](../../backend/src/controllers/auth.controller.js) / [token.service.js](../../backend/src/services/token.service.js) / [mail templates](../../backend/src/services/mail.service.js) works as-is.
+- **Env:** [.env.example](../../.env.example) — added `IPINFO_TOKEN=` under a new `── GeoIP providers ──` block explaining the provider chain + how to obtain a free key (https://ipinfo.io/signup, 50 k/month).
+- **Docs:** [CLAUDE.md §9](../../CLAUDE.md) reflows the geolocation paragraph to describe the ordered chain; [CLAUDE.md §10](../../CLAUDE.md) flips the "free-API scaling cliff" smell to ✅ resolved.
+- **Acceptance:**
+  - `node --check backend/src/services/geoip.service.js` clean ✓
+  - 11/11 end-to-end smoke tests against the live providers pass: private/loopback/IPv4-mapped short-circuit, XFF comma-list normalisation, ip-api fallback (`8.8.8.8 → Ashburn, US`), cache hit (0 ms), `GEOIP_DEV_OVERRIDE_IP` override, invalid-IP miss-cache, **bad `IPINFO_TOKEN` falls through to ip-api** (the load-bearing provider-chain scenario)
+  - No change required in mail templates, Sessions page, or auth controllers — the location shape is identical to before.
+- **Deliberate non-scope:** Did not add a third provider (`ipapi.co`). Two providers cover both the "keyed primary" and "keyless fallback" story. If a future operator wants a cascading chain, the `PROVIDERS` array is ordered + everything else adapts automatically — append a new object implementing `{ name, enabled(), lookup(ip) → { city, region, country, countryCode } }`.
+
+### TD-029 · Medium · S — Move access token from `sessionStorage` to in-memory (XSS hardening) — ✅ SHIPPED 2026-04-25
+
+- **Source:** TD-D3 (was Discuss First; promoted to a real ticket on decision); CLAUDE.md §10
+- **Blast radius:** Shrinks the XSS access-token exfiltration window from 24h (token sat in `sessionStorage`, readable by any same-origin script for the lifetime of the JWT) to "as long as the tab is alive AND attacker JS is running with access to the closure scope". Net win: any future XSS payload can no longer dump a long-lived token into a `fetch` call to an attacker host.
+- **Shipped in:**
+  - [frontend/src/services/api.ts](../../frontend/src/services/api.ts) — module-scoped `let _accessToken: string | null = null` plus three exports (`setAccessToken`, `getAccessToken`, `clearAccessToken`). Request interceptor reads the variable instead of `sessionStorage.getItem("accessToken")`. The 401 retry path (existing TD-002 rotation flow) calls `setAccessToken(newAccessToken)` instead of `sessionStorage.setItem`. The 4 logout/disable bail-out branches all call `clearAccessToken()` instead of `sessionStorage.removeItem("accessToken")`.
+  - [frontend/src/services/authService.ts](../../frontend/src/services/authService.ts) — imports `setAccessToken` / `getAccessToken` / `clearAccessToken` from `./api`. `storeTokens(accessToken, _refreshToken)` now calls `setAccessToken(accessToken || null)` (no storage write). `clearTokens()` calls `clearAccessToken()`. `getTokens().accessToken` returns the in-memory value via `getAccessToken()` instead of `null`.
+  - **Bootstrap is unchanged structurally:** [useAuth.tsx](../../frontend/src/hooks/useAuth.tsx) `useEffect` still detects "logged-in last visit" via `localStorage.getItem("hospital")`, calls `authService.refreshToken()` (httpOnly cookie auto-attached), and on success calls `authService.storeTokens(...)` — which now lands in memory, not in sessionStorage. The cold-start round-trip cost was already there; nothing changes for the user beyond now-stronger XSS posture.
+  - **What stays in sessionStorage** (deliberate, scoped non-targets): `tempToken` (10–15 min, mid-login only — must survive `/login → /verify-auth-code` navigation) and `resetToken` (forgot-password flow, narrow purpose). Both are short-lived and purpose-scoped; the sessionStorage XSS risk on them is much smaller than on a 24h access token.
+  - **What stays in localStorage:** the `hospital` profile object (display data, used by the bootstrap to decide whether to attempt a refresh). Not a credential.
+  - [CLAUDE.md §8](../../CLAUDE.md) — "State" paragraph rewritten to describe the in-memory access-token contract + bootstrap flow.
+  - [CLAUDE.md §10](../../CLAUDE.md) — "tokens in sessionStorage (XSS risk)" smell flipped to ✅ resolved.
+- **Acceptance:**
+  - `grep -rn "sessionStorage.*accessToken\|accessToken.*sessionStorage" frontend/src/` returns zero hits ✓
+  - `npx tsc --noEmit` clean ✓
+  - `npx vite build` succeeds (2592 modules, ~1m13s) ✓ — main `index-*.js` chunk holds at 434 kB raw / 111 kB gz (no regression from TD-011)
+  - Manual flow check: login → dashboard → hard refresh → still authenticated; close tab → reopen → still authenticated (refresh cookie does the bootstrap); logout → reload → routed to /login. Every path takes the existing `/auth/refresh-token` round-trip on cold start.
+- **Deliberate non-scope:**
+  - Did **not** add a Content Security Policy header. CSP and in-memory tokens reinforce each other — without CSP, an XSS payload can still snatch the token while it's in the closure scope. Recommend pairing this with a strict CSP (`default-src 'self'; script-src 'self'`) in a follow-up; left out here so this PR stays purely client-side.
+  - Did **not** parallelise the bootstrap `/refresh-token` call with route-component lazy-load. The +200-500 ms cold-start cost is the existing baseline (it already happens on every cold start under the previous design). Optimisation can land later if first-paint becomes a metric.
+  - Did **not** move `tempToken` / `resetToken` to memory — they need to survive in-flow navigation, and their narrow purpose + short TTL make sessionStorage acceptable.
+- **Pairs naturally with:** A future "add CSP header" ticket.
+
+### TD-030 · Medium · S — Prune 7 dead endpoints across backend + Android + web — ✅ SHIPPED 2026-04-25
+
+- **Source:** `01-dead-code.md §F` (verified against Android HEAD + web HEAD on 2026-04-25)
+- **Blast radius:** Surface-area reduction — 59 → 52 endpoints. No live client was calling any of the removed routes; verified via `grep` across `android-app/app/src/main/java/`, `frontend/src/`, and `backend/src/` before cutting.
+- **Shipped in:**
+  - **Preview / testing surfaces (4 endpoints).** Removed `GET /api/export/sample-cover` along with `exportSampleCover` handler ([export.controller.js](../../backend/src/controllers/export.controller.js)) and `generateSampleCoverPdf` service function ([pdf.service.js](../../backend/src/services/pdf.service.js)). Dropped the whole `/api/notifications` mount — deleted [routes/notifications.routes.js](../../backend/src/routes/notifications.routes.js) and [controllers/notifications.controller.js](../../backend/src/controllers/notifications.controller.js) outright; unmounted from [index.js](../../backend/src/index.js).
+  - **User-side resend duplicate.** Removed `POST /api/auth/login/resend-auth-code` — dropped route block in [auth.routes.js](../../backend/src/routes/auth.routes.js), deleted `resendLoginAuthCode` handler + in-memory `resendAuthCodeCooldown` Map in [auth.controller.js](../../backend/src/controllers/auth.controller.js), removed `authService.resendLoginAuthCode` export in [frontend/src/services/authService.ts](../../frontend/src/services/authService.ts), scrubbed the already-commented-out scaffolding in [VerifyAuthCode.tsx:85-103](../../frontend/src/pages/VerifyAuthCode.tsx). **`POST /api/hospitals/:id/resend-welcome` (admin-only, HospitalsList "Resend welcome email" button) is a different endpoint and is preserved** — it still covers the "admin-provisioned hospital hasn't logged in yet" (rotates temp password + sends auth code) vs "self-registered or has logged in once" (auth code only) split.
+  - **Backend-only leftover.** Removed `GET /api/patients/.../stream` — route line in [patient.routes.js](../../backend/src/routes/patient.routes.js) + `streamFile` handler in [patient.controller.js](../../backend/src/controllers/patient.controller.js). Web uses `/signed-url` + iframe; Android uses `/signed-url` + `/compressed`. No callers anywhere.
+  - **Coordinated server+client drop.** Removed `POST /api/export/archive` — route block in [export.routes.js](../../backend/src/routes/export.routes.js) + `exportArchive` handler + private `generateModulePdf` / `formatModuleName` helpers in [export.controller.js](../../backend/src/controllers/export.controller.js) + now-unused `archiver` import. Android `ApiService.exportArchive` Retrofit declaration removed in [ApiService.kt](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt).
+  - **Android-only declaration.** Removed Retrofit declaration `forceLogoutOtherSessions` in [ApiService.kt](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) (0 Kotlin call sites). Backend route `POST /api/auth/session/force-logout` was **kept** as a protective admin surface — removing the server side is a product decision, flagged in `01-dead-code.md §F` but not in this commit.
+  - **Doc sync.** Updated endpoint counts 59 → 52 across [CLAUDE.md §7](../../CLAUDE.md), [00-drift.md §2](00-drift.md), [backend.md §4](backend.md) endpoint table (removed stale rows), [01-dead-code.md §F](01-dead-code.md) (marked each row deleted + de-scoped the "candidates awaiting approval" list), [android.md §9](android.md), [features.md §0](features.md) and D2 notification block (point readers at [push.service.js](../../backend/src/services/push.service.js) + FCM telemetry since preview endpoints are gone).
+- **Acceptance:**
+  - `node --check` clean on `index.js`, `auth.routes.js`, `export.routes.js`, `patient.routes.js`, `auth.controller.js`, `export.controller.js`, `patient.controller.js` ✓
+  - `npx tsc --noEmit` clean on the frontend ✓
+  - `grep -rn "streamFile\|exportArchive\|generateModulePdf\|formatModuleName\|resendLoginAuthCode\|/login/resend-auth-code\|/api/export/archive\|/api/notifications\|forceLogoutOtherSessions\|exportSampleCover\|generateSampleCoverPdf\|sendTestNotification\|previewNotifications\|sampleNotifications" backend/src/ frontend/src/ android-app/app/src/main/java/` → zero hits ✓
+  - Admin HospitalsList "Resend welcome email" path still green (endpoint untouched; frontend caller at [HospitalsList.tsx:285](../../frontend/src/pages/HospitalsList.tsx) points at `/hospitals/:id/resend-welcome`).
+- **Deliberate non-scope:** `AuditLog.action` enum values `AUTH_CODE_RESEND` and audit emit at removed `resendLoginAuthCode` no longer have an emitter, but `HOSPITAL_RESEND_WELCOME` in `hospitals.controller.js` still emits `AUTH_CODE_RESEND`? — verify before pruning the enum. The enum member was **not** removed in this ticket (safe to keep; Mongoose enum validator ignores unused values).
+- **Dependencies:** None. Purely subtractive.
 
 ---
 
-## 🤔 Discuss First — Architectural decisions, not tickets
+## 📱 Android backlog (TD-A01 … TD-A20)
 
-### TD-D1 — Soft-delete vs hard-delete for patients
-- **Source:** `04-enhancements.md` scaling, features.md C13
-- **Question:** Is 90-day hard-delete the right policy? Regulatory / "I accidentally deleted" recovery becomes impossible.
-- **Options:** (a) keep hard-delete, (b) soft-delete with 30-day trash + cron hard-delete, (c) tier-based retention per hospital.
+**Added 2026-04-24.** First-pass Android-side tech debt. Same severity/effort conventions as the backend/frontend section. Items prefixed `TD-A` so they don't collide with the backend/frontend/sidecar IDs. None are shipped yet — every Android ticket below is open.
+
+## 🔥 Android — Do This Week
+
+### TD-A01 · Critical · XS — Replace debug keystore for release signing
+
+- **Source:** `04-enhancements.md` AND-001 · `android.md` §1.1
+- **Blast radius:** Blocks every Play Store upload. Anyone with the shared debug keystore (publicly known) can forge-sign an HMS APK and trick sideloaders.
+- **Migration plan:**
+  1. `keytool -genkey -v -keystore hms-upload.jks -alias hms-upload -keyalg RSA -keysize 2048 -validity 10000`
+  2. Store `storePassword` + `keyPassword` in `~/.gradle/gradle.properties` (user-level, never committed) as `HMS_UPLOAD_KEYSTORE_PWD` / `HMS_UPLOAD_KEY_PWD`; set `HMS_UPLOAD_KEYSTORE_PATH` as an env var.
+  3. Rewrite [app/build.gradle:35-41](../../android-app/app/build.gradle):
+     ```gradle
+     signingConfigs {
+       release {
+         storeFile     file(System.getenv("HMS_UPLOAD_KEYSTORE_PATH"))
+         storePassword System.getenv("HMS_UPLOAD_KEYSTORE_PWD")
+         keyAlias      "hms-upload"
+         keyPassword   System.getenv("HMS_UPLOAD_KEY_PWD")
+       }
+     }
+     ```
+  4. Back up the keystore in two secure locations — losing it means never shipping an update to the same Play listing.
+  5. Enable Play App Signing when the listing is created (Google re-signs with a managed key).
+- **Acceptance:** `./gradlew assembleRelease` builds when env is set; fails loudly when not. `apksigner verify --print-certs app/build/outputs/apk/release/*.apk` shows the new cert, not `androiddebugkey`.
+- **Dependencies:** Ties in with `TD-A02` and `TD-A03` — the three together are a "first Play upload" bundle.
+
+### TD-A02 · Critical · XS — Remove tracked `release.keystore` + rotate
+
+- **Source:** `04-enhancements.md` AND-002
+- **Blast radius:** Anyone with repo access has the keystore. If it was ever used to sign a shipped APK, the private key is compromised.
+- **Migration plan:**
+  1. Confirm the keystore has NOT been used to sign anything shipped (grep commit history).
+  2. `git rm --cached android-app/release.keystore` + commit.
+  3. Add `*.keystore`, `*.jks`, `keystore.properties` to the root `.gitignore`.
+  4. Rotate the key (i.e. `TD-A01`'s new keystore supersedes this one).
+- **Acceptance:** `git ls-files android-app/release.keystore` returns empty.
+- **Dependencies:** Pair with `TD-A01`.
+
+### TD-A03 · High · S — Play Store prep: versionCode + targetSdk + bundle
+
+- **Source:** `04-enhancements.md` AND-005/§6.8 · `android.md` §1.1
+- **Blast radius:** Blocks second Play upload (dupe versionCode), blocks new-app listing (targetSdk 35 deadline Aug 2025).
+- **Migration plan:**
+  1. Bump [app/build.gradle:29-30](../../android-app/app/build.gradle): `versionCode 2` / `versionName "1.0.1"` and document that every future release bumps versionCode by 1.
+  2. Bump [app/build.gradle:23, 28](../../android-app/app/build.gradle): `compileSdk 35` / `targetSdk 35`. Validate the SDK-35 photo picker / predictive back changes don't affect the app.
+  3. Add `./gradlew bundleRelease` to the release runbook. AAB is ~30-40 % smaller than a fat APK.
+  4. Upload `app/build/outputs/mapping/release/mapping.txt` to Play Console after each release so Crashlytics/Play de-obfuscates stacks.
+- **Acceptance:** `aapt dump badging app/build/outputs/bundle/release/*.aab` shows `versionCode=2` + `targetSdkVersion=35`.
+- **Dependencies:** `TD-A14` (Crashlytics) benefits from the `mapping.txt` upload.
+
+### TD-A04 · High · S — KSP migration + drop enableJetifier
+
+- **Source:** `04-enhancements.md` AND-023 · `android.md` §1.1
+- **Blast radius:** Build-time only (incremental builds 30–40 % faster; Jetifier classpath walk ~20 s disappears).
+- **Migration plan:**
+  1. Swap [app/build.gradle](../../android-app/app/build.gradle): `kotlin-kapt` → `com.google.devtools.ksp` (Gradle plugin) and the Room compiler line `kapt "androidx.room:room-compiler:..."` → `ksp "androidx.room:room-compiler:..."`.
+  2. Drop [gradle.properties:3](../../android-app/gradle.properties): `android.enableJetifier=true`.
+  3. Drop the `kapt.javacOptions { ... }` block in `app/build.gradle` lines 8-19 (only needed for kapt + JDK 17).
+  4. `./gradlew clean :app:assembleDebug` and validate ViewBinding / Room generation still works.
+- **Acceptance:** clean-build completes ≥20 % faster; `./gradlew :app:assembleDebug --dry-run` shows no `*KaptTask*`.
+- **Dependencies:** None.
+
+## 📅 Android — Do This Quarter
+
+### TD-A05 · Medium · XS — Flavor / BuildConfig for BASE_URL
+
+- **Source:** `04-enhancements.md` AND-015 · `android.md` §4
+- **Blast radius:** Staging/prod environment switching cannot happen without a rebuild today.
+- **Migration plan:**
+  1. Add `productFlavors { staging { ... }; prod { ... } }` OR a simple `buildConfigField String "BASE_URL" "https://..."` per `buildType` in [app/build.gradle](../../android-app/app/build.gradle).
+  2. Replace the three hardcoded strings — [RetrofitClient.kt:18](../../android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt), [HospitalApplication.kt:69](../../android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt), [OfflineLogoutWorker.kt:98](../../android-app/app/src/main/java/com/hospital/management/worker/OfflineLogoutWorker.kt) — with `BuildConfig.BASE_URL`.
+- **Acceptance:** `grep -rn "onrender.com" android-app/app/src/main/java/` returns empty; `./gradlew :app:assembleStagingDebug` (or equivalent) points at a different host.
+
+### TD-A06 · Medium · S — Drop 7 dead Android deps
+
+- **Source:** `01-dead-code.md` §J1 · `android.md` §1.2
+- **Blast radius:** APK shrinks ~10 MB; attack-surface + license-scanner noise drops.
+- **Migration plan:**
+  1. Remove all 7 Compose entries from [app/build.gradle:83-91](../../android-app/app/build.gradle) + the `compose_version` def + `composeOptions {}` block + `buildFeatures.compose`.
+  2. Remove CameraX (4 lines 108-112), DataStore (118), Coil (124), iText7 (133), Accompanist permissions (136), Shimmer (139).
+  3. Drop the corresponding proguard sections: §12 (Coil/Glide → keep Glide), §11 (iText7), §15 (Shimmer), the Compose-specific `-keep` in §13.
+  4. Drop unused `shimmer_*` colour tokens from [colors.xml:68-70](../../android-app/app/src/main/res/values/colors.xml) and [values-night/colors.xml:62-64](../../android-app/app/src/main/res/values-night/colors.xml).
+  5. Validate release build is still signed (TD-A01 must have landed first, or use debug-build only for validation): `./gradlew :app:assembleRelease` + `apkanalyzer apk summary`.
+- **Acceptance:** APK size drops ≥8 MB; `grep -rn "androidx.compose\|androidx.camera\|androidx.datastore\|io.coil\|itextpdf\|accompanist\|shimmer" android-app/app/build.gradle` returns empty.
+- **Dependencies:** None.
+
+### TD-A07 · High · S — Stable `errorCode` field for 401 classification
+
+- **Source:** `04-enhancements.md` AND-007 · `android.md` §4.3 D3
+- **Blast radius:** Coordinated backend + Android change. A rewording on either side silently breaks the classifier today.
+- **Migration plan:**
+  1. Backend: every 401 response body already contains a `message` — add a sibling `errorCode: "SESSION_CONFLICT" | "AUTH_CODE_REQUIRED" | "ACCOUNT_DISABLED" | "SESSION_EXPIRED" | "TOKEN_INVALID"` on every 401 emit site ([auth.controller.js](../../backend/src/controllers/auth.controller.js), [middleware/auth.js](../../backend/src/middleware/auth.js)).
+  2. Android: [AuthInterceptor.kt:86-120](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt) — replace the `body.contains("...")` ladder with `JSONObject(body).optString("errorCode")` matching. Keep the substring match as a fallback for one release cycle.
+  3. Document the codes in backend.md §Error codes.
+- **Acceptance:** (a) Rewording any 401 message on the server does not break the Android classifier; (b) Android unit test (TD-A12) asserts each branch fires on the right `errorCode`.
+
+### TD-A08 · Medium · S — Tighten FileLogger privacy
+
+- **Source:** `04-enhancements.md` AND-016 · `android.md` §8
+- **Blast radius:** Privacy posture for release-debug workflows.
+- **Migration plan:**
+  1. [RetrofitClient.kt:73-77](../../android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt) — add `redactHeader("X-Hospital-Id")` to the HEADERS-level interceptor.
+  2. Shorten retention from `MAX_DAYS_TO_KEEP = 7` to `2` in [FileLogger.kt:32](../../android-app/app/src/main/java/com/hospital/management/utils/FileLogger.kt).
+  3. Add `SessionManager.logoutUser` → `FileLogger.rotate()` (new method that archives current day's log + truncates). Prevents User B from reading User A's log tail after a shared-device handoff.
+  4. Add a `FeatureFlags.VERBOSE_FILE_LOG = false` gate — only enable for deliberately-reproducing issues.
+- **Acceptance:** Logs no longer contain `X-Hospital-Id`; logout clears log tail; retention is 2 days.
+
+### TD-A10 · Medium · M — Hilt DI migration
+
+- **Source:** `android.md` §2.3 · `04-enhancements.md` §6.1 M4 context
+- **Blast radius:** Every Activity loses ~10 LOC of hand-wiring; ViewModels become fully injectable; test doubles trivial to wire.
+- **Migration plan:**
+  1. Add `com.google.dagger:hilt-android` + `hilt-android-compiler` (via KSP once `TD-A04` lands).
+  2. Annotate `HospitalApplication` with `@HiltAndroidApp`.
+  3. Provide `@Singleton`: `ApiService`, `TokenManager`, `AppDatabase`, each Repository.
+  4. Replace `ViewModelFactory` with `@HiltViewModel` on each ViewModel.
+  5. Strip `setupViewModel()` copies from 7+ Activities.
+- **Acceptance:** `grep -rn "ViewModelFactory(" android-app/app/src/main/java/` returns empty; each Activity's ViewModel is `by viewModels()`.
+
+### TD-A12 · High · L — Establish Android test coverage (seed)
+
+- **Source:** `04-enhancements.md` §6.6 · `android.md` §11
+- **Blast radius:** No regression safety net for R8-sensitive paths, cross-account guard, token rotation, migrations.
+- **Migration plan (12 tests covering the top 5 critical paths):**
+  1. `AuthInterceptor` unit test (OkHttp MockWebServer): 401 classification matrix + refresh happy path + refresh mutex under concurrent 401 + rotation picks up new refreshToken.
+  2. `SessionManager.logoutUser` Robolectric test: cross-account doc purge, offline-fallback enqueues `OfflineLogoutWorker`.
+  3. Room migration test: `MigrationTestHelper` walking 1→8 with fixture data.
+  4. `SyncDocumentsWorker` test: auth gate + cross-account guard + retry ladder.
+  5. `DownloadWorker` test: cache hit, cache miss-then-resume, cancel-mid-flight.
+  6. Instrumentation release-build smoke test: login flow on a minified APK in CI (catches R8 rule drift).
+- **Acceptance:** `./gradlew test connectedCheck` runs; CI runs both on every PR touching `android-app/`; ≥50 % branch coverage on `AuthInterceptor`, `SessionManager`, `SyncDocumentsWorker`, `DownloadWorker`.
+
+### TD-A14 · Medium · S — Add Firebase Crashlytics (release-only)
+
+- **Source:** `04-enhancements.md` AND-O01
+- **Blast radius:** Post-ship crashes become visible. Removes reliance on `adb pull logs/`.
+- **Migration plan:**
+  1. Add `com.google.firebase:firebase-crashlytics-ktx` + apply `com.google.firebase.crashlytics` plugin.
+  2. Disable in debug: `firebaseCrashlytics { mappingFileUploadEnabled = false }` + `FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = !BuildConfig.DEBUG` in `HospitalApplication.onCreate`.
+  3. Replace [HospitalApplication.kt:57-61](../../android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt) crash handler — chain Crashlytics' `recordException` BEFORE the default handler, and keep `FileLogger.e` for verbose contexts.
+  4. Tag with `setUserId(hashed hospitalId)` post-login (do NOT use raw `_id`).
+- **Acceptance:** A forced crash on release-build shows up in Crashlytics console with deobfuscated stack (requires mapping.txt upload per `TD-A03`).
+
+### TD-A16 · Medium · S — Adaptive heartbeat + NetworkMonitor cadence
+
+- **Source:** `04-enhancements.md` AND-P01 · AND-P02
+- **Migration plan:**
+  1. [HospitalApplication.kt:157-193](../../android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt): after 10 min with no user interaction (hook into BaseActivity `onResume`), bump heartbeat to 5 min.
+  2. [NetworkMonitor.kt:102-118](../../android-app/app/src/main/java/com/hospital/management/utils/NetworkMonitor.kt): drop the 30 s poll when online; rely on `NetworkCallback`. Keep the 2 s poll when offline (fast reconnect detection) but cap total poll duration at 2 min before backing off to 10 s.
+- **Acceptance:** Foregrounded battery log shows ≤1 network hit per 5 min on an idle screen.
+
+### TD-A17 · Medium · S — DiffUtil on all recycler adapters
+
+- **Source:** `04-enhancements.md` AND-P09
+- **Migration plan:** Convert `PatientAdapter`, `FolderAdapter`, `FileAdapter`, `SessionsAdapter` to `ListAdapter<T, VH>` + `DiffUtil.ItemCallback`.
+- **Acceptance:** List updates animate; systrace shows no `notifyDataSetChanged` calls on these adapters.
+
+### TD-A18 · Medium · XS — Cloudinary transformation on logo loads
+
+- **Source:** `04-enhancements.md` AND-P03
+- **Migration plan:** Wrap logo URL loads: `Glide.with(...).load(logoUrl.cloudinaryResize(120))`. Add a tiny extension function in `utils/ImageUtils.kt` that inserts `c_fit,w_120,h_120,f_auto/` after the Cloudinary prefix.
+- **Acceptance:** Per-screen logo loads drop from tens of MB to <100 KB on average.
+
+### TD-A20 · Medium · M — Stream uploads instead of copy-to-cache
+
+- **Source:** `04-enhancements.md` AND-P05
+- **Migration plan:** Replace [SyncDocumentsWorker.getFileFromUri](../../android-app/app/src/main/java/com/hospital/management/worker/SyncDocumentsWorker.kt) with a Retrofit body that reads `ContentResolver.openInputStream(uri)` directly — no cache copy. Saves one 20 MB disk write per upload.
+- **Acceptance:** `adb shell du -s /data/data/com.hospital.management/cache` stays flat during a big offline drain.
+
+## 🧹 Android — Backlog Polish
+
+### TD-A09 · Low · XS — Remove orphan Activities (`PatientListActivity`, `PatientDetailsActivity`)
+
+- **Source:** `01-dead-code.md` §J5 · `android.md` §3
+- **Migration plan:** Delete the two files + their XML layouts + manifest `<activity>` entries. Confirm no test or deep-link references first.
+- **Acceptance:** `grep -rn "PatientListActivity\|PatientDetailsActivity" android-app/` returns empty (after removing manifest entries).
+
+### TD-A15 · Low · XS — Retire `FeatureFlags` if both flags are permanently `true`
+
+- **Source:** `01-dead-code.md` §J7
+- **Migration plan:** Inline `FeatureFlags.USE_DOWNLOAD_WORKER` and `USE_COMPRESSION_SERVICE` at their 2-3 call sites, delete `FeatureFlags.kt`. If a future flag is needed, revive the file.
+- **Acceptance:** `FeatureFlags.kt` deleted; grep confirms no references.
+
+## 🤔 Android — Discuss First
+
+### TD-A11 · Low · S — Retire single-method UseCase wrappers — 🤔 Discuss First
+
+- **Source:** `android.md` §2.3
+- **Question:** 17 `operator fun invoke()` UseCase classes that just forward to a repo method. Adds indirection, no domain logic. Options: (a) inline all → remove domain layer; (b) keep for ideological purity; (c) keep only the ones that combine multiple repo calls (currently zero).
+- **Who needs to decide:** Android lead.
+
+### TD-A13 · Low · XS — `X-Upload-Profile` header: drop or wire up
+
+- **Source:** `01-dead-code.md` §J4 · `android.md` §4.3 D1 · `android.md` §9 quirk 6 — Discuss First
+- **Question:** Either (a) remove the header + `OfflineDocument.uploadProfileUsed` column (backward-compatible: server ignores it today anyway) — drops Room migration `9` cost; or (b) wire up backend consumer for Phase 3C to skip re-compression on already-compressed uploads.
+- **Who needs to decide:** Android + sidecar leads.
+
+### TD-A19 · Low · XS — Root detection policy — 🤔 Discuss First
+
+- **Source:** `04-enhancements.md` AND-019
+- **Question:** For a hospital records app, do we (a) warn-only (current), (b) block writes on rooted devices, or (c) block altogether? Legal + product call.
 - **Who needs to decide:** Product + legal.
 
-### TD-D2 — Web Edit-Patient: re-enable, move off, or commit to "mobile-only forever"
-- **Source:** `02-commented-code.md` §1
-- **Question:** Four blocks are commented out today. Is this a temporary hold or permanent policy?
-- **Options:** (a) remove dead commented code and commit to mobile-only, (b) re-enable, (c) keep commented with a date-stamped decision note.
-- **Who needs to decide:** Product.
-
-### TD-D3 — Access token in sessionStorage (XSS exposure)
-- **Source:** CLAUDE.md §10, `04-enhancements.md`
-- **Question:** Worth migrating to in-memory + httpOnly refresh only?
-- **Trade-off:** Harder page-refresh UX (must re-refresh on every cold start) vs tighter XSS posture.
-- **Who needs to decide:** Security + frontend lead.
-
-### TD-D4 — Compression sidecar default: on or off in new deployments?
-- **Source:** backend.md §6
-- **Question:** Many features (big PDF export) degrade to local pdf-lib merge when sidecar is off and OOM risk at scale. Should the sidecar be required in prod?
-- **Options:** (a) document as strongly recommended, (b) hard-require via env-assertion, (c) build merge into Node natively.
-- **Who needs to decide:** Ops + SRE.
-
-### TD-D5 — Multi-replica deployment of the backend
-- **Source:** `04-enhancements.md` RACE-005 + FAIL-002
-- **Question:** Auto-delete cron has no distributed lock; in-memory Redis fallback becomes per-instance. Do we plan for HA?
-- **Options:** (a) commit to single-instance forever (simpler), (b) add Mongo-based job lock + require Upstash in prod.
-- **Who needs to decide:** Ops.
-
 ---
 
-## Summary
+## Android summary (added 2026-04-24)
 
-| Tier | Items | Shipped | Open | Total effort |
-|---|---|---|---|---|
-| 🔥 This Week | 5 | 4 (TD-001 / TD-002 / TD-004 / TD-005) | 1 (TD-003) | ~1 day remaining |
-| 📅 This Quarter | 9 | 5 (TD-007 / TD-008 / TD-009 / TD-010 / TD-011 / TD-012 / TD-013 / TD-014) | 2 (TD-006 / TD-015+ is backlog) | ~1 week remaining |
-| 🧹 Backlog Polish | 13 | 0 | 13 | opportunistic |
-| 🤔 Discuss First | 5 | — | — | architecture decisions |
+| Tier | Items | Effort |
+|---|---|---|
+| 🔥 This Week (Android) | 4 (TD-A01 / TD-A02 / TD-A03 / TD-A04) | ~1-2 days total |
+| 📅 This Quarter (Android) | 11 (TD-A05..TD-A08, TD-A10, TD-A12, TD-A14, TD-A16..TD-A18, TD-A20) | ~3-4 weeks total |
+| 🧹 Backlog Polish (Android) | 2 (TD-A09, TD-A15) | ~1 hour |
+| 🤔 Discuss First (Android) | 3 (TD-A11, TD-A13, TD-A19) | architecture decisions |
 
-**Remaining This-Week item (High severity):**
+**Most urgent Android items ordered by blast radius:**
 
-- **TD-003** — delete dead `r2.service.js` + drop the `@aws-sdk/*` deps (~7 MB install shrink).
-
-After TD-003 lands, the This-Week tier is clear. The This-Quarter tier still owes **TD-006** (real test coverage — the big one).
+1. **TD-A01 + TD-A02** — Play Store upload blocked by debug-keystore + repo-tracked keystore (pair: do together).
+2. **TD-A03** — Play Store's second upload + targetSdk 35 deadline.
+3. **TD-A07** — 401 classification fragility (coordinated with backend).
+4. **TD-A14** — Crashlytics; release-login crashes are currently debugged via `adb pull`.
+5. **TD-A12** — No test coverage means every R8 / auth / migration change is a hand-tested release.
