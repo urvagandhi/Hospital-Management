@@ -25,6 +25,12 @@ __pycache__/
 dist/
 build/
 *.apk
+*.aab
+
+# Android signing keys — NEVER commit credentials (TD-A01 / TD-A02)
+*.keystore
+*.jks
+keystore.properties
 
 # IDE
 .idea/
