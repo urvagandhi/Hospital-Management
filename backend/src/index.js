@@ -18,8 +18,8 @@ import auditRoutes from "./routes/audit.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import exportRoutes from "./routes/export.routes.js";
 import hospitalsRoutes from "./routes/hospitals.routes.js";
-import notificationsRoutes from "./routes/notifications.routes.js";
 import patientRoutes from "./routes/patient.routes.js";
+import logger, { httpLogger } from "./utils/logger.js";
 
 const app = express();
 
@@ -37,39 +37,34 @@ function inferHealthCheckSource(userAgent = "") {
   return "unknown";
 }
 
-// ============ TRUST PROXY (Required for Render/Heroku) ============
-app.set("trust proxy", 1);
+// ============ TRUST PROXY (Required for Render/Heroku/Cloudflare) ============
+// Must be a SPECIFIC number of hops — not `true`. `true` tells Express to
+// trust every proxy in the chain, which express-rate-limit rejects because
+// a client could forge X-Forwarded-For to bypass rate limits
+// (ERR_ERL_PERMISSIVE_TRUST_PROXY). Use the actual hop count for the
+// deployment:
+//   • Render alone             → 1
+//   • Render + Cloudflare/CDN  → 2
+//   • Render + CF + extra LB   → 3
+// If you still see internal 10.x / 172.16.x addresses in Sessions after
+// login, bump this by 1.
+app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS || 2));
 
 // ============ REQUEST LOGGING MIDDLEWARE ============
-app.use((req, res, next) => {
-  console.log(`\n[${new Date().toISOString()}] ${req.method} ${req.path}`);
-
-  if (config.NODE_ENV === "development") {
-    // Strip sensitive headers and body fields from logs
-    const { authorization, cookie, ...safeHeaders } = req.headers;
-    console.log("[Request] Headers:", safeHeaders);
-
-    if (req.body && typeof req.body === "object") {
-      const { password, newPassword, token, code, ...safeBody } = req.body;
-      console.log("[Request] Body:", safeBody);
-    }
-  }
-
-  next();
-});
+// pino-http attaches `req.log` with a bound `request_id` (from X-Request-Id
+// header or generated). Authorization / Cookie headers + password-like body
+// fields are redacted centrally in utils/logger.js. Echoes X-Request-Id back
+// on the response so clients can correlate.
+app.use(httpLogger);
 
 // ============ SECURITY MIDDLEWARE ============
 app.use(helmet()); // Set security HTTP headers
 
-// ============ RATE LIMITING ============
-app.use(generalLimiter);
-
-// ============ BODY PARSING ============
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
-app.use(cookieParser());
-
 // ============ CORS CONFIGURATION ============
+// IMPORTANT: CORS must run BEFORE the rate limiter. Otherwise a 429 response
+// skips the CORS middleware entirely, drops the Access-Control-Allow-Origin
+// header, and the browser reports it as a CORS error — masking the real
+// rate-limit failure (which we saw on the Sessions page in dev).
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -87,7 +82,7 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.log("Blocked by CORS:", origin);
+        logger.warn({ event: "cors_blocked", origin }, "Blocked by CORS");
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -98,6 +93,14 @@ app.use(
   }),
 );
 
+// ============ RATE LIMITING ============
+app.use(generalLimiter);
+
+// ============ BODY PARSING ============
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(cookieParser());
+
 // ============ API ROUTES ============
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
@@ -105,7 +108,6 @@ app.use("/api/hospitals", hospitalsRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/audits", auditRoutes);
 app.use("/api/version", appVersionRoutes);
-app.use("/api/notifications", notificationsRoutes);
 app.use("/api/admin", adminRoutes);
 
 // ============ HEALTH CHECK ============
@@ -113,8 +115,14 @@ app.get("/api/health", (req, res) => {
   const userAgent = req.get("user-agent") || "";
   const forwardedFor = req.get("x-forwarded-for") || "";
   const clientIp = forwardedFor ? forwardedFor.split(",", 1)[0].trim() : req.ip;
-  console.log(
-    `[health] hit source=${inferHealthCheckSource(userAgent)} ip=${clientIp || "unknown"} ua=${userAgent || "n/a"}`,
+  req.log.info(
+    {
+      event: "health_hit",
+      source: inferHealthCheckSource(userAgent),
+      client_ip: clientIp || "unknown",
+      user_agent: userAgent || null,
+    },
+    "health endpoint hit",
   );
   res.status(200).json({
     status: "ok",
@@ -122,43 +130,44 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Deep health check (auth + admin required)
+// Deep health check — probes Mongo, Redis, Cloudinary, Brevo, FCM, and the
+// compression sidecar in parallel. Each probe has a 3s hard timeout; not
+// configured dependencies report `status: "disabled"` and do not mark the
+// system degraded. See services/health.service.js for probe internals.
 app.get("/api/health/deep", async (req, res) => {
   const userAgent = req.get("user-agent") || "";
   const forwardedFor = req.get("x-forwarded-for") || "";
   const clientIp = forwardedFor ? forwardedFor.split(",", 1)[0].trim() : req.ip;
-  console.log(
-    `[health:deep] hit source=${inferHealthCheckSource(userAgent)} ip=${clientIp || "unknown"} ua=${userAgent || "n/a"}`,
+  req.log.info(
+    {
+      event: "health_deep_hit",
+      source: inferHealthCheckSource(userAgent),
+      client_ip: clientIp || "unknown",
+      user_agent: userAgent || null,
+    },
+    "deep health endpoint hit",
   );
-  const checks = { server: "ok", database: "unknown", redis: "unknown" };
   try {
-    // Check MongoDB
-    const mongoose = (await import("mongoose")).default;
-    if (mongoose.connection.readyState === 1) {
-      checks.database = "ok";
-    } else {
-      checks.database = "disconnected";
-    }
-    // Check Redis (Upstash, with in-memory fallback)
-    let redisBackend = null;
-    try {
-      const { pingRedis } = await import("./services/redis.service.js");
-      const result = await pingRedis();
-      checks.redis = result.ok ? "ok" : "error";
-      redisBackend = result.backend;
-    } catch (e) {
-      checks.redis = "unavailable";
-    }
-
-    const allOk = Object.values(checks).every((v) => v === "ok");
-    res.status(allOk ? 200 : 503).json({
-      status: allOk ? "ok" : "degraded",
+    const { probeAllExternals } = await import("./services/health.service.js");
+    const { checks, degraded } = await probeAllExternals();
+    res.status(degraded ? 503 : 200).json({
+      status: degraded ? "degraded" : "ok",
+      degraded,
       checks,
-      ...(redisBackend ? { redisBackend } : {}),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    res.status(503).json({ status: "error", checks, timestamp: new Date().toISOString() });
+    req.log.error(
+      { event: "health_deep_failed", err: error },
+      "deep health probe runner failed",
+    );
+    res.status(503).json({
+      status: "error",
+      degraded: true,
+      checks: { server: { status: "ok" } },
+      error: error?.message || "probe runner failed",
+      timestamp: new Date().toISOString(),
+    });
   }
 });
 
@@ -179,18 +188,30 @@ const startServer = async () => {
 
     // Start Express server
     app.listen(config.PORT, () => {
-      console.log(`
+      // Dev-only ASCII banner — purely a terminal UX flourish for humans.
+      // Structured log below is what tooling / aggregators read.
+      if (config.NODE_ENV !== "production") {
+        process.stdout.write(`
 ╔════════════════════════════════════════╗
-║   Hospital Management API             ║
-║   ✓ Server running on port ${config.PORT}       ║
-║   ✓ Environment: ${config.NODE_ENV}          ║
-║   ✓ DB: MongoDB Connected             ║
-║   ✓ Auto-delete job scheduled         ║
+║   Hospital Management API              ║
+║   ✓ Server running on port ${String(config.PORT).padEnd(12)}║
+║   ✓ Environment: ${String(config.NODE_ENV).padEnd(22)}║
+║   ✓ DB: MongoDB Connected              ║
+║   ✓ Auto-delete job scheduled          ║
 ╚════════════════════════════════════════╝
-      `);
+`);
+      }
+      logger.info(
+        {
+          event: "server_started",
+          port: config.PORT,
+          env: config.NODE_ENV,
+        },
+        `Hospital Management API listening on port ${config.PORT}`,
+      );
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    logger.fatal({ event: "server_start_failed", err: error }, "Failed to start server");
     process.exit(1);
   }
 };

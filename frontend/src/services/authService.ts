@@ -4,7 +4,7 @@
  */
 
 import { LoginResponse, AuthCodeVerifyResponse, RefreshTokenResponse } from "../types/auth";
-import api from "./api";
+import api, { clearAccessToken, getAccessToken, setAccessToken } from "./api";
 
 function extractErrorMessage(error: unknown, fallback: string): string {
   // Check the API response body FIRST — axios errors are also Error
@@ -68,21 +68,6 @@ export const authService = {
     }
   },
 
-  /**
-   * Re-send the hospital's Auth Code to their registered email when the
-   * welcome email was lost. Requires the AUTH_CODE temp token.
-   */
-  resendLoginAuthCode: async (): Promise<{ success: boolean; message: string; data?: { retryAfterSeconds: number } }> => {
-    try {
-      const tempToken = sessionStorage.getItem("tempToken");
-      const config = tempToken ? { headers: { Authorization: `Bearer ${tempToken}` } } : {};
-      const response = await api.post("/auth/login/resend-auth-code", {}, config);
-      return response.data;
-    } catch (error: unknown) {
-      throw toApiError(error, "Failed to resend Auth Code");
-    }
-  },
-
   refreshToken: async (): Promise<RefreshTokenResponse> => {
     try {
       const response = await api.post<RefreshTokenResponse>("/auth/refresh-token", {});
@@ -106,14 +91,16 @@ export const authService = {
   },
 
   getTokens: () => ({
-    accessToken: null, // Managed via httpOnly cookies
-    refreshToken: null,
+    accessToken: getAccessToken(), // in-memory only (TD-D3)
+    refreshToken: null,            // httpOnly cookie, not readable from JS
     tempToken: sessionStorage.getItem("tempToken"),
   }),
 
   storeTokens: (accessToken: string, _refreshToken: string) => {
-    // Store access token in sessionStorage (cleared on browser close)
-    if (accessToken) sessionStorage.setItem("accessToken", accessToken);
+    // TD-D3: access token is held in module-scoped memory inside api.ts.
+    // It is intentionally NOT persisted to sessionStorage / localStorage —
+    // a tab-reopen bootstraps a fresh token via the httpOnly refresh cookie.
+    setAccessToken(accessToken || null);
     sessionStorage.removeItem("tempToken");
   },
 
@@ -122,7 +109,7 @@ export const authService = {
   },
 
   clearTokens: () => {
-    sessionStorage.removeItem("accessToken");
+    clearAccessToken();
     sessionStorage.removeItem("tempToken");
     sessionStorage.removeItem("resetToken");
     localStorage.removeItem("hospital");

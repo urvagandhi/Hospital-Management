@@ -1,0 +1,13 @@
+{
+    "watch": [
+        "src"
+    ],
+    "ext": "js,json",
+    "ignore": [
+        "coverage/**",
+        "node_modules/**"
+    ],
+    "exec": "node src/index.js",
+    "restartable": "r",
+    "signal": "SIGTERM"
+}

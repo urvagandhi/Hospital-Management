@@ -2,6 +2,15 @@ package com.hospital.management.data.models
 
 import com.google.gson.annotations.SerializedName
 
+// Typed request body for POST /api/auth/login.
+// Replaces the previous Map<String, Any> body — Gson + R8 + `Any` resolution
+// through reflection is a known fragile combo in release builds.
+data class LoginRequest(
+    @SerializedName("identifier") val identifier: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("password") val password: String
+)
+
 data class LoginResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("message") val message: String,
@@ -26,9 +35,11 @@ data class ChangePasswordResponse(
 )
 
 data class PasswordChangeData(
-    @SerializedName("accessToken") val accessToken: String,
-    @SerializedName("refreshToken") val refreshToken: String,
-    @SerializedName("hospital") val hospital: Hospital
+    // Gson uses reflection and bypasses Kotlin null checks — treat every server
+    // field as nullable to avoid release-only crashes when the backend omits one.
+    @SerializedName("accessToken") val accessToken: String? = null,
+    @SerializedName("refreshToken") val refreshToken: String? = null,
+    @SerializedName("hospital") val hospital: Hospital? = null
 )
 
 // ── Auth Code verification (step 2 of login) ─────────────────────────────────
@@ -44,11 +55,13 @@ data class AuthCodeVerifyResponse(
 )
 
 data class AuthCodeVerifyData(
-    @SerializedName("accessToken") val accessToken: String,
-    @SerializedName("refreshToken") val refreshToken: String,
+    // Gson bypasses Kotlin null checks; a missing server field would crash in
+    // release with a cryptic NPE/ClassCastException. Keep everything nullable.
+    @SerializedName("accessToken") val accessToken: String? = null,
+    @SerializedName("refreshToken") val refreshToken: String? = null,
     @SerializedName("tokenType") val tokenType: String? = null,
     @SerializedName("expiresIn") val expiresIn: String? = null,
-    @SerializedName("hospital") val hospital: Hospital
+    @SerializedName("hospital") val hospital: Hospital? = null
 )
 
 data class HospitalResponse(

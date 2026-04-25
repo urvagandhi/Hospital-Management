@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
+import Spinner from "./Spinner";
 
 interface FolderInfo {
   name: string;
@@ -45,10 +47,10 @@ const ZipSizeModal: React.FC<ZipSizeModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-surface-white rounded-2xl shadow-modal ring-1 ring-neutral-200 max-w-lg w-full mx-4 p-6">
         <h2 className="text-xl font-bold text-gray-900">
           Download too large ({formatMB(totalSize)} MB)
         </h2>
@@ -102,17 +104,13 @@ const ZipSizeModal: React.FC<ZipSizeModalProps> = ({
             disabled={selectedNames.length === 0 || loading}
             className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
-            {loading && (
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            )}
+            {loading && <Spinner variant="scan" size="sm" />}
             <span>Download Selected</span>
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

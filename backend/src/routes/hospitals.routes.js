@@ -12,6 +12,7 @@ import {
   resendWelcomeEmail,
   patchMe,
   initContactChange,
+  resendContactChangeOtp,
   verifyContactChange,
   getNotificationPreferences,
   updateNotificationPreferences,
@@ -44,6 +45,12 @@ router.patch("/me", uploadSingle("logo"), patchMe);
  * Body: { newEmail } or { newPhone }
  */
 router.post("/me/change-contact/init", authLimiter, initContactChange);
+
+/**
+ * POST /api/hospitals/me/change-contact/resend
+ * Resend the OTP for the currently pending contact change.
+ */
+router.post("/me/change-contact/resend", otpLimiter, resendContactChangeOtp);
 
 /**
  * POST /api/hospitals/me/change-contact/verify

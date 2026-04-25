@@ -30,7 +30,10 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.hospital.management.utils.FeatureFlags
+import com.hospital.management.worker.DownloadProgress
+import com.hospital.management.worker.DownloadStage
 import com.hospital.management.worker.DownloadWorker
+import com.hospital.management.worker.formatDownloadSubtext
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.launch
 import java.io.File
@@ -411,78 +414,113 @@ class FolderDetailsActivity : BaseActivity() {
     }
 
     private fun enqueueDownloadWorker(file: FileItem) {
-        // Use compressed endpoint for PDFs when compression is enabled
-        val downloadUrl = if (file.isPdf && FeatureFlags.USE_COMPRESSION_SERVICE && file._id != null) {
-            "${RetrofitClient.BASE_URL}/api/patients/$patientId/files/${Uri.encode(folderName)}/${file._id}/compressed"
-        } else {
-            file.displayUrl
-        }
+        lifecycleScope.launch {
+            val accessToken = tokenManager.getAccessToken()
+            val authHost = try { java.net.URL(RetrofitClient.BASE_URL).host } catch (_: Exception) { null }
 
-        val inputData = Data.Builder()
-            .putString(DownloadWorker.KEY_DOWNLOAD_URL, downloadUrl)
-            .putString(DownloadWorker.KEY_FILE_NAME, file.name)
-            .putString(DownloadWorker.KEY_MIME_TYPE, getMimeType(file.name))
-            .putString(DownloadWorker.KEY_PATIENT_NAME, patientName)
-            .putString(DownloadWorker.KEY_HOSPITAL_NAME, hospitalName)
-            .putString(DownloadWorker.KEY_FOLDER_NAME, folderName)
-            .putString(DownloadWorker.KEY_DOWNLOAD_SUB_PATH, getDownloadSubPath())
-            .build()
-
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
-        val request = OneTimeWorkRequestBuilder<DownloadWorker>()
-            .setInputData(inputData)
-            .setConstraints(constraints)
-            .build()
-
-        // Unique work keyed by URL — double-tap skips if already running
-        val workName = "download_${file.displayUrl.hashCode()}"
-        val workManager = WorkManager.getInstance(this)
-        workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, request)
-
-        // Snackbar with Cancel action
-        com.google.android.material.snackbar.Snackbar
-            .make(rvFiles, "Downloading ${file.name}…", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
-            .setAction("Cancel") {
-                workManager.cancelUniqueWork(workName)
-                Toast.makeText(this, "Download cancelled", Toast.LENGTH_SHORT).show()
+            // Use compressed endpoint for PDFs when compression is enabled
+            val downloadUrl = if (file.isPdf && FeatureFlags.USE_COMPRESSION_SERVICE && file._id != null) {
+                "${RetrofitClient.BASE_URL}/api/patients/$patientId/files/${Uri.encode(folderName)}/${file._id}/compressed"
+            } else {
+                file.displayUrl
             }
-            .show()
 
-        workManager.getWorkInfoByIdLiveData(request.id).observe(this) { workInfo ->
-            if (workInfo == null) return@observe
-            when (workInfo.state) {
-                WorkInfo.State.RUNNING -> {
-                    val state = workInfo.progress.getString(DownloadWorker.KEY_PROGRESS_STATE) ?: ""
-                    when (state) {
-                        DownloadWorker.STATE_PREPARING ->
-                            progressBar.visibility = View.VISIBLE
-                        DownloadWorker.STATE_DOWNLOADING ->
-                            progressBar.visibility = View.VISIBLE
+            val inputData = Data.Builder()
+                .putString(DownloadWorker.KEY_DOWNLOAD_URL, downloadUrl)
+                .putString(DownloadWorker.KEY_FILE_NAME, file.name)
+                .putString(DownloadWorker.KEY_MIME_TYPE, getMimeType(file.name))
+                .putString(DownloadWorker.KEY_PATIENT_NAME, patientName)
+                .putString(DownloadWorker.KEY_HOSPITAL_NAME, hospitalName)
+                .putString(DownloadWorker.KEY_FOLDER_NAME, folderName)
+                .putString(DownloadWorker.KEY_DOWNLOAD_SUB_PATH, getDownloadSubPath())
+                .putString(DownloadWorker.KEY_AUTH_TOKEN, accessToken)
+                .putString(DownloadWorker.KEY_AUTH_HOST, authHost)
+                .build()
+
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val request = OneTimeWorkRequestBuilder<DownloadWorker>()
+                .setInputData(inputData)
+                .setConstraints(constraints)
+                .addTag(DownloadWorker.TAG_DOWNLOAD)
+                .build()
+
+            // Unique work keyed by URL — double-tap skips if already running
+            val workName = "download_${file.displayUrl.hashCode()}"
+            val workManager = WorkManager.getInstance(this@FolderDetailsActivity)
+            workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, request)
+
+            // Snackbar with Cancel action — complements the notification's Cancel button
+            com.google.android.material.snackbar.Snackbar
+                .make(rvFiles, getString(R.string.download_snackbar_started, file.name),
+                    com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                .setAction(R.string.cancel) {
+                    workManager.cancelWorkById(request.id)
+                }
+                .show()
+
+            workManager.getWorkInfoByIdLiveData(request.id).observe(this@FolderDetailsActivity) { workInfo ->
+                if (workInfo == null) return@observe
+
+                // Single source of truth: parse DownloadProgress from the same payload
+                // the worker publishes to the foreground notification.
+                val progress = DownloadProgress.fromData(workInfo.progress)
+
+                when (workInfo.state) {
+                    WorkInfo.State.RUNNING -> {
+                        progressBar.visibility = View.VISIBLE
+                        if (progress != null) {
+                            when (progress.stage) {
+                                DownloadStage.PREPARING, DownloadStage.DOWNLOADING,
+                                DownloadStage.RETRYING -> {
+                                    // Update any in-app status text from the same payload.
+                                    // The feature-level UI here is the indeterminate progressBar;
+                                    // richer consumers (e.g. a progress row) can read progress.percent /
+                                    // formatDownloadSubtext(progress) to render bytes + speed.
+                                    android.util.Log.v(
+                                        "FolderDetailsActivity",
+                                        "download progress stage=${progress.stage} " +
+                                                "pct=${progress.percent} " +
+                                                "subtext=${formatDownloadSubtext(progress)}"
+                                    )
+                                }
+                                else -> { /* READY/FAILED surface via SUCCEEDED/FAILED branches */ }
+                            }
+                        }
                     }
-                }
-                WorkInfo.State.SUCCEEDED -> {
-                    progressBar.visibility = View.GONE
-                    Toast.makeText(this, "Downloaded: ${file.name}", Toast.LENGTH_LONG).show()
-                }
-                WorkInfo.State.FAILED -> {
-                    progressBar.visibility = View.GONE
-                    val reason = workInfo.outputData.getString(DownloadWorker.KEY_ERROR_REASON) ?: ""
-                    val detail = workInfo.outputData.getString(DownloadWorker.KEY_STATUS) ?: "Download failed"
-                    val msg = when (reason) {
-                        DownloadWorker.ERROR_AUTH_EXPIRED -> "Session expired. Please log in again."
-                        DownloadWorker.ERROR_STORAGE_FULL -> "Not enough storage space."
-                        DownloadWorker.ERROR_SERVER -> "Server error. Try again later."
-                        else -> "Download failed: $detail"
+                    WorkInfo.State.SUCCEEDED -> {
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(
+                            this@FolderDetailsActivity,
+                            getString(R.string.download_toast_done, file.name),
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
-                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                    WorkInfo.State.FAILED -> {
+                        progressBar.visibility = View.GONE
+                        val reason = workInfo.outputData.getString(DownloadWorker.KEY_ERROR_REASON) ?: ""
+                        val detail = workInfo.outputData.getString(DownloadWorker.KEY_STATUS) ?: ""
+                        val msg = when (reason) {
+                            DownloadWorker.ERROR_AUTH_EXPIRED -> getString(R.string.download_err_auth)
+                            DownloadWorker.ERROR_STORAGE_FULL -> getString(R.string.download_err_storage)
+                            DownloadWorker.ERROR_SERVER -> getString(R.string.download_err_server)
+                            DownloadWorker.ERROR_CANCELLED -> getString(R.string.download_toast_cancelled)
+                            else -> getString(R.string.download_err_network_with_detail, detail)
+                        }
+                        Toast.makeText(this@FolderDetailsActivity, msg, Toast.LENGTH_LONG).show()
+                    }
+                    WorkInfo.State.CANCELLED -> {
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(
+                            this@FolderDetailsActivity,
+                            R.string.download_toast_cancelled,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    else -> { /* ENQUEUED, BLOCKED */ }
                 }
-                WorkInfo.State.CANCELLED -> {
-                    progressBar.visibility = View.GONE
-                }
-                else -> { /* ENQUEUED, BLOCKED */ }
             }
         }
     }
@@ -493,9 +531,24 @@ class FolderDetailsActivity : BaseActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val conn = (java.net.URL(file.displayUrl).openConnection() as java.net.HttpURLConnection).also {
+                // Match the modern path: route PDFs through the compression sidecar
+                // when the flag is on, fall back to the raw Cloudinary URL otherwise.
+                val useCompressed = file.isPdf &&
+                    FeatureFlags.USE_COMPRESSION_SERVICE &&
+                    file._id != null
+                val downloadUrl = if (useCompressed) {
+                    "${RetrofitClient.BASE_URL}/api/patients/$patientId/files/${Uri.encode(folderName)}/${file._id}/compressed"
+                } else {
+                    file.displayUrl
+                }
+                val accessToken = if (useCompressed) tokenManager.getAccessToken() else null
+
+                val conn = (java.net.URL(downloadUrl).openConnection() as java.net.HttpURLConnection).also {
                     it.connectTimeout = 15_000
                     it.readTimeout = 60_000
+                    if (!accessToken.isNullOrBlank()) {
+                        it.setRequestProperty("Authorization", "Bearer $accessToken")
+                    }
                     it.connect()
                 }
                 if (conn.responseCode !in 200..299) throw Exception("Server error ${conn.responseCode}")
@@ -571,6 +624,10 @@ class FolderDetailsActivity : BaseActivity() {
             contentValues.clear()
             contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
             resolver.update(uri, contentValues, null, null)
+
+            com.hospital.management.utils.DownloadNotifier.notifyCompleted(
+                applicationContext, uri, cleanName, mimeType
+            )
 
             Toast.makeText(this, "Saved to $relativePath/$cleanName", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
@@ -903,6 +960,11 @@ class FolderDetailsActivity : BaseActivity() {
         contentValues.clear()
         contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
         resolver.update(uri, contentValues, null, null)
+
+        com.hospital.management.utils.DownloadNotifier.notifyCompleted(
+            applicationContext, uri, displayName, mimeType
+        )
+
         withContext(Dispatchers.Main) {
             Toast.makeText(this@FolderDetailsActivity, "Saved to $relativePath/$displayName", Toast.LENGTH_LONG).show()
         }
@@ -1187,6 +1249,10 @@ class FolderDetailsActivity : BaseActivity() {
                 contentValues.clear()
                 contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
                 resolver.update(uri, contentValues, null, null)
+
+                com.hospital.management.utils.DownloadNotifier.notifyCompleted(
+                    applicationContext, uri, fileName, mimeType
+                )
 
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@FolderDetailsActivity, "Saved to $relativePath/$fileName", Toast.LENGTH_LONG).show()

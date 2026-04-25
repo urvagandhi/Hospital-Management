@@ -15,25 +15,17 @@ export const getInitials = (name: string | null | undefined, max = 2): string =>
     .slice(0, max);
 };
 
-const AVATAR_GRADIENTS = [
-  "from-blue-500 to-indigo-600",
-  "from-emerald-500 to-teal-600",
-  "from-violet-500 to-purple-600",
-  "from-amber-500 to-orange-600",
-  "from-rose-500 to-pink-600",
-  "from-cyan-500 to-blue-600",
-  "from-indigo-500 to-violet-600",
-  "from-teal-500 to-emerald-600",
-];
-
-export const getAvatarGradient = (name: string | null | undefined): string => {
-  const key = name || "";
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) {
-    hash = key.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length];
-};
+/**
+ * Single-hue brand gradient used for every avatar fallback across the app
+ * (Navbar, LogoHeader, Profile). Previously this returned a per-name hashed
+ * gradient; switched to one consistent `bg-gradient-primary` class so every
+ * avatar reads as "HospitALL". Signature preserved so callers don't change.
+ *
+ * NOTE: callers must render this WITHOUT a `bg-gradient-to-br` prefix — the
+ * class itself already describes the full gradient.
+ */
+export const getAvatarGradient = (_name?: string | null): string =>
+  "bg-gradient-primary";
 
 /**
  * A placeholder Cloudinary URL used by the seed/default hospital record. When

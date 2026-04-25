@@ -78,7 +78,7 @@ export const generateTempToken = (hospitalId, purpose = "AUTH_CODE", expiresIn) 
  */
 export const verifyTempTokenPurpose = (token, expectedPurpose = "AUTH_CODE") => {
   try {
-    const decoded = jwt.verify(token, config.JWT_SECRET);
+    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ["HS256"] });
 
     // Verify token type
     if (decoded.type !== "temp") {
@@ -110,7 +110,7 @@ export const verifyTempTokenPurpose = (token, expectedPurpose = "AUTH_CODE") => 
  */
 export const verifyToken = (token, secret = config.JWT_SECRET) => {
   try {
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, secret, { algorithms: ["HS256"] });
     return decoded;
   } catch (error) {
     if (error.name === "TokenExpiredError") {

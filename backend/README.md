@@ -1,6 +1,8 @@
-# Backend - Hospital Management API
+# Backend — Hospital Management API
 
-Node.js + Express REST API with MongoDB, Redis, TOTP 2FA, and Cloudflare R2 file storage.
+Node.js + Express REST API. MongoDB (Mongoose 7) for persistence; Upstash Redis (with in-memory fallback) for ephemeral OTP/registration state; Cloudinary for file storage; Brevo (prod) / Mailtrap (dev) for email; Firebase Admin for FCM push; a Python compression sidecar for PDF merging.
+
+The canonical project context is [CLAUDE.md](../CLAUDE.md). Full audit set: [docs/audit/](../docs/audit/). The 17 backend/web/sidecar architecture diagrams are in [docs/audit/03-architecture-diagrams.md](../docs/audit/03-architecture-diagrams.md).
 
 ---
 
@@ -9,41 +11,47 @@ Node.js + Express REST API with MongoDB, Redis, TOTP 2FA, and Cloudflare R2 file
 ```mermaid
 graph TB
     subgraph Middleware
-        RL[Rate Limiter] --> AUTH[JWT Auth]
-        AUTH --> VAL[Request Validator]
-        VAL --> SAN[Sanitizer]
+        RL[Rate Limiter] --> AUTH[JWT Auth + Session Check]
+        AUTH --> ADMIN[verifyAdmin / verifyAdminOrSelf]
+        ADMIN --> VAL[express-validator]
     end
 
     subgraph Routes
-        AR[/api/auth] --> AC[Auth Controller]
-        PR[/api/patients] --> PC[Patient Controller]
-        HR[/api/hospitals] --> HC[Hospital Controller]
-        ER[/api/export] --> EC[Export Controller]
+        AR["/api/auth"] --> AC[Auth Controller]
+        PR["/api/patients"] --> PC[Patient Controller]
+        HR["/api/hospitals"] --> HC[Hospital Controller]
+        ADR["/api/admin"] --> ADC[Admin Controller]
+        ER["/api/export"] --> EC[Export Controller]
+        AUR["/api/audits"] --> AUDC[Audit Controller]
+        VR["/api/version"] --> VC[App Version Controller]
+        HEALTH["/api/health"] --> HEALTHC[Health Controller]
     end
 
     subgraph Services
-        AC --> TS[Token Service]
-        AC --> TOTP[TOTP Service]
-        AC --> ES[Email Service]
-        PC --> PS[Patient Service]
-        PC --> R2S[R2 Storage]
-        PC --> PDFS[PDF Service]
-        PC --> ZIPS[ZIP Service]
-        EC --> PDFS
-        EC --> ZIPS
+        AC --> TS[token.service<br/>JWT + refresh rotation]
+        AC --> MAIL[mail.service<br/>Brevo / Mailtrap]
+        AC --> GEO[geoip.service<br/>ipinfo → ip-api]
+        PC --> STORAGE[storage.service<br/>Cloudinary primary]
+        PC --> COMP[compression.service<br/>sidecar client]
+        PC --> PDFS[pdf.service<br/>pdfkit / pdf-lib fallback]
+        PC --> ZIPS[zip.service<br/>archiver]
+        AC --> PUSH[push.service<br/>Firebase Admin FCM]
+        AC --> REDIS[redis.service<br/>Upstash + in-memory fallback]
     end
 
     subgraph Data
         TS --> MONGO[(MongoDB)]
-        TS --> REDIS[(Redis)]
-        TOTP --> MONGO
-        PS --> MONGO
-        R2S --> R2[(Cloudflare R2)]
-        ES --> SMTP[SMTP Server]
+        STORAGE --> CLOUDINARY[(Cloudinary)]
+        COMP --> SIDECAR[Compression Sidecar<br/>FastAPI]
+        REDIS --> UPSTASH[(Upstash Redis)]
+        MAIL --> BREVO[Brevo / Mailtrap]
+        PUSH --> FCM[Firebase FCM]
     end
 
     CLIENT[Client Request] --> RL
 ```
+
+`r2.service.js` exists on disk but has zero importers (TD-003 dead code). Active storage is Cloudinary via `storage.service.js`.
 
 ---
 
@@ -58,68 +66,91 @@ sequenceDiagram
     participant SV as Service
     participant DB as MongoDB
 
-    C->>RL: HTTP Request
-    RL->>RL: Check request count
+    C->>RL: HTTP Request (with X-Request-Id or auto-gen)
+    RL->>RL: per-endpoint window check
     alt Rate limit exceeded
         RL-->>C: 429 Too Many Requests
     end
-    RL->>MW: Pass through
-    MW->>MW: Verify JWT + Session
-    alt Invalid token
+    RL->>MW: pino-http binds req.log child logger
+    MW->>MW: verifyAccessToken + session active?
+    alt Invalid / revoked
         MW-->>C: 401 Unauthorized
     end
-    MW->>CT: Authenticated request
-    CT->>SV: Business logic
-    SV->>DB: Data operation
-    DB-->>SV: Result
-    SV-->>CT: Processed data
-    CT-->>C: JSON Response
+    MW->>CT: req.user populated (hospitalId, role)
+    CT->>SV: business logic
+    SV->>DB: Mongoose op
+    DB-->>SV: result
+    CT-->>C: JSON Response (X-Request-Id echoed back)
+    Note over CT,DB: Sensitive actions emit AuditLog<br/>fire-and-forget — never blocks response
 ```
 
 ---
 
 ## Directory Structure
 
-```
+```text
 backend/
 ├── src/
 │   ├── config/
-│   │   ├── db.js              # MongoDB connection
-│   │   └── env.js             # Environment validation
+│   │   ├── db.js               # MongoDB connection
+│   │   └── env.js              # Environment validation (refuses to boot without compression sidecar in prod — TD-D4)
 │   ├── controllers/
-│   │   ├── auth.controller.js # Login, TOTP, sessions, password
+│   │   ├── auth.controller.js
 │   │   ├── patient.controller.js
-│   │   ├── hospital.controller.js
-│   │   └── export.controller.js
+│   │   ├── hospitals.controller.js
+│   │   ├── admin.controller.js
+│   │   ├── export.controller.js
+│   │   ├── audit.controller.js
+│   │   ├── appVersion.controller.js
+│   │   └── health.controller.js
 │   ├── middleware/
-│   │   ├── auth.js            # JWT verify, session check, admin guard
-│   │   ├── errorHandler.js    # Centralized error handling
-│   │   ├── rateLimiter.js     # Per-endpoint rate limits
-│   │   └── validateRequest.js # Input validation + sanitization
-│   ├── models/
-│   │   ├── Hospital.js        # Hospital account + TOTP fields
-│   │   ├── Session.js         # DB-backed sessions (TTL: 7d)
-│   │   ├── Patient.js         # Patient + nested folders/files
-│   │   ├── AuditLog.js        # Security event logging
-│   │   ├── BackupCode.js      # 2FA recovery codes
-│   │   ├── OTP.js             # Legacy SMS OTP (disabled)
-│   │   └── PendingHospital.js # Temp registration (TTL: 15min)
+│   │   ├── auth.js             # verifyAccessToken, verifyTempToken, verifyAdmin, verifyAdminOrSelf, attachHospitalData
+│   │   ├── errorHandler.js
+│   │   ├── rateLimiter.js
+│   │   └── validateRequest.js
+│   ├── models/                 # Five Mongoose schemas
+│   │   ├── Hospital.js
+│   │   ├── Session.js
+│   │   ├── Patient.js          # Folders + files embedded inside Patient.folders[]
+│   │   ├── AuditLog.js
+│   │   └── AppVersion.js
 │   ├── routes/
-│   │   ├── auth.routes.js     # 15+ auth endpoints
-│   │   ├── patient.routes.js  # CRUD + file upload/download
-│   │   ├── hospitals.routes.js
-│   │   └── export.routes.js
+│   │   ├── auth.routes.js      # 24 endpoints
+│   │   ├── patient.routes.js   # 20 endpoints (16 primary + 4 legacy GET aliases)
+│   │   ├── hospitals.routes.js # 12 endpoints
+│   │   ├── admin.routes.js
+│   │   ├── audit.routes.js
+│   │   ├── export.routes.js
+│   │   ├── appVersion.routes.js
+│   │   └── health.routes.js
 │   ├── services/
-│   │   ├── token.service.js   # Session creation, refresh, invalidation
-│   │   ├── totp.service.js    # TOTP generate, verify, backup codes
-│   │   ├── email.service.js   # HTML templates (invite, lock, revoke)
-│   │   ├── patient.service.js # Patient CRUD with pagination
-│   │   ├── r2.service.js      # Cloudflare R2 file operations
-│   │   ├── pdf.service.js     # PDF generation
-│   │   └── zip.service.js     # ZIP archive creation
+│   │   ├── token.service.js    # JWT mint + refresh rotation + reuse detection (TD-002)
+│   │   ├── storage.service.js  # Cloudinary primary
+│   │   ├── compression.service.js # Sidecar client (X-Internal-Secret)
+│   │   ├── mail.service.js     # Brevo prod / Mailtrap dev
+│   │   ├── push.service.js     # Firebase Admin FCM
+│   │   ├── redis.service.js    # Upstash REST + in-memory Map fallback
+│   │   ├── geoip.service.js    # ipinfo.io → ip-api.com chain
+│   │   ├── health.service.js   # Deep dependency probes
+│   │   ├── patient.service.js
+│   │   ├── pdf.service.js      # pdfkit + pdf-lib (in-process fallback)
+│   │   ├── zip.service.js      # archiver
+│   │   └── r2.service.js       # DEAD CODE — TD-003, kept for legacy fallback only
 │   ├── jobs/
-│   │   └── autoDelete.job.js  # Cron: cleanup old patient data
-│   └── index.js               # App entry point
+│   │   └── autoDelete.job.js   # Nightly 00:00 UTC: hard-delete patients >90d, cascade Cloudinary delete
+│   ├── utils/
+│   │   ├── logger.js           # pino logger + redactions (Authorization, Cookie, password*, token, otp, authCode)
+│   │   └── …
+│   └── index.js
+├── scripts/                    # Operator CLIs — intentionally use raw console.* (not pino)
+│   ├── manage-app-version.js   # Update minVersion / forceUpdate flags
+│   ├── migrate-patient-ids.js  # SH-001 → SH-000001 padding migration
+│   ├── migrate-folders.js
+│   ├── migrate-cloudinary-paths.js
+│   ├── migrate-hospital-authcode.js
+│   ├── migrate-remove-totp.js  # Removed the legacy TOTP/BackupCode schema
+│   ├── purge-soft-deleted-hospitals.js
+│   └── send-test-push.js
 ├── Dockerfile
 ├── package.json
 └── seed.js
@@ -127,206 +158,205 @@ backend/
 
 ---
 
-## API Endpoints
+## Authentication
 
-### Authentication (`/api/auth`)
+Two-step login on every email/password attempt — the **immutable 6-digit Auth Code** is the only second factor (per [CLAUDE.md §5](../CLAUDE.md)). TOTP was ripped out — see [scripts/migrate-remove-totp.js](scripts/migrate-remove-totp.js); [auth.controller.js:851](src/controllers/auth.controller.js) literally documents `// Second factor is now the 6-digit hospital authCode (replaces TOTP).`
 
 ```mermaid
 flowchart TD
-    LOGIN["POST /login"] -->|requireTotp: true| TOTP_LOGIN["POST /login/totp"]
-    LOGIN -->|requirePasswordChange| CHANGE_PW["POST /change-password"]
-    LOGIN -->|requireTotpSetup| SETUP_2FA["POST /2fa/setup"]
-    LOGIN -->|Direct success| DASHBOARD[Access Granted]
-
-    TOTP_LOGIN -->|Lost device?| RECOVERY["POST /login/recovery"]
-    TOTP_LOGIN -->|Valid code| DASHBOARD
-    RECOVERY -->|Valid backup code| DASHBOARD
-
-    SETUP_2FA -->|QR displayed| VERIFY_2FA["POST /2fa/verify"]
-    VERIFY_2FA -->|Returns 10 backup codes| DASHBOARD
-
-    CHANGE_PW --> SETUP_2FA
-
-    REFRESH["POST /refresh-token"] --> DASHBOARD
-    LOGOUT["POST /logout"] --> LOGIN
+    LOGIN["POST /api/auth/login<br/>email/phone + password"] -- "tempToken purpose=AUTH_CODE" --> VERIFY["POST /api/auth/verify-auth-code<br/>tempToken + 6-digit code"]
+    VERIFY -- "access 24h + refresh httpOnly 365d" --> DASHBOARD[Authenticated]
+    LOGIN -- "wrong password 5x" --> LOCK[Account locked + email]
+    REFRESH["POST /api/auth/refresh-token<br/>cookie"] -- "rotated refresh token" --> DASHBOARD
+    REFRESH -- "reuse of rotated-out token" --> REVOKE_ALL["Revoke ALL active sessions<br/>+ security email"]
+    BIO_REG["/biometric/register<br/>RSA public key"] --> BIO_CHAL["/biometric/challenge<br/>nonce"]
+    BIO_CHAL --> BIO_VER["/biometric/verify<br/>signed nonce"]
+    BIO_VER -- "resets 7-day Auth Code clock" --> DASHBOARD
+    FORGOT_INIT["/forgot-password/init<br/>always 200"] --> FORGOT_VER["/forgot-password/verify-otp"]
+    FORGOT_VER --> FORGOT_RESET["/forgot-password/reset"]
 
     style DASHBOARD fill:#86efac
-    style LOGIN fill:#93c5fd
+    style LOCK fill:#fca5a5
+    style REVOKE_ALL fill:#fca5a5
 ```
 
-| Method | Endpoint | Auth | Rate Limit | Description |
-|--------|----------|------|------------|-------------|
-| `POST` | `/login` | None | 5/15min | Login with identifier + password |
-| `POST` | `/login/totp` | Temp Token | 3/1min | Verify TOTP code |
-| `POST` | `/login/recovery` | Temp Token | 3/1min | Login with backup code |
-| `POST` | `/refresh-token` | Cookie | - | Refresh access token |
-| `POST` | `/logout` | Cookie | - | End session |
-| `POST` | `/change-password` | Temp Token | 5/15min | Reset password (first login) |
-| `POST` | `/register-hospital` | Admin | 5/15min | Create hospital account (admin flow) |
-| `POST` | `/register` | None | 5/15min | Self-service: initiate registration (sends OTP) |
-| `POST` | `/register/verify-otp` | None | 3/1min | Self-service: verify OTP + create account |
-| `POST` | `/register/resend-otp` | None | 3/1min | Self-service: resend OTP (60s cooldown per email) |
-| `POST` | `/2fa/setup` | Access Token | - | Generate TOTP QR code |
-| `POST` | `/2fa/verify` | Access Token | 3/1min | Complete TOTP setup |
-| `POST` | `/2fa/disable` | Access Token | - | Disable 2FA |
-| `POST` | `/2fa/reset` | Access Token | - | Rotate 2FA key (lost device) |
-| `POST` | `/2fa/reset/verify` | Access Token | - | Confirm 2FA rotation |
-| `POST` | `/session/check-conflict` | None | 5/15min | Check for session conflicts |
-| `GET`  | `/session/validate` | Access Token | - | Validate current session |
-| `POST` | `/session/force-logout` | Access Token | - | Force logout other sessions |
+**Refresh token rotation (TD-002, 2026-04-21):** every `/api/auth/refresh-token` mints a fresh refresh token. Replaying a rotated-out token revokes every active session for the hospital with `revokedReason: "REFRESH_TOKEN_REUSE"` and sends a security email. Reuse detection is guarded against post-logout false positives by requiring at least one other active session before escalating. Implementation in [src/services/token.service.js](src/services/token.service.js); coverage in [src/__tests__/refreshToken.rotation.test.js](src/__tests__/refreshToken.rotation.test.js).
+
+---
+
+## API Endpoints
+
+52 total. Base path: `/api`. Counts: auth 24 · patients 20 (16 primary + 4 legacy GET aliases) · hospitals 12 · export 1 · audit 2 · admin 2 · version 1 · health 2.
+
+### Authentication (`/api/auth`)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/login` | None | Email/phone + password → tempToken (purpose=AUTH_CODE) |
+| `POST` | `/verify-auth-code` | Temp Token | tempToken + 6-digit Auth Code → access + refresh |
+| `POST` | `/refresh-token` | Cookie | Rotate refresh, mint new access (TD-002) |
+| `POST` | `/logout` | Cookie | End current session |
+| `POST` | `/biometric/register` | Access | Android: register RSA public key for device |
+| `POST` | `/biometric/challenge` | None | Issue nonce for biometric verify |
+| `POST` | `/biometric/verify` | None | Verify signed nonce, mint tokens, reset 7-day clock |
+| `POST` | `/session/check-conflict` | None | Pre-flight: would this device evict another mobile session? |
+| `GET`  | `/session/validate` | Access | Heartbeat — is this session still live? |
+| `POST` | `/session/force-logout` | Access | Force-logout other sessions (e.g. on password change) |
+| `GET`  | `/session/list` | Access | List active sessions for this hospital (with GeoIP) |
+| `POST` | `/session/revoke/:id` | Access | Revoke a specific session by id |
+| `POST` | `/session/revoke-all-others` | Access | Revoke every session except the current one |
+| `POST` | `/change-password` | Access | Change password while authenticated |
+| `POST` | `/forgot-password/init` | None | Always returns 200 (anti-enumeration) — emails OTP if account exists |
+| `POST` | `/forgot-password/verify-otp` | None | Verify OTP, returns short-lived resetToken |
+| `POST` | `/forgot-password/reset` | resetToken | Set new password, revokes all sessions |
+| `POST` | `/register-hospital` | Admin | Create hospital + send welcome email with temp password |
+| `POST` | `/register` | None | Self-service: stash form in Redis, send email OTP |
+| `POST` | `/register/verify-otp` | None | Create hospital from Redis-staged form |
+| `POST` | `/register/resend-otp` | None | Resend (60s cooldown per email) |
+| `POST` | `/auth-code/resend` | Access | Resend Auth Code via email |
+| `POST` | `/contact-change/{init,verify,resend}` | Access | Email/phone change with email-OTP confirmation |
+| `POST` | `/fcm/register` | Access | Register Android FCM token |
 
 ### Patients (`/api/patients`)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET`  | `/` | List patients (paginated, searchable) |
-| `POST` | `/` | Create patient |
-| `GET`  | `/:id` | Get patient with folder structure |
-| `PUT`  | `/:id` | Update patient details |
+| `GET`  | `/` | List patients (cursor-paginated, server-side search) |
+| `POST` | `/` | Create patient — auto-generates `patientId` like `SH-000001` |
+| `GET`  | `/:id` | Get patient with embedded folders/files |
+| `PATCH`| `/:id` | Update patient (name, remarks) |
+| `DELETE`| `/:id` | Delete patient + cascade Cloudinary delete |
 | `POST` | `/:id/folders` | Create folder |
-| `GET`  | `/:id/files/:folder` | List files in folder |
-| `POST` | `/:id/files/:folder` | Upload file (max 20MB) |
-| `GET`  | `/:id/download/pdf` | Download all files as PDF |
-| `GET`  | `/:id/download/zip` | Download all files as ZIP |
-| `GET`  | `/:id/folders/:folder/pdf` | Download folder as PDF |
-| `GET`  | `/:id/folders/:folder/zip` | Download folder as ZIP |
+| `GET`  | `/:id/folders/:folder/files` | List files |
+| `POST` | `/:id/folders/:folder/files` | Upload file (multipart, Cloudinary public_id `HospitALL/h_{hospitalId}/p_{patientId}/{folder_slug}/{date}_{hash}`) |
+| `PATCH`| `/:id/folders/:folder/files/:fileId` | Rename file |
+| `DELETE`| `/:id/folders/:folder/files/:fileId` | Delete file |
+| `GET`  | `/:id/folders/:folder/files/:fileId/signed-url` | 5-min signed URL |
+| `GET`  | `/:id/download/pdf` | Merged PDF download (sidecar) |
+| `GET`  | `/:id/download/zip` | Per-folder ZIP download |
+| `GET`  | `/:id/folders/:folder/pdf` | Folder PDF |
+| `GET`  | `/:id/folders/:folder/zip` | Folder ZIP |
+| `GET`  | `/:id/zip-size-check` | Size pre-flight (soft 10 MB / hard 100 MB gate) |
+| `GET`  | `/:id/files/:fileId/download` | Single-file compressed download (sidecar) |
 
-**Supported file types:** JPEG, PNG, GIF, WebP, PDF, DOC, DOCX, XLS, XLSX, CSV, TXT, DICOM
+Plus 4 legacy `GET` aliases for backward compatibility with older Android builds.
 
 ### Hospitals (`/api/hospitals`)
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `GET`  | `/me` | Access Token | Get current hospital profile |
-| `GET`  | `/` | Admin | List all hospitals |
-| `GET`  | `/:id` | Admin/Self | Get hospital by ID |
-| `PUT`  | `/:id` | Admin/Self | Update hospital |
+| `GET`  | `/me` | Access | Current hospital profile |
+| `PATCH`| `/me` | Access | Patch own profile (name, logo, contact) |
+| `GET`  | `/me/notifications` | Access | Notification preferences |
+| `PATCH`| `/me/notifications` | Access | Update notification preferences |
+| `GET`  | `/` | Admin | List hospitals (cursor pagination + server-side search, TD-005) |
+| `GET`  | `/:id` | Admin | Get hospital by id |
+| `PATCH`| `/:id` | Admin | Admin update of any hospital |
+| `DELETE`| `/:id` | Admin | Hard-delete hospital (cascades patients + Cloudinary) |
+| `POST` | `/:id/resend-welcome` | Admin | Re-send welcome email with new temp password |
+| `POST` | `/:id/toggle-active` | Admin | Disable / re-enable account |
 
-### Export (`/api/export`)
+### Other
 
-| Method | Endpoint | Rate Limit | Description |
-|--------|----------|------------|-------------|
-| `POST` | `/archive` | 3/hour | Export modules as ZIP archive |
-
-### Health
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET`  | `/api/health` | Basic health check |
-| `GET`  | `/api/health/deep` | DB + Redis connectivity check |
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET`  | `/api/audits` | Admin (hospital-scoped, `userId` forced server-side) | Cursor-paginated audit log |
+| `GET`  | `/api/audits/actions` | Admin | List of distinct action enum values |
+| `POST` | `/api/admin/orphans/scan` | Admin | Scan Cloudinary for orphaned objects |
+| `POST` | `/api/admin/orphans/delete` | Admin | Delete orphans (emits `ORPHAN_CLEANUP` audit) |
+| `POST` | `/api/export/patients-pdf` | Access | Per-hospital patient roster export |
+| `GET`  | `/api/version` | None | App version table per platform (drives Android force-update gate) |
+| `GET`  | `/api/health` | None | Liveness |
+| `GET`  | `/api/health/deep` | None | Mongo + Redis + Cloudinary + Brevo + FCM + sidecar probes (3s per-dep timeout, returns `degraded` flag) |
 
 ---
 
 ## Redis Usage
 
-Redis (Upstash) is used for three ephemeral, TTL-scoped concerns in the
-self-service registration flow. Everything else (sessions, login lockouts,
-audit logs) lives in MongoDB.
+Redis (Upstash REST) is used only for ephemeral, TTL-scoped concerns in the self-service registration and forgot-password flows. Sessions, login lockouts, and audit logs live in MongoDB.
 
-| Key | Purpose | TTL | Written By | Read By |
-| --- | --- | --- | --- | --- |
-| `otp:{email}` | SHA-256 hash of the 6-digit OTP + wrong-attempt counter. Burns itself after max attempts. | 10 min | `POST /register`, `POST /register/resend-otp` | `POST /register/verify-otp` |
-| `partial_reg:{email}` | Pending registration form data — hashed password, normalised phone, logo, name, address. Hospital is only created when the OTP is verified. | 30 min | `POST /register` | `POST /register/verify-otp`, `POST /register/resend-otp` |
-| `last_otp_sent:{email}` | Unix-ms timestamp of the last OTP send. Enforces the 60-second resend cooldown. | 60 sec | `POST /register`, `POST /register/resend-otp` | `POST /register/resend-otp` |
+| Key | Purpose | TTL |
+|-----|---------|-----|
+| `otp:{email}` | SHA-256 hash of the 6-digit OTP + wrong-attempt counter. Burns itself after max attempts. | 10 min |
+| `partial_reg:{email}` | Pending registration form data — hashed password, normalised phone, logo, name, address. Hospital is only created when the OTP is verified. | 30 min |
+| `last_otp_sent:{email}` | Unix-ms timestamp. Enforces the 60-second resend cooldown. | 60 sec |
+| `forgot_otp:{email}` | OTP hash + counter for forgot-password flow. | 10 min |
+| `reset_token:{tokenHash}` | One-time reset token issued by `forgot-password/verify-otp`. | 10 min |
 
-**Fallback:** If `UPSTASH_REDIS_REST_URL` / `..._TOKEN` are missing or the
-Upstash endpoint is unreachable, `redis.service.js` transparently latches to
-an in-memory `Map` with real TTL semantics (SRS §2.1). A warning is logged
-once per process. This keeps local development and short outages functional.
+**Fallback:** if `UPSTASH_REDIS_REST_URL` / `..._TOKEN` are missing or the endpoint is unreachable, [src/services/redis.service.js](src/services/redis.service.js) latches to an in-memory `Map` with full TTL semantics (see SRS §2.1). A warning is logged once per process. Local dev and short outages stay functional.
 
-**Testing:** Run `node scripts/test-redis.js` for a helper-level sanity check,
-or `node scripts/test-self-registration.js` for a full end-to-end test that
-drives the three endpoints and inspects Redis between steps.
+**Testing:** `node scripts/test-redis.js` for a helper-level check, or `node scripts/test-self-registration.js` for the full self-registration flow including Redis inspection between steps.
 
 ---
 
 ## Data Models
 
+Five MongoDB collections — Hospital, Session, Patient, AuditLog, AppVersion. Folders and files are **embedded inside `Patient.folders[]`** — they are not top-level collections. The legacy `BackupCode` collection was removed with TOTP; the `OTP` collection was deprecated when SMS was deferred.
+
 ```mermaid
 erDiagram
-    Hospital ||--o{ Session : "sessions"
-    Hospital ||--o{ Patient : "patients"
-    Hospital ||--o{ BackupCode : "backup codes"
-    Hospital ||--o{ AuditLog : "audit trail"
-    Patient ||--o{ Folder : "folders"
-    Folder ||--o{ File : "files"
+    Hospital ||--o{ Session : "has"
+    Hospital ||--o{ Patient : "manages"
+    Hospital ||--o{ AuditLog : "emits"
+    AppVersion ||..|| Hospital : "force-update gate"
 
     Hospital {
+        ObjectId _id
         String hospitalName
         String email UK
         String phone UK
-        String authCode UK "6-digit numeric, e.g. 041326"
+        String authCode UK "6-digit, immutable"
         String passwordHash "bcrypt"
         String role "admin | hospital"
-        Number patientIdCounter "auto-increments per-hospital"
-        Boolean totpEnabled
-        String totpSecretEncrypted "AES-256-GCM"
-        Boolean totpVerified
-        Number totpFailedAttempts "max 5"
-        Date totpLockedUntil "5-min lock"
-        Boolean mustChangePassword
-        Number failedLoginAttempts
-        Date lockUntil
+        Number patientIdCounter
+        String logoUrl
+        Array  biometricKeys "RSA pubkey per device"
+        String fcmToken
+        Object notificationPrefs "newLoginAlert | securityAlerts | marketing"
+        Number failedLoginAttempts "5 → lock + email"
+        Date   lockUntil
+        Boolean isActive
     }
 
     Session {
         ObjectId hospitalId FK
-        String refreshToken UK
-        String deviceId
-        String platform "web | android | ios"
-        Boolean isMobile
-        Date expiresAt "TTL index 7d"
-        Boolean isActive
-        String revokedReason
+        String   deviceId "SHA256(UA)"
+        String   platform "web | android | ios"
+        Boolean  isMobile
+        Date     authCodeVerifiedAt "7-day mobile reverify clock"
+        Boolean  isActive
+        String   revokedReason "SESSION_CONFLICT | REFRESH_TOKEN_REUSE | LOGOUT | ..."
     }
 
     Patient {
         ObjectId hospitalId FK
-        String patientId "auto [INITIALS]-[NNN] e.g. SH-001"
-        String patientName
-        String remarks "optional, max 500 chars"
-    }
-
-    BackupCode {
-        ObjectId hospitalId FK
-        String codeHash "bcrypt"
-        Boolean isUsed
-        Date usedAt
+        String   patientId "auto [INITIALS]-NNNNNN, e.g. SH-000001"
+        String   patientName
+        String   remarks "optional, max 500"
+        Array    folders "EMBEDDED — name + files[] with cloudinaryPublicId, accessMode public|signed, size, mime, thumbnailUrl"
     }
 
     AuditLog {
         ObjectId userId FK
-        String action "LOGIN_SUCCESS etc"
-        String status "SUCCESS | FAILURE"
-        String ipAddress
+        String   action "40+ enum values incl. PATIENT_CREATED, FILE_UPLOADED, REFRESH_TOKEN_REUSE, ORPHAN_CLEANUP"
+        String   status "SUCCESS | FAILURE"
+        String   ipAddress
+        String   userAgent
+        Object   metadata
+        Date     createdAt
+    }
+
+    AppVersion {
+        String  platform "android | ios"
+        String  minVersion
+        String  latestVersion
+        Boolean forceUpdate
     }
 ```
 
----
+The Python sidecar additionally writes `merged_pdf_cache` and `compression_audits` collections — separate concern, not user-facing.
 
-## TOTP 2FA Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> NotSetUp: Hospital created
-
-    NotSetUp --> SetupInitiated: POST /2fa/setup
-    SetupInitiated --> SetupInitiated: Display QR code
-
-    SetupInitiated --> Enabled: POST /2fa/verify (valid code)
-    Enabled --> Enabled: Login requires TOTP
-
-    Enabled --> RotationPending: POST /2fa/reset (password verified)
-    RotationPending --> Enabled: POST /2fa/reset/verify (new code)
-
-    Enabled --> Locked: 5 failed attempts
-    Locked --> Enabled: After 5 minutes
-
-    note right of Enabled
-        10 backup codes generated
-        on setup completion
-    end note
-```
+`Patient.toJSON()` strips internal fields (`cloudinaryPublicId`, `resourceType`, `accessMode`) before responses. **All mutation handlers must emit an `AuditLog` entry**; the `action` enum will silently reject unknown values, so register new actions in [src/models/AuditLog.js](src/models/AuditLog.js) when adding handlers (see [CLAUDE.md §12](../CLAUDE.md)).
 
 ---
 
@@ -334,35 +364,68 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TD
-    LOGIN[Login Request] --> PLATFORM{Platform?}
+    LOGIN[Login Request] --> PLATFORM{platform?}
 
-    PLATFORM -->|Mobile| CHECK{Existing<br/>mobile session?}
-    CHECK -->|Yes| REVOKE[Revoke old session<br/>Set reason: SESSION_CONFLICT<br/>Send email notification]
-    CHECK -->|No| CREATE
-    REVOKE --> CREATE[Create new session<br/>TTL: 7 days]
+    PLATFORM -->|mobile| CHECK{count of active<br/>mobile sessions for<br/>this hospital?}
+    CHECK -->|>= 2| EVICT[Evict OLDEST mobile session<br/>revokedReason=SESSION_CONFLICT<br/>+ email notification]
+    CHECK -->|< 2| CREATE
+    EVICT --> CREATE[Create session<br/>deviceId=SHA256(UA)]
 
-    PLATFORM -->|Web| CREATE
+    PLATFORM -->|web| CREATE_W[Create session<br/>multi-session OK]
+    CREATE_W --> TOKENS
+    CREATE --> TOKENS["Mint accessToken (24h)<br/>+ refreshToken (httpOnly, 365d)"]
+    TOKENS --> COOKIE["Set httpOnly refresh cookie"]
 
-    CREATE --> TOKENS[Generate tokens<br/>accessToken + refreshToken]
-    TOKENS --> COOKIE[Set httpOnly cookies]
-    COOKIE --> RESPONSE[Return to client]
-
-    subgraph Cleanup
-        CRON[TTL Index] -->|Auto-delete| EXPIRED[Expired sessions]
-        ADMIN[Admin action] -->|Force revoke| ACTIVE[Active sessions]
+    subgraph Mobile-only["Mobile-only checks"]
+        MOBILE_REQ[Authenticated mobile request] -->|now > authCodeVerifiedAt + 7d| REVERIFY[401 AUTH_CODE_REQUIRED]
+        BIO_VERIFY[Successful /biometric/verify] --> RESET_CLOCK[authCodeVerifiedAt = now]
     end
 ```
+
+Compound unique index `(hospitalId, deviceId)` enforces single-device-session at the database level. Web is exempt from the 7-day reverify check.
+
+---
+
+## Compression Sidecar Integration
+
+The Python compression sidecar handles all production PDF merging + compression. The backend is a thin client.
+
+| Sidecar endpoint | Backend caller |
+|------------------|----------------|
+| `POST /api/folder-download` | Folder PDF download |
+| `POST /api/patient-download` | Whole-patient PDF download |
+| `POST /api/single-file-compress` | Compressed single-file download |
+
+All sidecar calls carry `X-Internal-Secret: ${COMPRESSION_SERVICE_SECRET}` matching the sidecar's `INTERNAL_API_SECRET`. Backend timeout: 300 s. The sidecar fetches inputs from Cloudinary directly, runs a tier ladder (digital / scanned / aggressive), uploads the result, and caches by SHA256 of inputs.
+
+**TD-D4 (2026-04-25) — sidecar mandatory in prod:** [src/config/env.js](src/config/env.js) refuses to boot when `NODE_ENV=production` AND `USE_COMPRESSION_SERVICE !== "true"`. The in-process pdf-lib fallback OOMs at scale on large patients. The fallback path remains in [src/services/pdf.service.js](src/services/pdf.service.js) for dev / small deployments only.
 
 ---
 
 ## Rate Limiting
 
-| Limiter | Window | Max Requests | Applied To |
-|---------|--------|--------------|------------|
-| `generalLimiter` | 15 sec | 10 | All routes (disabled in dev) |
+| Limiter | Window | Max | Applied To |
+|---------|--------|-----|------------|
+| `generalLimiter` | 15 sec | 10 | Most routes (disabled in dev) |
 | `authLimiter` | 15 min | 5 | Login, register, password change |
-| `otpLimiter` | 1 min | 3 | TOTP verification |
+| `otpLimiter` | 1 min | 3 | OTP / Auth Code verification |
 | `patientLimiter` | 1 min | 10 | File downloads |
+
+Per-IP rate-limiting honours `TRUST_PROXY_HOPS` (default `2`). It must be a numeric integer — `true` is rejected by `express-rate-limit` with `ERR_ERL_PERMISSIVE_TRUST_PROXY`.
+
+---
+
+## Logging
+
+All backend logs flow through pino ([src/utils/logger.js](src/utils/logger.js)). Pretty-printed in dev (`pino-pretty`), JSON in production. Level via `LOG_LEVEL` env (default `info` in prod, `debug` in dev).
+
+Every HTTP request is tagged with a `request_id` (from `X-Request-Id` header or auto-generated UUID) and echoed back on the response. Inside an Express handler prefer `req.log.*` — it's a child logger pre-bound to the request id. Outside handlers (services, jobs), import the module-level `logger`.
+
+Redaction is centralised: Authorization + Cookie headers, plus top-level + nested `password / newPassword / oldPassword / currentPassword / confirmPassword / token / refreshToken / otp / authCode` are auto-censored in every log record. Do not add ad-hoc logging that bypasses the shared logger.
+
+Files under [scripts/](scripts/) intentionally still use `console.*` — those are operator CLIs (migrations, smoke tests) where raw stdout is clearer than structured logs.
+
+TD-007 (shipped 2026-04-21) — pino + pino-http + redaction + request-id; zero `console.*` remain in `backend/src/`.
 
 ---
 
@@ -373,7 +436,7 @@ flowchart TD
 ```bash
 cd backend
 npm install
-npm run dev       # Starts with nodemon on port 5000
+npm run dev   # nodemon on port 5000 (or PORT env)
 ```
 
 ### Seed Database
@@ -382,10 +445,7 @@ npm run dev       # Starts with nodemon on port 5000
 node src/seed.js
 ```
 
-Creates:
-- **5 hospitals** (1 admin + 4 regular) - Password: `Test@1234`
-- **54 patients** distributed across hospitals
-- Clears existing data before seeding
+Creates 5 hospitals (1 admin + 4 regular, password `Test@1234`) and 54 patients distributed across them; clears existing data first.
 
 ### Production (Docker)
 
@@ -399,26 +459,36 @@ docker-compose up --build backend
 |----------|---------|-------------|
 | `PORT` | 5000 | Server port |
 | `NODE_ENV` | development | Environment mode |
-| `MONGODB_URI` | - | MongoDB connection string |
-| `JWT_SECRET` | - | Access token secret (64+ chars, no `dev-` prefix in prod) |
-| `REFRESH_TOKEN_SECRET` | - | Refresh token secret (64+ chars) |
+| `MONGODB_URI` | — | MongoDB connection string |
+| `JWT_SECRET` | — | Access token secret (64+ chars, no `dev-` prefix in prod) |
+| `REFRESH_TOKEN_SECRET` | — | Refresh token secret (64+ chars) |
 | `JWT_EXPIRY` | 24h | Access token lifetime |
-| `REFRESH_TOKEN_EXPIRY` | 7d | Refresh token lifetime |
-| `TOTP_ENCRYPTION_KEY` | - | 64-char hex for AES-256-GCM |
-| `TOTP_WINDOW` | 1 | Clock drift tolerance (login: ±30s, setup: exact) |
-| `TOTP_MAX_ATTEMPTS` | 5 | Failed attempts before 5-min lockout |
-| `SMTP_HOST` | - | SMTP server host |
-| `SMTP_PORT` | 587 | SMTP port |
-| `SMTP_USER` | - | SMTP username |
-| `SMTP_PASS` | - | SMTP password |
-| `SMTP_FROM` | - | Sender email address |
-| `FRONTEND_URL` | http://localhost:3000 | CORS allowed origin |
-| `R2_ENDPOINT` | - | Cloudflare R2 endpoint |
-| `R2_ACCESS_KEY_ID` | - | R2 access key |
-| `R2_SECRET_ACCESS_KEY` | - | R2 secret key |
-| `R2_BUCKET_NAME` | - | R2 bucket name |
-| `UPSTASH_REDIS_REST_URL` | - | Upstash Redis REST URL (auto-falls-back to in-memory Map if missing or unreachable) |
-| `UPSTASH_REDIS_REST_TOKEN` | - | Upstash Redis REST token |
+| `REFRESH_TOKEN_EXPIRY` | 365d | Refresh token lifetime |
+| `OTP_EXPIRY_MINUTES` | 10 | Email OTP TTL |
+| `OTP_LENGTH` | 6 | OTP digits (frontend assumes 6) |
+| `MAX_OTP_ATTEMPTS` | 5 | Failed attempts before OTP burn |
+| `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | — | Required — primary file storage |
+| `SIGNED_UPLOADS_ENABLED` | true | Toggle signed Cloudinary URLs |
+| `BREVO_API_KEY` | — | Required in prod (Mailtrap in dev) |
+| `BREVO_SENDER_EMAIL` / `_NAME` | — | "From" header for outbound mail |
+| `MAILTRAP_HOST` / `_PORT` / `_USER` / `_PASS` | — | Dev SMTP |
+| `FIREBASE_PROJECT_ID` | — | FCM |
+| `FIREBASE_PRIVATE_KEY` | — | FCM (PEM, escaped newlines) |
+| `FIREBASE_CLIENT_EMAIL` | — | FCM |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | — | Alternative auth path |
+| `FIREBASE_SERVICE_ACCOUNT_PATH` | — | Alternative auth path |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | — | Optional — falls back to in-memory Map |
+| `USE_COMPRESSION_SERVICE` | false (dev) / **true (prod, mandatory)** | TD-D4 — env.js refuses to boot otherwise |
+| `COMPRESSION_SERVICE_URL` | — | Sidecar base URL |
+| `COMPRESSION_SERVICE_SECRET` | — | Shared secret with sidecar's `INTERNAL_API_SECRET` |
+| `IPINFO_TOKEN` | — | Optional — activates ipinfo.io as primary GeoIP provider |
+| `GEOIP_DEV_OVERRIDE_IP` | — | e.g. `8.8.8.8` — forces every lookup to that IP for localhost testing |
+| `TRUST_PROXY_HOPS` | 2 | Numeric only — `true` is rejected |
+| `FRONTEND_URL` | http://localhost:5173 | CORS allowed origin (comma-separated list OK) |
+| `LOG_LEVEL` | info (prod) / debug (dev) | pino level |
+| `R2_ENDPOINT` / `R2_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` / `_BUCKET_NAME` | — | Legacy fallback only — `r2.service.js` is dead code (TD-003) |
+
+See [.env.example](../.env.example) for the canonical list (in sync with code as of 2026-04-21, TD-004).
 
 ---
 
@@ -426,13 +496,16 @@ docker-compose up --build backend
 
 | Code | Meaning |
 |------|---------|
-| 400 | Validation error / Bad request |
-| 401 | Invalid or expired token |
-| 403 | Forbidden / Inactive account |
+| 400 | Validation error / bad request |
+| 401 | Invalid / expired token, `AUTH_CODE_REQUIRED` (mobile 7-day reverify) |
+| 403 | Forbidden / inactive account / wrong role |
 | 404 | Resource not found |
-| 423 | Account locked (too many failed attempts) |
+| 409 | Duplicate (`SESSION_CONFLICT`, duplicate email/phone) |
+| 423 | Account locked (5 failed login attempts) |
 | 429 | Rate limit exceeded |
 | 500 | Internal server error |
+
+Android's `AuthInterceptor` classifies 401s by substring-matching the response body (`SESSION_CONFLICT`, `AUTH_CODE_REQUIRED`, `ACCOUNT_DISABLED`). Coordinated fix to add a stable `errorCode` field is tracked as [TD-A07](../docs/audit/06-tech-debt-ledger.md).
 
 ---
 
@@ -440,20 +513,46 @@ docker-compose up --build backend
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| express | 4.18.2 | Web framework |
-| mongoose | 7.5.0 | MongoDB ODM |
-| jsonwebtoken | 9.0.2 | JWT tokens |
-| bcryptjs | 2.4.3 | Password hashing |
-| speakeasy | 2.0.0 | TOTP 2FA generation |
-| @upstash/redis | 1.x | Redis REST client (with in-memory fallback) |
-| @aws-sdk/client-s3 | 3.932.0 | Cloudflare R2 storage |
-| nodemailer | 7.0.12 | Email delivery |
-| pdfkit | 0.17.2 | PDF generation |
-| archiver | 7.0.1 | ZIP creation |
-| multer | 2.0.2 | File uploads (20MB limit) |
-| helmet | - | Security headers |
-| express-rate-limit | 6.10.0 | Rate limiting |
-| express-validator | 7.0.0 | Input validation |
-| node-cron | 4.2.1 | Scheduled jobs |
-| qrcode | 1.5.4 | QR code for TOTP setup |
-| cookie-parser | - | Parse httpOnly cookies |
+| express | ^4.18.2 | Web framework |
+| mongoose | ^7.5.0 | MongoDB ODM |
+| jsonwebtoken | ^9.0.2 | JWT |
+| bcryptjs | ^3.0.3 | Password + Auth Code hashing |
+| cloudinary | ^2.9.0 | Primary file storage |
+| multer | ^2.0.2 | Multipart upload |
+| multer-storage-cloudinary | ^2.2.1 | Multer ↔ Cloudinary glue |
+| @upstash/redis | ^1.37.0 | Redis REST (with in-memory fallback) |
+| firebase-admin | ^13.0.0 | FCM push |
+| nodemailer | ^8.0.5 | Mailtrap SMTP (dev) |
+| pdfkit | ^0.17.2 | PDF generation |
+| pdf-lib | ^1.17.1 | In-process PDF merge fallback (sidecar handles prod) |
+| archiver | ^7.0.1 | ZIP creation |
+| node-cron | ^4.2.1 | Auto-delete cron |
+| pino | ^10.3.1 | Structured JSON logger |
+| pino-http | ^11.0.0 | Per-request logger + `X-Request-Id` middleware |
+| pino-pretty | ^13.1.3 | Dev pretty-printer |
+| helmet | ^7.0.0 | Security headers |
+| express-rate-limit | ^6.10.0 | Rate limiting |
+| express-validator | ^7.0.0 | Input validation |
+| cookie-parser | ^1.4.7 | httpOnly cookie parsing |
+| @aws-sdk/client-s3 | ^3.932.0 | Legacy R2 fallback (TD-003 dead code) |
+| @aws-sdk/s3-request-presigner | ^3.932.0 | Legacy R2 fallback (TD-003 dead code) |
+
+`speakeasy` (TOTP) and `qrcode` (TOTP setup QR) were removed when TOTP was retired. `axios` and `@getbrevo/brevo` were removed in TD-012 (2026-04-21) — they had zero importers.
+
+---
+
+## Operator Scripts
+
+[scripts/](scripts/) — these intentionally use `console.*` (operator CLIs):
+
+| Script | Purpose |
+|--------|---------|
+| `manage-app-version.js` | Bump `minVersion`/`latestVersion`/`forceUpdate` per platform |
+| `migrate-patient-ids.js` | One-time `SH-001` → `SH-000001` zero-padding |
+| `migrate-folders.js` | Folder schema migration |
+| `migrate-cloudinary-paths.js` | Re-key Cloudinary public_ids |
+| `migrate-hospital-authcode.js` | Backfill missing `authCode` values |
+| `migrate-remove-totp.js` | One-time TOTP/BackupCode removal (already run; left for archive) |
+| `purge-soft-deleted-hospitals.js` | Delete hospitals tagged for purge |
+| `send-test-push.js` | Send a test FCM notification |
+| `test-redis.js`, `test-self-registration.js` | Smoke tests |

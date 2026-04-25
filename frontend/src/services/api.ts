@@ -1,12 +1,42 @@
 /**
  * Axios API Service
  * Centralized API communication with interceptors
+ *
+ * Access-token storage strategy (TD-D3, 2026-04-25):
+ *   The 24h access token is held in a module-scoped variable, NOT in
+ *   sessionStorage. This shrinks the XSS exfiltration window from 24h to
+ *   "as long as the tab is alive AND attacker JS is running". A cold start
+ *   (page refresh / tab reopen) bootstraps a fresh access token via the
+ *   httpOnly refresh cookie + `/auth/refresh-token` (handled in `useAuth`).
+ *
+ *   The short-lived `tempToken` (10-15m, mid-login only) and `resetToken`
+ *   (forgot-password flow) stay in sessionStorage — they're purpose-scoped,
+ *   need to survive a tab-close-during-login mid-flow, and have a much
+ *   smaller blast radius.
  */
 
 import axios, { AxiosError, AxiosInstance } from "axios";
 import { API_URL } from "../config/constants";
 
 const isDev = import.meta.env.DEV;
+
+// ── In-memory access token (TD-D3) ────────────────────────────────────────
+// Module-scoped, never serialised to disk/storage. Set by AuthProvider on
+// mount (after a successful /auth/refresh-token bootstrap) or after the
+// auth-code verify step. Cleared on logout.
+let _accessToken: string | null = null;
+
+export function setAccessToken(token: string | null): void {
+  _accessToken = token || null;
+}
+
+export function getAccessToken(): string | null {
+  return _accessToken;
+}
+
+export function clearAccessToken(): void {
+  _accessToken = null;
+}
 
 class ApiService {
   private api: AxiosInstance;
@@ -43,10 +73,12 @@ class ApiService {
           console.log(`[Axios] ${config.method?.toUpperCase()} ${config.url}`);
         }
 
-        // Attach token if no Authorization header is already set
-        const accessToken = sessionStorage.getItem("accessToken");
+        // Attach token if no Authorization header is already set.
+        // Access token comes from in-memory `_accessToken` (TD-D3), tempToken
+        // from sessionStorage (mid-login flows still need cross-page survival).
+        const accessToken = _accessToken;
         const tempToken = sessionStorage.getItem("tempToken");
-        
+
         if (!config.headers.Authorization) {
           if (accessToken) {
             config.headers.Authorization = `Bearer ${accessToken}`;
@@ -74,6 +106,29 @@ class ApiService {
 
         const originalRequest = error.config;
 
+        if (error.response?.status === 429) {
+          const payload = error.response.data as
+            | { message?: string; data?: { retryAfterSeconds?: number } }
+            | string
+            | undefined;
+
+          const retryAfterSeconds =
+            typeof payload === "object" && payload?.data?.retryAfterSeconds
+              ? payload.data.retryAfterSeconds
+              : undefined;
+
+          const serverMessage =
+            typeof payload === "string"
+              ? payload
+              : payload?.message;
+
+          const fallback = retryAfterSeconds
+            ? `Too many requests. Please retry in ${retryAfterSeconds} second(s).`
+            : "Too many requests. Please retry in a few seconds.";
+
+          error.message = serverMessage || fallback;
+        }
+
         // Handle 401 Unauthorized
         if (error.response?.status === 401 && originalRequest && !originalRequest.url?.includes("/auth/login")) {
           // Account disabled by admin — skip refresh, force logout immediately
@@ -82,7 +137,7 @@ class ApiService {
             responseData?.reason === "ACCOUNT_DISABLED" ||
             String(responseData?.message ?? "").includes("ACCOUNT_DISABLED")
           ) {
-            sessionStorage.removeItem("accessToken");
+            clearAccessToken();
             sessionStorage.removeItem("tempToken");
             localStorage.removeItem("hospital");
             window.location.href = "/login";
@@ -92,7 +147,7 @@ class ApiService {
           // Avoid infinite loop if refresh itself fails
           if (originalRequest.url?.includes("/auth/refresh-token")) {
             if (window.location.pathname !== "/login") {
-              sessionStorage.removeItem("accessToken");
+              clearAccessToken();
               sessionStorage.removeItem("tempToken");
               localStorage.removeItem("hospital");
               window.location.href = "/login";
@@ -117,7 +172,7 @@ class ApiService {
             const refreshResponse = await this.post<any>("/auth/refresh-token", {});
             const newAccessToken = refreshResponse.data?.data?.accessToken;
             if (newAccessToken) {
-              sessionStorage.setItem("accessToken", newAccessToken);
+              setAccessToken(newAccessToken);
               if (originalRequest.headers) {
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
               }
@@ -126,7 +181,7 @@ class ApiService {
             return this.api(originalRequest);
           } catch (refreshError) {
             this.refreshSubscribers = [];
-            sessionStorage.removeItem("accessToken");
+            clearAccessToken();
             sessionStorage.removeItem("tempToken");
             localStorage.removeItem("hospital");
             window.location.href = "/login";

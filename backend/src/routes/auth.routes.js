@@ -10,7 +10,6 @@ import {
   changePassword,
   login,
   verifyAuthCodeLogin,
-  resendLoginAuthCode,
   logout,
   refreshToken,
   registerHospital,
@@ -38,11 +37,12 @@ import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
 import { uploadSingle } from "../middleware/upload.js";
 import { handleValidationErrors, sanitizeRequest } from "../middleware/validateRequest.js";
 import { verifyToken } from "../utils/jwt.js";
+import logger from "../utils/logger.js";
 
 const router = express.Router();
 
 // Debug: indicate this routes file was loaded (helps ensure nodemon restarted)
-console.log(`[auth.routes] loaded at ${new Date().toISOString()}`);
+logger.info({ event: "auth_routes_loaded", at: new Date().toISOString() }, "[auth.routes] loaded");
 
 // Apply sanitization to all auth routes
 router.use(sanitizeRequest);
@@ -196,7 +196,7 @@ router.post(
   "/change-password",
   authLimiter,
   (req, res, next) => {
-    console.log("[auth.routes] change-password middleware invoked", { path: req.path });
+    req.log.debug({ event: "change_password_middleware_invoked", path: req.path }, "[auth.routes] change-password middleware invoked");
     try {
       const token = req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.split(" ")[1] : null;
       if (!token) return res.status(401).json({ success: false, message: "No token provided" });
@@ -243,19 +243,6 @@ router.post(
   ],
   handleValidationErrors,
   verifyAuthCodeLogin,
-);
-
-/**
- * POST /api/auth/login/resend-auth-code
- * Re-send the hospital's Auth Code to their registered email when the
- * welcome email was lost. Requires the AUTH_CODE temp token (password
- * must already be verified). 60-second per-hospital cooldown.
- */
-router.post(
-  "/login/resend-auth-code",
-  otpLimiter,
-  verifyTempToken,
-  resendLoginAuthCode,
 );
 
 /**

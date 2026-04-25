@@ -25,6 +25,12 @@ __pycache__/
 dist/
 build/
 *.apk
+*.aab
+
+# Android signing keys — NEVER commit credentials (TD-A01 / TD-A02)
+*.keystore
+*.jks
+keystore.properties
 
 # IDE
 .idea/
@@ -39,3 +45,12 @@ Thumbs.db
 # Gradle
 .gradle/
 local.properties
+
+# Claude Code local settings (contains user-scoped permissions; not portable)
+.claude/
+
+# graphify knowledge graph (generated; rebuild with /graphify .)
+# graphify-out/
+
+# FUSE / network-mount stale-handle artifacts
+.fuse_hidden*

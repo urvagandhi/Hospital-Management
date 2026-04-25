@@ -103,7 +103,7 @@ const uploadIdempotencyGuard = async (req, res, next) => {
       return res.status(cached.status || 200).json(cached.body);
     }
   } catch (err) {
-    console.error("[uploadIdempotencyGuard]", err.message);
+    req.log.error({ event: "upload_idempotency_lookup_failed", err }, "[uploadIdempotencyGuard]");
   }
   next();
 };
@@ -136,13 +136,6 @@ router.delete("/:patientId/files/:folderName/:fileId", patientController.deleteF
  * B5: Return short-lived signed URL (or public URL for legacy files).
  */
 router.get("/:patientId/files/:folderName/:fileId/signed-url", patientController.getFileSignedUrl);
-
-/**
- * GET /api/patients/:patientId/files/:folderName/:fileId/stream
- * Proxy file from Cloudinary with correct Content-Disposition: inline; filename="..."
- * Used by the web PDF viewer so the viewer's own download button has the right filename.
- */
-router.get("/:patientId/files/:folderName/:fileId/stream", patientController.streamFile);
 
 /**
  * GET /api/patients/:patientId/files/:folderName/:fileId/compressed

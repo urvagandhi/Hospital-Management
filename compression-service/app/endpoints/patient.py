@@ -15,6 +15,7 @@ from app.audit import write_audit_log
 from app.cloudinary_client import (
     SourceFetchError,
     check_cache,
+    fetch_merged_size,
     fetch_source_pdfs,
     generate_delivery_url,
     upload_merged,
@@ -28,6 +29,10 @@ from app.compression.tier_ladder import (
     run_tier_ladder,
 )
 from app.compression.cover_page import generate_cover_page
+from app.merged_cache import (
+    get_meta as get_cache_meta,
+    upsert_meta as upsert_cache_meta,
+)
 from app.schemas import DownloadResponse, PatientDownloadRequest, SourcePdf
 
 logger = logging.getLogger(__name__)
@@ -80,6 +85,30 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
             if cached_id is not None:
                 url = generate_delivery_url(content_hash)
                 elapsed_ms = int((time.monotonic() - start) * 1000)
+
+                # Same sidecar recovery pattern as /api/folder-download:
+                # sidecar row first, Cloudinary Admin API for size-only
+                # fallback on legacy blobs, tier_used stays -1 in that case.
+                meta = await get_cache_meta(db, content_hash, job_id=job_id)
+                if meta is not None:
+                    cached_size = meta["size_bytes"]
+                    cached_tier = meta["tier_used"]
+                else:
+                    fallback_size = await fetch_merged_size(content_hash)
+                    cached_size = fallback_size if fallback_size is not None else 0
+                    cached_tier = -1
+                    logger.warning(
+                        "merged_pdf_cache sidecar missing on cache-hit; used Cloudinary fallback",
+                        extra={
+                            **log_extra,
+                            "event": "cache_meta_missing",
+                            "metrics": {
+                                "content_hash": content_hash,
+                                "recovered_size": cached_size,
+                            },
+                        },
+                    )
+
                 await write_audit_log(
                     db,
                     user_id=body.user_id,
@@ -88,19 +117,29 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                     request_type="patient",
                     target_size_bytes=target_bytes,
                     input_size_bytes=0,
-                    output_size_bytes=0,
-                    tier_used=-1,
+                    output_size_bytes=cached_size,
+                    tier_used=cached_tier,
                     duration_ms=elapsed_ms,
                     cache_hit=True,
                     content_hash=content_hash,
                     job_id=job_id,
                 )
-                logger.info("Cache hit", extra={**log_extra, "event": "cache_hit"})
+                logger.info(
+                    "Cache hit",
+                    extra={
+                        **log_extra,
+                        "event": "cache_hit",
+                        "metrics": {
+                            "size_bytes": cached_size,
+                            "tier_used": cached_tier,
+                        },
+                    },
+                )
                 return DownloadResponse(
                     merged_url=url,
                     content_hash=content_hash,
-                    final_size_bytes=0,
-                    tier_used=-1,
+                    final_size_bytes=cached_size,
+                    tier_used=cached_tier,
                     cache_hit=True,
                 )
 
@@ -126,14 +165,17 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                 for fi, entry in enumerate(body.folder_map):
                     # Build files_info with real page counts for this folder
                     from app.schemas import FileInfo
+
                     folder_files_info = []
                     for i, finfo in enumerate(entry.files_info):
                         src_idx = pdf_idx + i
                         if src_idx < len(source_pdfs_opened):
-                            folder_files_info.append(FileInfo(
-                                file_name=finfo.file_name,
-                                page_count=len(source_pdfs_opened[src_idx].pages),
-                            ))
+                            folder_files_info.append(
+                                FileInfo(
+                                    file_name=finfo.file_name,
+                                    page_count=len(source_pdfs_opened[src_idx].pages),
+                                )
+                            )
                         else:
                             folder_files_info.append(finfo)
 
@@ -177,7 +219,9 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                     )
                     output_size = compressed.stat().st_size
                     result = CompressionResult(
-                        output_path=compressed, tier_used=0, output_size_bytes=output_size
+                        output_path=compressed,
+                        tier_used=0,
+                        output_size_bytes=output_size,
                     )
                 else:
                     result = await run_tier_ladder(
@@ -189,6 +233,17 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                 await loop.run_in_executor(
                     None,
                     partial(upload_merged, result.output_path, content_hash, job_id),
+                )
+
+                # Persist cache metadata BEFORE the audit log so a future
+                # cache-hit for this hash reports accurate size + tier_used.
+                await upsert_cache_meta(
+                    db,
+                    content_hash=content_hash,
+                    size_bytes=result.output_size_bytes,
+                    tier_used=result.tier_used,
+                    request_type="patient",
+                    job_id=job_id,
                 )
 
                 url = generate_delivery_url(content_hash)
@@ -241,7 +296,10 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
         )
         return JSONResponse(
             status_code=504,
-            content={"error": "processing_timeout", "detail": "Pipeline exceeded 100s limit"},
+            content={
+                "error": "processing_timeout",
+                "detail": "Pipeline exceeded 300s limit",
+            },
         )
 
     except SizeFloorBreached as e:

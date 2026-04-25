@@ -2,8 +2,10 @@ import asyncio
 import logging
 import time
 from pathlib import Path
+from typing import Optional
 
 import cloudinary
+import cloudinary.api
 import cloudinary.uploader
 import cloudinary.utils
 import httpx
@@ -80,6 +82,39 @@ def generate_delivery_url(content_hash: str) -> str:
     return _merged_url(f"{_CACHE_PREFIX}/{content_hash}.pdf")
 
 
+async def fetch_merged_size(content_hash: str) -> Optional[int]:
+    """Last-resort size recovery on cache hit when the sidecar meta row is
+    missing (legacy caches / failed upsert). Calls the Cloudinary Admin API
+    — one extra HTTPS round-trip, so only use when `merged_cache.get_meta`
+    returned None. Returns `bytes` as int, or None on any error.
+    `tier_used` cannot be recovered here — Cloudinary doesn't know which tier
+    of our ladder produced the file, only our service does.
+    """
+    public_id = f"{_CACHE_PREFIX}/{content_hash}.pdf"
+
+    def _blocking() -> Optional[int]:
+        try:
+            resource = cloudinary.api.resource(
+                public_id,
+                resource_type="raw",
+                type="upload",
+            )
+            size = resource.get("bytes")
+            return int(size) if size is not None else None
+        except Exception:
+            logger.warning(
+                "Cloudinary resource fallback failed",
+                extra={
+                    "event": "cloudinary_resource_fallback_error",
+                    "metrics": {"public_id": public_id},
+                },
+            )
+            return None
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _blocking)
+
+
 class SourceFetchError(Exception):
     """Raised when a source PDF cannot be downloaded."""
 
@@ -87,6 +122,9 @@ class SourceFetchError(Exception):
         self.public_id = public_id
         self.detail = detail
         super().__init__(f"Failed to fetch {public_id}: {detail}")
+
+
+_FETCH_CONCURRENCY = 10
 
 
 async def fetch_source_pdfs(
@@ -99,37 +137,44 @@ async def fetch_source_pdfs(
 
     Returns list of local file paths in the same order as source_pdfs.
     Raises SourceFetchError on first failure.
+
+    Parallelism is bounded by _FETCH_CONCURRENCY (10) so a patient with
+    hundreds of files can't swamp the event loop, saturate the httpx
+    connection pool, or trip Cloudinary per-IP rate limits (TD-015).
     """
 
+    semaphore = asyncio.Semaphore(_FETCH_CONCURRENCY)
+
     async def _fetch_one(src: SourcePdf, index: int) -> Path:
-        url = _source_delivery_url(src.public_id, src.resource_type, src.access_mode)
-        dest = job_dir / f"source_{index}.pdf"
+        async with semaphore:
+            url = _source_delivery_url(src.public_id, src.resource_type, src.access_mode)
+            dest = job_dir / f"source_{index}.pdf"
 
-        try:
-            async with http_client.stream("GET", url, timeout=60.0) as resp:
-                if resp.status_code != 200:
-                    raise SourceFetchError(
-                        src.public_id,
-                        f"HTTP {resp.status_code}",
-                    )
-                with open(dest, "wb") as f:
-                    async for chunk in resp.aiter_bytes(chunk_size=65536):
-                        f.write(chunk)
-        except httpx.HTTPError as e:
-            raise SourceFetchError(src.public_id, str(e)) from e
+            try:
+                async with http_client.stream("GET", url, timeout=60.0) as resp:
+                    if resp.status_code != 200:
+                        raise SourceFetchError(
+                            src.public_id,
+                            f"HTTP {resp.status_code}",
+                        )
+                    with open(dest, "wb") as f:
+                        async for chunk in resp.aiter_bytes(chunk_size=65536):
+                            f.write(chunk)
+            except httpx.HTTPError as e:
+                raise SourceFetchError(src.public_id, str(e)) from e
 
-        logger.info(
-            "Fetched source PDF",
-            extra={
-                "job_id": job_id,
-                "event": "source_fetched",
-                "metrics": {
-                    "public_id": src.public_id,
-                    "size_bytes": dest.stat().st_size,
+            logger.info(
+                "Fetched source PDF",
+                extra={
+                    "job_id": job_id,
+                    "event": "source_fetched",
+                    "metrics": {
+                        "public_id": src.public_id,
+                        "size_bytes": dest.stat().st_size,
+                    },
                 },
-            },
-        )
-        return dest
+            )
+            return dest
 
     tasks = [_fetch_one(src, i) for i, src in enumerate(source_pdfs)]
     return list(await asyncio.gather(*tasks))

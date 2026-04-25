@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.hospital.management.data.models.Hospital
 import com.hospital.management.data.repository.AuthRepository
 import com.hospital.management.domain.usecase.*
+import com.hospital.management.utils.FileLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -83,7 +84,9 @@ class AuthViewModel(
                     _authState.value = AuthState.Error(errorMsg)
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error(e.message ?: "Network error")
+                android.util.Log.e("AuthViewModel", "Login failed: ${e.javaClass.name}", e)
+                FileLogger.e("AuthViewModel", "Login failed: ${e.javaClass.name} :: ${e.message}", e)
+                _authState.value = AuthState.Error("${e.javaClass.simpleName}: ${e.message ?: "no message"}")
             }
         }
     }
@@ -95,14 +98,17 @@ class AuthViewModel(
                 val response = verifyAuthCodeLoginUseCase(tempToken, authCode)
                 if (response.isSuccessful && response.body()?.success == true) {
                     val data = response.body()?.data
-                    if (data?.accessToken != null && data.refreshToken != null) {
-                        saveTokensUseCase(data.accessToken, data.refreshToken)
+                    val at = data?.accessToken
+                    val rt = data?.refreshToken
+                    val hospital = data?.hospital
+                    if (at != null && rt != null && hospital != null) {
+                        saveTokensUseCase(at, rt)
                         saveHospitalInfoUseCase(
-                            data.hospital._id,
-                            data.hospital.hospitalName,
-                            data.hospital.logoUrl ?: ""
+                            hospital._id,
+                            hospital.hospitalName,
+                            hospital.logoUrl ?: ""
                         )
-                        _authState.value = AuthState.LoggedIn(data.hospital)
+                        _authState.value = AuthState.LoggedIn(hospital)
                     } else {
                         _authState.value = AuthState.Error("Invalid token response")
                     }
@@ -123,11 +129,14 @@ class AuthViewModel(
                 val response = changePasswordUseCase(tempToken, newPassword)
                 if (response.isSuccessful && response.body()?.success == true) {
                     val body = response.body()!!
-                    if (body.data != null) {
-                        saveTokensUseCase(body.data.accessToken, body.data.refreshToken)
-                        saveHospitalInfoUseCase(body.data.hospital._id, body.data.hospital.hospitalName, "")
+                    val data = body.data
+                    val at = data?.accessToken
+                    val rt = data?.refreshToken
+                    if (at != null && rt != null) {
+                        saveTokensUseCase(at, rt)
                     }
-                    _authState.value = AuthState.LoggedIn(body.data?.hospital)
+                    data?.hospital?.let { saveHospitalInfoUseCase(it._id, it.hospitalName, "") }
+                    _authState.value = AuthState.LoggedIn(data?.hospital)
                 } else {
                     val errorMsg = response.body()?.message ?: "Change password failed"
                     _authState.value = AuthState.Error(errorMsg)

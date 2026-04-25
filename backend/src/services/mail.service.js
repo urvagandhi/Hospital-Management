@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import logger from "../utils/logger.js";
+import { geolocateIp, formatLocation } from "./geoip.service.js";
 
 // ---------------------------------------------------------------------------
 // Mailtrap transporter (lazy-loaded in development only)
@@ -50,11 +52,14 @@ async function sendViaBrevo(to, subject, htmlContent) {
   const senderEmail = SENDER_EMAIL();
 
   if (!apiKey) {
-    console.error("[Brevo] BREVO_API_KEY is not set!");
+    logger.error({ event: "brevo_not_configured" }, "[Brevo] BREVO_API_KEY is not set!");
     throw new Error("BREVO_API_KEY environment variable is not configured");
   }
 
-  console.log(`[Brevo] Sending email to=${to}, from=${senderEmail}, subject="${subject}"`);
+  logger.info(
+    { event: "mail_sending", provider: "brevo", to, from: senderEmail, subject },
+    `[Brevo] Sending email to=${to}, from=${senderEmail}, subject="${subject}"`,
+  );
 
   const payload = JSON.stringify({
     sender: { name: SENDER_NAME(), email: senderEmail },
@@ -81,16 +86,26 @@ async function sendViaBrevo(to, subject, htmlContent) {
       const body = await res.json().catch(() => ({}));
 
       if (res.ok) {
-        console.log(`[Brevo] Email sent successfully. messageId=${body.messageId}`);
+        logger.info(
+          { event: "mail_sent", provider: "brevo", to, messageId: body.messageId },
+          `[Brevo] Email sent successfully. messageId=${body.messageId}`,
+        );
         return { success: true, messageId: body.messageId };
       }
 
       // Brevo returned an error
       const errMsg = body.message || JSON.stringify(body);
-      console.error(`[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} failed (${res.status}): ${errMsg}`);
+      const failEvent = res.status === 429 ? "brevo_rate_limited" : "mail_failed";
+      logger.error(
+        { event: failEvent, provider: "brevo", to, status: res.status, attempt: attempt + 1, maxAttempts: MAX_RETRIES + 1, errMsg },
+        `[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} failed (${res.status}): ${errMsg}`,
+      );
       lastError = new Error(`Brevo API error ${res.status}: ${errMsg}`);
     } catch (err) {
-      console.error(`[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} network error:`, err.message);
+      logger.error(
+        { event: "mail_retry", provider: "brevo", to, attempt: attempt + 1, maxAttempts: MAX_RETRIES + 1, err },
+        `[Brevo] Attempt ${attempt + 1}/${MAX_RETRIES + 1} network error`,
+      );
       lastError = err;
     }
 
@@ -130,7 +145,10 @@ export async function sendEmail(to, subject, htmlContent) {
     }
     return await sendViaMailtrap(to, subject, htmlContent);
   } catch (err) {
-    console.error(`[mail.service] Failed to send email to ${to}:`, err.message || err);
+    logger.error(
+      { event: "mail_failed", to, err },
+      `[mail.service] Failed to send email to ${to}`,
+    );
     return { success: false, error: err.message || String(err) };
   }
 }
@@ -177,16 +195,27 @@ function wrapHtml(bodyContent) {
 /**
  * @param {string} to
  * @param {string} otp   — 6-digit code
- * @param {'registration'|'login'} type
+ * @param {'registration'|'login'|'contact_change'} type
  */
 export async function sendOTPEmail(to, otp, type) {
-  const typeLabel = type === "registration" ? "Registration" : "Login";
+  let typeLabel;
+  let typeBody;
+  if (type === "registration") {
+    typeLabel = "Registration";
+    typeBody = "registration";
+  } else if (type === "contact_change") {
+    typeLabel = "Contact Change";
+    typeBody = "email or phone change";
+  } else {
+    typeLabel = "Login";
+    typeBody = "login";
+  }
   const subject = `Your OTP for ${typeLabel} — ${APP_NAME}`;
 
   const body = `
     <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Verification Code</h2>
     <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
-      Use the following one-time password to complete your <strong>${typeLabel.toLowerCase()}</strong>.
+      Use the following one-time password to complete your <strong>${typeBody}</strong>.
     </p>
     <div style="background:#f1f5f9;padding:22px;border-radius:8px;margin-bottom:18px;text-align:center;">
       <p style="margin:0;font-size:36px;font-family:'Courier New',monospace;letter-spacing:10px;color:#0f172a;font-weight:700;">${otp}</p>
@@ -493,6 +522,7 @@ export async function sendNewLoginAlertEmail(to, info) {
   const device = escapeHtml(humanizeUserAgent(info?.userAgent));
   const ip = escapeHtml(info?.ipAddress || "unknown");
   const when = info?.when ? new Date(info.when).toLocaleString() : new Date().toLocaleString();
+  const locationLabel = escapeHtml(formatLocation(await geolocateIp(info?.ipAddress)));
   const subject = `New sign-in — ${APP_NAME}`;
   const body = `
     <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">New sign-in to your account</h2>
@@ -501,7 +531,7 @@ export async function sendNewLoginAlertEmail(to, info) {
     </p>
     <div style="background:#eff6ff;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #bfdbfe;">
       <p style="margin:0 0 6px;font-size:14px;color:#1e3a8a;"><strong>Device:</strong> ${device}</p>
-      <p style="margin:0 0 6px;font-size:14px;color:#1e3a8a;"><strong>IP:</strong> ${ip}</p>
+      <p style="margin:0 0 6px;font-size:14px;color:#1e3a8a;"><strong>IP:</strong> ${ip}${locationLabel ? ` &middot; ${locationLabel}` : ""}</p>
       <p style="margin:0;font-size:14px;color:#1e3a8a;"><strong>When:</strong> ${escapeHtml(when)}</p>
     </div>
     <p style="margin:0 0 8px;color:#475569;font-size:14px;">If this was you, no action is needed.</p>
@@ -516,6 +546,7 @@ export async function sendNewLoginAlertEmail(to, info) {
 export async function sendPasswordChangedEmail(to, info) {
   const when = info?.when ? new Date(info.when).toLocaleString() : new Date().toLocaleString();
   const ip = escapeHtml(info?.ipAddress || "unknown");
+  const locationLabel = escapeHtml(formatLocation(await geolocateIp(info?.ipAddress)));
   const subject = `Password changed — ${APP_NAME}`;
   const body = `
     <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Your password was changed</h2>
@@ -524,7 +555,7 @@ export async function sendPasswordChangedEmail(to, info) {
     </p>
     <div style="background:#f0fdf4;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #bbf7d0;">
       <p style="margin:0 0 6px;font-size:14px;color:#14532d;"><strong>When:</strong> ${escapeHtml(when)}</p>
-      <p style="margin:0;font-size:14px;color:#14532d;"><strong>IP:</strong> ${ip}</p>
+      <p style="margin:0;font-size:14px;color:#14532d;"><strong>IP:</strong> ${ip}${locationLabel ? ` &middot; ${locationLabel}` : ""}</p>
     </div>
     <p style="margin:0;color:#991b1b;font-size:13px;">If you didn't change your password, contact your administrator immediately.</p>`;
   return sendEmail(to, subject, wrapHtml(body));
@@ -578,6 +609,30 @@ export async function sendAccountDeletedEmail(to, info) {
 }
 
 // ---------------------------------------------------------------------------
+// sendLogoutConfirmationEmail — confirm a manual sign-out from a device.
+// Fired by /api/auth/logout, fire-and-forget.
+// ---------------------------------------------------------------------------
+export async function sendLogoutConfirmationEmail(to, info) {
+  const device = escapeHtml(humanizeUserAgent(info?.userAgent));
+  const ip = escapeHtml(info?.ipAddress || "unknown");
+  const when = info?.when ? new Date(info.when).toLocaleString() : new Date().toLocaleString();
+  const locationLabel = escapeHtml(formatLocation(await geolocateIp(info?.ipAddress)));
+  const subject = `Signed out — ${APP_NAME}`;
+  const body = `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#0f172a;">You've been signed out</h2>
+    <p style="margin:0 0 18px;color:#475569;font-size:14px;line-height:1.6;">
+      You successfully signed out of ${APP_NAME} on the device below.
+    </p>
+    <div style="background:#f1f5f9;padding:14px;border-radius:8px;margin-bottom:18px;border:1px solid #cbd5e1;">
+      <p style="margin:0 0 6px;font-size:14px;color:#0f172a;"><strong>Device:</strong> ${device}</p>
+      <p style="margin:0 0 6px;font-size:14px;color:#0f172a;"><strong>IP:</strong> ${ip}${locationLabel ? ` &middot; ${locationLabel}` : ""}</p>
+      <p style="margin:0;font-size:14px;color:#0f172a;"><strong>When:</strong> ${escapeHtml(when)}</p>
+    </div>
+    <p style="margin:0 0 8px;color:#475569;font-size:14px;">If this wasn't you, change your password immediately and revoke any unfamiliar sessions from Security Settings.</p>`;
+  return sendEmail(to, subject, wrapHtml(body));
+}
+
+// ---------------------------------------------------------------------------
 // Default export
 // ---------------------------------------------------------------------------
 export default {
@@ -591,6 +646,7 @@ export default {
   sendContactChangedNoticeEmail,
   sendNewLoginAlertEmail,
   sendPasswordChangedEmail,
+  sendLogoutConfirmationEmail,
   sendAccountDisabledEmail,
   sendAccountEnabledEmail,
   sendAccountDeletedEmail,

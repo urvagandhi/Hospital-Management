@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import Hospital from "../models/Hospital.js";
+import logger from "../utils/logger.js";
 
 /**
  * Parse a raw User-Agent string into a human-readable device description.
@@ -54,12 +55,21 @@ if (
       });
     }
     firebaseEnabled = true;
-    console.log("[push.service] Firebase Admin SDK initialized");
+    logger.info(
+      { event: "firebase_initialized" },
+      "[push.service] Firebase Admin SDK initialized",
+    );
   } catch (error) {
-    console.warn("[push.service] Firebase init failed:", error.message);
+    logger.warn(
+      { event: "firebase_init_failed", err: error },
+      "[push.service] Firebase init failed",
+    );
   }
 } else {
-  console.warn("[push.service] Firebase credentials not set — push notifications disabled");
+  logger.warn(
+    { event: "firebase_disabled" },
+    "[push.service] Firebase credentials not set — push notifications disabled",
+  );
 }
 
 /**
@@ -103,10 +113,16 @@ export async function sendPushToDevice(fcmToken, title, body, data = {}) {
       code === "messaging/invalid-registration-token" ||
       code === "messaging/registration-token-not-registered"
     ) {
-      console.error(`[push.service] Invalid/expired FCM token: ${code}`);
+      logger.warn(
+        { event: "push_invalid_token", code },
+        `[push.service] Invalid/expired FCM token: ${code}`,
+      );
       return { success: false, invalidToken: true };
     }
-    console.error("[push.service] sendPushToDevice failed:", error.message);
+    logger.error(
+      { event: "push_send_failed", err: error },
+      "[push.service] sendPushToDevice failed",
+    );
     return { success: false, error: error.message };
   }
 }
@@ -134,14 +150,18 @@ export async function sendPushToUser(userId, title, body, data = {}) {
     // If the token was invalid/expired, clear it from the database
     if (result.invalidToken) {
       await Hospital.findByIdAndUpdate(userId, { $unset: { fcmToken: "" } });
-      console.info(
-        `[push.service] Cleared invalid FCM token for user ${userId}`
+      logger.info(
+        { event: "push_invalid_token_cleared", userId },
+        `[push.service] Cleared invalid FCM token for user ${userId}`,
       );
     }
 
     return result;
   } catch (error) {
-    console.error("[push.service] sendPushToUser failed:", error.message);
+    logger.error(
+      { event: "push_user_failed", userId, err: error },
+      "[push.service] sendPushToUser failed",
+    );
     return { success: false, error: error.message };
   }
 }
@@ -160,9 +180,9 @@ export async function notifySessionRevoked(userId) {
       { type: "SESSION_REVOKED" }
     );
   } catch (error) {
-    console.error(
-      "[push.service] notifySessionRevoked failed:",
-      error.message
+    logger.error(
+      { event: "push_session_revoked_failed", err: error },
+      "[push.service] notifySessionRevoked failed",
     );
     return { success: false, error: error.message };
   }
@@ -186,7 +206,10 @@ export async function notifyNewLogin(userId, deviceInfo) {
       { type: "NEW_LOGIN" }
     );
   } catch (error) {
-    console.error("[push.service] notifyNewLogin failed:", error.message);
+    logger.error(
+      { event: "push_new_login_failed", err: error },
+      "[push.service] notifyNewLogin failed",
+    );
     return { success: false, error: error.message };
   }
 }
@@ -208,7 +231,10 @@ export async function notifyPasswordChanged(userId) {
       { type: "PASSWORD_CHANGED" }
     );
   } catch (error) {
-    console.error("[push.service] notifyPasswordChanged failed:", error.message);
+    logger.error(
+      { event: "push_password_changed_failed", err: error },
+      "[push.service] notifyPasswordChanged failed",
+    );
     return { success: false, error: error.message };
   }
 }

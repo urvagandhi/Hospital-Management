@@ -1,5 +1,6 @@
-import crypto from "crypto";
 import { Redis } from "@upstash/redis";
+import crypto from "crypto";
+import logger from "../utils/logger.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Redis client with in-memory fallback
@@ -63,17 +64,31 @@ function memTtl(key) {
 }
 
 // ── Select backend at module load ───────────────────────────────────────────
+const isProduction = process.env.NODE_ENV === "production";
 const hasUpstashCreds = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 let usingInMemory = !hasUpstashCreds;
 const upstash = hasUpstashCreds
   ? new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    })
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  })
   : null;
 
 if (!hasUpstashCreds) {
-  console.warn("[redis.service] ⚠️  Upstash credentials missing — using in-memory fallback (dev-only, non-persistent)");
+  if (isProduction) {
+    logger.fatal(
+      { event: "redis_missing_credentials_production" },
+      "[redis.service] Upstash credentials are required in production; refusing to start with in-memory fallback",
+    );
+    throw new Error(
+      "[redis.service] Missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN in production",
+    );
+  }
+
+  logger.warn(
+    { event: "redis_fallback_memory", reason: "missing_credentials" },
+    "[redis.service] ⚠️  Upstash credentials missing — using in-memory fallback (dev-only, non-persistent)",
+  );
 }
 
 /**
@@ -89,7 +104,10 @@ const redis = {
       return await upstash.get(key);
     } catch (err) {
       if (!usingInMemory) {
-        console.warn(`[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`);
+        logger.warn(
+          { event: "redis_fallback_memory", reason: "upstash_unreachable", err },
+          `[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`,
+        );
         usingInMemory = true;
       }
       return memGet(key);
@@ -102,7 +120,10 @@ const redis = {
       return await upstash.set(key, value, opts);
     } catch (err) {
       if (!usingInMemory) {
-        console.warn(`[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`);
+        logger.warn(
+          { event: "redis_fallback_memory", reason: "upstash_unreachable", err },
+          `[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`,
+        );
         usingInMemory = true;
       }
       return memSet(key, value, opts);
@@ -115,7 +136,10 @@ const redis = {
       return await upstash.del(key);
     } catch (err) {
       if (!usingInMemory) {
-        console.warn(`[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`);
+        logger.warn(
+          { event: "redis_fallback_memory", reason: "upstash_unreachable", err },
+          `[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`,
+        );
         usingInMemory = true;
       }
       return memDel(key);
@@ -128,7 +152,10 @@ const redis = {
       return await upstash.ttl(key);
     } catch (err) {
       if (!usingInMemory) {
-        console.warn(`[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`);
+        logger.warn(
+          { event: "redis_fallback_memory", reason: "upstash_unreachable", err },
+          `[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`,
+        );
         usingInMemory = true;
       }
       return memTtl(key);
@@ -187,7 +214,7 @@ export async function setOTP(identifier, otp, ttlSeconds = 600) {
     const data = JSON.stringify({ hash: hashOTP(otp), attempts: 0 });
     await redis.set(key, data, { ex: ttlSeconds });
   } catch (err) {
-    console.error("[redis.service] setOTP error:", err.message);
+    logger.error({ event: "redis_set_otp_failed", err }, "[redis.service] setOTP error");
   }
 }
 
@@ -226,7 +253,7 @@ export async function verifyOTP(identifier, providedOtp, maxAttempts = 5) {
       attemptsLeft: maxAttempts - record.attempts,
     };
   } catch (err) {
-    console.error("[redis.service] verifyOTP error:", err.message);
+    logger.error({ event: "redis_verify_otp_failed", err }, "[redis.service] verifyOTP error");
     return { valid: false, expired: true, attemptsLeft: 0 };
   }
 }
@@ -238,7 +265,7 @@ export async function setPartialRegistration(email, data, ttlSeconds = 1800) {
     const key = `partial_reg:${normalizeIdentifier(email)}`;
     await redis.set(key, JSON.stringify(data), { ex: ttlSeconds });
   } catch (err) {
-    console.error("[redis.service] setPartialRegistration error:", err.message);
+    logger.error({ event: "redis_set_partial_registration_failed", err }, "[redis.service] setPartialRegistration error");
   }
 }
 
@@ -249,7 +276,7 @@ export async function getPartialRegistration(email) {
     if (!raw) return null;
     return typeof raw === "string" ? JSON.parse(raw) : raw;
   } catch (err) {
-    console.error("[redis.service] getPartialRegistration error:", err.message);
+    logger.error({ event: "redis_get_partial_registration_failed", err }, "[redis.service] getPartialRegistration error");
     return null;
   }
 }
@@ -259,9 +286,9 @@ export async function deletePartialRegistration(email) {
     const key = `partial_reg:${normalizeIdentifier(email)}`;
     await redis.del(key);
   } catch (err) {
-    console.error(
-      "[redis.service] deletePartialRegistration error:",
-      err.message
+    logger.error(
+      { event: "redis_delete_partial_registration_failed", err },
+      "[redis.service] deletePartialRegistration error",
     );
   }
 }
@@ -273,7 +300,7 @@ export async function setLastOTPSent(identifier, ttlSeconds = 60) {
     const key = `last_otp_sent:${normalizeIdentifier(identifier)}`;
     await redis.set(key, String(Date.now()), { ex: ttlSeconds });
   } catch (err) {
-    console.error("[redis.service] setLastOTPSent error:", err.message);
+    logger.error({ event: "redis_set_last_otp_sent_failed", err }, "[redis.service] setLastOTPSent error");
   }
 }
 
@@ -283,7 +310,7 @@ export async function getLastOTPSent(identifier) {
     const val = await redis.get(key);
     return val ? Number(val) : null;
   } catch (err) {
-    console.error("[redis.service] getLastOTPSent error:", err.message);
+    logger.error({ event: "redis_get_last_otp_sent_failed", err }, "[redis.service] getLastOTPSent error");
     return null;
   }
 }
@@ -312,7 +339,7 @@ export async function setForgotPasswordOtp(hospitalId, otp, ttlSeconds = 600) {
     const data = JSON.stringify({ hash: hashOTP(otp), attempts: 0 });
     await redis.set(forgotOtpKey(hospitalId), data, { ex: ttlSeconds });
   } catch (err) {
-    console.error("[redis.service] setForgotPasswordOtp error:", err.message);
+    logger.error({ event: "redis_set_forgot_password_otp_failed", err }, "[redis.service] setForgotPasswordOtp error");
   }
 }
 
@@ -340,7 +367,7 @@ export async function verifyForgotPasswordOtp(hospitalId, providedOtp, maxAttemp
     await redis.set(key, JSON.stringify(record), { ex: ttl > 0 ? ttl : 600 });
     return { valid: false, expired: false, attemptsLeft: maxAttempts - record.attempts };
   } catch (err) {
-    console.error("[redis.service] verifyForgotPasswordOtp error:", err.message);
+    logger.error({ event: "redis_verify_forgot_password_otp_failed", err }, "[redis.service] verifyForgotPasswordOtp error");
     return { valid: false, expired: true, attemptsLeft: 0 };
   }
 }
@@ -349,7 +376,7 @@ export async function deleteForgotPasswordOtp(hospitalId) {
   try {
     await redis.del(forgotOtpKey(hospitalId));
   } catch (err) {
-    console.error("[redis.service] deleteForgotPasswordOtp error:", err.message);
+    logger.error({ event: "redis_delete_forgot_password_otp_failed", err }, "[redis.service] deleteForgotPasswordOtp error");
   }
 }
 
@@ -357,7 +384,7 @@ export async function setForgotPasswordLastSent(hospitalId, ttlSeconds = 60) {
   try {
     await redis.set(forgotLastSentKey(hospitalId), String(Date.now()), { ex: ttlSeconds });
   } catch (err) {
-    console.error("[redis.service] setForgotPasswordLastSent error:", err.message);
+    logger.error({ event: "redis_set_forgot_password_last_sent_failed", err }, "[redis.service] setForgotPasswordLastSent error");
   }
 }
 
@@ -366,7 +393,7 @@ export async function getForgotPasswordLastSent(hospitalId) {
     const val = await redis.get(forgotLastSentKey(hospitalId));
     return val ? Number(val) : null;
   } catch (err) {
-    console.error("[redis.service] getForgotPasswordLastSent error:", err.message);
+    logger.error({ event: "redis_get_forgot_password_last_sent_failed", err }, "[redis.service] getForgotPasswordLastSent error");
     return null;
   }
 }
@@ -393,7 +420,7 @@ export async function setContactChangeRequest(hospitalId, field, newValue, otp, 
     });
     await redis.set(contactChangeKey(hospitalId), data, { ex: ttlSeconds });
   } catch (err) {
-    console.error("[redis.service] setContactChangeRequest error:", err.message);
+    logger.error({ event: "redis_set_contact_change_request_failed", err }, "[redis.service] setContactChangeRequest error");
   }
 }
 
@@ -403,7 +430,7 @@ export async function getContactChangeRequest(hospitalId) {
     if (!raw) return null;
     return typeof raw === "string" ? JSON.parse(raw) : raw;
   } catch (err) {
-    console.error("[redis.service] getContactChangeRequest error:", err.message);
+    logger.error({ event: "redis_get_contact_change_request_failed", err }, "[redis.service] getContactChangeRequest error");
     return null;
   }
 }
@@ -441,7 +468,7 @@ export async function verifyContactChangeOtp(hospitalId, providedOtp, maxAttempt
       request: null,
     };
   } catch (err) {
-    console.error("[redis.service] verifyContactChangeOtp error:", err.message);
+    logger.error({ event: "redis_verify_contact_change_otp_failed", err }, "[redis.service] verifyContactChangeOtp error");
     return { valid: false, expired: true, attemptsLeft: 0, request: null };
   }
 }
@@ -450,7 +477,7 @@ export async function deleteContactChangeRequest(hospitalId) {
   try {
     await redis.del(contactChangeKey(hospitalId));
   } catch (err) {
-    console.error("[redis.service] deleteContactChangeRequest error:", err.message);
+    logger.error({ event: "redis_delete_contact_change_request_failed", err }, "[redis.service] deleteContactChangeRequest error");
   }
 }
 
@@ -464,7 +491,7 @@ export async function setBiometricChallenge(hospitalId, deviceId, challenge, ttl
   try {
     await redis.set(bioChallengeKey(hospitalId, deviceId), String(challenge), { ex: ttlSeconds });
   } catch (err) {
-    console.error("[redis.service] setBiometricChallenge error:", err.message);
+    logger.error({ event: "redis_set_biometric_challenge_failed", err }, "[redis.service] setBiometricChallenge error");
   }
 }
 
@@ -479,7 +506,7 @@ export async function peekBiometricChallenge(hospitalId, deviceId) {
     const val = await redis.get(key);
     return val ? String(val) : null;
   } catch (err) {
-    console.error("[redis.service] peekBiometricChallenge error:", err.message);
+    logger.error({ event: "redis_peek_biometric_challenge_failed", err }, "[redis.service] peekBiometricChallenge error");
     return null;
   }
 }
@@ -492,7 +519,7 @@ export async function consumeBiometricChallenge(hospitalId, deviceId) {
   try {
     await redis.del(bioChallengeKey(hospitalId, deviceId));
   } catch (err) {
-    console.error("[redis.service] consumeBiometricChallenge error:", err.message);
+    logger.error({ event: "redis_consume_biometric_challenge_failed", err }, "[redis.service] consumeBiometricChallenge error");
   }
 }
 
@@ -522,7 +549,7 @@ export async function getUploadIdempotentResponse(hospitalId, key) {
     if (!raw) return null;
     return typeof raw === "string" ? JSON.parse(raw) : raw;
   } catch (err) {
-    console.error("[redis.service] getUploadIdempotentResponse error:", err.message);
+    logger.error({ event: "redis_get_upload_idempotent_response_failed", err }, "[redis.service] getUploadIdempotentResponse error");
     return null;
   }
 }
@@ -544,7 +571,7 @@ export async function claimUploadIdempotencyKey(hospitalId, key, ttlSeconds = 86
     const res = await upstash.set(k, placeholder, { ex: ttlSeconds, nx: true });
     return res === "OK";
   } catch (err) {
-    console.error("[redis.service] claimUploadIdempotencyKey error:", err.message);
+    logger.error({ event: "redis_claim_upload_idempotency_failed", err }, "[redis.service] claimUploadIdempotencyKey error");
     return true; // fail-open: better a duplicate than a blocked user
   }
 }
@@ -557,7 +584,7 @@ export async function setUploadIdempotentResponse(hospitalId, key, body, ttlSeco
   try {
     await redis.set(uploadIdemKey(hospitalId, key), JSON.stringify(body), { ex: ttlSeconds });
   } catch (err) {
-    console.error("[redis.service] setUploadIdempotentResponse error:", err.message);
+    logger.error({ event: "redis_set_upload_idempotent_response_failed", err }, "[redis.service] setUploadIdempotentResponse error");
   }
 }
 
@@ -576,7 +603,7 @@ export async function pingRedis() {
     const ok = got === token;
     return { ok, backend: usingInMemory ? "memory" : "upstash" };
   } catch (err) {
-    console.error("[redis.service] pingRedis error:", err.message);
+    logger.error({ event: "redis_ping_failed", err }, "[redis.service] pingRedis error");
     return { ok: false, backend: usingInMemory ? "memory" : "upstash", error: err.message };
   }
 }

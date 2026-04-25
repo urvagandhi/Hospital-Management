@@ -27,6 +27,7 @@ import Patient from "./models/Patient.js";
 import Session from "./models/Session.js";
 import AuditLog from "./models/AuditLog.js";
 import { hashPassword } from "./utils/hash.js";
+import logger from "./utils/logger.js";
 
 const MONGO_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/hospital-management";
 const PASSWORD = "Test@1234";
@@ -142,21 +143,27 @@ function generatePatients(hospitalId, count, initials) {
 // ─── Main ───
 
 async function seed() {
-  console.log("\n=== Hospital Management — Seed Script ===\n");
-  console.log("[Seed] Non-destructive mode: existing hospitals/patients are left untouched.\n");
+  logger.info({ event: "seed_started" }, "=== Hospital Management — Seed Script ===");
+  logger.info(
+    { event: "seed_mode", mode: "non_destructive" },
+    "[Seed] Non-destructive mode: existing hospitals/patients are left untouched."
+  );
 
   if (process.env.NODE_ENV === "production") {
-    console.error("✗ Refusing to run seed in production (NODE_ENV=production).");
+    logger.error({ event: "seed_refused_in_prod" }, "Refusing to run seed in production (NODE_ENV=production).");
     process.exit(1);
   }
 
   try {
     await mongoose.connect(MONGO_URI);
-    console.log("[DB] Connected to", MONGO_URI.replace(/:([^@]+)@/, ":****@"));
+    logger.info(
+      { event: "seed_db_connected", uri: MONGO_URI.replace(/:([^@]+)@/, ":****@") },
+      "[DB] Connected"
+    );
 
     // ── Hash password once ──
     const passwordHash = await hashPassword(PASSWORD);
-    console.log(`[Seed] Password for new accounts: ${PASSWORD}\n`);
+    logger.info({ event: "seed_password_ready", password: PASSWORD }, `[Seed] Password for new accounts: ${PASSWORD}`);
 
     // ── Create hospitals (skip if already exists by email) ──
     const resolvedHospitals = [];
@@ -169,7 +176,10 @@ async function seed() {
 
       if (hospital) {
         const emoji = h.role === "admin" ? "(ADMIN)" : "       ";
-        console.log(`  [Hospital] ${emoji} ${h.hospitalName} — already exists, skipped`);
+        logger.info(
+          { event: "seed_hospital_skipped", hospitalName: h.hospitalName, role: h.role },
+          `  [Hospital] ${emoji} ${h.hospitalName} — already exists, skipped`
+        );
       } else {
         hospital = await Hospital.create({
           ...h,
@@ -181,14 +191,23 @@ async function seed() {
           biometricKeys: [],
         });
         const emoji = h.role === "admin" ? "(ADMIN)" : "       ";
-        console.log(`  [Hospital] ${emoji} ${h.hospitalName} — created`);
-        console.log(`             Login: ${h.email} | ${h.phone}  (AuthCode: ${hospital.authCode})`);
+        logger.info(
+          { event: "seed_hospital_created", hospitalName: h.hospitalName, role: h.role },
+          `  [Hospital] ${emoji} ${h.hospitalName} — created`
+        );
+        logger.info(
+          {
+            event: "seed_hospital_credentials",
+            email: h.email,
+            phone: h.phone,
+            authCode: hospital.authCode,
+          },
+          `             Login: ${h.email} | ${h.phone}  (AuthCode: ${hospital.authCode})`
+        );
       }
 
       resolvedHospitals.push(hospital);
     }
-
-    console.log("");
 
     // ── Create patients (skip if patientId already exists for that hospital) ──
     let created = 0;
@@ -218,21 +237,38 @@ async function seed() {
         await Hospital.updateOne({ _id: hospital._id }, { $set: { patientIdCounter: total } });
       }
 
-      console.log(`  [Patients] ${hospital.hospitalName}: ${hospitalCreated} added, ${count - hospitalCreated} skipped`);
+      logger.info(
+        {
+          event: "seed_patients_batch",
+          hospitalName: hospital.hospitalName,
+          created: hospitalCreated,
+          skipped: count - hospitalCreated,
+        },
+        `  [Patients] ${hospital.hospitalName}: ${hospitalCreated} added, ${count - hospitalCreated} skipped`
+      );
     }
 
-    console.log(`\n=== Seed Complete ===`);
-    console.log(`  Hospitals: ${resolvedHospitals.length} processed`);
-    console.log(`  Patients:  ${created} created, ${skipped} already existed`);
-    console.log(`  Password:  ${PASSWORD} (new accounts only)`);
-    console.log(`\n  Login as admin:    admin@citymedical.com   | +919876543210`);
-    console.log(`  Login as hospital: admin@sunrisehealth.in   | +919876543211\n`);
+    logger.info(
+      {
+        event: "seed_complete",
+        hospitalsProcessed: resolvedHospitals.length,
+        patientsCreated: created,
+        patientsSkipped: skipped,
+        password: PASSWORD,
+      },
+      "=== Seed Complete ==="
+    );
+    logger.info(
+      { event: "seed_login_hints" },
+      "  Login as admin:    admin@citymedical.com   | +919876543210\n" +
+        "  Login as hospital: admin@sunrisehealth.in   | +919876543211"
+    );
 
   } catch (error) {
-    console.error("[Seed] Error:", error);
+    logger.error({ event: "seed_failed", err: error }, "[Seed] Error");
   } finally {
     await mongoose.disconnect();
-    console.log("[DB] Disconnected.");
+    logger.info({ event: "seed_db_disconnect" }, "[DB] Disconnected.");
     process.exit(0);
   }
 }

@@ -8,7 +8,8 @@ import crypto from "crypto";
 import AuditLog from "../models/AuditLog.js";
 import Hospital from "../models/Hospital.js";
 import Session from "../models/Session.js";
-import { sendAccountLockedEmail, sendForgotPasswordOtpEmail, sendOTPEmail, sendPasswordChangedEmail, sendPasswordResetNoticeEmail, sendSessionRevokedEmail, sendWelcomeEmail } from "../services/mail.service.js";
+import { geolocateIp } from "../services/geoip.service.js";
+import { sendAccountLockedEmail, sendForgotPasswordOtpEmail, sendLogoutConfirmationEmail, sendOTPEmail, sendPasswordChangedEmail, sendPasswordResetNoticeEmail, sendSessionRevokedEmail, sendWelcomeEmail } from "../services/mail.service.js";
 import { notifyNewLogin, notifyPasswordChanged, notifySessionRevoked } from "../services/push.service.js";
 import {
   consumeBiometricChallenge,
@@ -30,6 +31,7 @@ import {
 import { createSession, invalidateAllSessions, invalidateSession, refreshAccessToken } from "../services/token.service.js";
 import { comparePassword, hashPassword } from "../utils/hash.js";
 import { generateTempToken, verifyToken } from "../utils/jwt.js";
+import logger from "../utils/logger.js";
 
 /**
  * Change Password - used with purpose-scoped temp token (PASSWORD_CHANGE)
@@ -74,7 +76,7 @@ export const changePassword = async (req, res) => {
         userAgent,
       });
     } catch (e) {
-      console.error("AuditLog error (password change):", e);
+      req.log.error({ event: "audit_log_password_change_failed", err: e }, "AuditLog error (password change)");
     }
 
     // Set cookies
@@ -102,7 +104,7 @@ export const changePassword = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("changePassword error:", error);
+    req.log.error({ event: "change_password_error", err: error }, "changePassword error");
     return res.status(500).json({ success: false, message: "Password change failed" });
   }
 };
@@ -224,7 +226,7 @@ export const registerHospital = async (req, res) => {
         details: { hospitalName: hospital.hospitalName },
       });
     } catch (e) {
-      console.error("AuditLog error (registration):", e);
+      req.log.error({ event: "audit_log_registration_failed", err: e }, "AuditLog error (registration)");
     }
 
     // Send invitation email with temporary password (best-effort)
@@ -233,10 +235,10 @@ export const registerHospital = async (req, res) => {
     try {
       await sendWelcomeEmail(email, hospital.hospitalName, email, tempPassword, hospital.authCode);
       invitationSent = true;
-      console.log(`✅ Welcome email sent to ${email}`);
+      req.log.info({ event: "welcome_email_sent", email }, `Welcome email sent to ${email}`);
     } catch (emailErr) {
       emailError = emailErr.message;
-      console.error("❌ Invitation email send failed:", emailErr);
+      req.log.error({ event: "welcome_email_failed", err: emailErr }, "Invitation email send failed");
       // Continue - hospital created, admin can share credentials manually
     }
 
@@ -257,7 +259,7 @@ export const registerHospital = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Hospital registration error:", error);
+    req.log.error({ event: "register_hospital_error", err: error }, "Hospital registration error");
 
     // Handle multer file upload errors
     if (error.message && error.message.includes("Only image files")) {
@@ -447,14 +449,14 @@ export const registerSelfService = async (req, res) => {
     // ── Deliver OTP ──────────────────────────────────────────────────────
     try {
       await sendOTPEmail(normalizedEmail, otp, "registration");
-      console.log(`✅ Registration OTP sent to email: ${normalizedEmail}`);
+      req.log.info({ event: "registration_otp_sent", email: normalizedEmail }, `Registration OTP sent to email: ${normalizedEmail}`);
     } catch (mailErr) {
-      console.error("❌ OTP email send failed:", mailErr.message);
+      req.log.error({ event: "registration_otp_email_failed", err: mailErr }, "OTP email send failed");
       // Fall through — OTP is still in Redis; dev can read it from the log below
     }
 
     // Dev SMS stub — the real SMS gateway integration will replace this
-    console.log(`📱 [DEV SMS] Registration OTP for ${normalizedPhone}: ${otp}`);
+    req.log.info({ event: "registration_otp_dev_sms", phone: normalizedPhone, otp }, `[DEV SMS] Registration OTP for ${normalizedPhone}`);
 
     return res.status(200).json({
       success: true,
@@ -466,7 +468,7 @@ export const registerSelfService = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("[registerSelfService] error:", error);
+    req.log.error({ event: "register_self_service_error", err: error }, "[registerSelfService] error");
     return res.status(500).json({
       success: false,
       message: "Registration failed. Please try again later.",
@@ -590,14 +592,17 @@ export const verifyRegistrationOtp = async (req, res) => {
       ipAddress: req.ip || req.connection?.remoteAddress,
       userAgent: req.headers["user-agent"],
       details: { hospitalName: hospital.hospitalName, flow: "self-service" },
-    }).catch((e) => console.error("[AuditLog] registration:", e.message));
+    }).catch((e) => req.log.error({ event: "audit_log_registration_failed", err: e }, "[AuditLog] registration"));
 
     // ── Welcome email (no temp password — user chose their own) ─────────
     try {
       await sendWelcomeEmail(hospital.email, hospital.hospitalName, hospital.email, null, hospital.authCode);
-      console.log(`✅ Welcome email sent to ${hospital.email} (authCode: ${hospital.authCode})`);
+      req.log.info(
+        { event: "welcome_email_sent", email: hospital.email, authCode: hospital.authCode },
+        `Welcome email sent to ${hospital.email} (authCode: ${hospital.authCode})`,
+      );
     } catch (mailErr) {
-      console.error("⚠️  Welcome email failed (account was still created):", mailErr.message);
+      req.log.error({ event: "welcome_email_failed_after_create", err: mailErr }, "Welcome email failed (account was still created)");
     }
 
     return res.status(201).json({
@@ -606,7 +611,7 @@ export const verifyRegistrationOtp = async (req, res) => {
       data: hospital,
     });
   } catch (error) {
-    console.error("[verifyRegistrationOtp] error:", error);
+    req.log.error({ event: "verify_registration_otp_error", err: error }, "[verifyRegistrationOtp] error");
     return res.status(500).json({
       success: false,
       message: "Verification failed. Please try again later.",
@@ -659,11 +664,14 @@ export const resendRegistrationOtp = async (req, res) => {
     // ── Deliver ──────────────────────────────────────────────────────────
     try {
       await sendOTPEmail(normalizedEmail, otp, "registration");
-      console.log(`🔁 Registration OTP resent to: ${normalizedEmail}`);
+      req.log.info({ event: "registration_otp_resent", email: normalizedEmail }, `Registration OTP resent to: ${normalizedEmail}`);
     } catch (mailErr) {
-      console.error("❌ OTP resend email failed:", mailErr.message);
+      req.log.error({ event: "registration_otp_resend_email_failed", err: mailErr }, "OTP resend email failed");
     }
-    console.log(`📱 [DEV SMS] Resent registration OTP for ${partial.phone}: ${otp}`);
+    req.log.info(
+      { event: "registration_otp_resend_dev_sms", phone: partial.phone, otp },
+      `[DEV SMS] Resent registration OTP for ${partial.phone}`,
+    );
 
     return res.status(200).json({
       success: true,
@@ -675,7 +683,7 @@ export const resendRegistrationOtp = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("[resendRegistrationOtp] error:", error);
+    req.log.error({ event: "resend_registration_otp_error", err: error }, "[resendRegistrationOtp] error");
     return res.status(500).json({
       success: false,
       message: "Unable to resend OTP. Please try again later.",
@@ -735,7 +743,7 @@ export const login = async (req, res) => {
     try {
       hospital = await Hospital.findOne(query);
     } catch (e) {
-      console.error("[auth] DB find error:", e.message);
+      req.log.error({ event: "login_db_find_error", err: e }, "[auth] DB find error");
       throw new Error("Login failed. Please try again later.");
     }
 
@@ -752,7 +760,7 @@ export const login = async (req, res) => {
           metadata: { identifier: loginId, failureReason: "User not found" },
         });
       } catch (e) {
-        console.error("AuditLog error:", e);
+        req.log.error({ event: "audit_log_login_attempt_failed", err: e }, "AuditLog error");
       }
 
       return res.status(401).json({
@@ -781,7 +789,7 @@ export const login = async (req, res) => {
     try {
       isPasswordValid = await comparePassword(password, hospital.passwordHash);
     } catch (e) {
-      console.error("[auth] Password compare error:", e.message);
+      req.log.error({ event: "login_password_compare_error", err: e }, "[auth] Password compare error");
       throw new Error("Login failed. Please try again later.");
     }
 
@@ -793,7 +801,7 @@ export const login = async (req, res) => {
         try {
           await sendAccountLockedEmail(hospital.email, 30);
         } catch (e) {
-          console.error("Failed to send lock email:", e.message);
+          req.log.error({ event: "account_locked_email_failed", err: e }, "Failed to send lock email");
         }
       } else if (hospital.failedLoginAttempts >= 5) {
         hospital.lockUntil = Date.now() + 15 * 60 * 1000;
@@ -824,7 +832,7 @@ export const login = async (req, res) => {
           details: { step: "PASSWORD_VERIFIED", requirePasswordChange: true },
         });
       } catch (e) {
-        console.error("AuditLog error (password change required):", e);
+        req.log.error({ event: "audit_log_password_change_required_failed", err: e }, "AuditLog error (password change required)");
       }
 
       return res.status(200).json({
@@ -851,7 +859,9 @@ export const login = async (req, res) => {
       const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
       const session = await createSession(hospital._id, deviceId, ipAddress, userAgent, isMobile);
 
-      notifyNewLogin(hospital._id, userAgent).catch(console.error);
+      notifyNewLogin(hospital._id, userAgent).catch((e) =>
+        req.log.error({ event: "notify_new_login_failed", err: e }, "notifyNewLogin failed"),
+      );
 
       await AuditLog.create({
         userId: hospital._id,
@@ -860,7 +870,7 @@ export const login = async (req, res) => {
         ipAddress,
         userAgent,
         details: { method: "BIOMETRIC", isMobile },
-      }).catch((e) => console.error("AuditLog error:", e.message));
+      }).catch((e) => req.log.error({ event: "audit_log_login_success_failed", err: e }, "AuditLog error"));
 
       const isProduction = process.env.NODE_ENV === "production";
       res.cookie("accessToken", session.accessToken, {
@@ -899,7 +909,7 @@ export const login = async (req, res) => {
       ipAddress,
       userAgent,
       details: { step: "PASSWORD_VERIFIED", requireAuthCode: true },
-    }).catch((e) => console.error("AuditLog error:", e.message));
+    }).catch((e) => req.log.error({ event: "audit_log_login_attempt_failed", err: e }, "AuditLog error"));
 
     return res.status(200).json({
       success: true,
@@ -912,7 +922,7 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
+    req.log.error({ event: "login_error", err: error }, "Login error");
     return res.status(500).json({
       success: false,
       message: "Login failed. Please try again later.",
@@ -966,7 +976,10 @@ export const verifyAuthCodeLogin = async (req, res) => {
 
     if (!hospital.authCode) {
       // Legacy account that predates authCode generation — admin must intervene.
-      console.error(`[verifyAuthCodeLogin] Hospital ${hospitalId} has no authCode set`);
+      req.log.error(
+        { event: "auth_code_missing_legacy", hospitalId },
+        `[verifyAuthCodeLogin] Hospital ${hospitalId} has no authCode set`,
+      );
       return res.status(500).json({
         success: false,
         message: "This account cannot log in right now. Please contact support.",
@@ -985,7 +998,9 @@ export const verifyAuthCodeLogin = async (req, res) => {
       hospital.failedLoginAttempts = (hospital.failedLoginAttempts || 0) + 1;
       if (hospital.failedLoginAttempts >= 10) {
         hospital.lockUntil = Date.now() + 30 * 60 * 1000;
-        sendAccountLockedEmail(hospital.email, 30).catch((e) => console.error("Lock email failed:", e.message));
+        sendAccountLockedEmail(hospital.email, 30).catch((e) =>
+          req.log.error({ event: "account_locked_email_failed", err: e }, "Lock email failed"),
+        );
       } else if (hospital.failedLoginAttempts >= 5) {
         hospital.lockUntil = Date.now() + 15 * 60 * 1000;
       }
@@ -998,7 +1013,7 @@ export const verifyAuthCodeLogin = async (req, res) => {
         ipAddress,
         userAgent,
         details: { step: "AUTH_CODE", failedAttempts: hospital.failedLoginAttempts },
-      }).catch((e) => console.error("AuditLog error:", e.message));
+      }).catch((e) => req.log.error({ event: "audit_log_login_failed", err: e }, "AuditLog error"));
 
       return res.status(401).json({ success: false, message: "Invalid auth code" });
     }
@@ -1014,7 +1029,9 @@ export const verifyAuthCodeLogin = async (req, res) => {
     const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
     const session = await createSession(hospital._id, deviceId, ipAddress, userAgent, isMobile);
 
-    notifyNewLogin(hospital._id, userAgent).catch(console.error);
+    notifyNewLogin(hospital._id, userAgent).catch((e) =>
+      req.log.error({ event: "notify_new_login_failed", err: e }, "notifyNewLogin failed"),
+    );
 
     AuditLog.create({
       userId: hospital._id,
@@ -1023,7 +1040,7 @@ export const verifyAuthCodeLogin = async (req, res) => {
       ipAddress,
       userAgent,
       details: { method: "AUTH_CODE", isMobile },
-    }).catch((e) => console.error("AuditLog error:", e.message));
+    }).catch((e) => req.log.error({ event: "audit_log_login_success_failed", err: e }, "AuditLog error"));
 
     const isProduction = process.env.NODE_ENV === "production";
     res.cookie("accessToken", session.accessToken, {
@@ -1051,80 +1068,8 @@ export const verifyAuthCodeLogin = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("verifyAuthCodeLogin error:", error);
+    req.log.error({ event: "verify_auth_code_login_error", err: error }, "verifyAuthCodeLogin error");
     return res.status(500).json({ success: false, message: "Login failed. Please try again later." });
-  }
-};
-
-/**
- * POST /api/auth/login/resend-auth-code
- *
- * Re-send the hospital's 6-digit authCode to their registered email. Used
- * when the welcome email was lost/not received and the user is stuck at the
- * second-factor step. Gated by the AUTH_CODE temp token (user already proved
- * password ownership). Does NOT rotate the authCode and does NOT touch the
- * password — this works for both admin-provisioned and self-registered
- * hospitals, regardless of mustChangePassword.
- */
-const resendAuthCodeCooldown = new Map(); // in-memory 60s cooldown per hospital
-
-export const resendLoginAuthCode = async (req, res) => {
-  try {
-    const hospitalId = req.hospitalId;
-    if (!hospitalId) {
-      return res.status(401).json({ success: false, message: "Invalid session token" });
-    }
-
-    const last = resendAuthCodeCooldown.get(hospitalId);
-    if (last && Date.now() - last < 60_000) {
-      const retryAfter = Math.ceil((60_000 - (Date.now() - last)) / 1000);
-      return res.status(429).json({
-        success: false,
-        message: `Please wait ${retryAfter} second(s) before resending.`,
-        data: { retryAfterSeconds: retryAfter },
-      });
-    }
-
-    const hospital = await Hospital.findById(hospitalId).select("email hospitalName authCode isActive");
-    if (!hospital || !hospital.isActive) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
-    }
-    if (!hospital.authCode) {
-      return res.status(500).json({
-        success: false,
-        message: "This account cannot resend an Auth Code right now. Please contact support.",
-      });
-    }
-
-    resendAuthCodeCooldown.set(hospitalId, Date.now());
-
-    try {
-      await sendWelcomeEmail(hospital.email, hospital.hospitalName, hospital.email, null, hospital.authCode);
-    } catch (mailErr) {
-      console.error("[resendLoginAuthCode] mail send failed:", mailErr.message);
-      return res.status(502).json({
-        success: false,
-        message: "Could not deliver the email. Please try again in a moment.",
-      });
-    }
-
-    AuditLog.create({
-      userId: hospitalId,
-      action: "AUTH_CODE_RESEND",
-      status: "SUCCESS",
-      ipAddress: req.ip || req.connection?.remoteAddress,
-      userAgent: req.headers["user-agent"],
-      details: { channel: "email" },
-    }).catch((e) => console.error("[AuditLog] resendAuthCode:", e.message));
-
-    return res.status(200).json({
-      success: true,
-      message: "Auth Code re-sent to your registered email.",
-      data: { retryAfterSeconds: 60 },
-    });
-  } catch (error) {
-    console.error("[resendLoginAuthCode] error:", error);
-    return res.status(500).json({ success: false, message: "Failed to resend Auth Code" });
   }
 };
 
@@ -1145,17 +1090,24 @@ export const refreshToken = async (req, res) => {
 
     const tokens = await refreshAccessToken(token);
 
-    // Get hospital data to send back
-    const session = await Session.findOne({ refreshToken: token });
-    const hospital = await Hospital.findById(session.hospitalId);
+    // After rotation, `token` no longer matches any session — use the hospitalId
+    // surfaced by refreshAccessToken() instead of re-querying by the old token.
+    const hospital = await Hospital.findById(tokens.hospitalId);
 
-    // Set new access token cookie
+    // Set new access + refresh cookies. Refresh rotation REQUIRES overwriting
+    // the httpOnly refresh cookie so the next refresh presents the new token.
     const isProduction = process.env.NODE_ENV === "production";
     res.cookie("accessToken", tokens.accessToken, {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
       maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+    res.cookie("refreshToken", tokens.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year — matches login
     });
 
     return res.status(200).json({
@@ -1168,7 +1120,7 @@ export const refreshToken = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Token refresh error:", error);
+    req.log.error({ event: "refresh_token_error", err: error }, "Token refresh error");
     return res.status(401).json({
       success: false,
       message: error.message,
@@ -1177,49 +1129,100 @@ export const refreshToken = async (req, res) => {
 };
 
 /**
- * Logout - Invalidate session
+ * Logout - Invalidate (HARD-delete) session
  * POST /api/auth/logout
+ *
+ * Idempotent: returns 200 even if no session was found (e.g. retry after
+ * network failure, or token already expired). Manual logout always hard-
+ * deletes so the row never counts toward the 2-mobile-session limit.
  */
 export const logout = async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
 
-    let invalidated = false;
+    // Capture the session BEFORE deletion so we can email/audit/cleanup.
     let sessionDoc = null;
 
-    // Try to invalidate by refresh token first
     if (refreshToken) {
-      sessionDoc = await Session.findOne({ refreshToken }).select("hospitalId isMobile").lean();
-      invalidated = await invalidateSession(refreshToken);
+      sessionDoc = await Session.findOne({ refreshToken })
+        .select("_id hospitalId isMobile userAgent ipAddress")
+        .lean();
     }
 
-    // Fallback: invalidate by session ID from the access token
-    if (!invalidated) {
+    // Fallback: locate by sessionId from the access token (covers cases where
+    // the refresh-cookie was already cleared but the access-token is still in
+    // the Authorization header).
+    if (!sessionDoc) {
       const accessToken = req.cookies?.accessToken ||
         (req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.slice(7) : null);
       if (accessToken) {
         try {
           const { verifyToken } = await import("../utils/jwt.js");
           const decoded = verifyToken(accessToken);
-          if (decoded.sessionId) {
-            sessionDoc = await Session.findById(decoded.sessionId).select("hospitalId isMobile").lean();
-            await Session.updateOne({ _id: decoded.sessionId }, { isActive: false });
-            invalidated = true;
+          if (decoded?.sessionId) {
+            sessionDoc = await Session.findById(decoded.sessionId)
+              .select("_id hospitalId isMobile userAgent ipAddress")
+              .lean();
           }
-        } catch (_) { /* token may be expired, ignore */ }
+        } catch (_) { /* expired/invalid access token — proceed to clear cookies */ }
       }
     }
 
-    // Clear stored FCM token when a mobile session logs out so we don't
-    // keep pushing to a device that's no longer signed in. Safe to do even
-    // if another mobile device is active — it will re-register its own
-    // token on next app launch via POST /api/auth/fcm-token.
-    if (sessionDoc?.isMobile && sessionDoc.hospitalId) {
-      Hospital.findByIdAndUpdate(sessionDoc.hospitalId, { $unset: { fcmToken: "" } })
-        .catch((e) => console.error("[logout] clear fcmToken failed:", e.message));
+    if (sessionDoc?._id) {
+      // HARD delete — leaves no ghost entry that would count toward the
+      // 2-mobile-session limit. The forced/admin-revoke paths intentionally
+      // soft-delete so the old device's next API call gets a 401-with-reason;
+      // for *self-initiated* logout that's not needed.
+      await Session.deleteOne({ _id: sessionDoc._id });
+
+      // Audit (fire-and-forget — never block logout).
+      AuditLog.create({
+        userId: sessionDoc.hospitalId,
+        action: "LOGOUT",
+        status: "SUCCESS",
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent: req.headers["user-agent"],
+        details: { sessionId: String(sessionDoc._id) },
+      }).catch((e) => req.log.error({ event: "logout_audit_failed", err: e }, "[logout] audit failed"));
+
+      // Send confirmation email + smart fcmToken cleanup. Both fire-and-
+      // forget so notification failures never break logout.
+      Hospital.findById(sessionDoc.hospitalId).select("email").lean()
+        .then((h) => {
+          if (h?.email) {
+            sendLogoutConfirmationEmail(h.email, {
+              userAgent: sessionDoc.userAgent,
+              ipAddress: sessionDoc.ipAddress,
+              when: new Date(),
+            }).catch((e) => req.log.error({ event: "logout_email_failed", err: e }, "[logout] email failed"));
+          }
+        })
+        .catch((e) => req.log.error({ event: "logout_hospital_lookup_failed", err: e }, "[logout] hospital lookup failed"));
+
+      // FCM token is stored once on the Hospital doc and shared across
+      // devices. Only wipe it if no other mobile session remains — otherwise
+      // we'd silently disable push for the still-signed-in device.
+      if (sessionDoc.isMobile && sessionDoc.hospitalId) {
+        Session.countDocuments({
+          hospitalId: sessionDoc.hospitalId,
+          isMobile: true,
+          isActive: true,
+          expiresAt: { $gt: new Date() },
+        })
+          .then((remaining) => {
+            if (remaining === 0) {
+              return Hospital.findByIdAndUpdate(
+                sessionDoc.hospitalId,
+                { $unset: { fcmToken: "" } },
+              );
+            }
+            return null;
+          })
+          .catch((e) => req.log.error({ event: "logout_fcm_cleanup_failed", err: e }, "[logout] fcmToken cleanup failed"));
+      }
     }
 
-    // Clear cookies
+    // Always clear cookies + return 200 (idempotent).
     res.clearCookie("accessToken");
     res.clearCookie("refreshToken");
 
@@ -1228,7 +1231,7 @@ export const logout = async (req, res) => {
       message: "Logged out successfully",
     });
   } catch (error) {
-    console.error("Logout error:", error);
+    req.log.error({ event: "logout_error", err: error }, "Logout error");
     return res.status(500).json({
       success: false,
       message: "Logout failed",
@@ -1276,7 +1279,7 @@ export const registerBiometric = async (req, res) => {
 
     return res.status(200).json({ success: true, message: "Biometric registered successfully" });
   } catch (error) {
-    console.error("Biometric register error:", error);
+    req.log.error({ event: "biometric_register_error", err: error }, "Biometric register error");
     return res.status(500).json({ success: false, message: "Failed to register biometric" });
   }
 };
@@ -1315,7 +1318,7 @@ export const biometricChallenge = async (req, res) => {
       data: { challenge, hospitalId: hospital._id },
     });
   } catch (error) {
-    console.error("Biometric challenge error:", error);
+    req.log.error({ event: "biometric_challenge_error", err: error }, "Biometric challenge error");
     return res.status(500).json({ success: false, message: "Failed to generate challenge" });
   }
 };
@@ -1375,7 +1378,7 @@ export const verifyBiometric = async (req, res) => {
         publicKeyPem = keyObject.export({ format: "pem", type: "spki" });
       }
     } catch (e) {
-      console.error("[verifyBiometric] public key parse failed:", e.message);
+      req.log.error({ event: "biometric_key_parse_failed", err: e }, "[verifyBiometric] public key parse failed");
       return res.status(401).json({
         success: false,
         code: "KEY_PARSE_FAILED",
@@ -1393,12 +1396,15 @@ export const verifyBiometric = async (req, res) => {
       verifier.end();
       isValid = verifier.verify(publicKeyPem, signature, "base64");
     } catch (e) {
-      console.error("[verifyBiometric] verify threw:", e.message);
+      req.log.error({ event: "biometric_verify_threw", err: e }, "[verifyBiometric] verify threw");
       isValid = false;
     }
 
     if (!isValid) {
-      console.warn(`[verifyBiometric] signature invalid for hospital=${hospitalId} device=${deviceId}`);
+      req.log.warn(
+        { event: "biometric_signature_invalid", hospitalId, deviceId },
+        `[verifyBiometric] signature invalid for hospital=${hospitalId} device=${deviceId}`,
+      );
       // Do NOT consume the challenge — let the client retry within TTL.
       return res.status(401).json({
         success: false,
@@ -1418,7 +1424,9 @@ export const verifyBiometric = async (req, res) => {
     const session = await createSession(hospital._id, sessionDeviceId, ipAddress, userAgent, isMobile);
 
     // Fire-and-forget push notification for new login
-    notifyNewLogin(hospital._id, userAgent).catch(console.error);
+    notifyNewLogin(hospital._id, userAgent).catch((e) =>
+      req.log.error({ event: "notify_new_login_failed", err: e }, "notifyNewLogin failed"),
+    );
 
     await AuditLog.create({
       userId: hospital._id,
@@ -1453,7 +1461,7 @@ export const verifyBiometric = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Biometric verify error:", error);
+    req.log.error({ event: "biometric_verify_error", err: error }, "Biometric verify error");
     return res.status(500).json({ success: false, message: "Biometric verification failed" });
   }
 };
@@ -1522,7 +1530,7 @@ export const checkSessionConflict = async (req, res) => {
       sessionLimit: MOBILE_SESSION_LIMIT,
     });
   } catch (error) {
-    console.error("Session conflict check error:", error);
+    req.log.error({ event: "session_conflict_check_error", err: error }, "Session conflict check error");
     return res.status(500).json({ success: false, message: "Failed to check session" });
   }
 };
@@ -1556,9 +1564,22 @@ export const listActiveSessions = async (req, res) => {
       isActive: true,
       expiresAt: { $gt: new Date() },
     })
-      .select("_id deviceId platform isMobile userAgent ipAddress lastSeenAt lastSeenIp createdAt")
+      .select("_id deviceId platform isMobile userAgent ipAddress lastSeenAt lastSeenIp location createdAt")
       .sort({ createdAt: -1 })
       .lean();
+
+    // Lazy-backfill: older sessions created before location was added have
+    // no displayName. Kick off a geo lookup for each missing one. Doesn't
+    // block the current response — next list call will have them.
+    for (const s of sessions) {
+      if (!s.location || !s.location.displayName) {
+        geolocateIp(s.ipAddress)
+          .then((location) =>
+            Session.updateOne({ _id: s._id }, { $set: { location } }),
+          )
+          .catch(() => {});
+      }
+    }
 
     const data = sessions.map((s) => ({
       id: String(s._id),
@@ -1571,13 +1592,14 @@ export const listActiveSessions = async (req, res) => {
       ipAddress: s.ipAddress,
       lastSeenAt: s.lastSeenAt,
       lastSeenIp: s.lastSeenIp,
+      location: s.location || null,
       createdAt: s.createdAt,
       isCurrent: currentSessionId && String(s._id) === String(currentSessionId),
     }));
 
     return res.status(200).json({ success: true, data, count: data.length });
   } catch (error) {
-    console.error("List sessions error:", error);
+    req.log.error({ event: "list_sessions_error", err: error }, "List sessions error");
     return res.status(500).json({ success: false, message: "Failed to list sessions" });
   }
 };
@@ -1617,18 +1639,20 @@ export const revokeSessionById = async (req, res) => {
       { isActive: false, revokedReason: "ADMIN_REVOKE" },
     );
 
-    notifySessionRevoked(hospitalId).catch(console.error);
+    notifySessionRevoked(hospitalId).catch((e) =>
+      req.log.error({ event: "notify_session_revoked_failed", err: e }, "notifySessionRevoked failed"),
+    );
     Hospital.findById(hospitalId).select("email").lean()
       .then((h) => h?.email && sendSessionRevokedEmail(h.email, {
         oldDevice: revokedDoc.userAgent,
         newDevice: req.headers["user-agent"],
         reason: "ADMIN_REVOKE",
       }))
-      .catch((e) => console.error("[Auth] session-revoked email failed:", e.message));
+      .catch((e) => req.log.error({ event: "session_revoked_email_failed", err: e }, "[Auth] session-revoked email failed"));
 
     return res.status(200).json({ success: true, message: "Session revoked" });
   } catch (error) {
-    console.error("Revoke session error:", error);
+    req.log.error({ event: "revoke_session_error", err: error }, "Revoke session error");
     return res.status(500).json({ success: false, message: "Failed to revoke session" });
   }
 };
@@ -1649,14 +1673,16 @@ export const revokeAllOtherSessions = async (req, res) => {
     );
 
     if (result.modifiedCount > 0) {
-      notifySessionRevoked(hospitalId).catch(console.error);
+      notifySessionRevoked(hospitalId).catch((e) =>
+        req.log.error({ event: "notify_session_revoked_failed", err: e }, "notifySessionRevoked failed"),
+      );
       Hospital.findById(hospitalId).select("email").lean()
         .then((h) => h?.email && sendSessionRevokedEmail(h.email, {
           oldDevice: null,
           newDevice: req.headers["user-agent"],
           reason: "ADMIN_REVOKE",
         }))
-        .catch((e) => console.error("[Auth] session-revoked email failed:", e.message));
+        .catch((e) => req.log.error({ event: "session_revoked_email_failed", err: e }, "[Auth] session-revoked email failed"));
     }
 
     return res.status(200).json({
@@ -1665,7 +1691,7 @@ export const revokeAllOtherSessions = async (req, res) => {
       revokedCount: result.modifiedCount || 0,
     });
   } catch (error) {
-    console.error("Revoke all others error:", error);
+    req.log.error({ event: "revoke_all_others_error", err: error }, "Revoke all others error");
     return res.status(500).json({ success: false, message: "Failed to revoke sessions" });
   }
 };
@@ -1738,7 +1764,7 @@ export const reverifyAuthCode = async (req, res) => {
       message: "Auth Code re-verified. You're good for another 7 days.",
     });
   } catch (error) {
-    console.error("reverifyAuthCode error:", error);
+    req.log.error({ event: "reverify_auth_code_error", err: error }, "reverifyAuthCode error");
     return res.status(500).json({ success: false, message: "Re-verification failed" });
   }
 };
@@ -1761,18 +1787,20 @@ export const forceLogoutOtherSessions = async (req, res) => {
     );
 
     // Fire-and-forget push + email notification for revoked sessions
-    notifySessionRevoked(hospitalId).catch(console.error);
+    notifySessionRevoked(hospitalId).catch((e) =>
+      req.log.error({ event: "notify_session_revoked_failed", err: e }, "notifySessionRevoked failed"),
+    );
     Hospital.findById(hospitalId).select("email").lean()
       .then((h) => h?.email && sendSessionRevokedEmail(h.email, {
         oldDevice: null,
         newDevice: req.headers["user-agent"],
         reason: "SESSION_CONFLICT",
       }))
-      .catch((e) => console.error("[Auth] session-revoked email failed:", e.message));
+      .catch((e) => req.log.error({ event: "session_revoked_email_failed", err: e }, "[Auth] session-revoked email failed"));
 
     return res.status(200).json({ success: true, message: "Other sessions terminated" });
   } catch (error) {
-    console.error("Force logout error:", error);
+    req.log.error({ event: "force_logout_error", err: error }, "Force logout error");
     return res.status(500).json({ success: false, message: "Failed to terminate sessions" });
   }
 };
@@ -1795,7 +1823,7 @@ export const storeFcmToken = async (req, res) => {
 
     return res.status(200).json({ success: true, message: "FCM token stored" });
   } catch (error) {
-    console.error("Store FCM token error:", error);
+    req.log.error({ event: "store_fcm_token_error", err: error }, "Store FCM token error");
     return res.status(500).json({ success: false, message: "Failed to store FCM token" });
   }
 };
@@ -1846,7 +1874,7 @@ async function lookupHospitalByIdentifier(identifier) {
   try {
     return await Hospital.findOne(query);
   } catch (e) {
-    console.error("[forgotPassword] DB find error:", e.message);
+    logger.error({ event: "forgot_password_db_find_error", err: e }, "[forgotPassword] DB find error");
     return null;
   }
 }
@@ -1891,7 +1919,7 @@ export const forgotPasswordInit = async (req, res) => {
           metadata: { identifier: String(identifier), failureReason: hospital ? "inactive" : "not_found" },
         });
       } catch (e) {
-        console.error("AuditLog error (forgot init miss):", e);
+        req.log.error({ event: "audit_log_forgot_init_miss_failed", err: e }, "AuditLog error (forgot init miss)");
       }
       return res.status(200).json(genericOk);
     }
@@ -1916,9 +1944,9 @@ export const forgotPasswordInit = async (req, res) => {
 
     try {
       await sendForgotPasswordOtpEmail(hospital.email, otp);
-      console.log(`✅ Forgot-password OTP sent to: ${hospital.email}`);
+      req.log.info({ event: "forgot_password_otp_sent", email: hospital.email }, `Forgot-password OTP sent to: ${hospital.email}`);
     } catch (mailErr) {
-      console.error("❌ Forgot-password OTP email failed:", mailErr.message);
+      req.log.error({ event: "forgot_password_otp_email_failed", err: mailErr }, "Forgot-password OTP email failed");
       // Don't leak failure — OTP is still in Redis for dev
     }
 
@@ -1931,12 +1959,12 @@ export const forgotPasswordInit = async (req, res) => {
         userAgent,
       });
     } catch (e) {
-      console.error("AuditLog error (forgot init):", e);
+      req.log.error({ event: "audit_log_forgot_init_failed", err: e }, "AuditLog error (forgot init)");
     }
 
     return res.status(200).json(genericOk);
   } catch (error) {
-    console.error("[forgotPasswordInit] error:", error);
+    req.log.error({ event: "forgot_password_init_error", err: error }, "[forgotPasswordInit] error");
     return res.status(500).json({ success: false, message: "Unable to process request. Please try again later." });
   }
 };
@@ -1982,7 +2010,7 @@ export const forgotPasswordVerify = async (req, res) => {
           metadata: { failureReason: result.expired ? "expired" : "invalid_otp" },
         });
       } catch (e) {
-        console.error("AuditLog error (forgot verify fail):", e);
+        req.log.error({ event: "audit_log_forgot_verify_fail_failed", err: e }, "AuditLog error (forgot verify fail)");
       }
 
       if (result.expired) {
@@ -2009,7 +2037,7 @@ export const forgotPasswordVerify = async (req, res) => {
         userAgent,
       });
     } catch (e) {
-      console.error("AuditLog error (forgot verify):", e);
+      req.log.error({ event: "audit_log_forgot_verify_failed", err: e }, "AuditLog error (forgot verify)");
     }
 
     return res.status(200).json({
@@ -2021,7 +2049,7 @@ export const forgotPasswordVerify = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("[forgotPasswordVerify] error:", error);
+    req.log.error({ event: "forgot_password_verify_error", err: error }, "[forgotPasswordVerify] error");
     return res.status(500).json({ success: false, message: "Unable to verify code. Please try again later." });
   }
 };
@@ -2082,9 +2110,11 @@ export const forgotPasswordReset = async (req, res) => {
     // Revoke every session — a password reset is a trust-reset event.
     try {
       await invalidateAllSessions(hospital._id);
-      notifySessionRevoked(hospital._id).catch((e) => console.error("[forgotPasswordReset] push notify failed:", e.message));
+      notifySessionRevoked(hospital._id).catch((e) =>
+        req.log.error({ event: "forgot_password_reset_push_failed", err: e }, "[forgotPasswordReset] push notify failed"),
+      );
     } catch (e) {
-      console.error("[forgotPasswordReset] session invalidation failed:", e.message);
+      req.log.error({ event: "forgot_password_reset_session_invalidation_failed", err: e }, "[forgotPasswordReset] session invalidation failed");
     }
 
     // Best-effort cleanup of any stale OTP material.
@@ -2101,11 +2131,11 @@ export const forgotPasswordReset = async (req, res) => {
         userAgent,
       });
     } catch (e) {
-      console.error("AuditLog error (forgot reset):", e);
+      req.log.error({ event: "audit_log_forgot_reset_failed", err: e }, "AuditLog error (forgot reset)");
     }
 
     sendPasswordResetNoticeEmail(hospital.email, "reset").catch((e) =>
-      console.error("[forgotPasswordReset] notice email failed:", e.message),
+      req.log.error({ event: "forgot_password_reset_notice_email_failed", err: e }, "[forgotPasswordReset] notice email failed"),
     );
 
     return res.status(200).json({
@@ -2113,7 +2143,7 @@ export const forgotPasswordReset = async (req, res) => {
       message: "Password reset successfully. Please sign in with your new password.",
     });
   } catch (error) {
-    console.error("[forgotPasswordReset] error:", error);
+    req.log.error({ event: "forgot_password_reset_error", err: error }, "[forgotPasswordReset] error");
     return res.status(500).json({ success: false, message: "Password reset failed. Please try again later." });
   }
 };
@@ -2162,7 +2192,7 @@ export const changePasswordSettings = async (req, res) => {
           metadata: { failureReason: "invalid_current_password" },
         });
       } catch (e) {
-        console.error("AuditLog error (pw change fail):", e);
+        req.log.error({ event: "audit_log_pw_change_fail_failed", err: e }, "AuditLog error (pw change fail)");
       }
       return res.status(401).json({ success: false, message: "Current password is incorrect" });
     }
@@ -2181,9 +2211,11 @@ export const changePasswordSettings = async (req, res) => {
         { hospitalId, isActive: true, _id: { $ne: currentSessionId } },
         { isActive: false, revokedReason: "ADMIN_REVOKE" },
       );
-      notifySessionRevoked(hospitalId).catch((e) => console.error("[changePasswordSettings] push failed:", e.message));
+      notifySessionRevoked(hospitalId).catch((e) =>
+        req.log.error({ event: "change_password_settings_push_failed", err: e }, "[changePasswordSettings] push failed"),
+      );
     } catch (e) {
-      console.error("[changePasswordSettings] revoke others failed:", e.message);
+      req.log.error({ event: "change_password_settings_revoke_others_failed", err: e }, "[changePasswordSettings] revoke others failed");
     }
 
     try {
@@ -2195,18 +2227,18 @@ export const changePasswordSettings = async (req, res) => {
         userAgent,
       });
     } catch (e) {
-      console.error("AuditLog error (pw change):", e);
+      req.log.error({ event: "audit_log_pw_change_failed", err: e }, "AuditLog error (pw change)");
     }
 
     sendPasswordResetNoticeEmail(hospital.email, "changed").catch((e) =>
-      console.error("[changePasswordSettings] notice email failed:", e.message),
+      req.log.error({ event: "change_password_settings_notice_email_failed", err: e }, "[changePasswordSettings] notice email failed"),
     );
 
     // B6 — security-alert email + push, gated by notificationPrefs.securityAlerts
     const wantsAlerts = !hospital.notificationPrefs || hospital.notificationPrefs.securityAlerts !== false;
     if (wantsAlerts) {
       sendPasswordChangedEmail(hospital.email, { ipAddress, when: new Date() })
-        .catch((e) => console.error("[changePasswordSettings] alert email failed:", e.message));
+        .catch((e) => req.log.error({ event: "change_password_settings_alert_email_failed", err: e }, "[changePasswordSettings] alert email failed"));
       notifyPasswordChanged(hospitalId).catch(() => {});
     }
 
@@ -2215,7 +2247,7 @@ export const changePasswordSettings = async (req, res) => {
       message: "Password changed successfully. Other sessions have been signed out.",
     });
   } catch (error) {
-    console.error("[changePasswordSettings] error:", error);
+    req.log.error({ event: "change_password_settings_error", err: error }, "[changePasswordSettings] error");
     return res.status(500).json({ success: false, message: "Password change failed. Please try again later." });
   }
 };

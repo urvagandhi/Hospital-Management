@@ -63,7 +63,7 @@ export const getVersion = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("[appVersion] getVersion error:", err);
+    req.log.error({ event: "app_version_fetch_failed", err }, "[appVersion] getVersion error");
     return res.status(500).json({ success: false, message: "Failed to fetch version" });
   }
 };
@@ -97,7 +97,7 @@ export const createVersion = async (req, res) => {
     });
     return res.status(201).json({ success: true, data: entry });
   } catch (err) {
-    console.error("[appVersion] createVersion error:", err);
+    req.log.error({ event: "app_version_create_failed", err }, "[appVersion] createVersion error");
     return res.status(500).json({ success: false, message: "Failed to create version" });
   }
 };

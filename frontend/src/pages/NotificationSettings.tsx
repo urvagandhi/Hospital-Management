@@ -1,215 +1,342 @@
 /**
- * Notification Settings — preferences toggles with optimistic UI + toasty
- * "Saved" feedback. Uses findByIdAndUpdate on the backend so toggling is
- * fast and doesn't re-validate the whole Hospital doc.
+ * Notification Settings — grouped bento preferences with optimistic save.
+ *
+ * Behavior preserved from the previous version:
+ *   • 3 toggles backed by `notificationPrefs` on the Hospital doc
+ *   • Each toggle auto-saves via PUT /me/notification-preferences
+ *   • Optimistic UI with rollback on failure + a transient "Saved" toast
+ *
+ * Layout: follows the mockup's two-card grouping (Security + News & Updates)
+ * and drops the left-side settings sidebar per project convention.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "../components/Button";
 import { ErrorMessage } from "../components/ErrorMessage";
+import PageLoader from "../components/PageLoader";
 import { useAuth } from "../hooks/useAuth";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import {
-    getNotificationPrefs,
-    updateNotificationPrefs,
-    type NotificationPrefs,
+  getNotificationPrefs,
+  updateNotificationPrefs,
+  type NotificationPrefs,
 } from "../services/hospitalService";
 
 const DEFAULT_PREFS: NotificationPrefs = {
-    newLoginAlert: true,
-    securityAlerts: true,
-    marketing: false,
+  newLoginAlert: true,
+  securityAlerts: true,
+  marketing: false,
 };
 
 type Row = {
-    key: keyof NotificationPrefs;
-    label: string;
-    desc: string;
-    icon: React.ReactNode;
-    adminOnly?: boolean;
+  key: keyof NotificationPrefs;
+  label: string;
+  desc: string;
 };
 
-const ROWS: Row[] = [
-    {
+type Group = {
+  id: string;
+  title: string;
+  description: string;
+  tone: "primary" | "neutral";
+  icon: React.ReactNode;
+  rows: Row[];
+};
+
+const GROUPS: Group[] = [
+  {
+    id: "security",
+    title: "Security Alerts",
+    description:
+      "Critical updates regarding account access and data integrity. Clinical alerts are always delivered regardless of these settings.",
+    tone: "primary",
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="w-5 h-5"
+        aria-hidden="true"
+      >
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <rect x="9" y="10" width="6" height="6" rx="1" />
+        <path d="M10 10V8a2 2 0 1 1 4 0v2" />
+      </svg>
+    ),
+    rows: [
+      {
         key: "newLoginAlert",
         label: "New login alerts",
-        desc: "Get notified when a new device signs in to your account",
-        icon: (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-            </svg>
-        ),
-    },
-    {
+        desc: "Email you immediately when a new device signs in to your account.",
+      },
+      {
         key: "securityAlerts",
         label: "Security alerts",
-        desc: "Password changes, session revocations, and security events",
-        icon: (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-        ),
-    },
-    {
+        desc: "Password changes, session revocations, and account-security events.",
+      },
+    ],
+  },
+  {
+    id: "news",
+    title: "News & Updates",
+    description: "Information to help you get the most out of HospitALL.",
+    tone: "neutral",
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="w-5 h-5"
+        aria-hidden="true"
+      >
+        <path d="M3 11l18-8v18l-18-8z" />
+        <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+      </svg>
+    ),
+    rows: [
+      {
         key: "marketing",
         label: "Product updates",
-        desc: "Occasional news, tips, and feature announcements",
-        icon: (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-            </svg>
-        ),
-    },
+        desc: "Occasional news, tips, and feature announcements.",
+      },
+    ],
+  },
 ];
 
-/** iOS-style toggle switch (Tailwind-only, no extra deps). */
-const Toggle: React.FC<{ checked: boolean; disabled?: boolean; onChange: () => void }> = ({
-    checked, disabled, onChange,
-}) => (
-    <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        disabled={disabled}
-        onClick={onChange}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-            checked ? "bg-blue-600" : "bg-gray-200"
-        }`}
-    >
-        <span
-            aria-hidden="true"
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                checked ? "translate-x-5" : "translate-x-0"
-            }`}
-        />
-    </button>
+// ── Toggle ──────────────────────────────────────────────────────────────────
+
+const Toggle: React.FC<{
+  checked: boolean;
+  disabled?: boolean;
+  onChange: () => void;
+  label: string;
+}> = ({ checked, disabled, onChange, label }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={label}
+    disabled={disabled}
+    onClick={onChange}
+    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+      checked ? "bg-gradient-primary shadow-primary" : "bg-neutral-200"
+    }`}
+  >
+    <span
+      aria-hidden="true"
+      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-1 ring-black/5 transition duration-200 ease-in-out absolute top-0.5 ${
+        checked ? "translate-x-[22px]" : "translate-x-0.5"
+      }`}
+    />
+  </button>
 );
 
+// ── Page ───────────────────────────────────────────────────────────────────
+
 const NotificationSettings: React.FC = () => {
-    const navigate = useNavigate();
-    const { state } = useAuth();
-    const isAdmin = state.hospital?.role === "admin";
-    const visibleRows = ROWS.filter((r) => !r.adminOnly || isAdmin);
+  const navigate = useNavigate();
+  const { state } = useAuth();
 
-    const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
-    const [loading, setLoading] = useState(true);
-    const [savingKey, setSavingKey] = useState<keyof NotificationPrefs | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [savedFlash, setSavedFlash] = useState<string | null>(null);
-    const flashTimer = useRef<number | null>(null);
+  useDocumentTitle("Notifications — Hospital Management");
 
-    useEffect(() => {
-        if (!state.isAuthenticated && !state.loading) navigate("/login");
-    }, [state.isAuthenticated, state.loading, navigate]);
+  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] =
+    useState<keyof NotificationPrefs | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState<string | null>(null);
+  const flashTimer = useRef<number | null>(null);
 
-    const load = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const data = await getNotificationPrefs();
-            setPrefs({ ...DEFAULT_PREFS, ...data });
-        } catch (e: any) {
-            setError(e.message || "Failed to load preferences");
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+  useEffect(() => {
+    if (!state.isAuthenticated && !state.loading) navigate("/login");
+  }, [state.isAuthenticated, state.loading, navigate]);
 
-    useEffect(() => { void load(); }, [load]);
-
-    useEffect(() => () => {
-        if (flashTimer.current) window.clearTimeout(flashTimer.current);
-    }, []);
-
-    const showSaved = (label: string) => {
-        setSavedFlash(label);
-        if (flashTimer.current) window.clearTimeout(flashTimer.current);
-        flashTimer.current = window.setTimeout(() => setSavedFlash(null), 1600);
-    };
-
-    const togglePref = async (k: keyof NotificationPrefs, label: string) => {
-        const previous = prefs;
-        const next = { ...prefs, [k]: !prefs[k] };
-        // Optimistic update
-        setPrefs(next);
-        setSavingKey(k);
-        setError(null);
-        try {
-            const res = await updateNotificationPrefs({ [k]: next[k] });
-            setPrefs({ ...DEFAULT_PREFS, ...res });
-            showSaved(`${label} ${next[k] ? "enabled" : "disabled"}`);
-        } catch (e: any) {
-            setPrefs(previous);
-            setError(e.message || "Failed to save. Please try again.");
-        } finally {
-            setSavingKey(null);
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
-            </div>
-        );
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getNotificationPrefs();
+      setPrefs({ ...DEFAULT_PREFS, ...data });
+    } catch (e: any) {
+      setError(e.message || "Failed to load preferences");
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 py-8 px-4">
-            <div className="max-w-2xl mx-auto">
-                <div className="mb-6 flex items-center justify-between">
-                    <Button label="← Back to Dashboard" onClick={() => navigate("/dashboard")} variant="ghost" size="sm" />
-                    {savedFlash && (
-                        <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-full px-3 py-1 animate-fadeIn">
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                            {savedFlash}
-                        </div>
-                    )}
-                </div>
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-                <div className="bg-white rounded-2xl shadow-xl p-6">
-                    <h1 className="text-2xl font-bold text-gray-800 mb-1">Notifications</h1>
-                    <p className="text-sm text-gray-500 mb-4">
-                        Choose which notifications you'd like to receive. Changes save automatically.
+  useEffect(
+    () => () => {
+      if (flashTimer.current) window.clearTimeout(flashTimer.current);
+    },
+    [],
+  );
+
+  const showSaved = (msg: string) => {
+    setSavedFlash(msg);
+    if (flashTimer.current) window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setSavedFlash(null), 1800);
+  };
+
+  const togglePref = async (k: keyof NotificationPrefs, label: string) => {
+    const previous = prefs;
+    const next = { ...prefs, [k]: !prefs[k] };
+    setPrefs(next); // optimistic
+    setSavingKey(k);
+    setError(null);
+    try {
+      const res = await updateNotificationPrefs({ [k]: next[k] });
+      setPrefs({ ...DEFAULT_PREFS, ...res });
+      showSaved(`${label} ${next[k] ? "enabled" : "disabled"}`);
+    } catch (e: any) {
+      setPrefs(previous);
+      setError(e.message || "Failed to save. Please try again.");
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  if (loading) return <PageLoader label="Loading notification settings…" />;
+
+  return (
+    <div className="relative min-h-[calc(100vh-4rem)] bg-surface-bg overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 -right-16 w-96 h-96 rounded-full bg-primary-100/50 blur-3xl"
+      />
+
+      <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {/* Header */}
+        <header className="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <h1 className="font-heading text-3xl sm:text-4xl font-bold tracking-tight text-neutral-900 mb-2">
+              Notification Preferences
+            </h1>
+            <p className="text-neutral-500 text-sm md:text-base leading-relaxed max-w-xl">
+              Manage how we contact you. Critical clinical alerts are always
+              delivered regardless of these settings.
+            </p>
+          </div>
+          {/* Saved flash */}
+          <div
+            className={`self-start sm:self-end transition-all duration-200 ${
+              savedFlash
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 -translate-y-1 pointer-events-none"
+            }`}
+          >
+            {savedFlash && (
+              <div className="inline-flex items-center gap-2 text-sm font-medium text-success bg-success/10 border border-success/20 rounded-full px-3 py-1.5">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4"
+                  aria-hidden="true"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                {savedFlash}
+              </div>
+            )}
+          </div>
+        </header>
+
+        {error && (
+          <div className="mb-6">
+            <ErrorMessage
+              message={error}
+              type="error"
+              onClose={() => setError(null)}
+            />
+          </div>
+        )}
+
+        {/* Grouped bento cards */}
+        <div className="space-y-6">
+          {GROUPS.map((group) => (
+            <section
+              key={group.id}
+              className="bg-surface-white rounded-2xl shadow-card border border-neutral-200 overflow-hidden"
+            >
+              {/* Group header */}
+              <div className="p-6 border-b border-neutral-100">
+                <div className="flex items-start gap-3">
+                  <span
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset ${
+                      group.tone === "primary"
+                        ? "bg-primary-50 text-primary-600 ring-primary-600/15"
+                        : "bg-neutral-100 text-neutral-600 ring-neutral-300/40"
+                    }`}
+                  >
+                    {group.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold text-neutral-900 mb-0.5">
+                      {group.title}
+                    </h2>
+                    <p className="text-sm text-neutral-500 leading-relaxed">
+                      {group.description}
                     </p>
+                  </div>
+                </div>
+              </div>
 
-                    {error && <ErrorMessage message={error} type="error" onClose={() => setError(null)} />}
-
-                    <div className="divide-y divide-gray-100">
-                        {visibleRows.map(({ key, label, desc, icon }) => (
-                            <div key={key} className="flex items-center gap-4 py-4">
-                                <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${
-                                    prefs[key] ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"
-                                }`}>
-                                    {icon}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-gray-800">{label}</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
-                                </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                    {savingKey === key && (
-                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400" />
-                                    )}
-                                    <Toggle
-                                        checked={prefs[key]}
-                                        disabled={savingKey !== null}
-                                        onChange={() => togglePref(key, label)}
-                                    />
-                                </div>
-                            </div>
-                        ))}
+              {/* Rows */}
+              <div className="divide-y divide-neutral-100">
+                {group.rows.map(({ key, label, desc }) => (
+                  <div
+                    key={key}
+                    className="flex items-start justify-between gap-5 px-6 py-5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-neutral-900 mb-0.5">
+                        {label}
+                      </p>
+                      <p className="text-sm text-neutral-500 leading-relaxed">
+                        {desc}
+                      </p>
                     </div>
-
-                    <p className="text-xs text-gray-400 mt-6 text-center">
-                        Notifications are delivered by email and (for mobile users) push.
-                    </p>
-                </div>
-            </div>
+                    <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                      {savingKey === key && (
+                        <span
+                          aria-hidden="true"
+                          className="w-3 h-3 rounded-full border-2 border-primary-200 border-t-primary-600 animate-spin"
+                        />
+                      )}
+                      <Toggle
+                        checked={!!prefs[key]}
+                        disabled={savingKey !== null}
+                        onChange={() => togglePref(key, label)}
+                        label={label}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
-    );
+
+        <p className="text-xs text-neutral-400 mt-8 text-center">
+          Notifications are delivered by email · mobile push when signed in on
+          Android. Changes save automatically.
+        </p>
+      </div>
+    </div>
+  );
 };
 
 export default NotificationSettings;

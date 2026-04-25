@@ -5,6 +5,7 @@
  */
 
 import config from "../config/env.js";
+import logger from "../utils/logger.js";
 
 // ── Error Classes ──────────────────────────────────────────
 
@@ -77,7 +78,10 @@ async function postToService(endpoint, body) {
   if (res.status === 413) throw new SizeFloorError(errBody.min_achievable_mb);
   if (res.status === 502) throw new SourceFetchError(errBody.failed_public_id, errBody.detail);
   if (res.status === 504) throw new ServiceTimeoutError();
-  console.error(`[Compression] Service returned ${res.status}:`, JSON.stringify(errBody));
+  logger.error(
+    { event: "sidecar_503", status: res.status, body: errBody },
+    `Compression service returned ${res.status}`,
+  );
   throw new ServiceUnavailableError(`Compression service returned ${res.status}`);
 }
 

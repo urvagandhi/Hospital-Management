@@ -204,3 +204,38 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
 -dontwarn org.jspecify.**
+
+# ---------------------------------------------------------------------------
+# 17.  GAPS identified during release-build login debugging (2026-04-21)
+# ---------------------------------------------------------------------------
+
+# GAP 1: domain.usecase package wasn't kept — LoginUseCase, VerifyAuthCodeLoginUseCase, etc.
+-keep class com.hospital.management.domain.** { *; }
+-keepclassmembers class com.hospital.management.domain.** { *; }
+
+# GAP 2: Kotlin metadata + coroutine continuations (required for Gson reflection +
+#        suspend-function generic resolution). Missing metadata makes Kotlin data
+#        classes look like Java POJOs with no constructors to Gson.
+-keep class kotlin.Metadata { *; }
+-keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
+-keepattributes AnnotationDefault
+-keep class kotlin.coroutines.Continuation
+-keepclassmembers class kotlin.coroutines.jvm.internal.** { *; }
+
+# GAP 3: Stronger Gson rules — keep no-arg constructor synthesis + enum reflection
+-keepclassmembers,allowobfuscation class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+-keepclassmembers class com.hospital.management.data.models.** {
+    <init>(...);
+    <fields>;
+}
+-keepclassmembers enum com.hospital.management.** { *; }
+
+# GAP 4: OkHttp / Okio — explicit keeps on top of the -dontwarn above
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+
+# Retrofit suspend function reflection — belt-and-braces on top of section 4
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response

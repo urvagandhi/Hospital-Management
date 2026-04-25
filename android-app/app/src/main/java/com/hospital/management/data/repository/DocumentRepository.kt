@@ -84,6 +84,7 @@ class DocumentRepository(
         patientId: String,
         folderName: String,
         fileUri: String,
+        ownerHospitalId: String,
         idempotencyKey: String = newIdempotencyKey(),
         uploadProfileUsed: Int = -1
     ): Long {
@@ -93,7 +94,8 @@ class DocumentRepository(
             fileUri = fileUri,
             status = SyncStatus.PENDING,
             idempotencyKey = idempotencyKey,
-            uploadProfileUsed = uploadProfileUsed
+            uploadProfileUsed = uploadProfileUsed,
+            ownerHospitalId = ownerHospitalId
         )
         return documentDao.insert(document)
     }

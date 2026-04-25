@@ -17,27 +17,94 @@ import {
 } from "../services/mail.service.js";
 import {
   setContactChangeRequest,
+  getContactChangeRequest,
   verifyContactChangeOtp,
   deleteContactChangeRequest,
 } from "../services/redis.service.js";
 
 /**
- * Get all hospitals
+ * Get all hospitals (cursor-paginated, admin-only).
+ *
+ * Query params:
+ *   ?limit=50        page size, capped at 100 (default 50)
+ *   ?cursor=<_id>    _id of the last hospital from the previous page
+ *   ?search=<str>    case-insensitive substring match against name / email /
+ *                    phone / authCode (server-side — removes the old
+ *                    in-memory filter in the admin UI)
+ *
+ * Sort: `_id` descending. ObjectIds are time-ordered so this matches the
+ * previous `createdAt: -1` behaviour while giving a stable cursor field that
+ * doesn't need a compound tie-breaker.
+ *
+ * First-page responses additionally include a `totals` block so the admin
+ * dashboard's stat cards don't need a second request.
+ *
  * GET /api/hospitals
  */
 export const getAllHospitals = async (req, res) => {
   try {
-    const hospitals = await Hospital.find()
-      .select("-passwordHash -fcmToken -biometricKeys -failedLoginAttempts -lockUntil -__v")
-      .sort({ createdAt: -1 });
+    const requestedLimit = parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 100)
+      : 50;
 
-    return res.status(200).json({
+    const cursor = typeof req.query.cursor === "string" ? req.query.cursor.trim() : "";
+    const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+
+    const query = {};
+
+    if (cursor) {
+      // Cursor validation: only pass Mongo ObjectIds; ignore garbage.
+      if (/^[0-9a-fA-F]{24}$/.test(cursor)) {
+        query._id = { $lt: cursor };
+      }
+    }
+
+    if (search) {
+      // Escape regex metachars so a search like "dr." doesn't blow up.
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(escaped, "i");
+      query.$or = [
+        { hospitalName: rx },
+        { email: rx },
+        { phone: rx },
+        { authCode: rx },
+      ];
+    }
+
+    // Fetch one extra record to detect "more available" without a count query.
+    const rows = await Hospital.find(query)
+      .select("-passwordHash -fcmToken -biometricKeys -failedLoginAttempts -lockUntil -__v")
+      .sort({ _id: -1 })
+      .limit(limit + 1);
+
+    const hasMore = rows.length > limit;
+    const hospitals = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? String(hospitals[hospitals.length - 1]._id) : null;
+
+    const response = {
       success: true,
       data: hospitals,
       count: hospitals.length,
-    });
+      nextCursor,
+      limit,
+    };
+
+    // Only compute + return totals on the first page (no cursor) so subsequent
+    // pages stay cheap. Ignores the search filter — totals are global.
+    if (!cursor) {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [total, active, recentWeek] = await Promise.all([
+        Hospital.countDocuments({}),
+        Hospital.countDocuments({ isActive: true }),
+        Hospital.countDocuments({ createdAt: { $gte: weekAgo } }),
+      ]);
+      response.totals = { total, active, recentWeek };
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
-    console.error("Get hospitals error:", error);
+    req.log.error({ event: "hospitals_list_error", err: error }, "Get hospitals error");
     return res.status(500).json({
       success: false,
       message: "Failed to fetch hospitals",
@@ -74,7 +141,7 @@ export const getCurrentHospital = async (req, res) => {
       data: hospital,
     });
   } catch (error) {
-    console.error("Get current hospital error:", error);
+    req.log.error({ event: "hospital_me_fetch_error", err: error }, "Get current hospital error");
     return res.status(500).json({
       success: false,
       message: "Failed to fetch hospital",
@@ -104,7 +171,7 @@ export const getHospitalById = async (req, res) => {
       data: hospital,
     });
   } catch (error) {
-    console.error("Get hospital error:", error);
+    req.log.error({ event: "hospital_fetch_error", err: error }, "Get hospital error");
     return res.status(500).json({
       success: false,
       message: "Failed to fetch hospital",
@@ -152,6 +219,15 @@ export const updateHospital = async (req, res) => {
         message: "Hospital not found",
       });
     }
+
+    // Snapshot pre-change values so the audit log can record a diff.
+    const preChange = {
+      hospitalName: hospital.hospitalName,
+      email: hospital.email,
+      phone: hospital.phone,
+      address: hospital.address,
+      isActive: hospital.isActive,
+    };
 
     // Check if email is already taken by another hospital
     if (email !== hospital.email) {
@@ -204,6 +280,33 @@ export const updateHospital = async (req, res) => {
 
     await hospital.save();
 
+    // Always-on audit: record every successful update, noting which fields
+    // actually changed so compliance can trace who edited what (TD-001).
+    // The activeTransition PROFILE_PATCHED entries below remain as richer,
+    // purpose-specific records.
+    const changedFields = [];
+    if (preChange.hospitalName !== hospital.hospitalName) changedFields.push("hospitalName");
+    if (preChange.email !== hospital.email) changedFields.push("email");
+    if (preChange.phone !== hospital.phone) changedFields.push("phone");
+    if ((preChange.address || "") !== (hospital.address || "")) changedFields.push("address");
+    if (preChange.isActive !== hospital.isActive) changedFields.push("isActive");
+    if (req.file) changedFields.push("logoUrl");
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "HOSPITAL_UPDATED",
+      status: "SUCCESS",
+      ipAddress: req.ip || req.connection?.remoteAddress,
+      userAgent: req.headers["user-agent"],
+      details: {
+        targetHospitalId: String(hospital._id),
+        initiatedBy: req.hospital?.id ? String(req.hospital.id) : null,
+        selfUpdate: Boolean(req.isSelf),
+        changedFields,
+        activeTransition,
+      },
+    }).catch((e) => req.log.error({ event: "audit_log_hospital_updated_failed", err: e }, "AuditLog error (hospital updated)"));
+
     // On isActive transition, revoke sessions (if disabled) and notify via email.
     // Fire-and-forget — do not block the response.
     if (activeTransition === "disabled") {
@@ -213,10 +316,10 @@ export const updateHospital = async (req, res) => {
           { hospitalId: hospital._id, isActive: true },
           { $set: { isActive: false, revokedReason: "ACCOUNT_DISABLED" } },
         );
-      } catch (e) { console.error("[updateHospital] session revoke failed:", e.message); }
+      } catch (e) { req.log.error({ event: "update_hospital_session_revoke_failed", err: e }, "[updateHospital] session revoke failed"); }
       if (hospital.email) {
         sendAccountDisabledEmail(hospital.email, { hospitalName: hospital.hospitalName })
-          .catch((e) => console.error("[updateHospital] disabled email:", e.message));
+          .catch((e) => req.log.error({ event: "update_hospital_disabled_email_failed", err: e }, "[updateHospital] disabled email"));
       }
       AuditLog.create({
         userId: hospital._id,
@@ -229,7 +332,7 @@ export const updateHospital = async (req, res) => {
     } else if (activeTransition === "enabled") {
       if (hospital.email) {
         sendAccountEnabledEmail(hospital.email, { hospitalName: hospital.hospitalName })
-          .catch((e) => console.error("[updateHospital] enabled email:", e.message));
+          .catch((e) => req.log.error({ event: "update_hospital_enabled_email_failed", err: e }, "[updateHospital] enabled email"));
       }
       AuditLog.create({
         userId: hospital._id,
@@ -247,7 +350,7 @@ export const updateHospital = async (req, res) => {
       data: hospital,
     });
   } catch (error) {
-    console.error("Update hospital error:", error);
+    req.log.error({ event: "update_hospital_error", err: error }, "Update hospital error");
 
     // Handle duplicate key errors
     if (error.code === 11000) {
@@ -348,7 +451,7 @@ export const resendWelcomeEmail = async (req, res) => {
         hospital.authCode,
       );
     } catch (mailErr) {
-      console.error("[resendWelcomeEmail] mail send failed:", mailErr.message);
+      req.log.error({ event: "resend_welcome_email_failed", err: mailErr }, "[resendWelcomeEmail] mail send failed");
       return res.status(502).json({
         success: false,
         message: "The welcome email could not be delivered. Please try again.",
@@ -366,7 +469,7 @@ export const resendWelcomeEmail = async (req, res) => {
         targetEmail: hospital.email,
         resetPassword: Boolean(newTempPassword),
       },
-    }).catch((e) => console.error("[AuditLog] resendWelcome:", e.message));
+    }).catch((e) => req.log.error({ event: "audit_log_resend_welcome_failed", err: e }, "[AuditLog] resendWelcome"));
 
     return res.status(200).json({
       success: true,
@@ -375,7 +478,7 @@ export const resendWelcomeEmail = async (req, res) => {
         : "Auth Code re-sent to the hospital's registered email.",
     });
   } catch (error) {
-    console.error("[resendWelcomeEmail] error:", error);
+    req.log.error({ event: "resend_welcome_email_error", err: error }, "[resendWelcomeEmail] error");
     return res.status(500).json({ success: false, message: "Failed to resend welcome email" });
   }
 };
@@ -449,11 +552,11 @@ export const patchMe = async (req, res) => {
       ipAddress,
       userAgent,
       details: changes,
-    }).catch((e) => console.error("AuditLog error (profile patch):", e));
+    }).catch((e) => req.log.error({ event: "audit_log_profile_patch_failed", err: e }, "AuditLog error (profile patch)"));
 
     return res.status(200).json({ success: true, message: "Profile updated", data: hospital });
   } catch (error) {
-    console.error("[patchMe] error:", error);
+    req.log.error({ event: "patch_me_error", err: error }, "[patchMe] error");
     return res.status(500).json({ success: false, message: "Failed to update profile" });
   }
 };
@@ -523,9 +626,9 @@ export const initContactChange = async (req, res) => {
     const otpRecipient = field === "email" ? newValue : hospital.email;
     const otpChannel = field === "email" ? "new_email" : "current_email";
     try {
-      await sendOTPEmail(otpRecipient, otp, "login");
+      await sendOTPEmail(otpRecipient, otp, "contact_change");
     } catch (e) {
-      console.error("[initContactChange] OTP email failed:", e.message);
+      req.log.error({ event: "contact_change_otp_email_failed", err: e }, "[initContactChange] OTP email failed");
     }
 
     AuditLog.create({
@@ -535,7 +638,7 @@ export const initContactChange = async (req, res) => {
       ipAddress,
       userAgent,
       details: { field, otpChannel },
-    }).catch((e) => console.error("AuditLog error (contact init):", e));
+    }).catch((e) => req.log.error({ event: "audit_log_contact_init_failed", err: e }, "AuditLog error (contact init)"));
 
     const maskedRecipient = field === "email"
       ? newValue.replace(/(.{1,2}).*(@.*)/, "$1***$2")
@@ -549,8 +652,105 @@ export const initContactChange = async (req, res) => {
       data: { field, otpChannel, otpExpiresInSeconds: CONTACT_OTP_TTL_SECONDS },
     });
   } catch (error) {
-    console.error("[initContactChange] error:", error);
+    req.log.error({ event: "init_contact_change_error", err: error }, "[initContactChange] error");
     return res.status(500).json({ success: false, message: "Failed to initiate contact change" });
+  }
+};
+
+/**
+ * POST /api/hospitals/me/change-contact/resend
+ *
+ * Re-sends the OTP for the currently pending contact change. Requires an
+ * existing pending request in Redis (created by /init). Generates a fresh
+ * OTP (invalidating the previous one) and resets the 10-minute TTL.
+ *
+ * Rate-limited in-memory to once per 60 s per hospital — mirrors the
+ * `resendLoginAuthCode` pattern so no Redis round-trip for the cooldown.
+ */
+const RESEND_CONTACT_OTP_COOLDOWN_SECONDS = 60;
+const resendContactOtpCooldown = new Map(); // hospitalId → timestamp(ms)
+
+export const resendContactChangeOtp = async (req, res) => {
+  const hospitalId = req.hospital?.id;
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  const userAgent = req.headers["user-agent"];
+
+  try {
+    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    // Cooldown
+    const last = resendContactOtpCooldown.get(hospitalId);
+    if (last) {
+      const elapsed = Date.now() - last;
+      const remaining = Math.ceil(
+        (RESEND_CONTACT_OTP_COOLDOWN_SECONDS * 1000 - elapsed) / 1000,
+      );
+      if (remaining > 0) {
+        return res.status(429).json({
+          success: false,
+          message: `Please wait ${remaining} second(s) before requesting another code.`,
+          data: { retryAfterSeconds: remaining },
+        });
+      }
+    }
+
+    // Must have a pending contact change
+    const pending = await getContactChangeRequest(hospitalId);
+    if (!pending) {
+      return res.status(410).json({
+        success: false,
+        message: "No pending contact change. Please start over.",
+      });
+    }
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
+
+    // Fresh OTP, reset TTL
+    const otp = generateOtp6();
+    await setContactChangeRequest(
+      hospitalId,
+      pending.field,
+      pending.newValue,
+      otp,
+      CONTACT_OTP_TTL_SECONDS,
+    );
+
+    const otpRecipient = pending.field === "email" ? pending.newValue : hospital.email;
+    const otpChannel = pending.field === "email" ? "new_email" : "current_email";
+    try {
+      await sendOTPEmail(otpRecipient, otp, "contact_change");
+    } catch (e) {
+      req.log.error({ event: "contact_change_resend_otp_email_failed", err: e }, "[resendContactChangeOtp] OTP email failed");
+    }
+
+    resendContactOtpCooldown.set(hospitalId, Date.now());
+
+    AuditLog.create({
+      userId: hospital._id,
+      action: "CONTACT_CHANGE_RESEND",
+      status: "SUCCESS",
+      ipAddress,
+      userAgent,
+      details: { field: pending.field, otpChannel },
+    }).catch((e) => req.log.error({ event: "audit_log_contact_resend_failed", err: e }, "AuditLog error (contact resend)"));
+
+    const maskedRecipient = otpRecipient.replace(/(.{1,2}).*(@.*)/, "$1***$2");
+    return res.status(200).json({
+      success: true,
+      message: pending.field === "email"
+        ? `A new code was sent to the new email (${maskedRecipient}).`
+        : `A new code was sent to your registered email (${maskedRecipient}).`,
+      data: {
+        field: pending.field,
+        otpChannel,
+        otpExpiresInSeconds: CONTACT_OTP_TTL_SECONDS,
+        retryAfterSeconds: RESEND_CONTACT_OTP_COOLDOWN_SECONDS,
+      },
+    });
+  } catch (error) {
+    req.log.error({ event: "resend_contact_change_otp_error", err: error }, "[resendContactChangeOtp] error");
+    return res.status(500).json({ success: false, message: "Failed to resend OTP" });
   }
 };
 
@@ -623,7 +823,7 @@ export const verifyContactChange = async (req, res) => {
       ipAddress,
       userAgent,
       details: { field, oldValue, newValue },
-    }).catch((e) => console.error("AuditLog error (contact changed):", e));
+    }).catch((e) => req.log.error({ event: "audit_log_contact_changed_failed", err: e }, "AuditLog error (contact changed)"));
 
     // Security notice emails (fire-and-forget):
     //   • Email change: notify BOTH the old and the new address so a
@@ -632,12 +832,12 @@ export const verifyContactChange = async (req, res) => {
     //     so just one notice goes to that address.
     if (field === "email") {
       sendContactChangedNoticeEmail(oldValue, { field, oldValue, newValue, recipient: "old" })
-        .catch((e) => console.error("[contactChanged] old-addr email failed:", e.message));
+        .catch((e) => req.log.error({ event: "contact_changed_old_addr_email_failed", err: e }, "[contactChanged] old-addr email failed"));
       sendContactChangedNoticeEmail(newValue, { field, oldValue, newValue, recipient: "new" })
-        .catch((e) => console.error("[contactChanged] new-addr email failed:", e.message));
+        .catch((e) => req.log.error({ event: "contact_changed_new_addr_email_failed", err: e }, "[contactChanged] new-addr email failed"));
     } else {
       sendContactChangedNoticeEmail(hospital.email, { field, oldValue, newValue, recipient: "current" })
-        .catch((e) => console.error("[contactChanged] current-email notice failed:", e.message));
+        .catch((e) => req.log.error({ event: "contact_changed_current_email_failed", err: e }, "[contactChanged] current-email notice failed"));
     }
 
     return res.status(200).json({
@@ -646,7 +846,7 @@ export const verifyContactChange = async (req, res) => {
       data: hospital,
     });
   } catch (error) {
-    console.error("[verifyContactChange] error:", error);
+    req.log.error({ event: "verify_contact_change_error", err: error }, "[verifyContactChange] error");
     return res.status(500).json({ success: false, message: "Failed to verify contact change" });
   }
 };
@@ -677,7 +877,7 @@ export const getNotificationPreferences = async (req, res) => {
 
     return res.json({ success: true, data: normalizePrefs(hospital.notificationPrefs) });
   } catch (err) {
-    console.error("[getNotificationPreferences] error:", err);
+    req.log.error({ event: "get_notification_prefs_error", err }, "[getNotificationPreferences] error");
     return res.status(500).json({ success: false, message: "Failed to load preferences" });
   }
 };
@@ -722,7 +922,7 @@ export const updateNotificationPreferences = async (req, res) => {
 
     return res.json({ success: true, data: normalizePrefs(updated.notificationPrefs) });
   } catch (err) {
-    console.error("[updateNotificationPreferences] error:", err);
+    req.log.error({ event: "update_notification_prefs_error", err }, "[updateNotificationPreferences] error");
     return res.status(500).json({ success: false, message: "Failed to update preferences" });
   }
 };
@@ -790,7 +990,7 @@ export const adminForceDelete = async (req, res) => {
         { hospitalId: hospital._id, isActive: true },
         { $set: { isActive: false, revokedReason: "ACCOUNT_DELETED" } },
       );
-    } catch (e) { console.error("[adminForceDelete] session revoke failed:", e.message); }
+    } catch (e) { req.log.error({ event: "admin_force_delete_session_revoke_failed", err: e }, "[adminForceDelete] session revoke failed"); }
 
     // Hard delete: admin-initiated takedowns should remove the record entirely.
     // The audit log still references the ObjectId + snapshot for accountability.
@@ -801,7 +1001,7 @@ export const adminForceDelete = async (req, res) => {
       sendAccountDeletedEmail(snapshot.email, {
         hospitalName: snapshot.hospitalName,
         reason: trimmedReason,
-      }).catch((e) => console.error("[adminForceDelete] notify email failed:", e.message));
+      }).catch((e) => req.log.error({ event: "admin_force_delete_notify_email_failed", err: e }, "[adminForceDelete] notify email failed"));
     }
 
     AuditLog.create({
@@ -820,7 +1020,7 @@ export const adminForceDelete = async (req, res) => {
 
     return res.json({ success: true, message: "Hospital deleted" });
   } catch (err) {
-    console.error("[adminForceDelete] error:", err);
+    req.log.error({ event: "admin_force_delete_error", err }, "[adminForceDelete] error");
     return res.status(500).json({ success: false, message: "Failed to delete hospital" });
   }
 };
@@ -832,6 +1032,7 @@ export default {
   updateHospital,
   patchMe,
   initContactChange,
+  resendContactChangeOtp,
   verifyContactChange,
   getNotificationPreferences,
   updateNotificationPreferences,

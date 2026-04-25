@@ -3,11 +3,9 @@
  * Generates well-formatted PDF reports and ZIP archives
  */
 
-import archiver from "archiver";
 import PDFDocument from "pdfkit";
 import Patient from "../models/Patient.js";
 import Hospital from "../models/Hospital.js";
-import { generateSampleCoverPdf } from "../services/pdf.service.js";
 
 // ─── Layout constants ───────────────────────────────────────────
 const MARGIN = 40;
@@ -253,7 +251,7 @@ export const exportPatientsPdf = async (req, res) => {
     drawPageFooter(doc, pageNum, totalPatients);
     doc.end();
   } catch (error) {
-    console.error("[Export] PDF error:", error);
+    req.log.error({ event: "export_pdf_failed", err: error }, "[Export] PDF error");
     if (!res.headersSent) {
       return res.status(500).json({
         success: false,
@@ -263,138 +261,4 @@ export const exportPatientsPdf = async (req, res) => {
   }
 };
 
-// ─── ZIP archive (legacy, kept for multi-module future use) ─────
-
-/**
- * POST /api/export/archive
- * Body: { modules: ["patients"] }
- */
-export const exportArchive = async (req, res) => {
-  try {
-    const hospitalId = req.hospital?.id;
-    const { modules } = req.body;
-
-    if (!hospitalId) {
-      return res.status(401).json({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
-    }
-
-    const hospital = await Hospital.findById(hospitalId).select("hospitalName role").lean();
-    if (!hospital) {
-      return res.status(404).json({ success: false, error: { code: "NOT_FOUND", message: "Hospital not found" } });
-    }
-
-    req.setTimeout(300000);
-    res.setTimeout(300000);
-
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const filename = `hospital_export_${dateStr}.zip`;
-    res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-
-    const archive = archiver("zip", { zlib: { level: 6 } });
-
-    archive.on("error", (err) => {
-      console.error("[Export] Archive error:", err);
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, error: { code: "ARCHIVE_ERROR", message: "Archive generation failed" } });
-      }
-    });
-
-    archive.pipe(res);
-
-    for (const moduleName of modules) {
-      const pdfBuffer = await generateModulePdf(moduleName, hospitalId, hospital.hospitalName);
-      const safeModuleName = moduleName.replace(/[^a-z0-9_-]/gi, "_");
-      archive.append(pdfBuffer, { name: `${safeModuleName}.pdf` });
-    }
-
-    await archive.finalize();
-  } catch (error) {
-    console.error("[Export] Error:", error);
-    if (!res.headersSent) {
-      return res.status(500).json({
-        success: false,
-        error: { code: "EXPORT_ERROR", message: "Export failed. Please try again." },
-      });
-    }
-  }
-};
-
-/**
- * Generate a PDF buffer for a specific module (used by ZIP archive)
- */
-async function generateModulePdf(moduleName, hospitalId, hospitalName) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const doc = new PDFDocument({ margin: 50 });
-      const chunks = [];
-
-      doc.on("data", (chunk) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
-
-      doc.fontSize(18).text(`${hospitalName} — ${formatModuleName(moduleName)}`, { align: "center" });
-      doc.moveDown(0.5);
-      doc.fontSize(10).fillColor("grey").text(`Generated: ${new Date().toLocaleString()}`, { align: "center" });
-      doc.moveDown(1.5);
-      doc.fillColor("black");
-
-      switch (moduleName.toLowerCase()) {
-        case "patients": {
-          const patients = await Patient.find({ hospitalId })
-            .select("patientId patientName remarks createdAt")
-            .sort({ createdAt: -1 })
-            .lean();
-
-          if (patients.length === 0) {
-            doc.fontSize(12).text("No records found for Patients", { italic: true });
-            break;
-          }
-
-          for (const p of patients) {
-            if (doc.y > 700) doc.addPage();
-            doc.fontSize(11).text(p.patientName, { continued: true });
-            doc.fontSize(9).fillColor("grey").text(
-              `  ID: ${p.patientId || "N/A"} | Created: ${new Date(p.createdAt).toLocaleDateString()}`,
-            );
-            doc.fillColor("black");
-            if (p.email) doc.fontSize(9).text(`  Email: ${p.email}`);
-            if (p.phone) doc.fontSize(9).text(`  Phone: ${p.phone}`);
-            doc.moveDown(0.3);
-          }
-          break;
-        }
-
-        default: {
-          doc.fontSize(12).text(`No records found for ${formatModuleName(moduleName)}`, { italic: true });
-          break;
-        }
-      }
-
-      doc.end();
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
-
-function formatModuleName(name) {
-  return name.charAt(0).toUpperCase() + name.slice(1).replace(/[_-]/g, " ");
-}
-
-/**
- * GET /api/export/sample-cover
- * Preview the PDF cover page design with dummy data — no auth required.
- */
-export const exportSampleCover = async (req, res) => {
-  try {
-    await generateSampleCoverPdf(res);
-  } catch (error) {
-    console.error("[Export] Sample cover error:", error);
-    if (!res.headersSent) {
-      res.status(500).json({ success: false, error: { code: "EXPORT_ERROR", message: "Failed to generate sample PDF." } });
-    }
-  }
-};
-
-export default { exportArchive, exportPatientsPdf, exportSampleCover };
+export default { exportPatientsPdf };

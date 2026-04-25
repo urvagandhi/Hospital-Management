@@ -2,6 +2,8 @@
 
 Native Kotlin Android application built with Clean Architecture (MVVM), Retrofit, Room, and enterprise-grade security including certificate pinning, encrypted storage, and TOTP 2FA.
 
+> **Before publishing to Google Play:** see [`KEYSTORE_SETUP.md`](KEYSTORE_SETUP.md) for the upload-keystore generation runbook (TD-A01). The release build will fail unless `HMS_UPLOAD_KEYSTORE_PATH` / `HMS_UPLOAD_KEYSTORE_PWD` / `HMS_UPLOAD_KEY_PWD` are set.
+
 ## Architecture
 
 ```mermaid

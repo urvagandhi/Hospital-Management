@@ -44,7 +44,7 @@ export const LogoHeader: React.FC<LogoHeaderProps> = ({ logoUrl, hospitalName, s
         ) : hasHospitalName ? (
           <>
             {/* Initials avatar */}
-            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${getAvatarGradient(hospitalName)} flex items-center justify-center mb-4 mx-auto shadow-sm border-2 border-white`}>
+            <div className={`w-16 h-16 rounded-2xl ${getAvatarGradient(hospitalName)} flex items-center justify-center mb-4 mx-auto shadow-sm border-2 border-white`}>
               <span className="text-white font-heading font-bold text-xl">
                 {getInitials(hospitalName)}
               </span>

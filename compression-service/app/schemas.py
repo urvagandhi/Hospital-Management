@@ -70,4 +70,4 @@ class FetchErrorResponse(BaseModel):
 
 class TimeoutErrorResponse(BaseModel):
     error: str = "processing_timeout"
-    detail: str = "Pipeline exceeded 100s limit"
+    detail: str = "Pipeline exceeded 300s limit"

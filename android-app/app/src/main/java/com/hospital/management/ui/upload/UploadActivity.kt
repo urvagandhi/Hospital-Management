@@ -351,7 +351,10 @@ class UploadActivity : BaseActivity() {
                     } else {
                         if (result.retryable) {
                             // Retryable failures (network/server) are safe to queue for later sync.
-                            docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), idempotencyKey, uploadProfileUsed)
+                            // Tag with current hospitalId so the sync worker can refuse to upload
+                            // it under a different account if the user logs out and another logs in.
+                            val ownerHospitalId = tokenManager.getHospitalId() ?: ""
+                            docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), ownerHospitalId, idempotencyKey, uploadProfileUsed)
                             Toast.makeText(this@UploadActivity, "Upload failed. Saved offline.", Toast.LENGTH_LONG).show()
                             finish()
                         } else {
@@ -362,8 +365,9 @@ class UploadActivity : BaseActivity() {
                         }
                     }
                 } else {
-                    // Offline - save PDF locally with its key
-                    docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), idempotencyKey)
+                    // Offline - save PDF locally with its key + owner tag
+                    val ownerHospitalId = tokenManager.getHospitalId() ?: ""
+                    docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), ownerHospitalId, idempotencyKey)
 
                     binding.progressBar.visibility = View.GONE
                     binding.btnUpload.isEnabled = true

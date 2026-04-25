@@ -3,6 +3,8 @@
  * Centralized error handling
  */
 
+import logger from "../utils/logger.js";
+
 /**
  * Global error handler middleware
  */
@@ -46,10 +48,17 @@ export const errorHandler = (err, req, res, next) => {
     message = "Token has expired";
   }
 
-  // Log error in development
-  if (process.env.NODE_ENV === "development") {
-    console.error("❌ Error:", err);
-  }
+  // Errors are always logged (request-id auto-bound via pino-http); stack
+  // trace detail is still only returned to the client in development.
+  const log = req?.log || logger;
+  log.error(
+    {
+      event: "request_error",
+      err,
+      status_code: statusCode,
+    },
+    message,
+  );
 
   res.status(statusCode).json({
     success: false,

@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { createPortal } from "react-dom";
 import { Button } from "./Button";
 
 interface ConfirmDialogProps {
@@ -38,14 +39,16 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             ? "M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
             : "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z";
 
-    return (
+    // Portal to body so no ancestor stacking context can trap the backdrop
+    // (CLAUDE.md §8 — same rule as HospitalProfileModal and the Navbar logout).
+    return createPortal(
         <div className="fixed inset-0 z-[100] overflow-y-auto" role="dialog" aria-modal="true">
             <div
-                className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm"
+                className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm"
                 onClick={loading ? undefined : onCancel}
             />
             <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <div className="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+                <div className="relative transform overflow-hidden rounded-2xl bg-surface-white text-left shadow-modal ring-1 ring-neutral-200 transition-all sm:my-8 sm:w-full sm:max-w-md">
                     <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
                         <div className="sm:flex sm:items-start">
                             <div className={`mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full ${iconBg} sm:mx-0 sm:h-10 sm:w-10`}>
@@ -78,7 +81,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 };
 

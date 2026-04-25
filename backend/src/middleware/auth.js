@@ -152,7 +152,7 @@ export const verifyTempToken = (req, res, next) => {
 export const attachHospitalData = async (req, res, next) => {
   try {
     const hospitalId = req.hospital?.id;
-    console.log("[Auth Middleware] attachHospitalData - hospitalId from token:", hospitalId);
+    req.log.debug({ event: "middleware_auth_attach_hospital", hospitalId }, "[Auth Middleware] attachHospitalData - hospitalId from token");
 
     if (!hospitalId) {
       return res.status(401).json({
@@ -162,7 +162,10 @@ export const attachHospitalData = async (req, res, next) => {
     }
 
     const hospital = await Hospital.findById(hospitalId);
-    console.log("[Auth Middleware] Hospital found:", hospital?._id, hospital?.hospitalName);
+    req.log.debug(
+      { event: "middleware_auth_hospital_lookup", hospitalId: hospital?._id, hospitalName: hospital?.hospitalName },
+      "[Auth Middleware] Hospital found",
+    );
 
     if (!hospital) {
       return res.status(404).json({
@@ -181,7 +184,7 @@ export const attachHospitalData = async (req, res, next) => {
     req.hospital = hospital;
     next();
   } catch (error) {
-    console.error("[Auth Middleware] attachHospitalData error:", error);
+    req.log.error({ event: "middleware_auth_failed", err: error }, "[Auth Middleware] attachHospitalData error");
     return res.status(500).json({
       success: false,
       message: `Failed to fetch hospital data: ${error.message}`,

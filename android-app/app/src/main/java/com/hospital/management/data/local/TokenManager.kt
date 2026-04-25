@@ -143,6 +143,10 @@ class TokenManager(private val context: Context) {
         return prefs.getString(ACCESS_TOKEN, null)
     }
 
+    suspend fun getRefreshToken(): String? {
+        return prefs.getString(REFRESH_TOKEN, null)
+    }
+
     suspend fun getHospitalName(): String? {
         return prefs.getString(HOSPITAL_NAME, null)
     }

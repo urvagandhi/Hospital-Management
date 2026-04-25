@@ -173,9 +173,17 @@ class LoginActivity : BaseActivity() {
             } catch (e: Exception) {
                 binding.loadingOverlay.visibility = View.GONE
                 binding.btnLogin.isEnabled = true
-                // Network error — block login, don't silently fall through
-                Log.w("LoginActivity", "Conflict check failed: ${e.message}")
-                GlassSnackbar.show(this@LoginActivity, "Network error. Please check your connection and try again.", GlassSnackbar.Variant.ERROR)
+                Log.e("LoginActivity", "Conflict check failed: ${e.javaClass.name}", e)
+                com.hospital.management.utils.FileLogger.e(
+                    "LoginActivity",
+                    "Conflict check failed: ${e.javaClass.name} :: ${e.message}",
+                    e
+                )
+                GlassSnackbar.show(
+                    this@LoginActivity,
+                    "${e.javaClass.simpleName}: ${e.message ?: "no message"}",
+                    GlassSnackbar.Variant.ERROR
+                )
             }
         }
     }

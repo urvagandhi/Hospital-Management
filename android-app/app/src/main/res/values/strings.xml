@@ -53,4 +53,37 @@
     <string name="cancel">Cancel</string>
     <string name="ok">OK</string>
     <string name="retry">Retry</string>
+
+    <!-- Downloads — notification stages (all user-facing strings localizable) -->
+    <string name="download_preparing_title">%1$s</string>
+    <string name="download_preparing_subtext">Preparing your document…</string>
+    <string name="download_downloading_title">%1$s</string>
+    <string name="download_ready_title">PDF ready</string>
+    <string name="download_ready_text">Tap to open</string>
+    <string name="download_failed_title">Download failed</string>
+    <string name="download_failed_text">Tap to retry</string>
+    <string name="download_retrying_text">Waiting for connection · retry in %1$ds</string>
+    <string name="download_open_with">Open with</string>
+
+    <!-- Stage labels shown in the notification subText -->
+    <string name="download_stage_preparing">Preparing</string>
+    <string name="download_stage_downloading">Downloading</string>
+
+    <!-- Byte + speed formatting -->
+    <string name="download_bytes">%1$d B</string>
+    <string name="download_kb">%1$.1f KB</string>
+    <string name="download_mb">%1$.1f MB</string>
+    <string name="download_gb">%1$.2f GB</string>
+    <string name="download_speed_fmt">%1$s/s</string>
+    <string name="download_of_separator">of</string>
+    <string name="download_middle_dot">·</string>
+
+    <!-- In-app feedback -->
+    <string name="download_snackbar_started">Downloading %1$s…</string>
+    <string name="download_toast_done">Downloaded: %1$s</string>
+    <string name="download_toast_cancelled">Download cancelled</string>
+    <string name="download_err_auth">Session expired. Please log in again.</string>
+    <string name="download_err_storage">Not enough storage space.</string>
+    <string name="download_err_server">Server error. Try again later.</string>
+    <string name="download_err_network_with_detail">Download failed: %1$s</string>
 </resources>

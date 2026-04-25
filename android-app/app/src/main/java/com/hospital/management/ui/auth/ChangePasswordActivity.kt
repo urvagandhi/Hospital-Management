@@ -93,12 +93,15 @@ class ChangePasswordActivity : BaseActivity() {
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     val data = response.body()?.data
-                    if (data != null) {
-                        tokenManager.saveTokens(data.accessToken, data.refreshToken)
+                    val at = data?.accessToken
+                    val rt = data?.refreshToken
+                    val hospital = data?.hospital
+                    if (at != null && rt != null && hospital != null) {
+                        tokenManager.saveTokens(at, rt)
                         tokenManager.saveHospitalInfo(
-                            data.hospital._id,
-                            data.hospital.hospitalName,
-                            data.hospital.logoUrl ?: ""
+                            hospital._id,
+                            hospital.hospitalName,
+                            hospital.logoUrl ?: ""
                         )
 
                         Toast.makeText(
@@ -107,6 +110,12 @@ class ChangePasswordActivity : BaseActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
                         navigateToDashboard()
+                    } else {
+                        Toast.makeText(
+                            this@ChangePasswordActivity,
+                            "Invalid response from server",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 } else {
                     val errorMsg = response.body()?.message ?: "Password change failed"

@@ -21,8 +21,7 @@ interface ApiService {
         @GET("/api/hospitals/{id}")
         suspend fun getHospitalById(@Path("id") id: String): Response<com.hospital.management.data.models.HospitalResponse>
     @POST("/api/auth/login")
-    @JvmSuppressWildcards
-    suspend fun login(@Body body: Map<String, Any>): Response<LoginResponse>
+    suspend fun login(@Body body: LoginRequest): Response<LoginResponse>
 
     // ── Self-service registration ──
     @POST("/api/auth/register")
@@ -69,14 +68,15 @@ interface ApiService {
     ): Response<LoginResponse>
 
     // Session management
+    @POST("/api/auth/logout")
+    @JvmSuppressWildcards
+    suspend fun logout(@Body body: Map<String, String> = emptyMap()): Response<Map<String, Any>>
+
     @GET("/api/auth/session/validate")
     suspend fun validateSession(): Response<Map<String, Any>>
 
     @POST("/api/auth/session/check-conflict")
     suspend fun checkSessionConflict(@Body body: Map<String, String>): Response<Map<String, Any>>
-
-    @POST("/api/auth/session/force-logout")
-    suspend fun forceLogoutOtherSessions(): Response<Map<String, Any>>
 
     @POST("/api/auth/session/reverify-auth-code")
     suspend fun reverifyAuthCode(@Body body: Map<String, String>): Response<Map<String, Any>>
@@ -141,13 +141,6 @@ interface ApiService {
     // Health check
     @GET("/api/health")
     suspend fun healthCheck(): Response<Map<String, Any>>
-
-    // Export archive
-    @POST("/api/export/archive")
-    @Streaming
-    suspend fun exportArchive(
-        @Body body: Map<String, Any>
-    ): Response<ResponseBody>
 
     @POST("/api/patients")
     suspend fun createPatient(

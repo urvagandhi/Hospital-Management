@@ -8,6 +8,7 @@ import androidx.work.WorkerParameters
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.AppDatabase
 import com.hospital.management.data.local.SyncStatus
+import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.repository.DocumentRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,9 +31,45 @@ class SyncDocumentsWorker(
         val documentDao = database.documentDao()
         val apiService = RetrofitClient.getApiService(context)
         val repository = DocumentRepository(apiService, documentDao, context)
+        val tokenManager = TokenManager(context)
 
         return withContext(Dispatchers.IO) {
             try {
+                // ─── AUTH GATE ───────────────────────────────────────────
+                // Refuse to upload anything if no user is signed in. Two
+                // scenarios this guards against:
+                //   1. User logged out (online or offline). Pending uploads
+                //      were either cancelled by SessionManager or are about
+                //      to be — drop the orphans here as defence-in-depth.
+                //   2. Worker was scheduled before login, fires post-logout.
+                //      Without this gate it would attempt the upload, get a
+                //      401, and the AuthInterceptor would broadcast a fake
+                //      SESSION_REVOKED on the LoginActivity.
+                val currentHospitalId = tokenManager.getHospitalId().orEmpty()
+                val hasToken = tokenManager.hasValidToken()
+                if (currentHospitalId.isEmpty() || !hasToken) {
+                    val orphaned = documentDao.getPendingCount()
+                    if (orphaned > 0) {
+                        Log.w(TAG, "Sync skipped: no auth context. Dropping $orphaned orphaned doc(s).")
+                        // Drop EVERY pending row — there's no signed-in user to
+                        // own them, and we can't safely defer to a future login
+                        // without risking cross-account leak.
+                        documentDao.deleteAllNotOwnedBy("__none__")
+                    }
+                    return@withContext Result.success()
+                }
+
+                // ─── CROSS-ACCOUNT GUARD ─────────────────────────────────
+                // Drop any doc whose owner_hospital_id does not match the
+                // currently-logged-in account, including legacy '' rows. This
+                // is the healthcare-compliance net: a doc scanned by Doctor A
+                // must NEVER upload under Doctor B's session, even if A logged
+                // out offline before the queue drained.
+                val purged = documentDao.deleteAllNotOwnedBy(currentHospitalId)
+                if (purged > 0) {
+                    Log.w(TAG, "Sync purged $purged doc(s) not owned by current user $currentHospitalId")
+                }
+
                 // Reset any docs stuck in UPLOADING (e.g. from a prior crashed worker run)
                 // so they're retried rather than silently skipped
                 documentDao.resetStuckUploading()

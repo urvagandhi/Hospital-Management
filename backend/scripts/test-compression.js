@@ -13,6 +13,7 @@
  */
 
 import "dotenv/config";
+import assert from "node:assert/strict";
 import fs from "fs";
 import mongoose from "mongoose";
 import Patient from "../src/models/Patient.js";
@@ -21,6 +22,38 @@ import {
   compressPatient,
   fetchMergedStream,
 } from "../src/services/compression.service.js";
+
+/**
+ * Reconciles the API-reported size against the actual bytes we downloaded.
+ * Cache-hit regressions (where `final_size_bytes` falls through to 0 or
+ * `tier_used` to -1 despite a valid cached blob) hide silently otherwise —
+ * this assertion is the canary.
+ *
+ * Tier check is soft: a legacy cache entry predating the sidecar collection
+ * will legitimately return tier_used=-1 on a fresh pull. The WARN line makes
+ * that visible in test output without failing the run; the size assertion
+ * below is the hard contract.
+ */
+function assertResponseConsistency(result, actualBytes) {
+  assert.strictEqual(
+    result.final_size_bytes,
+    actualBytes,
+    `API reported ${result.final_size_bytes} B but download was ${actualBytes} B — ` +
+      `cache-hit metadata regression? (content_hash=${result.content_hash}, cache_hit=${result.cache_hit})`,
+  );
+
+  if (result.cache_hit && result.tier_used === -1) {
+    console.warn(
+      `[WARN] tier_used=-1 on cache hit — legacy blob without sidecar meta. ` +
+        `First fresh pipeline run for this content_hash will populate it.`,
+    );
+  } else {
+    assert.ok(
+      Number.isInteger(result.tier_used) && result.tier_used >= 0,
+      `tier_used must be a non-negative integer, got ${result.tier_used}`,
+    );
+  }
+}
 
 const [, , patientId, folderName] = process.argv;
 
@@ -95,6 +128,9 @@ try {
     const outPath = `/tmp/test-folder-${folderName}.pdf`;
     fs.writeFileSync(outPath, buf);
     console.log(`[Saved] ${outPath} (${buf.length} bytes)`);
+
+    assertResponseConsistency(result, buf.length);
+    console.log(`[Assertions] ✓ API size matches downloaded bytes`);
   } else {
     // ── Full patient test (merged mode) ──
     const folderMap = patient.folders
@@ -137,6 +173,9 @@ try {
     const outPath = `/tmp/test-patient-${patient.patientName.replace(/\s+/g, "_")}.pdf`;
     fs.writeFileSync(outPath, buf);
     console.log(`[Saved] ${outPath} (${buf.length} bytes)`);
+
+    assertResponseConsistency(result, buf.length);
+    console.log(`[Assertions] ✓ API size matches downloaded bytes`);
   }
 } finally {
   await mongoose.disconnect();

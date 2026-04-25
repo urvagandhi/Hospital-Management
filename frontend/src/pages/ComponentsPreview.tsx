@@ -19,6 +19,7 @@ import {
 } from "recharts";
 
 import appLogo from "../assets/logo.png";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 // ─────────────────────────────────────────────
 // DEMO DATA
@@ -311,6 +312,7 @@ const FOLDERS = [
 // ─────────────────────────────────────────────
 
 const ComponentsPreview: React.FC = () => {
+  useDocumentTitle("Components — Hospital Management");
   // — demo state —
   const [pwVisible,   setPwVisible]   = useState(false);
   const [searchVal,   setSearchVal]   = useState("");

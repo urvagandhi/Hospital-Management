@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { getFileSignedUrl, downloadFileCompressed } from "../services/hospitalService";
 import { isImageMime, isPdfMime } from "../utils/cloudinary";
 
@@ -148,7 +149,7 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
   const canPrev = index > 0;
   const canNext = index < files.length - 1;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col" role="dialog" aria-modal="true">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 text-white">
@@ -256,7 +257,8 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

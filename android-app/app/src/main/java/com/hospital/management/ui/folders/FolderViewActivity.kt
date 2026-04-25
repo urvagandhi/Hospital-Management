@@ -646,6 +646,10 @@ class FolderViewActivity : BaseActivity() {
         contentValues.clear()
         contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
         resolver.update(uri, contentValues, null, null)
+
+        com.hospital.management.utils.DownloadNotifier.notifyCompleted(
+            applicationContext, uri, fileName, mimeType
+        )
     }
 
     override fun onResume() {

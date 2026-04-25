@@ -23,7 +23,15 @@ data class OfflineDocument(
     // -1 means unknown (pre-existing rows or non-scanned uploads).
     // Cloud Run can use this to skip aggressive re-compression on already-compressed files.
     @ColumnInfo(name = "upload_profile_used", defaultValue = "-1")
-    val uploadProfileUsed: Int = -1
+    val uploadProfileUsed: Int = -1,
+    // Hospital that owned this scan when it was queued. The sync worker MUST
+    // verify this matches the currently-logged-in hospital before upload — if
+    // a different account logs in on the same device after an offline logout,
+    // their pending-but-unsynced docs must NOT silently upload under the new
+    // account. Empty for legacy rows (pre-migration); those are treated as
+    // orphaned and dropped by the worker.
+    @ColumnInfo(name = "owner_hospital_id", defaultValue = "")
+    val ownerHospitalId: String = ""
 )
 
 enum class SyncStatus {

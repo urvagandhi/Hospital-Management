@@ -15,6 +15,7 @@ from app.audit import write_audit_log
 from app.cloudinary_client import (
     SourceFetchError,
     check_cache,
+    fetch_merged_size,
     fetch_source_pdfs,
     generate_delivery_url,
     upload_merged,
@@ -28,6 +29,10 @@ from app.compression.tier_ladder import (
     run_tier_ladder,
 )
 from app.compression.cover_page import generate_cover_page
+from app.merged_cache import (
+    get_meta as get_cache_meta,
+    upsert_meta as upsert_cache_meta,
+)
 from app.schemas import DownloadResponse, FolderDownloadRequest
 
 logger = logging.getLogger(__name__)
@@ -72,6 +77,31 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
             if cached_id is not None:
                 url = generate_delivery_url(content_hash)
                 elapsed_ms = int((time.monotonic() - start) * 1000)
+
+                # Recover real size + tier from our sidecar row. If the row is
+                # missing (legacy blob / failed prior upsert), fall back to
+                # Cloudinary's Admin API for size only — tier stays -1 because
+                # Cloudinary doesn't know which tier produced the file.
+                meta = await get_cache_meta(db, content_hash, job_id=job_id)
+                if meta is not None:
+                    cached_size = meta["size_bytes"]
+                    cached_tier = meta["tier_used"]
+                else:
+                    fallback_size = await fetch_merged_size(content_hash)
+                    cached_size = fallback_size if fallback_size is not None else 0
+                    cached_tier = -1
+                    logger.warning(
+                        "merged_pdf_cache sidecar missing on cache-hit; used Cloudinary fallback",
+                        extra={
+                            **log_extra,
+                            "event": "cache_meta_missing",
+                            "metrics": {
+                                "content_hash": content_hash,
+                                "recovered_size": cached_size,
+                            },
+                        },
+                    )
+
                 await write_audit_log(
                     db,
                     user_id=body.user_id,
@@ -80,19 +110,29 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                     request_type="folder",
                     target_size_bytes=target_bytes,
                     input_size_bytes=0,
-                    output_size_bytes=0,
-                    tier_used=-1,
+                    output_size_bytes=cached_size,
+                    tier_used=cached_tier,
                     duration_ms=elapsed_ms,
                     cache_hit=True,
                     content_hash=content_hash,
                     job_id=job_id,
                 )
-                logger.info("Cache hit", extra={**log_extra, "event": "cache_hit"})
+                logger.info(
+                    "Cache hit",
+                    extra={
+                        **log_extra,
+                        "event": "cache_hit",
+                        "metrics": {
+                            "size_bytes": cached_size,
+                            "tier_used": cached_tier,
+                        },
+                    },
+                )
                 return DownloadResponse(
                     merged_url=url,
                     content_hash=content_hash,
-                    final_size_bytes=0,
-                    tier_used=-1,
+                    final_size_bytes=cached_size,
+                    tier_used=cached_tier,
                     cache_hit=True,
                 )
 
@@ -114,6 +154,7 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                 files_info = body.files_info
                 if files_info and len(files_info) == len(source_pdfs_opened):
                     from app.schemas import FileInfo
+
                     files_info = [
                         FileInfo(
                             file_name=fi.file_name,
@@ -161,7 +202,9 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                     )
                     output_size = compressed.stat().st_size
                     result = CompressionResult(
-                        output_path=compressed, tier_used=0, output_size_bytes=output_size
+                        output_path=compressed,
+                        tier_used=0,
+                        output_size_bytes=output_size,
                     )
                 else:
                     result = await run_tier_ladder(
@@ -173,6 +216,18 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                 await loop.run_in_executor(
                     None,
                     partial(upload_merged, result.output_path, content_hash, job_id),
+                )
+
+                # Persist cache metadata BEFORE the audit log — a future
+                # cache-hit for this hash needs this row to report accurate
+                # size + tier_used. Best-effort: upsert_meta never raises.
+                await upsert_cache_meta(
+                    db,
+                    content_hash=content_hash,
+                    size_bytes=result.output_size_bytes,
+                    tier_used=result.tier_used,
+                    request_type="folder",
+                    job_id=job_id,
                 )
 
                 url = generate_delivery_url(content_hash)
@@ -225,7 +280,10 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
         )
         return JSONResponse(
             status_code=504,
-            content={"error": "processing_timeout", "detail": "Pipeline exceeded 100s limit"},
+            content={
+                "error": "processing_timeout",
+                "detail": "Pipeline exceeded 300s limit",
+            },
         )
 
     except SizeFloorBreached as e:
