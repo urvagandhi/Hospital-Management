@@ -50,7 +50,7 @@ local.properties
 .claude/
 
 # graphify knowledge graph (generated; rebuild with /graphify .)
-graphify-out/
+# graphify-out/
 
 # FUSE / network-mount stale-handle artifacts
 .fuse_hidden*
