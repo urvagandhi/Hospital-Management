@@ -86,4 +86,12 @@
     <string name="download_err_storage">Not enough storage space.</string>
     <string name="download_err_server">Server error. Try again later.</string>
     <string name="download_err_network_with_detail">Download failed: %1$s</string>
+
+    <!-- Sync/upload/download banner on Dashboard -->
+    <string name="banner_sync_title">Background activity</string>
+    <string name="banner_downloads_count">%1$d downloading</string>
+    <string name="banner_uploads_count">%1$d uploading</string>
+    <string name="banner_syncs_count">%1$d syncing</string>
+    <string name="banner_separator"> · </string>
+    <string name="banner_tap_hint">Tap a notification to see progress</string>
 </resources>

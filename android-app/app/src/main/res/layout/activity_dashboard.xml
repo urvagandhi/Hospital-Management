@@ -82,6 +82,9 @@
             </LinearLayout>
         </androidx.appcompat.widget.Toolbar>
 
+        <!-- Background activity banner — shows in-flight downloads/uploads/sync -->
+        <include layout="@layout/view_work_progress_banner" />
+
         <!-- Stats Row -->
         <LinearLayout
             android:id="@+id/layoutStats"

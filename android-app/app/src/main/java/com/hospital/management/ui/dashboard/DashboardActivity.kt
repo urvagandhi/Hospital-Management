@@ -75,6 +75,15 @@ class DashboardActivity : BaseActivity() {
         setupPatientListeners()
         SessionManager.updateLastInteractionTime(this)
         requestNotificationPermissionIfNeeded()
+        setupWorkProgressBanner()
+    }
+
+    private fun setupWorkProgressBanner() {
+        // Self-observing banner that auto-shows/hides based on in-flight
+        // WorkManager jobs tagged hms_download / hms_upload / hms_sync.
+        findViewById<com.hospital.management.ui.components.WorkProgressBanner>(
+            R.id.workProgressBanner
+        )?.observe(this)
     }
 
     private fun requestNotificationPermissionIfNeeded() {
