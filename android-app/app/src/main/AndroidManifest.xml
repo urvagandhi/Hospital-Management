@@ -158,6 +158,11 @@
             android:name=".utils.DownloadActionReceiver"
             android:exported="false" />
 
+        <!-- Handles Cancel actions fired from upload notifications -->
+        <receiver
+            android:name=".utils.UploadActionReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>

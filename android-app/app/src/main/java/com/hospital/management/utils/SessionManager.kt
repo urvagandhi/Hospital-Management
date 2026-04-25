@@ -147,10 +147,19 @@ object SessionManager {
                 WorkManager.getInstance(appCtx).cancelAllWorkByTag(DownloadWorker.TAG_DOWNLOAD)
             } catch (_: Throwable) { /* WorkManager unavailable is fine */ }
             try {
+                // Same rationale for in-flight UploadWorkers — drop any
+                // foreground upload running under the logging-out account.
+                WorkManager.getInstance(appCtx).cancelAllWorkByTag(
+                    com.hospital.management.worker.UploadWorker.TAG_UPLOAD
+                )
+            } catch (_: Throwable) { /* WorkManager unavailable is fine */ }
+            try {
                 val nm = appCtx.getSystemService(Context.NOTIFICATION_SERVICE)
                     as? android.app.NotificationManager
                 nm?.activeNotifications?.forEach { sbn ->
-                    if (sbn.notification?.channelId == HospitalApplication.CHANNEL_DOWNLOADS) {
+                    val channelId = sbn.notification?.channelId
+                    if (channelId == HospitalApplication.CHANNEL_DOWNLOADS ||
+                        channelId == HospitalApplication.CHANNEL_UPLOADS) {
                         nm.cancel(sbn.id)
                     }
                 }

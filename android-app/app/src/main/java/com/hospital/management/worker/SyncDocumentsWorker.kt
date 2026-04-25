@@ -1,15 +1,20 @@
 package com.hospital.management.worker
 
+import android.app.Notification
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.AppDatabase
 import com.hospital.management.data.local.SyncStatus
 import com.hospital.management.data.local.TokenManager
 import com.hospital.management.data.repository.DocumentRepository
+import com.hospital.management.utils.UploadNotifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -23,6 +28,19 @@ class SyncDocumentsWorker(
     companion object {
         private const val TAG = "SyncDocumentsWorker"
         private const val MAX_RETRY_COUNT = 5
+        private const val MIN_PROGRESS_INTERVAL_MS = 500L
+        private const val SPEED_WINDOW_MS = 1_000L
+    }
+
+    private val notificationId by lazy { UploadNotifier.notificationIdFor(id) }
+    private val completionId by lazy { UploadNotifier.completionNotificationIdFor(id) }
+    private val throttle = UploadNotifier.ProgressThrottle(MIN_PROGRESS_INTERVAL_MS)
+
+    override suspend fun getForegroundInfo(): ForegroundInfo {
+        val notification = UploadNotifier.buildPreparing(
+            applicationContext, notificationId, id, ""
+        )
+        return makeForegroundInfo(notification)
     }
 
     override suspend fun doWork(): Result {
@@ -34,6 +52,17 @@ class SyncDocumentsWorker(
         val tokenManager = TokenManager(context)
 
         return withContext(Dispatchers.IO) {
+            // ── Foreground promotion ASAP — Android 12+ requires setForeground
+            // within ~10s of doWork() starting. We use the generic "Syncing
+            // patient records" title because we don't know the file count yet.
+            try {
+                setForeground(makeForegroundInfo(
+                    UploadNotifier.buildPreparing(context, notificationId, id, "")
+                ))
+            } catch (e: Exception) {
+                Log.w(TAG, "setForeground failed: ${e.message}")
+            }
+
             try {
                 // ─── AUTH GATE ───────────────────────────────────────────
                 // Refuse to upload anything if no user is signed in. Two
@@ -56,6 +85,7 @@ class SyncDocumentsWorker(
                         // without risking cross-account leak.
                         documentDao.deleteAllNotOwnedBy("__none__")
                     }
+                    UploadNotifier.cancel(context, notificationId)
                     return@withContext Result.success()
                 }
 
@@ -77,6 +107,7 @@ class SyncDocumentsWorker(
                 val pendingDocs = repository.getPendingDocuments()
                 if (pendingDocs.isEmpty()) {
                     Log.d(TAG, "No pending documents to sync")
+                    UploadNotifier.cancel(context, notificationId)
                     return@withContext Result.success()
                 }
 
@@ -84,8 +115,11 @@ class SyncDocumentsWorker(
                 var successCount = 0
                 var retryableFailureCount = 0
                 var skippedExhaustedCount = 0
+                val totalFiles = pendingDocs.size
 
-                for (doc in pendingDocs) {
+                for ((index, doc) in pendingDocs.withIndex()) {
+                    if (isStopped) break
+
                     // Skip permanently failed documents (exceeded max retries)
                     if (doc.retryCount >= MAX_RETRY_COUNT) {
                         Log.w(TAG, "Skipping document that exceeded max retries: ${doc.fileUri}")
@@ -106,7 +140,54 @@ class SyncDocumentsWorker(
                            if (key != doc.idempotencyKey) {
                                documentDao.update(doc.copy(idempotencyKey = key))
                            }
-                           val result = repository.uploadDocument(doc.patientId, doc.folderName, file, key, doc.uploadProfileUsed)
+
+                           // Per-file progress: emit a PREPARING tick so the
+                           // notification updates the "File N of M" prefix
+                           // before bytes start flowing.
+                           val displayName = file.name.takeIf { it.isNotBlank() } ?: "document"
+                           val totalBytes = file.length().coerceAtLeast(0L)
+                           emit(UploadProgress(
+                               stage = UploadStage.UPLOADING,
+                               bytesUploaded = 0L,
+                               totalBytes = totalBytes,
+                               fileName = displayName,
+                               currentFileIndex = index + 1,
+                               totalFiles = totalFiles
+                           ), force = true)
+
+                           // Speed window — per-file. Captured by the byte
+                           // callback, which fires on each okio buffer flush.
+                           var windowStartMs = System.currentTimeMillis()
+                           var windowStartBytes = 0L
+                           var lastSpeed = 0L
+
+                           val result = repository.uploadDocument(
+                               doc.patientId,
+                               doc.folderName,
+                               file,
+                               key,
+                               doc.uploadProfileUsed
+                           ) { uploaded, total ->
+                               if (isStopped) return@uploadDocument
+                               val now = System.currentTimeMillis()
+                               val elapsed = now - windowStartMs
+                               if (elapsed >= SPEED_WINDOW_MS) {
+                                   val delta = uploaded - windowStartBytes
+                                   lastSpeed = (delta * 1000L / elapsed).coerceAtLeast(0)
+                                   windowStartMs = now
+                                   windowStartBytes = uploaded
+                               }
+                               emitBlocking(UploadProgress(
+                                   stage = UploadStage.UPLOADING,
+                                   bytesUploaded = uploaded,
+                                   totalBytes = if (total > 0) total else totalBytes,
+                                   speedBytesPerSec = lastSpeed,
+                                   fileName = displayName,
+                                   currentFileIndex = index + 1,
+                                   totalFiles = totalFiles
+                               ))
+                           }
+
                            if (result.isSuccess) {
                                Log.d(TAG, "Successfully uploaded document")
 
@@ -149,6 +230,22 @@ class SyncDocumentsWorker(
 
                 Log.d(TAG, "Sync completed: $successCount/${pendingDocs.size} successful")
 
+                // Always cancel the foreground/progress notification — the
+                // terminal-state notification is posted under completionId so
+                // it survives WorkManager's stopForeground(STOP_FOREGROUND_REMOVE).
+                UploadNotifier.cancel(context, notificationId)
+                if (successCount > 0) {
+                    UploadNotifier.post(
+                        context,
+                        completionId,
+                        UploadNotifier.buildCompleted(
+                            context,
+                            completionId,
+                            fileCount = successCount
+                        )
+                    )
+                }
+
                 val actionableCount = pendingDocs.size - skippedExhaustedCount
                 if (actionableCount <= 0) {
                     Result.success()
@@ -163,9 +260,58 @@ class SyncDocumentsWorker(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Sync worker failed", e)
+                UploadNotifier.cancel(context, notificationId)
                 Result.failure()
             }
         }
+    }
+
+    // ─── Foreground + progress helpers ──────────────────────────────────────
+
+    private fun makeForegroundInfo(notification: Notification): ForegroundInfo {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(
+                notificationId,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            ForegroundInfo(notificationId, notification)
+        }
+    }
+
+    /** Suspend-friendly emit. Used at stage transitions (PREPARING / per-file boundary). */
+    private suspend fun emit(progress: UploadProgress, force: Boolean = false) {
+        if (!force && !throttle.shouldEmit(progress)) return
+        setProgress(progress.toData())
+        val notification = buildForStage(progress) ?: return
+        try {
+            setForeground(makeForegroundInfo(notification))
+        } catch (e: Exception) {
+            UploadNotifier.post(applicationContext, notificationId, notification)
+        }
+    }
+
+    /**
+     * Non-suspending emit invoked from inside okio's `writeTo` callback (which
+     * runs on the OkHttp dispatcher and can't await a suspend function). We
+     * post directly via NotificationManagerCompat — setProgress requires
+     * suspension and the byte-level WorkInfo.progress isn't critical.
+     */
+    private fun emitBlocking(progress: UploadProgress) {
+        if (!throttle.shouldEmit(progress)) return
+        val notification = buildForStage(progress) ?: return
+        UploadNotifier.post(applicationContext, notificationId, notification)
+    }
+
+    private fun buildForStage(progress: UploadProgress): Notification? = when (progress.stage) {
+        UploadStage.PREPARING -> UploadNotifier.buildPreparing(
+            applicationContext, notificationId, id, ""
+        )
+        UploadStage.UPLOADING -> UploadNotifier.buildUploading(
+            applicationContext, notificationId, id, progress
+        )
+        else -> null
     }
 
     private fun deleteLocalFile(uri: Uri) {
