@@ -91,7 +91,7 @@ class ScannerActivity : BaseActivity() {
     private fun startDocumentScanner() {
         val builder = GmsDocumentScannerOptions.Builder()
             .setGalleryImportAllowed(true)       // Allow importing from gallery
-            .setPageLimit(20)                     // Allow up to 20 pages
+            .setPageLimit(30)                     // ML Kit hard ceiling - Allow up to 30 pages
             .setScannerMode(SCANNER_MODE_FULL)  // Auto edge-detect, perspective correct, shadow removal
         configureA4PageSize(builder)
         configureResultFormats(builder)
