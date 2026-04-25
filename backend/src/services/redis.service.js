@@ -1,5 +1,5 @@
-import crypto from "crypto";
 import { Redis } from "@upstash/redis";
+import crypto from "crypto";
 import logger from "../utils/logger.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,16 +64,27 @@ function memTtl(key) {
 }
 
 // ── Select backend at module load ───────────────────────────────────────────
+const isProduction = process.env.NODE_ENV === "production";
 const hasUpstashCreds = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 let usingInMemory = !hasUpstashCreds;
 const upstash = hasUpstashCreds
   ? new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    })
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  })
   : null;
 
 if (!hasUpstashCreds) {
+  if (isProduction) {
+    logger.fatal(
+      { event: "redis_missing_credentials_production" },
+      "[redis.service] Upstash credentials are required in production; refusing to start with in-memory fallback",
+    );
+    throw new Error(
+      "[redis.service] Missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN in production",
+    );
+  }
+
   logger.warn(
     { event: "redis_fallback_memory", reason: "missing_credentials" },
     "[redis.service] ⚠️  Upstash credentials missing — using in-memory fallback (dev-only, non-persistent)",
