@@ -239,6 +239,15 @@ class HospitalApplication : Application() {
                 description = "File download progress and completion"
             }
             manager.createNotificationChannel(downloads)
+
+            val uploads = android.app.NotificationChannel(
+                CHANNEL_UPLOADS,
+                getString(R.string.upload_channel_name),
+                android.app.NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = getString(R.string.upload_channel_desc)
+            }
+            manager.createNotificationChannel(uploads)
         }
     }
 
@@ -246,6 +255,7 @@ class HospitalApplication : Application() {
         private const val HEARTBEAT_INTERVAL_MS = 60_000L // 60 seconds
         private const val TAG = "HospitalApplication"
         const val CHANNEL_DOWNLOADS = "downloads"
+        const val CHANNEL_UPLOADS = "uploads"
     }
 
     // Note: onTerminate() is never called on real Android devices,

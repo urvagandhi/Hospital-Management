@@ -86,4 +86,23 @@
     <string name="download_err_storage">Not enough storage space.</string>
     <string name="download_err_server">Server error. Try again later.</string>
     <string name="download_err_network_with_detail">Download failed: %1$s</string>
+
+    <!-- Upload notifications (UploadWorker / SyncDocumentsWorker) -->
+    <string name="upload_channel_name">Upload progress</string>
+    <string name="upload_channel_desc">File upload progress and completion</string>
+    <string name="upload_preparing_title">Preparing upload</string>
+    <string name="upload_preparing_subtext">Getting things ready…</string>
+    <string name="upload_uploading_title">Uploading %1$s</string>
+    <string name="upload_sync_title">Syncing patient records</string>
+    <string name="upload_completed_single_title">Upload complete</string>
+    <string name="upload_completed_single_text">%1$s</string>
+    <string name="upload_completed_batch_title">Upload complete</string>
+    <string name="upload_completed_batch_text">Uploaded %1$d patient record(s)</string>
+    <string name="upload_failed_title">Upload failed</string>
+    <string name="upload_failed_text">Tap to retry from the app</string>
+    <string name="upload_retrying_text">Waiting for connection · retry in %1$ds</string>
+    <string name="upload_stage_preparing">Preparing</string>
+    <string name="upload_stage_uploading">Uploading</string>
+    <string name="upload_batch_prefix">File %1$d of %2$d</string>
+    <string name="upload_in_progress_toast">Uploading in background. You\'ll get a notification when it\'s done.</string>
 </resources>
