@@ -531,9 +531,24 @@ class FolderDetailsActivity : BaseActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val conn = (java.net.URL(file.displayUrl).openConnection() as java.net.HttpURLConnection).also {
+                // Match the modern path: route PDFs through the compression sidecar
+                // when the flag is on, fall back to the raw Cloudinary URL otherwise.
+                val useCompressed = file.isPdf &&
+                    FeatureFlags.USE_COMPRESSION_SERVICE &&
+                    file._id != null
+                val downloadUrl = if (useCompressed) {
+                    "${RetrofitClient.BASE_URL}/api/patients/$patientId/files/${Uri.encode(folderName)}/${file._id}/compressed"
+                } else {
+                    file.displayUrl
+                }
+                val accessToken = if (useCompressed) tokenManager.getAccessToken() else null
+
+                val conn = (java.net.URL(downloadUrl).openConnection() as java.net.HttpURLConnection).also {
                     it.connectTimeout = 15_000
                     it.readTimeout = 60_000
+                    if (!accessToken.isNullOrBlank()) {
+                        it.setRequestProperty("Authorization", "Bearer $accessToken")
+                    }
                     it.connect()
                 }
                 if (conn.responseCode !in 200..299) throw Exception("Server error ${conn.responseCode}")
