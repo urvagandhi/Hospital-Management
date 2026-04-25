@@ -64,7 +64,11 @@ const sessionSchema = new mongoose.Schema(
       displayName: { type: String, default: null },
     },
     revokedReason: {
-      type: String, // "SESSION_CONFLICT", "ADMIN_REVOKE", "SUSPICIOUS_ACTIVITY", "SESSION_LIMIT_EXCEEDED"
+      type: String, // "SESSION_CONFLICT", "ADMIN_REVOKE", "SUSPICIOUS_ACTIVITY", "SESSION_LIMIT_EXCEEDED", "IDLE_TIMEOUT", "REFRESH_TOKEN_REUSE"
+    },
+    revokedAt: {
+      type: Date,
+      default: null,
     },
     lastAccessedAt: {
       type: Date,

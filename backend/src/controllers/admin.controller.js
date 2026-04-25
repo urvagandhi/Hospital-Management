@@ -11,6 +11,7 @@
 import AuditLog from '../models/AuditLog.js';
 import Patient from '../models/Patient.js';
 import { cloudinary, listCloudinaryResources, deleteFile } from '../services/storage.service.js';
+import getClientIp from '../utils/clientIp.js';
 
 // Prefixes to scan — all resource types that have ever been used.
 // Cloudinary keeps raw and image in separate buckets; both must be checked.
@@ -162,7 +163,7 @@ export const deleteOrphans = async (req, res) => {
       userId: req.hospital?.id,
       action: "ORPHAN_CLEANUP",
       status: failed.length === 0 ? "SUCCESS" : "FAILURE",
-      ipAddress: req.ip || req.connection?.remoteAddress,
+      ipAddress: getClientIp(req),
       userAgent: req.headers["user-agent"],
       details: {
         cloudinaryTotal,

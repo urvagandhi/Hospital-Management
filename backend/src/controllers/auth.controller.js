@@ -29,6 +29,7 @@ import {
   verifyOTP,
 } from "../services/redis.service.js";
 import { createSession, invalidateAllSessions, invalidateSession, refreshAccessToken } from "../services/token.service.js";
+import getClientIp from "../utils/clientIp.js";
 import { comparePassword, hashPassword } from "../utils/hash.js";
 import { generateTempToken, verifyToken } from "../utils/jwt.js";
 import logger from "../utils/logger.js";
@@ -60,7 +61,7 @@ export const changePassword = async (req, res) => {
     await hospital.save();
 
     // Create a session so user is logged in and can proceed to setup 2FA
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers["user-agent"] || "unknown";
     const isMobile = (req.headers["x-client-type"] || "").includes("Android");
     const deviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
@@ -215,7 +216,7 @@ export const registerHospital = async (req, res) => {
 
     // Audit Log
     try {
-      const ipAddress = req.ip || req.connection.remoteAddress;
+      const ipAddress = getClientIp(req);
       const userAgent = req.headers["user-agent"];
       await AuditLog.create({
         userId: hospital._id,
@@ -589,7 +590,7 @@ export const verifyRegistrationOtp = async (req, res) => {
       userId: hospital._id,
       action: "HOSPITAL_REGISTRATION",
       status: "SUCCESS",
-      ipAddress: req.ip || req.connection?.remoteAddress,
+      ipAddress: getClientIp(req),
       userAgent: req.headers["user-agent"],
       details: { hospitalName: hospital.hospitalName, flow: "self-service" },
     }).catch((e) => req.log.error({ event: "audit_log_registration_failed", err: e }, "[AuditLog] registration"));
@@ -747,7 +748,7 @@ export const login = async (req, res) => {
       throw new Error("Login failed. Please try again later.");
     }
 
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers["user-agent"];
 
     if (!hospital) {
@@ -986,7 +987,7 @@ export const verifyAuthCodeLogin = async (req, res) => {
       });
     }
 
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers["user-agent"] || "";
 
     // Constant-time comparison to prevent timing side-channel attacks
@@ -1180,7 +1181,7 @@ export const logout = async (req, res) => {
         userId: sessionDoc.hospitalId,
         action: "LOGOUT",
         status: "SUCCESS",
-        ipAddress: req.ip || req.connection?.remoteAddress,
+        ipAddress: getClientIp(req),
         userAgent: req.headers["user-agent"],
         details: { sessionId: String(sessionDoc._id) },
       }).catch((e) => req.log.error({ event: "logout_audit_failed", err: e }, "[logout] audit failed"));
@@ -1267,7 +1268,7 @@ export const registerBiometric = async (req, res) => {
     hospital.biometricKeys.push({ deviceId, publicKey, createdAt: new Date() });
     await hospital.save();
 
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     await AuditLog.create({
       userId: hospitalId,
       action: "BIOMETRIC_REGISTERED",
@@ -1417,7 +1418,7 @@ export const verifyBiometric = async (req, res) => {
     await consumeBiometricChallenge(hospitalId, deviceId);
 
     // Create session (biometric login bypasses the auth-code step)
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers["user-agent"] || "unknown";
     const isMobile = true; // Biometric is always mobile
     const sessionDeviceId = crypto.createHash("sha256").update(userAgent).digest("hex").substring(0, 16);
@@ -1559,12 +1560,19 @@ export const listActiveSessions = async (req, res) => {
     const currentSessionId = req.sessionId;
     if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
+    // Hide sessions idle for >15 min. The cron sweep retires them eventually,
+    // but the list filter gives instant correct UX even between sweeps.
+    const IDLE_MS = 15 * 60 * 1000;
+    const idleCutoff = new Date(Date.now() - IDLE_MS);
+
     const sessions = await Session.find({
       hospitalId,
       isActive: true,
+      revokedAt: null,
       expiresAt: { $gt: new Date() },
+      lastSeenAt: { $gt: idleCutoff },
     })
-      .select("_id deviceId platform isMobile userAgent ipAddress lastSeenAt lastSeenIp location createdAt")
+      .select("_id deviceId platform isMobile userAgent ipAddress lastSeenAt lastSeenIp location createdAt authCodeVerifiedAt")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -1581,21 +1589,35 @@ export const listActiveSessions = async (req, res) => {
       }
     }
 
-    const data = sessions.map((s) => ({
-      id: String(s._id),
-      _id: String(s._id),
-      sessionKey: String(s._id).slice(-6).toUpperCase(),
-      deviceId: s.deviceId || null,
-      platform: s.platform || "unknown",
-      isMobile: !!s.isMobile,
-      userAgent: s.userAgent,
-      ipAddress: s.ipAddress,
-      lastSeenAt: s.lastSeenAt,
-      lastSeenIp: s.lastSeenIp,
-      location: s.location || null,
-      createdAt: s.createdAt,
-      isCurrent: currentSessionId && String(s._id) === String(currentSessionId),
-    }));
+    // Mobile sessions must re-verify the Auth Code every 7 days. Surface that
+    // state to the frontend so the UI can render a "Needs Auth Code" chip.
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const data = sessions.map((s) => {
+      const verifiedAt = s.authCodeVerifiedAt
+        ? new Date(s.authCodeVerifiedAt).getTime()
+        : null;
+      const requiresAuthCodeReverify =
+        !!s.isMobile &&
+        verifiedAt !== null &&
+        Date.now() - verifiedAt > SEVEN_DAYS_MS;
+      return {
+        id: String(s._id),
+        _id: String(s._id),
+        sessionKey: String(s._id).slice(-6).toUpperCase(),
+        deviceId: s.deviceId || null,
+        platform: s.platform || "unknown",
+        isMobile: !!s.isMobile,
+        userAgent: s.userAgent,
+        ipAddress: s.ipAddress,
+        lastSeenAt: s.lastSeenAt,
+        lastSeenIp: s.lastSeenIp,
+        location: s.location || null,
+        createdAt: s.createdAt,
+        authCodeVerifiedAt: s.authCodeVerifiedAt || null,
+        requiresAuthCodeReverify,
+        isCurrent: currentSessionId && String(s._id) === String(currentSessionId),
+      };
+    });
 
     return res.status(200).json({ success: true, data, count: data.length });
   } catch (error) {
@@ -1734,7 +1756,7 @@ export const reverifyAuthCode = async (req, res) => {
         userId: hospitalId,
         action: "AUTH_CODE_REVERIFY_FAILED",
         status: "FAILURE",
-        ipAddress: req.ip || req.connection.remoteAddress,
+        ipAddress: getClientIp(req),
         userAgent: req.headers["user-agent"],
         details: { sessionId: String(sessionId) },
       }).catch(() => { });
@@ -1754,7 +1776,7 @@ export const reverifyAuthCode = async (req, res) => {
       userId: hospitalId,
       action: "AUTH_CODE_REVERIFIED",
       status: "SUCCESS",
-      ipAddress: req.ip || req.connection.remoteAddress,
+      ipAddress: getClientIp(req),
       userAgent: req.headers["user-agent"],
       details: { sessionId: String(sessionId) },
     }).catch(() => { });
@@ -1894,7 +1916,7 @@ export const forgotPasswordInit = async (req, res) => {
       return res.status(400).json({ success: false, message: "Identifier is required" });
     }
 
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers["user-agent"];
 
     const hospital = await lookupHospitalByIdentifier(identifier);
@@ -1987,7 +2009,7 @@ export const forgotPasswordVerify = async (req, res) => {
       return res.status(400).json({ success: false, message: "OTP must be 6 digits" });
     }
 
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers["user-agent"];
 
     const hospital = await lookupHospitalByIdentifier(identifier);
@@ -2120,7 +2142,7 @@ export const forgotPasswordReset = async (req, res) => {
     // Best-effort cleanup of any stale OTP material.
     await deleteForgotPasswordOtp(hospital._id.toString());
 
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     const userAgent = req.headers["user-agent"];
     try {
       await AuditLog.create({
@@ -2163,7 +2185,7 @@ export const forgotPasswordReset = async (req, res) => {
 export const changePasswordSettings = async (req, res) => {
   const hospitalId = req.hospital?.id;
   const currentSessionId = req.sessionId;
-  const ipAddress = req.ip || req.connection.remoteAddress;
+  const ipAddress = getClientIp(req);
   const userAgent = req.headers["user-agent"];
 
   try {

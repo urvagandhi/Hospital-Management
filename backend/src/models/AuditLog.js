@@ -23,6 +23,7 @@ const auditLogSchema = new mongoose.Schema(
         "OTP_SENT",
         "OTP_VERIFIED",
         "LOGOUT",
+        "SESSION_IDLE_REVOKED",
         "AUTH_CODE_REVERIFIED",
         "AUTH_CODE_REVERIFY_FAILED",
         "AUTH_CODE_RESEND",

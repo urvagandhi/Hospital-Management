@@ -19,6 +19,7 @@ import {
   SIGNED_UPLOADS_ENABLED,
 } from "../services/storage.service.js";
 import * as zipService from "../services/zip.service.js";
+import getClientIp from "../utils/clientIp.js";
 import logger from "../utils/logger.js";
 
 const USE_COMPRESSION = config.USE_COMPRESSION_SERVICE;
@@ -29,7 +30,7 @@ function logAudit(userId, action, req, details) {
     userId,
     action,
     status: "SUCCESS",
-    ipAddress: req.ip || req.connection?.remoteAddress,
+    ipAddress: getClientIp(req),
     userAgent: req.headers?.["user-agent"],
     details,
   }).catch((e) => logger.error({ event: "audit_log_failed", err: e }, "[Audit] log failed"));

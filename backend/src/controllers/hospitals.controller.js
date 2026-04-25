@@ -21,6 +21,7 @@ import {
   verifyContactChangeOtp,
   deleteContactChangeRequest,
 } from "../services/redis.service.js";
+import getClientIp from "../utils/clientIp.js";
 
 /**
  * Get all hospitals (cursor-paginated, admin-only).
@@ -299,7 +300,7 @@ export const updateHospital = async (req, res) => {
       userId: hospital._id,
       action: "HOSPITAL_UPDATED",
       status: "SUCCESS",
-      ipAddress: req.ip || req.connection?.remoteAddress,
+      ipAddress: getClientIp(req),
       userAgent: req.headers["user-agent"],
       details: {
         targetHospitalId: String(hospital._id),
@@ -328,7 +329,7 @@ export const updateHospital = async (req, res) => {
         userId: hospital._id,
         action: "PROFILE_PATCHED",
         status: "SUCCESS",
-        ipAddress: req.ip,
+        ipAddress: getClientIp(req),
         userAgent: req.headers["user-agent"],
         details: { action: "account_disabled_by_admin", adminId: req.hospital?.id },
       }).catch(() => {});
@@ -341,7 +342,7 @@ export const updateHospital = async (req, res) => {
         userId: hospital._id,
         action: "PROFILE_PATCHED",
         status: "SUCCESS",
-        ipAddress: req.ip,
+        ipAddress: getClientIp(req),
         userAgent: req.headers["user-agent"],
         details: { action: "account_enabled_by_admin", adminId: req.hospital?.id },
       }).catch(() => {});
@@ -465,7 +466,7 @@ export const resendWelcomeEmail = async (req, res) => {
       userId: req.hospital?.id,
       action: "HOSPITAL_RESEND_WELCOME",
       status: "SUCCESS",
-      ipAddress: req.ip || req.connection?.remoteAddress,
+      ipAddress: getClientIp(req),
       userAgent: req.headers["user-agent"],
       details: {
         targetHospitalId: id,
@@ -512,7 +513,7 @@ function normalizeIndianPhone(raw) {
  */
 export const patchMe = async (req, res) => {
   const hospitalId = req.hospital?.id;
-  const ipAddress = req.ip || req.connection.remoteAddress;
+  const ipAddress = getClientIp(req);
   const userAgent = req.headers["user-agent"];
 
   try {
@@ -574,7 +575,7 @@ export const patchMe = async (req, res) => {
  */
 export const initContactChange = async (req, res) => {
   const hospitalId = req.hospital?.id;
-  const ipAddress = req.ip || req.connection.remoteAddress;
+  const ipAddress = getClientIp(req);
   const userAgent = req.headers["user-agent"];
 
   try {
@@ -675,7 +676,7 @@ const resendContactOtpCooldown = new Map(); // hospitalId → timestamp(ms)
 
 export const resendContactChangeOtp = async (req, res) => {
   const hospitalId = req.hospital?.id;
-  const ipAddress = req.ip || req.connection.remoteAddress;
+  const ipAddress = getClientIp(req);
   const userAgent = req.headers["user-agent"];
 
   try {
@@ -764,7 +765,7 @@ export const resendContactChangeOtp = async (req, res) => {
  */
 export const verifyContactChange = async (req, res) => {
   const hospitalId = req.hospital?.id;
-  const ipAddress = req.ip || req.connection.remoteAddress;
+  const ipAddress = getClientIp(req);
   const userAgent = req.headers["user-agent"];
 
   try {
@@ -918,7 +919,7 @@ export const updateNotificationPreferences = async (req, res) => {
       userId: hospitalId,
       action: "PROFILE_PATCHED",
       status: "SUCCESS",
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
       userAgent: req.headers["user-agent"],
       details: { notificationPrefs: set },
     }).catch(() => {});
@@ -967,7 +968,7 @@ export const adminForceDelete = async (req, res) => {
         userId: adminId,
         action: "AUTO_DELETE",
         status: "FAILURE",
-        ipAddress: req.ip,
+        ipAddress: getClientIp(req),
         userAgent: req.headers["user-agent"],
         details: { targetId: id, type: "admin_forced_deletion", reason: "bad_admin_password" },
       }).catch(() => {});
@@ -1011,7 +1012,7 @@ export const adminForceDelete = async (req, res) => {
       userId: hospital._id,
       action: "AUTO_DELETE",
       status: "SUCCESS",
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
       userAgent: req.headers["user-agent"],
       details: {
         approvedBy: adminId,

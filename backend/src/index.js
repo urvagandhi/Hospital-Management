@@ -10,6 +10,8 @@ import helmet from "helmet";
 import connectDB from "./config/db.js";
 import config from "./config/env.js";
 import scheduleAutoDelete from "./jobs/autoDelete.job.js";
+import scheduleIdleSweep from "./jobs/idleSweep.job.js";
+import getClientIp from "./utils/clientIp.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { generalLimiter } from "./middleware/rateLimiter.js";
 import adminRoutes from "./routes/admin.routes.js";
@@ -113,8 +115,7 @@ app.use("/api/admin", adminRoutes);
 // ============ HEALTH CHECK ============
 app.get("/api/health", (req, res) => {
   const userAgent = req.get("user-agent") || "";
-  const forwardedFor = req.get("x-forwarded-for") || "";
-  const clientIp = forwardedFor ? forwardedFor.split(",", 1)[0].trim() : req.ip;
+  const clientIp = getClientIp(req);
   req.log.info(
     {
       event: "health_hit",
@@ -136,8 +137,7 @@ app.get("/api/health", (req, res) => {
 // system degraded. See services/health.service.js for probe internals.
 app.get("/api/health/deep", async (req, res) => {
   const userAgent = req.get("user-agent") || "";
-  const forwardedFor = req.get("x-forwarded-for") || "";
-  const clientIp = forwardedFor ? forwardedFor.split(",", 1)[0].trim() : req.ip;
+  const clientIp = getClientIp(req);
   req.log.info(
     {
       event: "health_deep_hit",
@@ -185,6 +185,10 @@ const startServer = async () => {
 
     // Schedule auto-delete cron job
     scheduleAutoDelete();
+
+    // Schedule idle-session sweep — retires sessions idle > 15 min so closing
+    // a tab without explicit logout doesn't leave ghost rows in the list.
+    scheduleIdleSweep();
 
     // Start Express server
     app.listen(config.PORT, () => {

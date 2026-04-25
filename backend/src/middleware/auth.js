@@ -5,6 +5,7 @@
 
 import Hospital from "../models/Hospital.js";
 import Session from "../models/Session.js";
+import getClientIp from "../utils/clientIp.js";
 import { extractTokenFromHeader, verifyToken } from "../utils/jwt.js";
 
 /**
@@ -84,7 +85,7 @@ export const verifyAccessToken = async (req, res, next) => {
     }
 
     // Update lastSeenAt on every authenticated request (non-blocking)
-    const ipAddress = req.ip || req.connection.remoteAddress;
+    const ipAddress = getClientIp(req);
     Session.updateOne(
       { _id: session._id },
       { lastSeenAt: new Date(), lastSeenIp: ipAddress },

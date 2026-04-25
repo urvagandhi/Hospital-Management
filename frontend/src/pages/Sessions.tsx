@@ -42,6 +42,24 @@ interface SessionItem {
   createdAt?: string;
   isCurrent?: boolean;
   location?: SessionLocation | null;
+  revokedAt?: string | null;
+  revokedReason?: string | null;
+  authCodeVerifiedAt?: string | null;
+  // Backend may compute this server-side; we also derive it client-side as
+  // a fallback: mobile session whose Auth Code was verified > 7 days ago is
+  // alive but locked behind re-verify on next request.
+  requiresAuthCodeReverify?: boolean;
+}
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isLockedAuthCode(s: SessionItem): boolean {
+  if (s.requiresAuthCodeReverify === true) return true;
+  if (!s.isMobile) return false;
+  if (!s.authCodeVerifiedAt) return false;
+  const verified = new Date(s.authCodeVerifiedAt).getTime();
+  if (Number.isNaN(verified)) return false;
+  return Date.now() - verified > SEVEN_DAYS_MS;
 }
 
 function locationLabel(loc?: SessionLocation | null): string | null {
@@ -190,7 +208,11 @@ const Sessions: React.FC = () => {
     setError(null);
     try {
       const response = await authService.listSessions();
-      setSessions(response.data || []);
+      // Drop sessions that are already dead — manual logout, idle revoke,
+      // session-conflict eviction all set revokedAt server-side. They have
+      // no actionable state in the UI, so they shouldn't appear in the list.
+      const live = (response.data || []).filter((s: SessionItem) => !s.revokedAt);
+      setSessions(live);
     } catch (err: any) {
       setError(err?.message || "Failed to load sessions");
     } finally {
@@ -482,6 +504,7 @@ const Sessions: React.FC = () => {
                     const name = humanizeUA(s.userAgent);
                     const last = relativeTime(s.lastSeenAt || s.createdAt);
                     const isCurrent = !!s.isCurrent;
+                    const needsAuthCode = isLockedAuthCode(s);
                     return (
                       <li
                         key={id || `${s.userAgent || "unknown"}-${s.createdAt || ""}`}
@@ -519,7 +542,28 @@ const Sessions: React.FC = () => {
                                   Current session
                                 </span>
                               )}
-                              {s.isMobile && !isCurrent && (
+                              {needsAuthCode && !isCurrent && (
+                                <span
+                                  title="This device hasn't verified its Auth Code in the last 7 days. The session is still alive but the device must re-enter the code on its next request."
+                                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-warning/10 text-warning text-[11px] font-semibold ring-1 ring-inset ring-warning/30"
+                                >
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.25"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="w-3 h-3"
+                                    aria-hidden="true"
+                                  >
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                  </svg>
+                                  Needs Auth Code
+                                </span>
+                              )}
+                              {s.isMobile && !isCurrent && !needsAuthCode && (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-[11px] font-semibold ring-1 ring-inset ring-primary-600/15">
                                   Mobile
                                 </span>
