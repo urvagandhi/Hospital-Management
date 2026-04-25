@@ -24,26 +24,6 @@ class UploadFileUseCase(private val repository: PatientRepository) {
         repository.uploadFile(patientId, folderName, file)
 }
 
-class DownloadFolderPdfUseCase(private val repository: PatientRepository) {
-    suspend operator fun invoke(patientId: String, folderName: String) =
-        repository.downloadFolderPdf(patientId, folderName)
-}
-
-class DownloadAllPdfUseCase(private val repository: PatientRepository) {
-    suspend operator fun invoke(patientId: String) =
-        repository.downloadAllPdf(patientId)
-}
-
-class DownloadFolderZipUseCase(private val repository: PatientRepository) {
-    suspend operator fun invoke(patientId: String, folderName: String) =
-        repository.downloadFolderZip(patientId, folderName)
-}
-
-class DownloadAllZipUseCase(private val repository: PatientRepository) {
-    suspend operator fun invoke(patientId: String) =
-        repository.downloadAllZip(patientId)
-}
-
 class CreateFolderUseCase(private val repository: PatientRepository) {
     suspend operator fun invoke(patientId: String, folderName: String) =
         repository.createFolder(patientId, folderName)

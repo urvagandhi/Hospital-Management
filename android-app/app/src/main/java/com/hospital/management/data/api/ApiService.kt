@@ -1,15 +1,10 @@
 package com.hospital.management.data.api
 
-import com.google.gson.annotations.SerializedName
 import com.hospital.management.data.models.*
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
-
-data class ZipDownloadRequest(
-    @SerializedName("selectedFolders") val selectedFolders: List<String>
-)
 
 interface ApiService {
 
@@ -207,48 +202,11 @@ interface ApiService {
     @GET("/api/patients/{patientId}/download/zip/size-check")
     suspend fun checkZipSize(@Path("patientId") patientId: String): Response<Map<String, Any>>
 
-    @POST("/api/patients/{patientId}/download/zip")
-    @Streaming
-    suspend fun downloadPatientZip(
-        @Path("patientId") patientId: String,
-        @Body body: ZipDownloadRequest
-    ): Response<ResponseBody>
-
-    @POST("/api/patients/{patientId}/download/zip")
-    @Streaming
-    suspend fun downloadPatientZipAll(
-        @Path("patientId") patientId: String
-    ): Response<ResponseBody>
-
-    @POST("/api/patients/{patientId}/download/pdf")
-    @Streaming
-    suspend fun downloadPatientPdf(
-        @Path("patientId") patientId: String,
-        @Body body: Map<String, String>
-    ): Response<ResponseBody>
-
-    @GET("/api/patients/{patientId}/folders/{folderName}/download/zip")
-    @Streaming
-    suspend fun downloadFolderZip(
-        @Path("patientId") patientId: String,
-        @Path("folderName") folderName: String
-    ): Response<ResponseBody>
-
-    @GET("/api/patients/{patientId}/folders/{folderName}/download/pdf")
-    @Streaming
-    suspend fun downloadFolderPdf(
-        @Path("patientId") patientId: String,
-        @Path("folderName") folderName: String
-    ): Response<ResponseBody>
-
-    // Legacy GET routes (backward compat)
-    @GET("/api/patients/{patientId}/download/pdf")
-    @Streaming
-    suspend fun downloadAllPdfLegacy(@Path("patientId") patientId: String): Response<ResponseBody>
-
-    @GET("/api/patients/{patientId}/download/zip")
-    @Streaming
-    suspend fun downloadAllZipLegacy(@Path("patientId") patientId: String): Response<ResponseBody>
+    // ── Bulk download endpoints are accessed directly via DownloadWorker
+    // (HttpURLConnection) so they get foreground service + byte-progress
+    // notifications. Retrofit wrappers were dropped — the worker hits the
+    // URL strings under /api/patients/{id}/download/{pdf,zip} and
+    // /api/patients/{id}/folders/{folder}/download/{pdf,zip} directly.
 
     // FCM token registration
     @POST("/api/auth/fcm-token")

@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
-import okhttp3.ResponseBody
 
 sealed class PatientState {
     object Idle : PatientState()
@@ -31,10 +30,6 @@ class PatientViewModel(
     private val createFolderUseCase: CreateFolderUseCase,
     private val getFolderFilesUseCase: GetFolderFilesUseCase,
     private val uploadFileUseCase: UploadFileUseCase,
-    private val downloadFolderPdfUseCase: DownloadFolderPdfUseCase,
-    private val downloadAllPdfUseCase: DownloadAllPdfUseCase,
-    private val downloadFolderZipUseCase: DownloadFolderZipUseCase,
-    private val downloadAllZipUseCase: DownloadAllZipUseCase,
     private val updatePatientUseCase: UpdatePatientUseCase,
     private val patientRepository: PatientRepository? = null
 ) : ViewModel() {
@@ -247,38 +242,6 @@ class PatientViewModel(
                 }
             } catch (e: Exception) {
                 _patientState.value = PatientState.Error(e.message ?: "Error uploading file")
-            }
-        }
-    }
-
-    fun downloadFolderPdf(patientId: String, folderName: String) {
-        initiateDownload("PDF") { downloadFolderPdfUseCase(patientId, folderName) }
-    }
-
-    fun downloadAllPdf(patientId: String) {
-        initiateDownload("PDF") { downloadAllPdfUseCase(patientId) }
-    }
-
-    fun downloadFolderZip(patientId: String, folderName: String) {
-        initiateDownload("ZIP") { downloadFolderZipUseCase(patientId, folderName) }
-    }
-
-    fun downloadAllZip(patientId: String) {
-        initiateDownload("ZIP") { downloadAllZipUseCase(patientId) }
-    }
-
-    private fun initiateDownload(type: String, downloadCall: suspend () -> retrofit2.Response<ResponseBody>) {
-        viewModelScope.launch {
-            _patientState.value = PatientState.Loading
-            try {
-                val response = downloadCall()
-                if (response.isSuccessful && response.body() != null) {
-                    _patientState.value = PatientState.Success("$type Ready", response.body())
-                } else {
-                    _patientState.value = PatientState.Error("Download failed")
-                }
-            } catch (e: Exception) {
-                _patientState.value = PatientState.Error(e.message ?: "Network error during download")
             }
         }
     }

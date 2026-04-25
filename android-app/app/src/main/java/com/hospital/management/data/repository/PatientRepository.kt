@@ -53,22 +53,6 @@ class PatientRepository(
     ): Response<Map<String, Any>> {
         return apiService.uploadFile(patientId, folderName, file, idempotencyKey, uploadProfileUsed)
     }
-    
-    suspend fun downloadFolderPdf(patientId: String, folderName: String): Response<okhttp3.ResponseBody> {
-        return apiService.downloadFolderPdf(patientId, folderName)
-    }
-    
-    suspend fun downloadAllPdf(patientId: String): Response<okhttp3.ResponseBody> {
-        return apiService.downloadAllPdfLegacy(patientId)
-    }
-
-    suspend fun downloadFolderZip(patientId: String, folderName: String): Response<okhttp3.ResponseBody> {
-        return apiService.downloadFolderZip(patientId, folderName)
-    }
-
-    suspend fun downloadAllZip(patientId: String): Response<okhttp3.ResponseBody> {
-        return apiService.downloadAllZipLegacy(patientId)
-    }
 
     // ── Cache helpers ─────────────────────────────────────────────────────────
 

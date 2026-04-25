@@ -725,28 +725,6 @@ class FolderViewActivity : BaseActivity() {
         return parts.joinToString("/")
     }
 
-    private fun saveToDownloads(body: okhttp3.ResponseBody, fileName: String, mimeType: String, subPath: String? = null) {
-        val resolver = contentResolver
-        val relativePath = subPath ?: getDownloadSubPath()
-        val contentValues = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-            put(MediaStore.Downloads.MIME_TYPE, mimeType)
-            put(MediaStore.Downloads.RELATIVE_PATH, "${android.os.Environment.DIRECTORY_DOWNLOADS}/$relativePath")
-            put(MediaStore.Downloads.IS_PENDING, 1)
-        }
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues) ?: return
-        resolver.openOutputStream(uri)?.use { output ->
-            body.byteStream().copyTo(output)
-        }
-        contentValues.clear()
-        contentValues.put(MediaStore.Downloads.IS_PENDING, 0)
-        resolver.update(uri, contentValues, null, null)
-
-        com.hospital.management.utils.DownloadNotifier.notifyCompleted(
-            applicationContext, uri, fileName, mimeType
-        )
-    }
-
     override fun onResume() {
         super.onResume()
         loadFolders() // Refresh folder list when returning from scanner

@@ -41,10 +41,6 @@ class ViewModelFactory(
                 CreateFolderUseCase(patientRepository),
                 GetFolderFilesUseCase(patientRepository),
                 UploadFileUseCase(patientRepository),
-                DownloadFolderPdfUseCase(patientRepository),
-                DownloadAllPdfUseCase(patientRepository),
-                DownloadFolderZipUseCase(patientRepository),
-                DownloadAllZipUseCase(patientRepository),
                 UpdatePatientUseCase(patientRepository),
                 patientRepository
             ) as T

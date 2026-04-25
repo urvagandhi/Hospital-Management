@@ -153,16 +153,11 @@ class FolderDetailsActivity : BaseActivity() {
                     is PatientState.Loading -> progressBar.visibility = View.VISIBLE
                     is PatientState.Success -> {
                         progressBar.visibility = View.GONE
-
-                        if (state.message == "PDF Ready" && state.data is okhttp3.ResponseBody) {
-                            val safeFolder = folderName.replace(Regex("[^a-zA-Z0-9 ]"), "").trim().replace("\\s+".toRegex(), "_")
-                            val fileName = "${safeFolder}.pdf"
-                            saveFileToDownloads(state.data, fileName)
-                        } else if (state.message == "ZIP Ready" && state.data is okhttp3.ResponseBody) {
-                            val safeFolder = folderName.replace(Regex("[^a-zA-Z0-9 ]"), "").trim().replace("\\s+".toRegex(), "_")
-                            val fileName = "${safeFolder}.zip"
-                            saveFileToDownloads(state.data, fileName)
-                        } else if (state.message?.isNotEmpty() == true && state.message != "Files loaded") {
+                        // Bulk download flows now go through DownloadWorker — its
+                        // notifications carry the user from progress to completion.
+                        // Only generic Success messages (e.g. patient updates) bubble
+                        // here; "Files loaded" stays silent.
+                        if (state.message?.isNotEmpty() == true && state.message != "Files loaded") {
                             Toast.makeText(this@FolderDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -1362,50 +1357,4 @@ class FolderDetailsActivity : BaseActivity() {
         }
     }
 
-    private fun saveFileToDownloads(body: okhttp3.ResponseBody, fileName: String) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val mimeType = when {
-                    fileName.endsWith(".pdf", true) -> "application/pdf"
-                    fileName.endsWith(".zip", true) -> "application/zip"
-                    else -> "application/octet-stream"
-                }
-                val resolver = contentResolver
-                val relativePath = getDownloadSubPath()
-                val contentValues = android.content.ContentValues().apply {
-                    put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName)
-                    put(android.provider.MediaStore.Downloads.MIME_TYPE, mimeType)
-                    put(android.provider.MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$relativePath")
-                    put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
-                }
-                val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-                if (uri == null) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@FolderDetailsActivity, "Failed to create download entry", Toast.LENGTH_SHORT).show()
-                    }
-                    return@launch
-                }
-
-                resolver.openOutputStream(uri)?.use { output ->
-                    body.byteStream().copyTo(output)
-                }
-
-                contentValues.clear()
-                contentValues.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
-                resolver.update(uri, contentValues, null, null)
-
-                com.hospital.management.utils.DownloadNotifier.notifyCompleted(
-                    applicationContext, uri, fileName, mimeType
-                )
-
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@FolderDetailsActivity, "Saved to $relativePath/$fileName", Toast.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@FolderDetailsActivity, "Error saving file: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
 }
