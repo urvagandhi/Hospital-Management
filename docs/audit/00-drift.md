@@ -1,11 +1,23 @@
 # Drift Detection — Hospital Management System
 
-**Verified at commit:** `defa74a` (2026-04-17)
+**Verified at commit:** `defa74a` (2026-04-17); refreshed against `61fa6ad` (2026-04-26)
 **Audit date:** 2026-04-21
-**Last updated:** 2026-04-21 (TD-002 / TD-004 / TD-005 / TD-010 / TD-012 / TD-013 shipped — resolved rows marked 🛠️ below)
+**Last updated:** 2026-04-26 — mobile sessions exempted from idle-sweep eviction (`61fa6ad`); security/sessions hardening + Android Phase 1+2 download/upload pipeline previously added (see "Post 2026-04-25 work" below)
 **Baseline docs audited against:** `docs/audit/backend.md`, `docs/audit/frontend.md`, `docs/audit/features.md` (all dated 2026-04-20), plus `CLAUDE.md`.
 
 **Legend:** ✅ Confirmed · ⚠️ Drifted · ❌ False · ➕ New (not in baseline) · 🛠️ Resolved after the audit date
+
+## Post 2026-04-25 work (added 2026-04-26 — not yet rolled into the per-section tables below)
+
+The 2026-04-25 → 2026-04-26 commits introduced new behaviour that the section tables below have not been re-verified against. Treat the following as authoritative until the next full pass:
+
+- **Sessions hardening (commits `d554a4a`, `7377d76`):** Server-side idle revoke runs every 5 min on `lastSeenAt > 60 min` — **WEB sessions only; mobile is exempt** (see next bullet for the `61fa6ad` fix). New `getClientIp(req)` helper reads `CF-Connecting-IP` first; auth middleware updates `lastSeenIp` on IP change and re-runs geoip lazily; refresh-token rotation now uses distinct revoke reasons (`TOKEN_ROTATION`, `SESSION_REVOKED`, `REFRESH_TOKEN_REUSE`, `SESSION_LIMIT_EXCEEDED`, `IDLE_TIMEOUT`) so audit history doesn't conflate normal rotation with real revoke events. New audit action: `SESSION_IDLE_REVOKED`. New cron job: `backend/src/jobs/idleSweep.job.js`. Sessions list filters idle rows + renders `lastSeenIp` alongside `ipAddress`.
+- **Mobile exemption from idle sweep (commit `61fa6ad`, 2026-04-26):** Idle-sweep cron query in [jobs/idleSweep.job.js](../../backend/src/jobs/idleSweep.job.js) now adds `isMobile: false`, and `listActiveSessions` in [auth.controller.js ~L1560-1582](../../backend/src/controllers/auth.controller.js) filters with `$or: [{isMobile: true}, {isMobile: false, lastSeenAt: {$gt: idleCutoff}}]`. **Rationale:** backgrounded phones stop heartbeating (the 60s app-foreground heartbeat doesn't fire when the app is backgrounded), so the cron was evicting clinical staff who put their phones down between rounds. Mobile security continues to rely on the existing 7-day Auth Code re-verification + 3-device limit, NOT on idle revoke. Web sessions remain subject to the 60-min idle cutoff because web has no heartbeat at all and is multi-session by design.
+- **Backend security sweep (commits `09fae23`, `a1bd66e`, `effaea1`, `d69f0be`):** JWT verification pinned to `algorithms: ["HS256"]`; production refuses to boot without Upstash credentials (in-memory fallback is dev-only); bcryptjs 2.4 → 3.0 (no migration needed, format unchanged); `GET /api/patients` now uses cursor pagination (`?limit=20&cursor=<opaque>` with `nextCursor` + `hasMore`; legacy `?skip=` still honoured).
+- **Frontend ErrorBoundary (commit `8fbab6a`):** Two-layer setup — top-level `<ErrorBoundary>` in `App.tsx` plus a per-route `<ErrorBoundary key={location.pathname} fullScreen={false}>` inside `MainLayout.tsx` that remounts on navigation so render errors stay scoped to one route.
+- **Android Phase 1+2 (commits `0d4b9c1` + `08483ff` + descendants):** `DownloadWorker` is now the only path for bulk downloads (folder PDF/ZIP, patient PDF/ZIP), accepts JSON request bodies, resumes partial transfers via `RandomAccessFile`, persists Ready/Failed notifications past worker teardown. New `UploadWorker` runs as a foreground service with byte-level progress via `ProgressRequestBody`. `SyncDocumentsWorker` was promoted to a foreground service. New `WorkProgressBanner` on the Dashboard aggregates download+upload+sync state. Retry cap on `SyncDocumentsWorker` was REMOVED — every queued upload must eventually land. `NetworkMonitor` debounces ONLINE↔OFFLINE flips so background transitions don't flicker. Inline-download plumbing was deleted in `8d8956f`. Document-scanner page limit raised 20 → 30 (ML Kit ceiling). The previously "INTENTIONAL_FEATURE_HOLD" branch `DownloadWorker.pollUntilReady(statusUrl)` IS now reached when a server-side merge is in progress — that note is obsolete.
+- **CI / deployment (commits `ea5fd05`, `c92df1d`, `30b4477`, `8a83e9d`, `2ea749c`):** `npm start` runs `node` directly (Render strips devDeps so nodemon was killing prod boot); Jest ESM unbreak; `refreshAccessToken` no longer uses `.select().lean()` chain (broke `session.save()` in CI); `actions/checkout` + `actions/setup-node` bumped to v5; health-check workflow uses updated demo creds.
+- **Branch state:** the long-running `feat/redesign-and-platform-upgrades` branch was merged to `main` on 2026-04-25 via PR #1 (`b21b16d`). All 2026-04-25 → 2026-04-26 work was committed directly to main.
 
 ## What's been resolved since the original drift capture
 

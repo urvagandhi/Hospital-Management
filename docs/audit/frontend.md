@@ -2,7 +2,7 @@
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
-**Last updated:** 2026-04-21 — TD-005 (pagination UX in `HospitalsList.tsx`) and TD-010 (dead files removed) landed after the initial audit pass. Sections marked 🛠️ where the code has moved on.
+**Last updated:** 2026-04-26 — refreshed against `main` after the 2026-04-21 → 2026-04-26 wave (TD-D3 access-token-in-memory, TD-009 useDocumentTitle sweep, TD-005 pagination UX, TD-010 dead-file removal, route-level ErrorBoundary, Sessions `lastSeenIp` + mobile-exempt idle filter, redesign-complete merge `b21b16d`). Sections marked 🛠️ where the code has moved on.
 **Location:** `/frontend/`
 
 ---
@@ -11,10 +11,13 @@
 
 | Area | Change | Pointer |
 |---|---|---|
-| Route count | **21 routes** (20 paths + catch-all) — prior audit said 24 | `00-drift.md` §6.1 |
+| Route count | **21 routes** (20 paths + catch-all) — prior audit said 24; CLAUDE.md still cites 24, that count is loose | `00-drift.md` §6.1 |
 | Catch-all | Renders `<NotFound />`, does NOT redirect to `/dashboard` | `00-drift.md` §6.2 |
-| `/spinners-preview` | Route exists ([AppRoutes.tsx:59](../../frontend/src/routes/AppRoutes.tsx)) — unlinked design gallery, missing from prior audit §2 | §2 |
-| `useDocumentTitle` rule | **7 violations** — Dashboard, Login, Password, Profile, Sessions, VerifyAuthCode use `document.title =` directly; ForgotPassword has no title at all | `00-drift.md` §7.3 |
+| `/spinners-preview` | Route exists ([AppRoutes.tsx:77-84](../../frontend/src/routes/AppRoutes.tsx)) — unlinked design gallery, lazy-loaded along with `/components-preview` | §2 |
+| `useDocumentTitle` rule | 🛠️ **All 21 pages compliant** (TD-009 swept 2026-04-21 in `2194f0e`). Prior 7 violators (Dashboard, Login, Password, Profile, Sessions, VerifyAuthCode, ForgotPassword) all switched. | §9 |
+| Access-token storage | 🛠️ **In-memory** in [api.ts](../../frontend/src/services/api.ts) (TD-D3, 2026-04-25, `621ca05`) — `_accessToken` module variable. `sessionStorage.accessToken` is gone. Refresh cookie bootstraps a fresh token on tab/refresh inside `AuthProvider`. | §6 |
+| Sessions list | 🛠️ Renders `lastSeenIp` alongside `ipAddress` (`7377d76`); web sessions idle > 60 min are filtered out, mobile sessions are exempt (`61fa6ad`). | §3 |
+| ErrorBoundary | 🛠️ Two-layer: top-level in [App.tsx](../../frontend/src/App.tsx), inner one wrapping `<Outlet />` in [MainLayout.tsx](../../frontend/src/layouts/MainLayout.tsx) keyed by `location.pathname` so a render error on one authenticated route can't blank the shell (`8fbab6a`). | §8 |
 | Modal portal rule | All 8 expected modals verified `createPortal + z-[100]`. No violations. | `00-drift.md` §7.2 |
 | `min-h-screen` rule | No violations inside MainLayout. | `00-drift.md` §7.1 |
 | Dead code | `services/patientApi.ts` (all exports), `CountdownTimer`, `SkeletonLoader`, `Toast` components: 0 importers. `hospitalService.listAppVersions/createAppVersion/updateAppVersion`: 0 callers. | `01-dead-code.md` §C |
@@ -62,6 +65,8 @@ Unchanged in substance from prior audit §3. Admin: `/register`, `/hospitals`, `
 
 **Web is read-only for patient mutations** — file upload/rename/delete and Edit-Patient flow are commented out (see `02-commented-code.md` §1) per CLAUDE.md §11. Mobile app handles mutations.
 
+**Sessions page (`/sessions`)** shows `lastSeenIp` next to `ipAddress` so users can spot a session roaming networks (mobile-only signal — Cloudflare-aware `getClientIp` updates `lastSeenIp` on each request). Web sessions whose `lastSeenAt` is older than 60 min are hidden because the server-side idle sweep is about to revoke them; mobile sessions are exempt because backgrounded mobile apps look idle but are alive (verified [auth.controller.js:1563-1581](../../backend/src/controllers/auth.controller.js)).
+
 ---
 
 ## 4. Shared Components
@@ -88,20 +93,21 @@ Forms: Login, HospitalRegistration (2-step), Profile (non-sensitive + OTP contac
 
 | Storage | Key | Content | Lifetime |
 |---|---|---|---|
-| sessionStorage | `accessToken` | JWT | cleared on browser/tab close or 401 |
-| sessionStorage | `tempToken` | mid-flow JWT | until flow completes |
+| module memory | `_accessToken` in [api.ts](../../frontend/src/services/api.ts) | 24h JWT (TD-D3) | tab lifetime; bootstrapped on cold start via `/auth/refresh-token` + httpOnly refresh cookie |
+| sessionStorage | `tempToken` | mid-flow JWT (login step 2 / first-login password change) | until flow completes |
+| sessionStorage | `resetToken` | forgot-password mid-flow JWT | until flow completes |
 | localStorage | `hospital` | stringified hospital object (logoUrl stripped if > 1 KB) | persistent until logout / 401 `ACCOUNT_DISABLED` |
-| httpOnly cookie | (refresh) | long-lived refresh token | server-managed |
+| httpOnly cookie | (refresh) | rotated 365d refresh token (TD-002 — rotated on every `/auth/refresh-token`, reuse revokes all sessions) | server-managed |
 
-15-minute inactivity timeout: `useInactivityTimeout(handleInactivityTimeout, state.isAuthenticated)` at [useAuth.tsx:211](../../frontend/src/hooks/useAuth.tsx).
+15-minute client-side inactivity timeout: `useInactivityTimeout(handleInactivityTimeout, state.isAuthenticated)` at [useAuth.tsx:211](../../frontend/src/hooks/useAuth.tsx). Backend additionally runs a 60-min server-side idle sweep against web sessions only ([jobs/idleSweep.job.js](../../backend/src/jobs/idleSweep.job.js)).
 
-**Access token in sessionStorage is XSS-exposed** — known watch-list item; flagged for redesign.
+🛠️ ~~Access token in sessionStorage is XSS-exposed~~ — RESOLVED 2026-04-25 (TD-D3, `621ca05`). Token now lives in a module-scoped variable inside `api.ts` and never touches `sessionStorage`/`localStorage`. XSS exfiltration window shrunk from "24h refreshable" to "tab lifetime + attacker JS resident".
 
 ---
 
 ## 7. API Client Layer
 
-`services/api.ts` — Axios wrapper, `baseURL = VITE_API_URL || "/api"`, `withCredentials: true`, request interceptor attaches `Authorization: Bearer <accessToken>` (falls back to tempToken), response interceptor handles 401 with refresh-mutex + subscriber queue (see diagram #7 in `03-architecture-diagrams.md`).
+`services/api.ts` — Axios wrapper, `baseURL = VITE_API_URL || "/api"`, `withCredentials: true`, request interceptor reads the access token from the module-scoped `_accessToken` variable (TD-D3) and attaches `Authorization: Bearer <accessToken>` (falls back to tempToken from sessionStorage), response interceptor handles 401 with refresh-mutex + subscriber queue (see diagram #7 in `03-architecture-diagrams.md`). Exports `setAccessToken` / `getAccessToken` / `clearAccessToken` for `AuthProvider` to drive the lifecycle.
 
 **Services (one file per domain):**
 - `authService.ts` — login, OTP, session list/revoke, password, forgot-password.
@@ -119,6 +125,8 @@ Navbar 3-column: LEFT (logo + HospitALL wordmark → /dashboard), CENTER (Dashbo
 
 Standalone pages (Login, VerifyAuthCode, ChangePassword, ForgotPassword, Privacy, Terms, LandingPage, HospitalRegistration, NotFound) live outside MainLayout. Their Back button must use `navigate(-1)` with `location.key !== "default"` fallback to `/` (not `navigate("/")` directly).
 
+🛠️ **Route-level error containment (2026-04-25, `8fbab6a`).** [App.tsx](../../frontend/src/App.tsx) wraps everything in a top-level `<ErrorBoundary>`, and [MainLayout.tsx](../../frontend/src/layouts/MainLayout.tsx) wraps `<Outlet />` in a second `<ErrorBoundary key={location.pathname} fullScreen={false}>`. The `key={pathname}` remounts the inner boundary on every navigation so a crashed page clears when the user navigates away. Don't remove either layer — the inner boundary is the difference between "broken page" and "white screen of death".
+
 ---
 
 ## 9. Architectural Rule Compliance
@@ -129,28 +137,28 @@ Per CLAUDE.md §8:
 |---|---|
 | 1. `min-h-[calc(100vh-4rem)]` inside MainLayout | ✅ all 9 pages compliant |
 | 2. Every full-viewport modal uses `createPortal(..., document.body)` + `z-[100]` | ✅ all 8 verified (see `00-drift.md` §7.2) |
-| 3. Every page sets tab title via `useDocumentTitle` | ⚠️ **7 violations** — Dashboard, Login, Password, Profile, Sessions, VerifyAuthCode use `document.title =`; ForgotPassword has no title at all |
+| 3. Every page sets tab title via `useDocumentTitle` | 🛠️ ✅ **All 21 pages compliant** (TD-009 swept 2026-04-21 in `2194f0e`) |
 
-Remediation: replace direct `document.title` assignments with the hook. Why it matters: the hook restores the prior title on unmount; direct assignment does not, so stale titles can leak on navigation.
+Why it matters: the hook restores the prior title on unmount; direct assignment does not, so stale titles can leak on navigation. New pages MUST call `useDocumentTitle("...")` — never assign `document.title` directly.
 
 ---
 
 ## 10. Code Smells / Watch-List (unchanged from prior audit, still true)
 
 1. No form-validation library.
-2. Access token in sessionStorage (XSS).
+2. 🛠️ ~~Access token in sessionStorage (XSS)~~ — RESOLVED 2026-04-25 (TD-D3, `621ca05`). In-memory now; bootstrapped via httpOnly refresh cookie.
 3. Raw-div modals (no Headless UI Dialog) — acceptable now that all are portaled.
-4. `recharts` + `lucide-react` — gallery-only but **intentionally retained + lazy-loaded** (TD-011). Zero main-bundle cost. Not a smell.
+4. `recharts` + `lucide-react` — gallery-only but **intentionally retained + lazy-loaded** (TD-011 shipped 2026-04-21 in `4fc39f3`). Zero main-bundle cost. Not a smell — do not re-flag.
 5. Manual UA parsing on /sessions.
 6. Long ternary Tailwind class strings.
 7. Admin nav hidden on mobile.
 8. Frontend assumes `OTP_LENGTH = 6` as a constant; if backend changes, silent break.
 9. Auto-delete is permanent — any "trash" UI needs a schema migration.
-10. GeoIP uses a free public API; swap to a keyed service if volume grows.
+10. 🛠️ ~~GeoIP uses a free public API~~ — RESOLVED 2026-04-25 (TD-027). Keyed `ipinfo.io` first, `ip-api.com` fallback.
 
 **New watch-list items:**
 
-11. `useDocumentTitle` rule is leaking (§9 above).
+11. 🛠️ ~~`useDocumentTitle` rule is leaking~~ — RESOLVED 2026-04-21 (TD-009). All 21 pages compliant.
 12. 🛠️ ~~`services/patientApi.ts` is dead code~~ — resolved (TD-010).
 13. `ComponentsPreview.tsx` is 1600+ LOC and is the only route loading `recharts` + `lucide-react`. **Route-split shipped 2026-04-21 (TD-011)** — file itself is still oversized; extraction tracked separately as TD-026.
 
@@ -159,15 +167,19 @@ Remediation: replace direct `document.title` assignments with the hook. Why it m
 ## 11. Summary for Onward Work
 
 ### Strengths
+
 - Shared design-token vocabulary (`bg-gradient-primary`, surface tokens, etc.) is fully adopted post-redesign.
 - Portal rule enforced — no z-index wars with the navbar.
-- Redesign marked COMPLETE 2026-04-21.
+- Redesign marked COMPLETE 2026-04-21 (`b21b16d` merge to main).
+- All three architectural rules from CLAUDE.md §8 (calc-height, portaled modals, `useDocumentTitle`) are now clean.
+- Access token off the disk (TD-D3); two-layer ErrorBoundary keeps single-page crashes from blanking the shell.
 
 ### Gaps
-- 7 `useDocumentTitle` violations to fix.
+
 - ~10 files / exports dead — candidates for pruning (`01-dead-code.md`).
 - No E2E tests. No unit tests for pages or hooks.
 - No form validation library.
+- `ComponentsPreview.tsx` still oversized (TD-026 tracking the extraction; route is already lazy so impact is contained).
 
 ---
 

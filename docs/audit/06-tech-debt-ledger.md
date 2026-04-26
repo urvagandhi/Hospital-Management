@@ -2,7 +2,7 @@
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
-**Last updated:** 2026-04-25 (Backend/Frontend: TD-017 / TD-019 / TD-021 / TD-022 / TD-023 / TD-025 / TD-027 / TD-029 / TD-030 shipped + TD-D4 decided. Android: TD-A01 / TD-A02 / TD-A03 / TD-A04 / TD-A05 shipped. Ledger re-sorted: open at top, shipped below.)
+**Last updated:** 2026-04-26 — re-verified against `61fa6ad`. Jest ESM is now wired (commit `c92df1d`), so the TD-022 / TD-006 "blocked behind ESM config" caveat is obsolete (kept inline for history). All 17 shipped backend/frontend tickets re-verified against live code; TD-003 confirmed still open (`r2.service.js` still on disk with 0 callers). All 5 shipped Android tickets re-verified.
 
 All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` converted into an actionable backlog. Severity: Critical/High/Medium/Low. Effort: XS (<1h) · S (<1d) · M (1-3d) · L (1w) · XL (>1w).
 
@@ -21,8 +21,8 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 
 **Remaining priorities, in order of blast radius:**
 
-1. **TD-003** (High · S) — delete dead `r2.service.js` + drop the `@aws-sdk/*` deps (~7 MB install shrink).
-2. **TD-006** (High · L) — establish real test coverage; blocked behind a Jest ESM-config fix (see TD-022 note).
+1. **TD-003** (High · S) — delete dead `r2.service.js` + drop the `@aws-sdk/*` deps (~7 MB install shrink). Re-verified 2026-04-26: file still exists, 0 callers (`grep -r "r2.service|r2Service|r2Client" backend/src/` empty).
+2. **TD-006** (High · L) — establish real test coverage. Jest ESM blocker resolved (commit `c92df1d`); harness is green. The 10 untested critical paths still need authoring.
 3. **TD-020 / TD-026** (Low) — opportunistic. (TD-024 shipped 2026-04-25.)
 
 After TD-003 lands, the This-Week tier is clear. The This-Quarter tier still owes **TD-006** (the big one).
@@ -54,7 +54,7 @@ Priority-ordered. Tackle 🔥 first, then 📅, then 🧹. 🤔 items need a dec
 - **Source:** `04-enhancements.md` §5.5 / QUAL-007
 - **Migration plan:** Jest integration tests for the top 10 untested paths (listed in §5.5). Playwright E2E for login → Dashboard → PatientDetails. GitHub Action for CI.
 - **Acceptance:** > 50% backend branch coverage in critical controllers; at least 1 E2E happy-path.
-- **Dependencies:** Blocked behind a Jest ESM config fix (see TD-022 → "Known pre-existing issue"). `npm test` currently throws `SyntaxError: Cannot use import statement outside a module` because Jest isn't configured for ESM despite `"type": "module"` in `backend/package.json`. Resolve via `NODE_OPTIONS=--experimental-vm-modules` or a `babel-jest` CJS bridge before any new tests are written.
+- **Dependencies:** ~~Blocked behind a Jest ESM config fix~~ — UNBLOCKED 2026-04-25 (commit `c92df1d`). `npm test` now runs via `NODE_OPTIONS=--experimental-vm-modules jest --coverage`; the existing `refreshToken.rotation.test.js` suite passes. TD-006 itself remains open — the harness works, but the ten untested critical paths still need test files written.
 
 ### 🧹 Backlog Polish — Medium / Low, opportunistic
 
@@ -301,7 +301,7 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
   - Smoke test from REPL: new hash produced with `$2b$10$` prefix (identical format to v2 output), self-verify true, wrong-password verify false. Existing DB rows (all `$2b$10$...` from v2) verify untouched — bcrypt storage format is unchanged across the bump.
   - `node --check backend/src/utils/hash.js` clean ✓. `node --check backend/src/utils/jwt.js` clean ✓.
 - **Deliberate non-scope:** Did **not** migrate to native `bcrypt` — the 3-5× performance win isn't justified against the native-build + Play Store mapping complexity on this workload (bcrypt cost 10, handful of logins/sec). Revisit if a future load profile demands it.
-- **Known pre-existing issue (not introduced by this ticket):** `npm test` currently fails with `SyntaxError: Cannot use import statement outside a module` on [refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js) — Jest's ESM support isn't configured despite `"type": "module"`. Unrelated to bcrypt; blocks `TD-006` (real test coverage) until Jest is configured for ESM (`NODE_OPTIONS=--experimental-vm-modules` or `babel-jest` + CJS compat layer).
+- **Known pre-existing issue (not introduced by this ticket):** ~~`npm test` currently fails with `SyntaxError: Cannot use import statement outside a module`~~ — RESOLVED 2026-04-25 (commit `c92df1d`). `package.json` `test` script now sets `NODE_OPTIONS=--experimental-vm-modules`; the existing rotation suite runs green. TD-006 is still open but no longer blocked.
 
 ### TD-023 · Low · XS — Explicitly pin JWT `alg` on verify — ✅ SHIPPED 2026-04-25
 

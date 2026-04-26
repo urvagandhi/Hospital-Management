@@ -1,8 +1,8 @@
 # Dead Code Inventory — Hospital Management System
 
-**Verified at commit:** `defa74a` (2026-04-17)
+**Verified at commit:** `61fa6ad` (2026-04-26, branch `main`)
 **Audit date:** 2026-04-21
-**Last updated:** 2026-04-21 (several items resolved — see checkmarks inline)
+**Last updated:** 2026-04-26 (re-verified against HEAD; §F endpoints reconfirmed clean post-TD-030 sweep; §J Android items still open)
 
 Each finding has a confidence rating (`HIGH` / `MEDIUM` / `LOW`) and a recommended action (`DELETE` / `INVESTIGATE` / `KEEP-WITH-COMMENT` / `MOBILE_ONLY?`).
 
@@ -183,11 +183,13 @@ Tracked as [`06-tech-debt-ledger.md` TD-A06](06-tech-debt-ledger.md).
 
 ### J2. Declared Retrofit methods with zero call sites
 
+Re-verified at HEAD 2026-04-26.
+
 | Method | `ApiService.kt` line | Status | Recommended Action |
 |---|---|---|---|
-| `getHospitalById(@Path id)` | [22](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) | 0 call sites | Backend supports; remove from `ApiService` until a caller materialises. |
-| `forceLogoutOtherSessions` | [82](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) | 0 call sites | Declared but no Activity uses it. Likely an earlier "kick other device" design that was replaced by per-session revoke. **DELETE**. |
-| `exportArchive(@Body body: Map<String,Any>)` | [151-153](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) | 0 call sites | Backend `/api/export/archive` also has no web caller. **Investigate backend-side first** — likely server + client can be removed together (ties into existing `F. Endpoints with Zero Frontend Callers`). |
+| `getHospitalById(@Path id)` | [17](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt) | 0 call sites | Backend supports; remove from `ApiService` until a caller materialises. |
+| ~~`forceLogoutOtherSessions`~~ | — | ✅ **DELETED 2026-04-25 (TD-030).** Android declaration removed. Backend route preserved as protective admin surface — see §F. | done |
+| ~~`exportArchive(@Body body: Map<String,Any>)`~~ | — | ✅ **DELETED 2026-04-25 (TD-030).** Android declaration + backend route + `archiver` dep all removed in coordinated drop — see §F. | done |
 
 ### J3. Orphan UI widget
 
@@ -213,10 +215,10 @@ Both are candidates for **DELETE** (plus their layouts + manifest entries). Any 
 ### J7. Feature flag flipped permanently
 
 - [`utils/FeatureFlags.kt`](../../android-app/app/src/main/java/com/hospital/management/utils/FeatureFlags.kt) declares two `const val`s:
-  - `USE_DOWNLOAD_WORKER = true` — feature-flag for the WorkManager download path. No `false` branch exists any more (legacy inline-HTTP path was removed from [FolderDetailsActivity.kt](../../android-app/app/src/main/java/com/hospital/management/ui/folders/FolderDetailsActivity.kt) in commit 2a823f0). Effectively dead.
-  - `USE_COMPRESSION_SERVICE = true` — same story.
-Both flags are safe to inline + delete the file (`TD-A15`).
+  - `USE_DOWNLOAD_WORKER = true` — gates the WorkManager single-file download path in [FolderDetailsActivity.kt:404](../../android-app/app/src/main/java/com/hospital/management/ui/folders/FolderDetailsActivity.kt). The legacy inline-HTTP single-file fallback (`legacyDownloadFile`) is still kept for rollback. Bulk-download legacy plumbing was removed 2026-04-25 in commit `8d8956f`; the per-file fallback survives.
+  - `USE_COMPRESSION_SERVICE = true` — gates the per-file `…/compressed` sidecar path. Both branches still exist in code.
+Both flags are safe to inline + delete the file (`TD-A15`) **once** the per-file legacy-download branch is also removed.
 
-### J8. Dormant DownloadWorker polling branch
+### J8. DownloadWorker polling branch — ✅ NO LONGER DORMANT (2026-04-25)
 
-- [DownloadWorker.kt:541-608](../../android-app/app/src/main/java/com/hospital/management/worker/DownloadWorker.kt) implements `pollUntilReady(statusUrl)` for a Cloud Run status-endpoint flow. No caller currently passes `KEY_STATUS_URL`. **Classification: `INTENTIONAL_FEATURE_HOLD`** — kept for the planned compression-sidecar Phase 3C integration. Document as intentional; do not delete.
+- [DownloadWorker.kt:198](../../android-app/app/src/main/java/com/hospital/management/worker/DownloadWorker.kt) now calls `pollUntilReady(statusUrl, ...)` whenever a server-side merge is in progress — DownloadWorker drives every bulk download (folder PDF/ZIP, patient PDF/ZIP) and falls into the polling branch when the sidecar streams a status URL instead of immediate bytes. The "INTENTIONAL_FEATURE_HOLD" classification from the 2026-04-24 audit is obsolete — keep the branch.

@@ -13,7 +13,7 @@ Each finding: **ID** · **Severity** (Critical/High/Medium/Low/Info) · **Effort
 
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
-| **SEC-001** | Medium | S | **`GET /api/hospitals` returns all rows without pagination.** Evidence: [hospitals.controller.js:31](../../backend/src/controllers/hospitals.controller.js) — `Hospital.find().sort({ createdAt: -1 })`, no `.limit()`. Recommendation: cap at 100 + add cursor pagination. Risk: memory + response-time spike as hospital count grows; admin UI in-memory filter compounds the cost. |
+| **SEC-001** | ✅ SHIPPED 2026-04-21 (TD-005) | — | ~~`GET /api/hospitals` returns all rows without pagination.~~ Cursor pagination + server-side search + first-page totals shipped. See [hospitals.controller.js](../../backend/src/controllers/hospitals.controller.js). |
 | **SEC-002** | Info | — | Patient/folder/file endpoints correctly enforce `{ _id, hospitalId }` scope in [patient.service.js:150](../../backend/src/services/patient.service.js). No IDOR found. |
 | **SEC-003** | Info | — | `/api/audits` properly forces `userId: req.hospital.id` server-side ([audit.controller.js:43](../../backend/src/controllers/audit.controller.js)); client-supplied `userId` ignored. |
 
@@ -21,9 +21,9 @@ Each finding: **ID** · **Severity** (Critical/High/Medium/Low/Info) · **Effort
 
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
-| **SEC-004** | High | M | **Refresh tokens are not rotated.** Evidence: [token.service.js:196-231](../../backend/src/services/token.service.js) — on refresh, the same `session.refreshToken` is returned. A stolen refresh token remains valid until `expiresAt` (up to 365 days). Recommendation: generate a new refresh token and update `Session.refreshToken` on each rotation; detect reuse → revoke all sessions for that hospital. Risk: prolonged session hijack undetectable. |
+| **SEC-004** | ✅ SHIPPED 2026-04-21 (TD-002) | — | ~~Refresh tokens are not rotated.~~ Rotation + reuse detection shipped in [token.service.js](../../backend/src/services/token.service.js); replaying a rotated-out token revokes every active session for the hospital (`revokedReason: "REFRESH_TOKEN_REUSE"`) and emails the user. Unit coverage: [refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js). |
 | **SEC-005** | Info | — | Bcrypt cost factor 10 ([hash.js:8](../../backend/src/utils/hash.js)). Industry standard. |
-| **SEC-006** | Info | — | JWT uses HS256 via `jsonwebtoken`; `jwt.verify` call pins the library default (rejects `alg: none`). [jwt.js](../../backend/src/utils/jwt.js). |
+| **SEC-006** | ✅ SHIPPED 2026-04-25 (`09fae23`) | — | JWT verification is **pinned to HS256** via `algorithms: ["HS256"]` in [utils/jwt.js](../../backend/src/utils/jwt.js). Closes RS256-swap / `alg: none` exposure. |
 | **SEC-007** | Low | S | `.env.example` contains no hint that `JWT_SECRET` / `REFRESH_TOKEN_SECRET` must be different random strings. Recommendation: add explicit comment + generator hint. |
 
 ### A03 — Injection
@@ -46,13 +46,13 @@ Each finding: **ID** · **Severity** (Critical/High/Medium/Low/Info) · **Effort
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
 | **SEC-013** | Low | XS | Helmet uses default config (no customisation) — default CSP is fairly strict for an API but does not set `Cross-Origin-Opener-Policy`; acceptable for now. [index.js:72](../../backend/src/index.js). |
-| **SEC-014** | Medium | XS | **`.env.example` contains dead TOTP + SMS + legacy SMTP vars** (see 00-drift §5.2). Recommendation: prune to reduce surprise. Risk: new engineers believe these features work. |
+| **SEC-014** | ✅ SHIPPED 2026-04-21 (TD-004) | — | ~~`.env.example` contains dead TOTP + SMS + legacy SMTP vars~~ — 13 dead vars removed, 11 undocumented vars added, `LOG_LEVEL` documented. `.env.example` and code are now in sync. |
 
 ### A06 — Vulnerable Components
 
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
-| **SEC-015** | Medium | S | **`bcryptjs 2.4.3`** is old (2018). Recommendation: upgrade to `bcryptjs@^3` or migrate to `bcrypt` (native) for performance. Risk: slow password verify under load. |
+| **SEC-015** | ✅ SHIPPED 2026-04-25 (`effaea1`) | — | ~~`bcryptjs 2.4.3` is old.~~ Bumped to `bcryptjs@^3.0`. |
 | **SEC-016** | Low | S | `@aws-sdk/client-s3` 3.932.0 carries dependency only through dead `r2.service.js` — remove the dep (see dead-code §B). |
 
 ### A07 — Identification & Auth Failures
@@ -66,13 +66,13 @@ Each finding: **ID** · **Severity** (Critical/High/Medium/Low/Info) · **Effort
 
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
-| **SEC-019** | Low | S | Backend has no package-lock integrity verification in CI (no `npm ci` script configured in `package.json` → `scripts`). Recommendation: add `ci` script and Dependabot. |
+| **SEC-019** | ✅ SHIPPED 2026-04-25 (`cff1e3e`) | — | ~~No package-lock integrity verification in CI.~~ Dependabot enabled + dep-hardening commit. |
 
 ### A09 — Security Logging & Monitoring
 
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
-| **SEC-020** | **High** | M | **Audit logging missing on 8 mutation endpoints** (see 00-drift §10). Violates explicit convention (CLAUDE.md §12). Recommendation: add `logAudit()` to `createPatient`, `updatePatient`, `createFolder`, `uploadFile`, `renameFile`, `patchMe`, `updateHospital`, `deleteOrphans`. Risk: compliance / forensic-blind on data mutations. |
+| **SEC-020** | ✅ SHIPPED 2026-04-21 (TD-001) | — | ~~Audit logging missing on 8 mutation endpoints.~~ All 8 mutation endpoints now emit an audit entry: `PATIENT_CREATED`, `PATIENT_UPDATED`, `FOLDER_CREATED`, `FILE_UPLOADED`, `FILE_RENAMED`, `PROFILE_PATCHED`, `HOSPITAL_UPDATED`, `ORPHAN_CLEANUP`. The `AuditLog.action` enum was also extended with previously-rejected actions. See [patient.controller.js:341](../../backend/src/controllers/patient.controller.js) for the canonical fire-and-forget pattern. |
 
 ### A10 — SSRF
 
@@ -86,13 +86,13 @@ Each finding: **ID** · **Severity** (Critical/High/Medium/Low/Info) · **Effort
 
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
-| **PERF-001** | High | S | **No pagination on `GET /api/hospitals`** (dup of SEC-001). Memory grows linearly with hospital count; list page renders them all at once. |
-| **PERF-002** | Medium | M | **`/api/patients` pagination is offset-based with no max cap.** [patient.service.js](../../backend/src/services/patient.service.js). `skip+limit` degrades beyond ~10k patients per hospital. Recommendation: cursor-based with `_id` or `createdAt`. |
+| **PERF-001** | ✅ SHIPPED 2026-04-21 (TD-005) | — | ~~No pagination on `GET /api/hospitals`~~ — see SEC-001. Cursor pagination + server-side search shipped. |
+| **PERF-002** | ✅ SHIPPED 2026-04-25 (`d69f0be`, TD-D) | — | ~~`/api/patients` pagination is offset-based with no max cap.~~ Cursor pagination shipped: `limit` clamped 1–100 (default 20); opaque `cursor` token; `nextCursor` returned. Legacy `?skip=` shape still works as fallback. See [patient.controller.js:80-135](../../backend/src/controllers/patient.controller.js). |
 | **PERF-003** | Medium | M | **PDF/ZIP downloads are buffered into memory before streaming in some paths.** [pdf.service.js](../../backend/src/services/pdf.service.js) and [zip.service.js](../../backend/src/services/zip.service.js) — archiver pipes correctly, but pdf-lib merges the whole doc set in heap. Large patient bundles will OOM. Compression sidecar is the correct mitigation — ensure `USE_COMPRESSION_SERVICE=true` in prod. |
 | **PERF-004** | Low | XS | `bcrypt.compareSync` NOT used; all verify paths are async ([hash.js](../../backend/src/utils/hash.js)). ✓ |
 | **PERF-005** | Medium | S | **GeoIP synchronous lookup on session create could bottleneck login.** [geoip.service.js](../../backend/src/services/geoip.service.js) uses fire-and-forget per CLAUDE.md claim; verify: if called with `await`, it adds ~80-300ms per login. If already fire-and-forget, no action. |
 | **PERF-006** | ✅ SHIPPED 2026-04-21 (TD-011) | — | `/components-preview` + `/spinners-preview` are now `React.lazy()` in [AppRoutes.tsx:30-31](../../frontend/src/routes/AppRoutes.tsx). `recharts` + `lucide-react` are isolated to the `ComponentsPreview-*.js` chunk (438 kB raw / 121 kB gz). Main `index-*.js` dropped from ~872 kB / ~231 kB gz → **434 kB raw / 110 kB gz** (−438 kB / −121 kB gz). Gallery deps **intentionally kept**. |
-| **PERF-007** | Low | XS | Compression sidecar parallel fetches source PDFs with unbounded `asyncio.gather` ([cloudinary_client.py:169](../../compression-service/app/cloudinary_client.py)). Not a problem today (usually <10 sources), but cap at e.g. 10 concurrent fetches to protect the Cloudinary connection pool. |
+| **PERF-007** | ✅ SHIPPED 2026-04-21 (TD-015) | — | ~~Compression sidecar parallel fetches source PDFs with unbounded `asyncio.gather`.~~ Now capped at 10 concurrent downloads via `asyncio.Semaphore` (`_FETCH_CONCURRENCY = 10` in [cloudinary_client.py](../../compression-service/app/cloudinary_client.py)). |
 | **PERF-008** | Low | XS | Sidecar cache hit ratio has no observability. Logs say `cache_hit` but no counter. Recommendation: emit a Prometheus counter when/if metrics server added. |
 
 ---
@@ -116,9 +116,9 @@ Each finding: **ID** · **Severity** (Critical/High/Medium/Low/Info) · **Effort
 |---|---|---|---|
 | **OBS-001** | Medium | S | **`/api/health/deep` does not probe Cloudinary / Brevo / FCM / Sidecar.** [index.js:140-177](../../backend/src/index.js) checks Mongo, Redis, server only. Recommendation: add probe functions with 2-3s timeout each and degraded-if-any-fail reporting. |
 | **OBS-002** | Medium | S | **Audit gaps on mutations** (dup SEC-020). |
-| **OBS-003** | Low | XS | No route-level ErrorBoundary in the frontend; only top-level ([App.tsx](../../frontend/src/App.tsx)). If a page crashes, the whole shell unmounts. Add boundaries around Dashboard and PatientDetails. |
+| **OBS-003** | ✅ SHIPPED 2026-04-25 (`8fbab6a`) | — | ~~No route-level ErrorBoundary in the frontend.~~ [MainLayout.tsx](../../frontend/src/layouts/MainLayout.tsx) now wraps `<Outlet />` in a second `<ErrorBoundary key={location.pathname} fullScreen={false}>` so a render error on one authenticated route can't blank the whole shell. The inner boundary remounts on navigation (key=pathname) so navigating away clears the error. |
 | **OBS-004** | ✅ DONE | M | ~~No structured logging in Node backend~~ — RESOLVED 2026-04-21 (TD-007). Pino + pino-http shipped: JSON in prod, pretty in dev, `LOG_LEVEL` env, per-request `X-Request-Id` + `req.log` child, redaction of Authorization/Cookie + password-like top-level + nested fields. Zero `console.*` remain in `backend/src/`. See [utils/logger.js](../../backend/src/utils/logger.js). |
-| **OBS-005** | Low | XS | Compression sidecar timeout error message says "100s limit" but real timeout is 300s. [folder.py:274](../../compression-service/app/endpoints/folder.py), [patient.py:288](../../compression-service/app/endpoints/patient.py). Fix the string. |
+| **OBS-005** | ✅ SHIPPED 2026-04-21 (TD-014) | — | ~~Sidecar timeout message said "100s limit" but real timeout is 300s.~~ [folder.py:285](../../compression-service/app/endpoints/folder.py), [patient.py:301](../../compression-service/app/endpoints/patient.py), [schemas.py:73](../../compression-service/app/schemas.py) all now read `"Pipeline exceeded 300s limit"`. |
 | **OBS-006** | Info | — | Error responses properly differentiate prod/dev — no stack leaks ([errorHandler.js:54-58](../../backend/src/middleware/errorHandler.js)). |
 | **OBS-007** | Medium | S | **Sidecar cache-miss fallback silently downgrades `tier_used` to -1** ([folder.py:87-88](../../compression-service/app/endpoints/folder.py)). Good for availability, bad for ops visibility. Emit a log + counter on this path. |
 
@@ -210,7 +210,7 @@ Sample comparisons (5 endpoints):
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
 | **FAIL-001** | High | M | **No alerting on any external dependency.** Recommendation: at minimum, a `/api/health/deep` cron-hit from an external synthetic monitor (UptimeRobot, Pingdom). |
-| **FAIL-002** | Medium | S | **In-memory Redis fallback is dev-only but silently activates in prod** ([redis.service.js](../../backend/src/services/redis.service.js)). If Upstash keys are missing in prod, rate limits become per-instance instead of global. Log loudly + refuse to boot in prod if fallback engaged. |
+| **FAIL-002** | ✅ SHIPPED 2026-04-25 (`a1bd66e`) | — | ~~In-memory Redis fallback silently activates in prod.~~ Production now refuses to boot without Upstash credentials ([redis.service.js:81](../../backend/src/services/redis.service.js)). Mid-process latch to in-memory store remains (when Upstash becomes unreachable after boot) but is logged as `redis_fallback_memory`. |
 
 ---
 
@@ -239,8 +239,8 @@ Sample comparisons (5 endpoints):
 1. **Mobile 7-day Auth Code re-verify** — every request after 7 days returns 401 `AUTH_CODE_REQUIRED`. Not standard refresh behaviour.
 2. **`Patient.toJSON()` silently strips `cloudinaryPublicId`** — if you try to use it client-side (e.g., for signed URL generation), it's gone.
 3. **Auto-delete is a HARD delete at day 90** — no soft-delete, no trash. Test data created on Jan 1 disappears Apr 1 without warning.
-4. **In-memory Redis fallback activates silently** in prod if Upstash credentials are absent. Rate limits effectively disabled. No log shout.
-5. **Refresh token is reused across refreshes** — not rotated. Contrary to common pattern.
+4. ~~In-memory Redis fallback activates silently in prod~~ — RESOLVED 2026-04-25 (`a1bd66e`). Production now refuses to boot without Upstash credentials.
+5. ~~Refresh token is reused across refreshes~~ — RESOLVED 2026-04-21 (TD-002). Refresh tokens are rotated on every `/auth/refresh-token`; replay revokes every active session for the hospital.
 
 ### Three "here be dragons" zones
 
@@ -254,14 +254,14 @@ Sample comparisons (5 endpoints):
 
 | Load dimension | 10x | 100x | First thing that breaks |
 |---|---|---|---|
-| **Users (hospitals)** | 1k | 10k | `GET /api/hospitals` fetches all (§SEC-001); also admin UI renders them all in memory. |
-| **Patients per hospital** | 50k | 500k | Dashboard `/api/patients` offset pagination degrades beyond ~10k; Mongo `sort + skip` scans the index. |
+| **Users (hospitals)** | 1k | 10k | ~~`GET /api/hospitals` fetches all~~ — fixed 2026-04-21 (TD-005, cursor pagination + server-side search). Admin UI in-memory filter is now bounded per page. |
+| **Patients per hospital** | 50k | 500k | ~~`/api/patients` offset pagination degrades beyond ~10k~~ — fixed 2026-04-25 (`d69f0be`, TD-D, cursor pagination shipped). |
 | **Files uploaded / sec** | ~5/s | ~50/s | Multer memory buffers (`uploadDocument` middleware) — each concurrent upload holds full file in RAM until Cloudinary stream completes. Node heap. |
 | **Concurrent downloads** | ~20 | ~200 | Pdf-lib local merge path (`USE_COMPRESSION_SERVICE=false` OR sidecar 502) buffers entire merged PDF in heap. Also compression sidecar's 300s timeout + unbounded `asyncio.gather` for source fetches (§PERF-007). |
 | **Audit log writes** | ~100/s | ~1000/s | Fire-and-forget `AuditLog.create` — no write queue. Mongo primary write contention. |
 | **Sessions** | 50k active | 500k | Compound index `(hospitalId, deviceId)` + TTL scan fine at this scale; the `/sessions` query `find({ hospitalId, isActive: true })` needs compound index on `(hospitalId, isActive, lastSeenAt)` for efficient sort. |
 | **Cloudinary storage** | 100 GB | 1 TB | 100 MB hard-cap per patient ZIP; Cloudinary account quotas + egress pricing become real. |
-| **GeoIP** | 45 req/min | — | ip-api.com free tier rate-limits at 45/min — a 10x login spike blows the budget immediately. Switch to `ipinfo.io` with a token. |
+| **GeoIP** | 50k/month | — | ~~ip-api.com unkeyed 45/min cap~~ — fixed 2026-04-25 (`22e5619`, TD-027). Provider chain now prefers keyed `ipinfo.io` (50k/month free tier when `IPINFO_TOKEN` is set) and falls back to `ip-api.com` (45/min keyless). |
 
 ---
 

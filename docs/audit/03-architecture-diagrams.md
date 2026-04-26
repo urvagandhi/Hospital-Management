@@ -23,7 +23,7 @@ flowchart LR
   Brevo["Brevo REST<br/>prod email"]
   Mailtrap["Mailtrap SMTP<br/>dev email"]
   FCM["Firebase FCM<br/>push"]
-  GeoIP["ip-api.com<br/>45 req/min"]
+  GeoIP["ipinfo.io (keyed) → ip-api.com<br/>two-provider chain, 24h cache"]
 
   Web -- "HTTPS JSON<br/>(httpOnly refresh cookie)" --> Backend
   Mobile -- "HTTPS JSON<br/>Bearer access token" --> Backend
@@ -118,7 +118,7 @@ erDiagram
     enum platform "web | android | ios"
     Date lastSeenAt
     string lastSeenIp
-    string revokedReason "USER_LOGOUT | ADMIN_REVOKE | SESSION_CONFLICT | ALL_OTHERS | ACCOUNT_DISABLED"
+    string revokedReason "SESSION_CONFLICT | ADMIN_REVOKE | SUSPICIOUS_ACTIVITY | SESSION_LIMIT_EXCEEDED | IDLE_TIMEOUT | REFRESH_TOKEN_REUSE | TOKEN_ROTATION | USER_LOGOUT"
     Date lastAccessedAt
     Date authCodeVerifiedAt "mobile 7-day check"
   }
@@ -327,7 +327,7 @@ sequenceDiagram
       AX->>AX: retry original + queued requests
       AX-->>UI: original 200 response
     else refresh failure (401 or ACCOUNT_DISABLED)
-      AX->>AX: clear sessionStorage
+      AX->>AX: clear in-memory access token (TD-029, was sessionStorage)
       AX->>UI: redirect /login
     end
     AX->>AX: set refreshInProgress = false
@@ -366,8 +366,8 @@ sequenceDiagram
   MU-->>API: req.file
   API->>PT: findOneAndUpdate { _id, hospitalId } $push folders.$.files
   PT-->>API: updated patient
+  API->>A: FILE_UPLOADED (fire-and-forget) — TD-001 shipped 2026-04-21
   API-->>M: { file }
-  Note right of A: GAP — uploadFile does NOT log to AuditLog today (see 00-drift §10)
 ```
 
 **Source of truth:** [backend/src/routes/patient.routes.js:115-120](../../backend/src/routes/patient.routes.js), [backend/src/middleware/upload.js](../../backend/src/middleware/upload.js), [backend/src/controllers/patient.controller.js](../../backend/src/controllers/patient.controller.js).
@@ -581,7 +581,8 @@ flowchart TB
   RC --> Gear["settings gear → Menu (Account / Security / Sign out)"]
   RC --> Av["Avatar → HospitalProfileModal"]
   ML --> NSB["NetworkStatusBanner"]
-  ML --> Main["Outlet / Page"]
+  ML --> InnerEB["ErrorBoundary key=pathname (route-scoped, shipped 8fbab6a)"]
+  InnerEB --> Main["Outlet / Page"]
   Main -.portal z-[100].-> Body
   NB -.logout modal portal.-> Body
 ```
@@ -1109,8 +1110,8 @@ flowchart TD
   Req["FolderDetailsActivity.downloadFileCompressed()"] --> Enq["WorkManager.enqueueUniqueWork(download_<url-hash>, REPLACE)"]
   Enq --> FG["doWork() → setForeground(PREPARING notification) within 10s"]
   FG --> Poll{"KEY_STATUS_URL supplied?"}
-  Poll -->|yes (Phase 3C dormant)| PollLoop["pollUntilReady every 3.5s<br/>surfaces stage hint<br/>max 10 min"]
-  Poll -->|no (current path)| HEAD
+  Poll -->|yes (server-side merge in progress, Phase 1+2 active)| PollLoop["pollUntilReady every 3.5s<br/>surfaces stage hint<br/>max 10 min"]
+  Poll -->|no (direct download)| HEAD
   PollLoop --> HEAD["HEAD request — get Last-Modified + Accept-Ranges"]
   HEAD --> Hash["contentHash = SHA256(url | lastModified)"]
   Hash --> Cache{cached & !isStale?}

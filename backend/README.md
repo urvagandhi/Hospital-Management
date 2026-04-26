@@ -137,9 +137,13 @@ backend/
 │   │   ├── zip.service.js      # archiver
 │   │   └── r2.service.js       # DEAD CODE — TD-003, kept for legacy fallback only
 │   ├── jobs/
-│   │   └── autoDelete.job.js   # Nightly 00:00 UTC: hard-delete patients >90d, cascade Cloudinary delete
+│   │   ├── autoDelete.job.js   # Nightly 00:00 UTC: hard-delete patients >90d, cascade Cloudinary delete
+│   │   └── idleSweep.job.js    # Every 5 min: revoke web sessions idle >60 min (revokedReason=IDLE_TIMEOUT). Mobile is exempt — see commit 61fa6ad
 │   ├── utils/
 │   │   ├── logger.js           # pino logger + redactions (Authorization, Cookie, password*, token, otp, authCode)
+│   │   ├── jwt.js              # JWT mint/verify — verification PINNED to HS256 (rejects alg:none / RS256 swap)
+│   │   ├── clientIp.js         # getClientIp(req) — CF-Connecting-IP → True-Client-IP → X-Forwarded-For[0] → req.ip
+│   │   ├── hash.js
 │   │   └── …
 │   └── index.js
 ├── scripts/                    # Operator CLIs — intentionally use raw console.* (not pino)
@@ -180,7 +184,13 @@ flowchart TD
     style REVOKE_ALL fill:#fca5a5
 ```
 
-**Refresh token rotation (TD-002, 2026-04-21):** every `/api/auth/refresh-token` mints a fresh refresh token. Replaying a rotated-out token revokes every active session for the hospital with `revokedReason: "REFRESH_TOKEN_REUSE"` and sends a security email. Reuse detection is guarded against post-logout false positives by requiring at least one other active session before escalating. Implementation in [src/services/token.service.js](src/services/token.service.js); coverage in [src/__tests__/refreshToken.rotation.test.js](src/__tests__/refreshToken.rotation.test.js).
+**Refresh token rotation (TD-002, 2026-04-21):** every `/api/auth/refresh-token` mints a fresh refresh token. Replaying a rotated-out token revokes every active session for the hospital with `revokedReason: "REFRESH_TOKEN_REUSE"` and sends a security email. Reuse detection is guarded against post-logout false positives by requiring at least one other active session before escalating. Token rotation churn vs. real session revoke is tracked via distinct revoke reasons (`TOKEN_ROTATION` vs `SESSION_REVOKED` / `REFRESH_TOKEN_REUSE` / `SESSION_LIMIT_EXCEEDED` / `IDLE_TIMEOUT`) so audit history doesn't conflate them. Implementation in [src/services/token.service.js](src/services/token.service.js); coverage in [src/__tests__/refreshToken.rotation.test.js](src/__tests__/refreshToken.rotation.test.js).
+
+**JWT HS256 pinning (2026-04-25):** [src/utils/jwt.js](src/utils/jwt.js) passes `algorithms: ["HS256"]` to every `jwt.verify()`. Without this pin, jsonwebtoken silently accepts `alg: none` and is vulnerable to RS256 → HS256 algorithm-swap attacks. Do not remove.
+
+**Server-side idle revoke (2026-04-25):** [src/jobs/idleSweep.job.js](src/jobs/idleSweep.job.js) runs every 5 min and revokes any **web** session with `lastSeenAt` older than **60 min** (`revokedReason: "IDLE_TIMEOUT"` + `SESSION_IDLE_REVOKED` audit). Mobile sessions are **exempt** (`isMobile: false` filter — commit `61fa6ad`) because Android already heartbeats every 60 s and the foreground re-validate path drives logouts on the client. Threshold was 15 min initially but was too aggressive for hospital workflow — clinicians reading PDFs / filling long forms make no API calls and look "idle". Web has no heartbeat, so anything under ~30 min logs out passive readers mid-task. **Don't reduce IDLE_MS below 30 min without re-evaluating the heartbeat strategy.**
+
+**Real client IP behind Cloudflare (2026-04-25):** [src/utils/clientIp.js](src/utils/clientIp.js) reads `CF-Connecting-IP` first, then `True-Client-IP`, then `X-Forwarded-For[0]`, then `req.ip`. Render sits behind Cloudflare which strips the original client IP at the TCP layer; without this helper geoip resolves to the Cloudflare PoP. **Every controller capturing an IP for audit/session/email must call `getClientIp(req)`, never `req.ip` directly.** Auth middleware re-runs geoip when `lastSeenIp` changes (mobile devices roaming WiFi/cellular); `lastSeenIp` is rendered alongside `ipAddress` in the Sessions list so users can spot cross-network reuse.
 
 ---
 
@@ -231,30 +241,30 @@ flowchart TD
 | `POST` | `/:id/folders/:folder/files` | Upload file (multipart, Cloudinary public_id `HospitALL/h_{hospitalId}/p_{patientId}/{folder_slug}/{date}_{hash}`) |
 | `PATCH`| `/:id/folders/:folder/files/:fileId` | Rename file |
 | `DELETE`| `/:id/folders/:folder/files/:fileId` | Delete file |
-| `GET`  | `/:id/folders/:folder/files/:fileId/signed-url` | 5-min signed URL |
-| `GET`  | `/:id/download/pdf` | Merged PDF download (sidecar) |
-| `GET`  | `/:id/download/zip` | Per-folder ZIP download |
-| `GET`  | `/:id/folders/:folder/pdf` | Folder PDF |
-| `GET`  | `/:id/folders/:folder/zip` | Folder ZIP |
-| `GET`  | `/:id/zip-size-check` | Size pre-flight (soft 10 MB / hard 100 MB gate) |
-| `GET`  | `/:id/files/:fileId/download` | Single-file compressed download (sidecar) |
+| `GET`  | `/:id/files/:folder/:fileId/signed-url` | 5-min signed URL |
+| `GET`  | `/:id/files/:folder/:fileId/compressed` | Single-file compressed download (sidecar) |
+| `POST` | `/:id/download/pdf` | Whole-patient merged PDF (sidecar; accepts ZIP-or-PDF mode body) |
+| `POST` | `/:id/download/zip` | Whole-patient per-folder ZIP |
+| `GET`  | `/:id/folders/:folder/download/pdf` | Folder PDF (sidecar) |
+| `GET`  | `/:id/folders/:folder/download/zip` | Folder ZIP |
+| `GET`  | `/:id/download/zip/size-check` | Size pre-flight (soft 10 MB / hard 100 MB gate) |
 
-Plus 4 legacy `GET` aliases for backward compatibility with older Android builds.
+Plus 4 legacy `GET` aliases — `GET /:id/download/{pdf,zip}` and `GET /:id/folders/:folder/{pdf,zip}` — kept for backward compatibility with older Android builds.
 
 ### Hospitals (`/api/hospitals`)
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | `GET`  | `/me` | Access | Current hospital profile |
-| `PATCH`| `/me` | Access | Patch own profile (name, logo, contact) |
-| `GET`  | `/me/notifications` | Access | Notification preferences |
-| `PATCH`| `/me/notifications` | Access | Update notification preferences |
+| `PATCH`| `/me` | Access | Patch own profile (name, logo, contact) — multipart for logo |
+| `GET`  | `/me/notification-preferences` | Access | Notification preferences |
+| `PUT`  | `/me/notification-preferences` | Access | Update notification preferences |
+| `POST` | `/me/change-contact/{init,verify,resend}` | Access | Change email/phone (email-OTP confirmed) |
 | `GET`  | `/` | Admin | List hospitals (cursor pagination + server-side search, TD-005) |
-| `GET`  | `/:id` | Admin | Get hospital by id |
-| `PATCH`| `/:id` | Admin | Admin update of any hospital |
+| `GET`  | `/:id` | Admin or Self | Get hospital by id |
+| `PUT`  | `/:id` | Admin or Self | Update any hospital — multipart for logo |
 | `DELETE`| `/:id` | Admin | Hard-delete hospital (cascades patients + Cloudinary) |
 | `POST` | `/:id/resend-welcome` | Admin | Re-send welcome email with new temp password |
-| `POST` | `/:id/toggle-active` | Admin | Disable / re-enable account |
 
 ### Other
 
@@ -369,7 +379,7 @@ flowchart TD
     PLATFORM -->|mobile| CHECK{count of active<br/>mobile sessions for<br/>this hospital?}
     CHECK -->|>= 2| EVICT[Evict OLDEST mobile session<br/>revokedReason=SESSION_CONFLICT<br/>+ email notification]
     CHECK -->|< 2| CREATE
-    EVICT --> CREATE[Create session<br/>deviceId=SHA256(UA)]
+    EVICT --> CREATE["Create session<br/>deviceId=SHA256(UA)"]
 
     PLATFORM -->|web| CREATE_W[Create session<br/>multi-session OK]
     CREATE_W --> TOKENS
@@ -394,7 +404,8 @@ The Python compression sidecar handles all production PDF merging + compression.
 |------------------|----------------|
 | `POST /api/folder-download` | Folder PDF download |
 | `POST /api/patient-download` | Whole-patient PDF download |
-| `POST /api/single-file-compress` | Compressed single-file download |
+
+Single-file compressed download (`GET /api/patients/:id/files/:folder/:fileId/compressed`) currently runs through the in-process compression path, not a dedicated sidecar endpoint.
 
 All sidecar calls carry `X-Internal-Secret: ${COMPRESSION_SERVICE_SECRET}` matching the sidecar's `INTERNAL_API_SECRET`. Backend timeout: 300 s. The sidecar fetches inputs from Cloudinary directly, runs a tier ladder (digital / scanned / aggressive), uploads the result, and caches by SHA256 of inputs.
 

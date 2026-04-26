@@ -1,7 +1,7 @@
 # Android App — Refreshed Audit
 
-**Verified at commit:** `1b3bf22` (branch `feat/redesign-and-platform-upgrades`, HEAD at 2026-04-24)
-**Audit date:** 2026-04-24
+**Verified at commit:** `61fa6ad` (branch `main`, HEAD at 2026-04-26)
+**Audit date:** 2026-04-26 (refreshed; original landed 2026-04-24)
 **Files analysed:** 77 Kotlin source files (no hand-written Java) under [android-app/app/src/main/java/com/hospital/management/](../../android-app/app/src/main/java/com/hospital/management/), ~13 700 LOC.
 **Baseline:** none — the prior audit explicitly scoped `android-app/` out (see [README.md §"Out of scope"](README.md)). This document is the first ground-truth pass.
 
@@ -22,13 +22,13 @@ Companion docs (findings filed into the cross-cutting ledgers rather than duplic
 | AGP | `8.2.0` | [android-app/build.gradle:3](../../android-app/build.gradle) |
 | Kotlin | `1.9.22` | [android-app/build.gradle:4](../../android-app/build.gradle) |
 | Google Services plugin | `4.4.4` | [android-app/build.gradle:5](../../android-app/build.gradle) |
-| `compileSdk` / `targetSdk` | `34` / `34` | [android-app/app/build.gradle:23-28](../../android-app/app/build.gradle) |
-| `minSdk` | `26` (Android 8.0 Oreo) | [app/build.gradle:27](../../android-app/app/build.gradle) |
-| `versionCode` / `versionName` | `1` / `"1.0"` | [app/build.gradle:29-30](../../android-app/app/build.gradle) |
-| Java target | `VERSION_1_8` | [app/build.gradle:52-56](../../android-app/app/build.gradle) |
-| R8 in release | `minifyEnabled true` + `shrinkResources true` | [app/build.gradle:46-47](../../android-app/app/build.gradle) |
-| Kotlin annotation processing | `kapt` (Room compiler) | [app/build.gradle:3, 8-19, 154](../../android-app/app/build.gradle) |
-| Signing (release) | **Points at debug keystore**, plaintext password `android/android` | [app/build.gradle:35-41](../../android-app/app/build.gradle) |
+| `compileSdk` / `targetSdk` | `35` / `35` (bumped 2026-04-25, TD-A03) | [android-app/app/build.gradle:11, 16](../../android-app/app/build.gradle) |
+| `minSdk` | `26` (Android 8.0 Oreo) | [app/build.gradle:15](../../android-app/app/build.gradle) |
+| `versionCode` / `versionName` | `2` / `"1.0.1"` (first bump 2026-04-25, TD-A03) | [app/build.gradle:17-18](../../android-app/app/build.gradle) |
+| Java target | `VERSION_1_8` | [app/build.gradle:80-86](../../android-app/app/build.gradle) |
+| R8 in release | `minifyEnabled true` + `shrinkResources true` | [app/build.gradle:69-72](../../android-app/app/build.gradle) |
+| Kotlin annotation processing | `ksp` (Room compiler) — migrated from kapt 2026-04-25 (TD-A04) | [app/build.gradle:4](../../android-app/app/build.gradle) |
+| Signing (release) | Reads `HMS_UPLOAD_KEYSTORE_*` env vars (or `~/.gradle/gradle.properties`); fails closed if unset (shipped 2026-04-25, TD-A01) | [app/build.gradle:30-66](../../android-app/app/build.gradle) |
 | `applicationId` / `namespace` | `com.hospital.management` | [app/build.gradle:22, 26](../../android-app/app/build.gradle) |
 | `viewBinding` | true | [app/build.gradle:58-59](../../android-app/app/build.gradle) |
 | `compose` | true, compiler `1.5.8` | [app/build.gradle:60, 63-65](../../android-app/app/build.gradle) — **declared but unused; every Activity is ViewBinding XML** |
@@ -39,17 +39,17 @@ Companion docs (findings filed into the cross-cutting ledgers rather than duplic
 
 | # | Finding | Severity | Evidence |
 |---|---|---|---|
-| 1 | `signingConfigs.release` points at `~/.android/debug.keystore` with hard-coded password `"android"` — any upload to Play Store will be rejected as a debug-signed APK. | 🔴 Critical | [app/build.gradle:36-41](../../android-app/app/build.gradle) |
-| 2 | `release.keystore` is **tracked in git** at the repo root (`git ls-files android-app/release.keystore` returns a hit). Even if it isn't the live upload keystore, keystores MUST never live in version control. | 🔴 Critical | `git ls-files android-app/release.keystore` |
-| 3 | `versionCode 1` never bumped. First Play upload works; every subsequent one is rejected (`INVALID_APK_VERSION_CODE`). | 🟠 High | [app/build.gradle:29](../../android-app/app/build.gradle) |
-| 4 | `targetSdk 34`. Play requires 35 for new apps (Aug 2025) / updates (Aug 2026). Trails the deadline. | 🟠 High | [app/build.gradle:28](../../android-app/app/build.gradle) |
-| 5 | `androidx.security:security-crypto:1.1.0-alpha06` in release — alpha API in a hospital app. | 🟠 High | [app/build.gradle:79](../../android-app/app/build.gradle) |
-| 6 | `play-services-mlkit-document-scanner:16.0.0-beta1` in release — beta API in release. | 🟡 Medium | [app/build.gradle:115](../../android-app/app/build.gradle) |
-| 7 | `kapt` still used for Room; Google recommends KSP (faster, Kotlin-native). | 🟡 Medium | [app/build.gradle:3, 154](../../android-app/app/build.gradle) |
+| 1 | ✅ **RESOLVED 2026-04-25 (TD-A01).** `signingConfigs.release` now reads `HMS_UPLOAD_KEYSTORE_PATH` / `HMS_UPLOAD_KEYSTORE_PWD` / `HMS_UPLOAD_KEY_PWD` from env or `~/.gradle/gradle.properties`; `assembleRelease` fails closed when neither source is set. Generation runbook: [android-app/KEYSTORE_SETUP.md](../../android-app/KEYSTORE_SETUP.md). | — | [app/build.gradle:30-66](../../android-app/app/build.gradle) |
+| 2 | ✅ **RESOLVED 2026-04-25 (TD-A02).** `git ls-files android-app/release.keystore` is empty; root [.gitignore](../../.gitignore) hardened with `*.keystore`, `*.jks`, `keystore.properties`, `*.aab`. The on-disk file (untracked, sample) is matched by `git check-ignore`. | — | [.gitignore](../../.gitignore) |
+| 3 | ✅ **RESOLVED 2026-04-25 (TD-A03).** First bump shipped: `versionCode 2` / `versionName "1.0.1"`. Every future release must bump `versionCode` by 1 before `./gradlew bundleRelease`. | — | [app/build.gradle:17-18](../../android-app/app/build.gradle) |
+| 4 | ✅ **RESOLVED 2026-04-25 (TD-A03).** `compileSdk 35` / `targetSdk 35`. Validate the SDK-35 photo picker / predictive-back behaviour on a physical device before the first Play upload. | — | [app/build.gradle:11, 16](../../android-app/app/build.gradle) |
+| 5 | `androidx.security:security-crypto:1.1.0-alpha06` in release — alpha API in a hospital app. | 🟠 High | [app/build.gradle:108](../../android-app/app/build.gradle) |
+| 6 | `play-services-mlkit-document-scanner:16.0.0-beta1` in release — beta API in release. | 🟡 Medium | [app/build.gradle:144](../../android-app/app/build.gradle) |
+| 7 | ✅ **RESOLVED 2026-04-25 (TD-A04).** Migrated from `kapt` to `ksp` for Room. Plugin declared at [build.gradle:4](../../android-app/app/build.gradle). | — | [app/build.gradle:4](../../android-app/app/build.gradle) |
 | 8 | `gradle.properties` enables `android.enableJetifier=true` — no longer needed (all deps are AndroidX). Costs build time. | 🟡 Medium | [android-app/gradle.properties:3](../../android-app/gradle.properties) |
 | 9 | No `ci` script / no CI integrity check configured at repo root. | 🟡 Medium | N/A |
 
-See [`01-dead-code.md` §J](01-dead-code.md) for the dependency-usage audit, and [`06-tech-debt-ledger.md`](06-tech-debt-ledger.md) items `TD-A01`–`TD-A05` for remediation steps.
+See [`01-dead-code.md` §J](01-dead-code.md) for the dependency-usage audit. **TD-A01..TD-A05 all shipped 2026-04-25** (release signing + .gitignore hardening + SDK 35 + versionCode bump + KSP + BASE_URL via BuildConfig); see commits `756988a`, `00073a8`, `63b477a`. Open Android tech-debt items are now `TD-A06..TD-A20` in [`06-tech-debt-ledger.md`](06-tech-debt-ledger.md).
 
 ### 1.2 Dependency inventory
 
@@ -162,7 +162,7 @@ data/local/* (Room, EncryptedSharedPreferences)
 
 ## 4. API surface (what the app calls)
 
-55 Retrofit methods declared on `interface ApiService` ([ApiService.kt](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt)). Plus two bare OkHttp calls: `/api/auth/refresh-token` from [AuthInterceptor.kt:198-242](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt) and `/api/auth/logout` from [OfflineLogoutWorker.kt:96-103](../../android-app/app/src/main/java/com/hospital/management/worker/OfflineLogoutWorker.kt). Every call is HTTPS to `https://hospital-management-8lbf.onrender.com` (hardcoded in [RetrofitClient.kt:18](../../android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt)).
+55 Retrofit methods declared on `interface ApiService` ([ApiService.kt](../../android-app/app/src/main/java/com/hospital/management/data/api/ApiService.kt)). Plus two bare OkHttp calls: `/api/auth/refresh-token` from [AuthInterceptor.kt:198-242](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt) and `/api/auth/logout` from [OfflineLogoutWorker.kt:96-103](../../android-app/app/src/main/java/com/hospital/management/worker/OfflineLogoutWorker.kt). Every call is HTTPS to the host carried in `BuildConfig.BASE_URL` — currently `https://hospital-management-8lbf.onrender.com` for both `release` and `debug` build types ([app/build.gradle:23, 70-79](../../android-app/app/build.gradle)). `RetrofitClient.BASE_URL` re-exports the BuildConfig value so legacy callers (`OfflineLogoutWorker`) stay green; switch to staging by editing the per-buildType `buildConfigField` line — no source edit needed (TD-A05, shipped 2026-04-25).
 
 ### 4.1 Endpoints called by Android
 
@@ -236,7 +236,7 @@ See updated drift in [`00-drift.md` §12](00-drift.md).
 | # | Claim | Reality | Severity |
 |---|---|---|---|
 | D1 | Android sends `X-Upload-Profile` header with every file upload. | Backend never reads it (`grep -rn "X-Upload-Profile\|uploadProfileUsed" backend/` returns zero). The `uploadProfileUsed` column in [OfflineDocument.kt:25-26](../../android-app/app/src/main/java/com/hospital/management/data/local/OfflineDocument.kt) and the CLAUDE.md mention of "Cloud Run can use this to skip aggressive re-compression" is aspirational — no Cloud Run path exists. Bytes on the wire per upload × no backend consumer. | 🟡 Medium — tracked as [TD-A13](06-tech-debt-ledger.md). |
-| D2 | `DownloadWorker.KEY_STATUS_URL` branch (Cloud Run polling) is designed and tested. | **Zero enqueuers pass `KEY_STATUS_URL`**. [FolderDetailsActivity](../../android-app/app/src/main/java/com/hospital/management/ui/folders/FolderDetailsActivity.kt) only uses the direct-URL path. The polling branch ([DownloadWorker.kt:541-608](../../android-app/app/src/main/java/com/hospital/management/worker/DownloadWorker.kt)) is unreachable dead code today — but architecturally sound and left in place for the compression-sidecar Phase 3C integration. Keep as intentional hold, document. | 🟡 Medium — document in CLAUDE.md. |
+| D2 | `DownloadWorker.KEY_STATUS_URL` branch (sidecar polling) was previously dormant. | ✅ **No longer dormant (2026-04-25, Phase 1+2).** `DownloadWorker.pollUntilReady(statusUrl)` is reached when a server-side merge is in progress — DownloadWorker now drives all bulk downloads and accepts a `KEY_STATUS_URL` for the sidecar polling flow ([DownloadWorker.kt:198](../../android-app/app/src/main/java/com/hospital/management/worker/DownloadWorker.kt)). The "INTENTIONAL_FEATURE_HOLD" classification from the 2026-04-24 audit is obsolete — keep the branch. | ok |
 | D3 | 401 classification is done by substring-matching the error body (`body.contains("SESSION_CONFLICT")`, `"AUTH_CODE_REQUIRED"`, `"ACCOUNT_DISABLED"`). | Backend error payloads are JSON; a rewording of any message would silently break the classifier. | 🟠 High — tracked as [TD-A07](06-tech-debt-ledger.md). Suggest returning a stable `errorCode` field server-side. |
 | D4 | `GET /api/version` expects `currentVersion` query param. | [SplashActivity.kt:73-75](../../android-app/app/src/main/java/com/hospital/management/ui/splash/SplashActivity.kt) passes `packageManager.getPackageInfo(...).versionName`. That's always `"1.0"` today (TD-A03). Once `versionCode` is bumped it'll send the new `versionName`. ✅ correct logic — blocked by TD-A03. | 🟡 Medium (depends on TD-A03). |
 | D5 | Backend stores geoip on Session on login. | Android does nothing to surface geoip; SessionsActivity just renders backend-supplied fields. ✅ no mismatch. | ok |
@@ -276,10 +276,13 @@ Three `CoroutineWorker`s + one plain `FirebaseMessagingService`. All workers are
 
 | Component | Class | Unique work name / tag | Trigger | Notes |
 |---|---|---|---|---|
-| Upload sync | `SyncDocumentsWorker` | `"auto_sync_documents"` (ExistingWorkPolicy.KEEP) | (a) app foreground → HospitalApplication.scheduleSyncIfNeeded; (b) network-regained via NetworkCallback; (c) manual toolbar "Sync" in DashboardActivity | Auth-gate + cross-account guard + `resetStuckUploading` at entry. Max 5 retries per doc. |
-| Download | `DownloadWorker` | `"download_<url.hashCode()>"` (REPLACE) + `TAG_DOWNLOAD` | FolderDetailsActivity single-file download when `FeatureFlags.USE_DOWNLOAD_WORKER = true` | Foreground service (`FOREGROUND_SERVICE_DATA_SYNC`). HEAD-then-GET with resume via `Range` header; `saveToMediaStore` on success. Tag lets `SessionManager.logoutUser` cancel all in-flight downloads. |
+| Upload sync | `SyncDocumentsWorker` | `"auto_sync_documents"` (ExistingWorkPolicy.KEEP) | (a) app foreground → HospitalApplication.scheduleSyncIfNeeded; (b) network-regained via NetworkCallback; (c) manual toolbar "Sync" in DashboardActivity | **Promoted to foreground service 2026-04-25 (Phase 2, commit `e99f2ec`)** — long offline-queue drains survive process death. Auth-gate + cross-account guard + `resetStuckUploading` at entry. Retry cap removed (commit `df13d0f`) — every queued upload must eventually land. ONLINE↔OFFLINE flips are debounced (commit `3573f1a`) so scanner / background transitions don't churn the worker. |
+| Online direct upload | `UploadWorker` | `"upload_<idempotencyKey>"` (KEEP) + `TAG_UPLOAD` | UploadActivity online flow (Phase 2, commit `908895d`) | **New 2026-04-25.** Foreground service with byte-level progress via `ProgressRequestBody` + dedicated notification channel. Offline-queue uploads still go through `SyncDocumentsWorker`; UploadWorker is the online single-shot path. |
+| Download | `DownloadWorker` | `"download_<url.hashCode()>"` (REPLACE) + `TAG_DOWNLOAD` | **All bulk downloads (Phase 1, commits `87b3f11` / `edd1859` / `8b1c2f3`):** folder PDF, folder ZIP, patient PDF, patient ZIP — plus FolderDetailsActivity single-file download (gated by `FeatureFlags.USE_DOWNLOAD_WORKER = true`). | Foreground service (`FOREGROUND_SERVICE_DATA_SYNC`). HEAD-then-GET with resume via `Range` header; accepts JSON request bodies for bulk merges (`KEY_REQUEST_BODY_JSON`); `saveToMediaStore` on success. Ready/Failed notifications persist past worker teardown (commit `53bcb98`). Tag lets `SessionManager.logoutUser` cancel all in-flight downloads. |
 | FCM token catch-up | `FcmTokenWorker` | one-shot, NO unique name | Enqueued from `HmsFirebaseMessagingService.onNewToken` when no access token is available yet | Reads `pending_fcm_token` from `fcm_prefs` SharedPreferences. Not EncryptedSharedPreferences — plain. Low-sensitivity data. |
 | Offline logout | `OfflineLogoutWorker` | `"offline_logout_<token.hashCode()>"` (KEEP) | `SessionManager.logoutUser` when direct `/api/auth/logout` call fails | **Uses a bare OkHttp client, not RetrofitClient** — avoids AuthInterceptor recursion. Treats any 4xx as success (session already gone). |
+
+**Dashboard banner (Phase 1, commit `4284b6f`):** `WorkProgressBanner` ([ui/components/WorkProgressBanner.kt](../../android-app/app/src/main/java/com/hospital/management/ui/components/WorkProgressBanner.kt)) aggregates live state across DownloadWorker + UploadWorker + SyncDocumentsWorker via WorkManager `Flow<List<WorkInfo>>`. Crash fix in `7130cc2`, styling tweak in `8ef0730`.
 
 ### 6.1 Foreground service rules
 
@@ -343,6 +346,8 @@ LoginActivity.performBiometricLogin(hospitalId)
 
 **Session expiry tracking** — client-side `SessionManager.SESSION_TIMEOUT_MS = 7 days` ([SessionManager.kt:24](../../android-app/app/src/main/java/com/hospital/management/utils/SessionManager.kt)). SplashActivity `isSessionValid` treats anything older than 7 days without interaction as expired. Intentionally aligned with the server's 7-day mobile Auth Code re-verify (CLAUDE.md §5); prior value was 15 min which caused false logouts.
 
+**Mobile sessions are exempt from the backend's 60-min idle sweep** (commit `61fa6ad`, 2026-04-26). Backgrounded phones stop heartbeating, so a 60-min cron-driven revoke would log out staff who put their phone down between rounds. The cron query and the `listActiveSessions` filter both gate on `isMobile: false` ([backend/src/jobs/idleSweep.job.js:38](../../backend/src/jobs/idleSweep.job.js)). Mobile security stays enforced via the 7-day Auth Code re-verify gate + the 3-device limit, not idle revoke.
+
 Diagrams in [`03-architecture-diagrams.md` §21 (state machine), §22 (password sequence), §23 (biometric sequence), §24 (token refresh)](03-architecture-diagrams.md).
 
 ---
@@ -351,7 +356,7 @@ Diagrams in [`03-architecture-diagrams.md` §21 (state machine), §22 (password 
 
 OWASP Mobile Top 10 (2024) mapping in [`04-enhancements.md` §6.1](04-enhancements.md). Highlights:
 
-- **🔴 Release keystore is the debug keystore** ([app/build.gradle:36-41](../../android-app/app/build.gradle)) + `release.keystore` checked in. `TD-A01` / `TD-A02`.
+- ✅ **RESOLVED 2026-04-25 (TD-A01 + TD-A02).** Release signing now reads `HMS_UPLOAD_KEYSTORE_*` env or `~/.gradle/gradle.properties` ([app/build.gradle:30-66](../../android-app/app/build.gradle)); fails closed if unset. `release.keystore` is no longer git-tracked and root [.gitignore](../../.gitignore) hardens against re-introduction (`*.keystore`, `*.jks`, `keystore.properties`, `*.aab`).
 - **🟠 401 classification via body-substring match** ([AuthInterceptor.kt:96-120](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt)) — fragile to backend message rewording. `TD-A07`.
 - **🟡 FileLogger writes on-device logs in release** ([FileLogger.kt:39-46](../../android-app/app/src/main/java/com/hospital/management/utils/FileLogger.kt)) under `/sdcard/Android/data/com.hospital.management/files/logs/`, 7-day retention. OkHttp redacts `Authorization`/`Cookie`/`Set-Cookie` but **not `X-Hospital-Id`** (attached by every request, see [AuthInterceptor.kt:181](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt)). Request URLs also contain hospital IDs (e.g. `GET /api/patients/SH-000001/...`). Low-to-medium PII on disk if a user hands over a rooted device. `TD-A08`.
 - **🟡 Pre-login `POST /session/check-conflict` accepts `{identifier}` unauthenticated** and returns 200 with `conflict: bool` + `activeDevice` details. If the identifier does not belong to any hospital, behaviour is backend-side (need verify) — if it returns the same 200 both ways, safe; if it distinguishes, it's an account-enumeration surface. Confirm with backend team. See [LoginActivity.kt:130-188](../../android-app/app/src/main/java/com/hospital/management/ui/auth/LoginActivity.kt).
@@ -375,7 +380,7 @@ Forward-port of CLAUDE.md §11 with live-code citations.
 2. **Cross-account-leak guard.** Logging out deletes every queued upload owned by the logging-out hospital; the sync worker refuses to touch rows owned by other accounts, including legacy rows with `owner_hospital_id=''`. Healthcare-compliance net — don't weaken. [SessionManager.kt:159-173](../../android-app/app/src/main/java/com/hospital/management/utils/SessionManager.kt), [SyncDocumentsWorker.kt:62-71](../../android-app/app/src/main/java/com/hospital/management/worker/SyncDocumentsWorker.kt).
 3. **Refresh-token rotation handled client-side.** Backend rotates on every `/refresh-token`; the bare-OkHttp refresh path at [AuthInterceptor.kt:228-232](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt) saves the new refresh token when present. If this branch is ever removed (e.g. a naive "just keep accessToken" refactor), every subsequent refresh will replay the rotated-out token and — per TD-002 — kill every active session + email the hospital.
 4. **Heartbeat loop is foreground-only.** The 60 s `GET /auth/session/validate` loop runs while at least one Activity is started; it's stopped in `onActivityStopped` at zero-refs. Designed so a SESSION_CONFLICT on another device is noticed before the user tries to do something, but without burning battery when backgrounded.
-5. **`DownloadWorker.KEY_STATUS_URL` branch is intentionally dormant.** The polling flow for Cloud Run / sidecar status exists but has no caller today. Keep for compression-sidecar Phase 3C. See §4.3 D2.
+5. **`DownloadWorker.KEY_STATUS_URL` branch is now reached** when a server-side merge is in progress — DownloadWorker drives every bulk download (folder PDF/ZIP, patient PDF/ZIP) and falls into `pollUntilReady(...)` when the sidecar streams a status URL instead of immediate bytes. The "INTENTIONAL_FEATURE_HOLD" classification from the 2026-04-24 audit is obsolete. See §4.3 D2.
 6. **`X-Upload-Profile` header is Android-only.** Backend ignores it; the column in `OfflineDocument` and the API declaration are vestigial. Either wire up a backend consumer or drop the header ([TD-A13](06-tech-debt-ledger.md)).
 7. **`fallbackToDestructiveMigration()` is enabled on AppDatabase.** Any missed numbered migration wipes the Room DB silently. When adding a new entity or column, write a migration; skipping one and shipping is not a safe option since queued uploads would be lost.
 8. **`PatientListActivity` and `PatientDetailsActivity` are orphan screens.** The Dashboard routes straight to `FolderViewActivity`, and the Patient edit dialog lives on FolderViewActivity, not PatientDetails. Don't add features to the orphans — they're candidates for deletion (`TD-A09`).
@@ -410,9 +415,9 @@ Forward-port of CLAUDE.md §11 with live-code citations.
 | **No tests at all** (0 files under `test/` or `androidTest/`). | No regression safety net. Release-breaking R8 rule drift has no automated catch. | [TD-A12](06-tech-debt-ledger.md) — add a Robolectric smoke suite for `AuthInterceptor.refresh`, `SessionManager.logoutUser` cross-account guard, and `DownloadWorker` happy path. |
 | **No DI.** Every Activity hand-wires Retrofit + Repository + UseCase. | ~60 LOC duplication; harder to inject test doubles. | [TD-A10](06-tech-debt-ledger.md) — Hilt migration. |
 | **No analytics / no crash reporter.** Firebase Analytics is added to the BoM but `logEvent` calls are zero. Crashlytics is NOT in the BoM. | Production crashes invisible. Release-only login bugs took days to diagnose via FileLogger + adb. | [TD-A14](06-tech-debt-ledger.md) — add Crashlytics + strip from debug. |
-| **`versionCode 1` forever.** | Blocks Play Store second upload. | [TD-A03](06-tech-debt-ledger.md). |
-| **Debug keystore used for release.** | Blocks Play Store first upload. | [TD-A01](06-tech-debt-ledger.md). |
-| **KSP migration pending** (Room still on kapt). | Slower incremental builds. | [TD-A04](06-tech-debt-ledger.md). |
+| ~~`versionCode 1` forever.~~ | ✅ **RESOLVED 2026-04-25 (TD-A03).** First bump to `versionCode 2` / `versionName "1.0.1"` shipped. Operator must bump `versionCode` by 1 before every future release. | done |
+| ~~Debug keystore used for release.~~ | ✅ **RESOLVED 2026-04-25 (TD-A01).** `signingConfigs.release` reads `HMS_UPLOAD_KEYSTORE_*` env or `~/.gradle/gradle.properties`; fails closed if unset. See [KEYSTORE_SETUP.md](../../android-app/KEYSTORE_SETUP.md). | done |
+| ~~KSP migration pending~~ (Room still on kapt). | ✅ **RESOLVED 2026-04-25 (TD-A04).** Migrated to KSP. | done |
 | **No in-app update API.** The version gate shows a dialog + opens Play; Google's `AppUpdateManager` would deliver smoother UX. | Minor. | Backlog. |
 | **Admin nav not surfaced on mobile.** CLAUDE.md §10 flags this; web-only admin. | By design. | — |
 
