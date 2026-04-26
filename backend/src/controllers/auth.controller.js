@@ -1560,8 +1560,11 @@ export const listActiveSessions = async (req, res) => {
     const currentSessionId = req.sessionId;
     if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    // Hide sessions idle for >60 min. Must match jobs/idleSweep.job.js
+    // Hide WEB sessions idle for >60 min. Must match jobs/idleSweep.job.js
     // exactly — list filter gives instant correct UX even between sweeps.
+    // Mobile is exempt from idle hiding (and from the cron) so backgrounded
+    // phones don't disappear from the user's session list. Mobile security
+    // is enforced by the 7-day Auth Code re-verification gate instead.
     const IDLE_MS = 60 * 60 * 1000;
     const idleCutoff = new Date(Date.now() - IDLE_MS);
 
@@ -1570,7 +1573,10 @@ export const listActiveSessions = async (req, res) => {
       isActive: true,
       revokedAt: null,
       expiresAt: { $gt: new Date() },
-      lastSeenAt: { $gt: idleCutoff },
+      $or: [
+        { isMobile: true },
+        { isMobile: false, lastSeenAt: { $gt: idleCutoff } },
+      ],
     })
       .select("_id deviceId platform isMobile userAgent ipAddress lastSeenAt lastSeenIp location createdAt authCodeVerifiedAt")
       .sort({ createdAt: -1 })

@@ -28,9 +28,14 @@ const sweepIdleSessions = async () => {
   const now = new Date();
 
   // Pick up the rows first so we can audit-log per session before bulk update.
+  // Mobile is intentionally exempt: when backgrounded the app stops heartbeating
+  // and a 60-min idle sweep would log out staff who put the phone down between
+  // rounds. Mobile security is enforced by the 7-day Auth Code re-verification
+  // gate (middleware/auth.js) + the 3-device limit, not idle revoke.
   const stale = await Session.find({
     isActive: true,
     revokedAt: null,
+    isMobile: false,
     lastSeenAt: { $lt: cutoff },
   })
     .select("_id hospitalId ipAddress userAgent lastSeenAt")
