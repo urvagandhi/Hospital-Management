@@ -1,5 +1,6 @@
 package com.hospital.management.worker
 
+import com.hospital.management.utils.FileLogger
 import okhttp3.MediaType
 import okhttp3.RequestBody
 import okio.Buffer
@@ -33,7 +34,12 @@ class ProgressRequestBody(
             override fun write(source: Buffer, byteCount: Long) {
                 super.write(source, byteCount)
                 bytesWritten += byteCount
-                onProgress(bytesWritten, total)
+                try {
+                    onProgress(bytesWritten, total)
+                } catch (e: Exception) {
+                    FileLogger.e("ProgressRequestBody", "onProgress callback threw", e)
+                    // swallow to avoid aborting the upload mid-stream
+                }
             }
         }
         val bufferedCounting = countingSink.buffer()

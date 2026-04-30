@@ -263,9 +263,7 @@ function generateSignedUploadParams(hospitalId, patientMongoId, folderName, orig
   // The order and set of keys MUST match what the client sends.
   const paramsToSign = {
     public_id: publicId,
-    resource_type: 'raw',
     timestamp,
-    type: uploadType,
   };
 
   // cloudinary.utils.api_sign_request signs the params with the api_secret.
@@ -277,8 +275,6 @@ function generateSignedUploadParams(hospitalId, patientMongoId, folderName, orig
     signature,
     timestamp,
     publicId,
-    resourceType: 'raw',
-    type: uploadType,
     uploadUrl: `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload`,
   };
 }
@@ -287,16 +283,7 @@ function generateSignedUploadParams(hospitalId, patientMongoId, folderName, orig
 // Exports
 // ---------------------------------------------------------------------------
 export {
-  uploadImage,
-  uploadDocument,
-  deleteFile,
-  uploadBuffer,
-  cloudinary,
-  buildThumbnailUrl,
-  buildSignedUrl,
-  SIGNED_UPLOADS_ENABLED,
-  slugifyFolder,
-  buildCloudinaryPublicId,
-  listCloudinaryResources,
-  generateSignedUploadParams,
+  buildCloudinaryPublicId, buildSignedUrl, buildThumbnailUrl, cloudinary, deleteFile, generateSignedUploadParams, listCloudinaryResources, SIGNED_UPLOADS_ENABLED,
+  slugifyFolder, uploadBuffer, uploadDocument, uploadImage
 };
+

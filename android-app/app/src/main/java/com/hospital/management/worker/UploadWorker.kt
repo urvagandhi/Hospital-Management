@@ -186,22 +186,32 @@ class UploadWorker(
                 idempotencyKey = idempotencyKey,
                 uploadProfileUsed = uploadProfileUsed
             ) { uploadedBytes, total ->
-                if (isStopped) return@uploadDocument
-                val now = System.currentTimeMillis()
-                val windowElapsed = now - windowStartMs
-                if (windowElapsed >= SPEED_WINDOW_MS) {
-                    val delta = uploadedBytes - windowStartBytes
-                    lastSpeed = (delta * 1000L / windowElapsed).coerceAtLeast(0)
-                    windowStartMs = now
-                    windowStartBytes = uploadedBytes
+                try {
+                    if (isStopped) return@uploadDocument
+                    val now = System.currentTimeMillis()
+                    val windowElapsed = now - windowStartMs
+                    if (windowElapsed >= SPEED_WINDOW_MS) {
+                        val delta = uploadedBytes - windowStartBytes
+                        lastSpeed = (delta * 1000L / windowElapsed).coerceAtLeast(0)
+                        windowStartMs = now
+                        windowStartBytes = uploadedBytes
+                    }
+                    try {
+                        emitBlocking(UploadProgress(
+                            stage = UploadStage.UPLOADING,
+                            bytesUploaded = uploadedBytes,
+                            totalBytes = if (total > 0) total else totalBytes,
+                            speedBytesPerSec = lastSpeed,
+                            fileName = fileName
+                        ))
+                    } catch (e: Exception) {
+                        FileLogger.e(TAG, "Progress emitBlocking threw", e)
+                        // swallow to avoid aborting the stream write
+                    }
+                } catch (e: Exception) {
+                    FileLogger.e(TAG, "Progress callback threw", e)
+                    // do not rethrow — keep upload attempt running
                 }
-                emitBlocking(UploadProgress(
-                    stage = UploadStage.UPLOADING,
-                    bytesUploaded = uploadedBytes,
-                    totalBytes = if (total > 0) total else totalBytes,
-                    speedBytesPerSec = lastSpeed,
-                    fileName = fileName
-                ))
             }
 
             val uploadDurationMs = System.currentTimeMillis() - uploadStartMs

@@ -116,16 +116,31 @@ class DocumentRepository(
         val uploadUrl = signResult["uploadUrl"] as? String ?: return UploadAttempt(false, message = "Missing uploadUrl", retryable = false)
         val apiKey = signResult["apiKey"] as? String ?: return UploadAttempt(false, message = "Missing apiKey", retryable = false)
         val signature = signResult["signature"] as? String ?: return UploadAttempt(false, message = "Missing signature", retryable = false)
-        val timestamp = signResult["timestamp"]?.toString() ?: return UploadAttempt(false, message = "Missing timestamp", retryable = false)
+        val timestamp = when (val rawTimestamp = signResult["timestamp"]) {
+            is Number -> rawTimestamp.toLong().toString()
+            is String -> rawTimestamp
+            else -> rawTimestamp?.toString()
+        } ?: return UploadAttempt(false, message = "Missing timestamp", retryable = false)
         val publicId = signResult["publicId"] as? String ?: return UploadAttempt(false, message = "Missing publicId", retryable = false)
-        val resourceType = signResult["resourceType"] as? String ?: "raw"
-        val type = signResult["type"] as? String ?: "upload"
 
         FileLogger.i(TAG, "Step 2/3: Uploading file DIRECTLY to Cloudinary..." +
                 "\n  uploadUrl=$uploadUrl" +
                 "\n  publicId=$publicId" +
                 "\n  fileSize=$fileSizeMb MB" +
                 "\n  fileName=${file.name}")
+
+        // Diagnostic: log the exact form params we will send (mask secrets)
+        try {
+            val maskedApiKey = apiKey.takeIf { it.length >= 4 }?.let { "****${it.takeLast(4)}" } ?: apiKey
+            val maskedSignature = signature.takeIf { it.length >= 8 }?.let { "****${it.takeLast(8)}" } ?: "(masked)"
+            FileLogger.d(TAG, "Cloudinary form params about to be sent:" +
+                    "\n  api_key=$maskedApiKey" +
+                    "\n  signature=$maskedSignature" +
+                    "\n  timestamp=$timestamp" +
+                    "\n  public_id=$publicId")
+        } catch (e: Exception) {
+            FileLogger.w(TAG, "Failed to log Cloudinary debug params: ${e.message}", e)
+        }
 
         val cloudinaryResult = try {
             val mediaType = when {
@@ -148,8 +163,6 @@ class DocumentRepository(
                 .addFormDataPart("signature", signature)
                 .addFormDataPart("timestamp", timestamp)
                 .addFormDataPart("public_id", publicId)
-                .addFormDataPart("resource_type", resourceType)
-                .addFormDataPart("type", type)
                 .build()
 
             val request = Request.Builder()
