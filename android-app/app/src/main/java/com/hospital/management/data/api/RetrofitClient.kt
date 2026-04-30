@@ -71,23 +71,20 @@ object RetrofitClient {
             .writeTimeout(300, TimeUnit.SECONDS)
             .callTimeout(0, TimeUnit.SECONDS) // 0 = no overall call cap; per-stage timeouts above are the limits
 
-        // In release builds, attach a network-level logging interceptor that
-        // writes every request/response line to FileLogger (on-device file).
-        // HEADERS level is used so we get status codes and content-types;
-        // Authorization and Cookie headers are redacted so tokens are never
-        // written to disk.  In debug, Logcat + Android Studio Network Inspector
-        // are available so no file logging is needed.
-        if (!BuildConfig.DEBUG) {
-            val httpLogger = HttpLoggingInterceptor { message ->
-                FileLogger.d("OkHttp", message)
-            }.apply {
-                level = HttpLoggingInterceptor.Level.HEADERS
-                redactHeader("Authorization")
-                redactHeader("Cookie")
-                redactHeader("Set-Cookie")
-            }
-            builder.addNetworkInterceptor(httpLogger)
+        // Network-level logging interceptor that writes every request/response
+        // line to FileLogger (on-device file). HEADERS level is used so we get
+        // status codes and content-types; Authorization and Cookie headers are
+        // redacted so tokens are never written to disk.
+        val httpLogger = HttpLoggingInterceptor { message ->
+            FileLogger.d("OkHttp", message)
+        }.apply {
+            level = HttpLoggingInterceptor.Level.HEADERS
+            redactHeader("Authorization")
+            redactHeader("Cookie")
+            redactHeader("Set-Cookie")
+            redactHeader("X-Hospital-Id")
         }
+        builder.addNetworkInterceptor(httpLogger)
 
         val client = builder.build()
 

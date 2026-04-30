@@ -60,7 +60,11 @@ app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS || 2));
 app.use(httpLogger);
 
 // ============ SECURITY MIDDLEWARE ============
-app.use(helmet()); // Set security HTTP headers
+app.use(
+  helmet({
+    crossOriginOpenerPolicy: { policy: "same-origin" },
+  }),
+); // Set security HTTP headers
 
 // ============ CORS CONFIGURATION ============
 // IMPORTANT: CORS must run BEFORE the rate limiter. Otherwise a 429 response

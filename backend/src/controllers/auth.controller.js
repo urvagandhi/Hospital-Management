@@ -45,7 +45,7 @@ export const changePassword = async (req, res) => {
     const { newPassword } = req.body;
 
     if (!hospitalId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
     }
     if (!newPassword || newPassword.length < 8) {
       return res.status(400).json({ success: false, message: "New password must be at least 8 characters" });
@@ -766,6 +766,7 @@ export const login = async (req, res) => {
 
       return res.status(401).json({
         success: false,
+        errorCode: "INVALID_CREDENTIALS",
         message: "Invalid credentials",
       });
     }
@@ -810,6 +811,7 @@ export const login = async (req, res) => {
       await hospital.save();
       return res.status(401).json({
         success: false,
+        errorCode: "INVALID_CREDENTIALS",
         message: "Invalid credentials",
       });
     }
@@ -954,7 +956,7 @@ export const verifyAuthCodeLogin = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
     if (!hospitalId) {
-      return res.status(401).json({ success: false, message: "Invalid session token" });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Invalid session token" });
     }
 
     const { authCode } = req.body;
@@ -964,7 +966,7 @@ export const verifyAuthCodeLogin = async (req, res) => {
 
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital || !hospital.isActive) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({ success: false, errorCode: "INVALID_CREDENTIALS", message: "Invalid credentials" });
     }
 
     if (hospital.lockUntil && hospital.lockUntil > Date.now()) {
@@ -1016,7 +1018,7 @@ export const verifyAuthCodeLogin = async (req, res) => {
         details: { step: "AUTH_CODE", failedAttempts: hospital.failedLoginAttempts },
       }).catch((e) => req.log.error({ event: "audit_log_login_failed", err: e }, "AuditLog error"));
 
-      return res.status(401).json({ success: false, message: "Invalid auth code" });
+      return res.status(401).json({ success: false, errorCode: "INVALID_CREDENTIALS", message: "Invalid auth code" });
     }
 
     // Success — clear any accumulated failure state and create a session
@@ -1124,6 +1126,7 @@ export const refreshToken = async (req, res) => {
     req.log.error({ event: "refresh_token_error", err: error }, "Token refresh error");
     return res.status(401).json({
       success: false,
+      errorCode: "TOKEN_INVALID",
       message: error.message,
     });
   }
@@ -1299,7 +1302,7 @@ export const biometricChallenge = async (req, res) => {
 
     const hospital = await lookupHospitalByIdentifier(identifier);
     if (!hospital) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({ success: false, errorCode: "INVALID_CREDENTIALS", message: "Invalid credentials" });
     }
 
     // Check if biometric is registered for this device
@@ -1338,7 +1341,7 @@ export const verifyBiometric = async (req, res) => {
 
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital || !hospital.isActive) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({ success: false, errorCode: "INVALID_CREDENTIALS", message: "Invalid credentials" });
     }
 
     // Peek at the stored challenge — we only CONSUME it once the signature
@@ -1349,6 +1352,7 @@ export const verifyBiometric = async (req, res) => {
     if (!challenge) {
       return res.status(401).json({
         success: false,
+        errorCode: "CHALLENGE_EXPIRED",
         code: "CHALLENGE_EXPIRED",
         message: "Biometric challenge expired. Please try again.",
       });
@@ -1359,6 +1363,7 @@ export const verifyBiometric = async (req, res) => {
     if (!biometricKey) {
       return res.status(401).json({
         success: false,
+        errorCode: "NO_BIOMETRIC_KEY",
         code: "NO_BIOMETRIC_KEY",
         message: "Biometric not enrolled on this device",
       });
@@ -1382,6 +1387,7 @@ export const verifyBiometric = async (req, res) => {
       req.log.error({ event: "biometric_key_parse_failed", err: e }, "[verifyBiometric] public key parse failed");
       return res.status(401).json({
         success: false,
+        errorCode: "KEY_PARSE_FAILED",
         code: "KEY_PARSE_FAILED",
         message: "Stored biometric key is invalid. Please re-enroll.",
       });
@@ -1409,6 +1415,7 @@ export const verifyBiometric = async (req, res) => {
       // Do NOT consume the challenge — let the client retry within TTL.
       return res.status(401).json({
         success: false,
+        errorCode: "INVALID_SIGNATURE",
         code: "INVALID_SIGNATURE",
         message: "Invalid biometric signature",
       });
@@ -1558,7 +1565,7 @@ export const listActiveSessions = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
     const currentSessionId = req.sessionId;
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     // Hide WEB sessions idle for >60 min. Must match jobs/idleSweep.job.js
     // exactly — list filter gives instant correct UX even between sweeps.
@@ -1643,7 +1650,7 @@ export const revokeSessionById = async (req, res) => {
     const currentSessionId = req.sessionId;
     const { id } = req.params;
 
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
     if (!id || !id.match(/^[a-f0-9]{24}$/i)) {
       return res.status(400).json({ success: false, message: "Invalid session id" });
     }
@@ -1693,7 +1700,7 @@ export const revokeAllOtherSessions = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
     const currentSessionId = req.sessionId;
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     const result = await Session.updateMany(
       { hospitalId, isActive: true, _id: { $ne: currentSessionId } },
@@ -1743,7 +1750,7 @@ export const reverifyAuthCode = async (req, res) => {
     const { authCode } = req.body || {};
 
     if (!hospitalId || !sessionId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
     }
     if (!authCode || !/^\d{6}$/.test(String(authCode))) {
       return res.status(400).json({
@@ -1768,6 +1775,7 @@ export const reverifyAuthCode = async (req, res) => {
       }).catch(() => { });
       return res.status(401).json({
         success: false,
+        errorCode: "INVALID_AUTH_CODE",
         code: "INVALID_AUTH_CODE",
         message: "Invalid Auth Code. Please try again.",
       });
@@ -1806,7 +1814,7 @@ export const forceLogoutOtherSessions = async (req, res) => {
     const hospitalId = req.hospital?.id;
     const currentSessionId = req.sessionId;
 
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     // Invalidate all sessions except current
     await Session.updateMany(
@@ -1840,7 +1848,7 @@ export const forceLogoutOtherSessions = async (req, res) => {
 export const storeFcmToken = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     const { fcmToken } = req.body;
     if (!fcmToken) return res.status(400).json({ success: false, message: "fcmToken is required" });
@@ -2098,17 +2106,17 @@ export const forgotPasswordReset = async (req, res) => {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) {
-      return res.status(401).json({ success: false, message: "No token provided" });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_MISSING", message: "No token provided" });
     }
 
     let decoded;
     try {
       decoded = verifyToken(token);
     } catch (e) {
-      return res.status(401).json({ success: false, message: e.message });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: e.message });
     }
     if (decoded.type !== "temp" || decoded.purpose !== "PASSWORD_RESET") {
-      return res.status(401).json({ success: false, message: "Invalid token for password reset" });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Invalid token for password reset" });
     }
 
     const { newPassword } = req.body;
@@ -2195,7 +2203,7 @@ export const changePasswordSettings = async (req, res) => {
   const userAgent = req.headers["user-agent"];
 
   try {
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     const { currentPassword, newPassword } = req.body || {};
     if (!currentPassword || !newPassword) {
@@ -2222,7 +2230,7 @@ export const changePasswordSettings = async (req, res) => {
       } catch (e) {
         req.log.error({ event: "audit_log_pw_change_fail_failed", err: e }, "AuditLog error (pw change fail)");
       }
-      return res.status(401).json({ success: false, message: "Current password is incorrect" });
+      return res.status(401).json({ success: false, errorCode: "INVALID_CREDENTIALS", message: "Current password is incorrect" });
     }
 
     if (currentPassword === newPassword) {

@@ -19,7 +19,7 @@ const router = express.Router();
 const verifyHospitalActive = async (req, res, next) => {
   try {
     const hospitalId = req.hospital?.id;
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
     const hospital = await Hospital.findById(hospitalId).select("isActive").lean();
     if (!hospital || !hospital.isActive) {
       return res.status(403).json({ success: false, message: "Hospital account is inactive" });
@@ -108,12 +108,51 @@ const uploadIdempotencyGuard = async (req, res, next) => {
   next();
 };
 
+// Adds observability and explicitly extends the server timeout for the multipart stream.
+const uploadObservabilityGuard = (req, res, next) => {
+  // 5 minutes — matches Android's Retrofit config and download endpoints.
+  // Node's default is 120s, which is too short for large uploads via Cloudflare Free.
+  req.setTimeout(300000);
+  res.setTimeout(300000);
+
+  const startBytes = req.socket.bytesRead;
+
+  req.on("aborted", () => {
+    req.log.warn(
+      {
+        event: "upload_aborted_by_client",
+        bytes_read: req.socket.bytesRead - startBytes,
+        content_length: req.headers["content-length"],
+      },
+      "[Upload] Client aborted request mid-stream"
+    );
+  });
+
+  req.on("close", () => {
+    // If headers haven't been sent, the request died before the controller could finish.
+    // This is the smoking gun for "upload started but never reached the controller".
+    if (!res.headersSent) {
+      req.log.warn(
+        {
+          event: "upload_socket_closed_unexpectedly",
+          bytes_read: req.socket.bytesRead - startBytes,
+          content_length: req.headers["content-length"],
+        },
+        "[Upload] Socket closed unexpectedly before response was sent"
+      );
+    }
+  });
+
+  next();
+};
+
 /**
  * POST /api/patients/:patientId/files/:folderName
  * Upload file to folder
  */
 router.post(
   "/:patientId/files/:folderName",
+  uploadObservabilityGuard,
   uploadIdempotencyGuard,
   uploadDocument.single("file"),
   patientController.uploadFile,

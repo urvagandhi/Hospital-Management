@@ -115,7 +115,7 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 
 ### C2. Create patient
 - Mobile primarily; web has the modal but the Edit-Patient flow is commented out (web is read-only per §11 of CLAUDE.md).
-- `POST /api/patients`. Atomic `$inc patientIdCounter` → patientId like `SH-000001`. Creates 10 default folders.
+- `POST /api/patients`. Atomic `$inc patientIdCounter` → patientId like `SH-000001`. Creates 11 default folders.
 - 🛠️ Emits `PATIENT_CREATED` audit (TD-001).
 
 ### C3. View patient detail + folders

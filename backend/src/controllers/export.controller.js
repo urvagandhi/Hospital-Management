@@ -152,7 +152,7 @@ export const exportPatientsPdf = async (req, res) => {
     const hospitalId = req.hospital?.id;
 
     if (!hospitalId) {
-      return res.status(401).json({ success: false, error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", error: { code: "UNAUTHORIZED", message: "Unauthorized" } });
     }
 
     const hospital = await Hospital.findById(hospitalId).select("hospitalName").lean();

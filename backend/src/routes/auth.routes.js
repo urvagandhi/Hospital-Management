@@ -199,15 +199,15 @@ router.post(
     req.log.debug({ event: "change_password_middleware_invoked", path: req.path }, "[auth.routes] change-password middleware invoked");
     try {
       const token = req.headers.authorization?.startsWith("Bearer ") ? req.headers.authorization.split(" ")[1] : null;
-      if (!token) return res.status(401).json({ success: false, message: "No token provided" });
+      if (!token) return res.status(401).json({ success: false, errorCode: "TOKEN_MISSING", message: "No token provided" });
       const decoded = verifyToken(token);
       if (decoded.type !== "temp" || decoded.purpose !== "PASSWORD_CHANGE") {
-        return res.status(401).json({ success: false, message: "Invalid token for password change" });
+        return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Invalid token for password change" });
       }
       req.hospital = { id: decoded.id };
       next();
     } catch (e) {
-      return res.status(401).json({ success: false, message: e.message });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: e.message });
     }
   },
   [

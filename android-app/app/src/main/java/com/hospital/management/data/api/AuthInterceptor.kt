@@ -93,7 +93,17 @@ class AuthInterceptor(private val context: Context) : Interceptor {
 
         FileLogger.w(TAG, "401 received for ${original.url} — body preview: $body")
 
-        if (body.contains("SESSION_CONFLICT") || body.contains("signed in on another device")) {
+        // Prefer the stable `errorCode` JSON field (TD-A07). Fall back to
+        // substring matching for one release cycle so a stale APK paired with
+        // the updated backend still classifies correctly.
+        val errorCode: String = try {
+            JSONObject(body).optString("errorCode", "")
+        } catch (_: Exception) {
+            ""
+        }
+
+        if (errorCode == "SESSION_CONFLICT"
+            || body.contains("SESSION_CONFLICT") || body.contains("signed in on another device")) {
             FileLogger.w(TAG, "401 reason: SESSION_CONFLICT — broadcasting revoke")
             val intent = Intent(ACTION_SESSION_REVOKED)
             intent.putExtra(EXTRA_SESSION_REASON, "SESSION_CONFLICT")
@@ -102,7 +112,8 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             return response
         }
 
-        if (body.contains("ACCOUNT_DISABLED")) {
+        if (errorCode == "ACCOUNT_DISABLED"
+            || body.contains("ACCOUNT_DISABLED")) {
             FileLogger.w(TAG, "401 reason: ACCOUNT_DISABLED — broadcasting revoke")
             val intent = Intent(ACTION_SESSION_REVOKED)
             intent.putExtra(EXTRA_SESSION_REASON, "ACCOUNT_DISABLED")
@@ -111,7 +122,8 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             return response
         }
 
-        if (body.contains("AUTH_CODE_REQUIRED") || body.contains("AUTH_CODE_STALE")) {
+        if (errorCode == "AUTH_CODE_REQUIRED"
+            || body.contains("AUTH_CODE_REQUIRED") || body.contains("AUTH_CODE_STALE")) {
             FileLogger.w(TAG, "401 reason: AUTH_CODE_REQUIRED/STALE — broadcasting reverify")
             val intent = Intent(ACTION_AUTH_CODE_REQUIRED)
             intent.setPackage(context.packageName)

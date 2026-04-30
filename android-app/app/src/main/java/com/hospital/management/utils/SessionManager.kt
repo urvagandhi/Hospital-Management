@@ -198,6 +198,9 @@ object SessionManager {
 
             // 6. Clear local state.
             tm.clearAll()
+
+            // 7. Rotate log file so the next user cannot read this session's log entries.
+            FileLogger.rotate()
         }
 
         // Reset Retrofit client (clear cookies + cached instance).

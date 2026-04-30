@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
-import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.ForegroundInfo
@@ -13,6 +12,7 @@ import androidx.work.WorkerParameters
 import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.AppDatabase
 import com.hospital.management.data.repository.DocumentRepository
+import com.hospital.management.utils.FileLogger
 import com.hospital.management.utils.UploadNotifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -102,7 +102,7 @@ class UploadWorker(
                 UploadNotifier.buildPreparing(applicationContext, notificationId, id, fileName)
             ))
         } catch (e: Exception) {
-            Log.w(TAG, "setForeground failed: ${e.message}")
+            FileLogger.w(TAG, "setForeground failed: ${e.message}", e)
         }
 
         // ── Input parsing ────────────────────────────────────────────────
@@ -112,19 +112,42 @@ class UploadWorker(
         val idempotencyKey = inputData.getString(KEY_IDEMPOTENCY_KEY).orEmpty()
         val uploadProfileUsed = inputData.getInt(KEY_UPLOAD_PROFILE_USED, -1)
         val maxRetries = inputData.getInt(KEY_MAX_RETRIES, DEFAULT_MAX_RETRIES)
+        val ownerHospitalId = inputData.getString(KEY_OWNER_HOSPITAL_ID).orEmpty()
+
+        FileLogger.i(TAG, "═══ UPLOAD WORKER STARTED ═══" +
+                "\n  workId=$id" +
+                "\n  attempt=${runAttemptCount + 1}/$maxRetries" +
+                "\n  patientId=$patientId" +
+                "\n  folderName=$folderName" +
+                "\n  fileName=$fileName" +
+                "\n  fileUri=$fileUriStr" +
+                "\n  idempotencyKey=$idempotencyKey" +
+                "\n  uploadProfileUsed=$uploadProfileUsed" +
+                "\n  ownerHospitalId=${ownerHospitalId.take(8)}…")
 
         if (patientId.isEmpty() || folderName.isEmpty() || fileUriStr.isEmpty() ||
             idempotencyKey.isEmpty()) {
+            FileLogger.e(TAG, "INPUT VALIDATION FAILED — patientId=${patientId.isNotEmpty()}, " +
+                    "folderName=${folderName.isNotEmpty()}, fileUri=${fileUriStr.isNotEmpty()}, " +
+                    "idempotencyKey=${idempotencyKey.isNotEmpty()}")
             return@withContext failWith(ERROR_INPUT, "Missing required input")
         }
 
         val file = resolveFile(fileUriStr)
         if (file == null || !file.exists()) {
+            FileLogger.e(TAG, "FILE RESOLUTION FAILED — uri=$fileUriStr, " +
+                    "resolved=${file?.absolutePath}, exists=${file?.exists()}")
             return@withContext failWith(ERROR_FILE_MISSING, "Local file missing or unreadable")
         }
         if (fileName.isEmpty()) fileName = file.name
 
         val totalBytes = file.length().coerceAtLeast(0L)
+        val fileSizeMb = "%.2f".format(totalBytes.toDouble() / (1024.0 * 1024.0))
+        FileLogger.i(TAG, "File resolved successfully:" +
+                "\n  path=${file.absolutePath}" +
+                "\n  size=${totalBytes} bytes (${fileSizeMb} MB)" +
+                "\n  name=$fileName" +
+                "\n  canRead=${file.canRead()}")
 
         // Seed PREPARING — we already showed it via setForeground above, but
         // also publish to WorkInfo.progress so any UI observer sees a non-null
@@ -143,11 +166,18 @@ class UploadWorker(
                 applicationContext
             )
 
+            FileLogger.i(TAG, "Starting HTTP upload to server..." +
+                    "\n  endpoint=POST /api/patients/$patientId/files/$folderName" +
+                    "\n  fileName=$fileName" +
+                    "\n  fileSize=$fileSizeMb MB" +
+                    "\n  idempotencyKey=$idempotencyKey")
+
             // Speed window — captured outside the lambda since the lambda is
             // invoked per-OkHttp-buffer flush.
             var windowStartMs = System.currentTimeMillis()
             var windowStartBytes = 0L
             var lastSpeed = 0L
+            val uploadStartMs = System.currentTimeMillis()
 
             val attempt = repository.uploadDocument(
                 patientId = patientId,
@@ -174,9 +204,23 @@ class UploadWorker(
                 ))
             }
 
-            if (isStopped) return@withContext cancelled()
+            val uploadDurationMs = System.currentTimeMillis() - uploadStartMs
+
+            if (isStopped) {
+                FileLogger.w(TAG, "Upload cancelled by system after ${uploadDurationMs}ms")
+                return@withContext cancelled()
+            }
 
             if (attempt.isSuccess) {
+                FileLogger.i(TAG, "═══ UPLOAD SUCCESS ═══" +
+                        "\n  fileName=$fileName" +
+                        "\n  patientId=$patientId" +
+                        "\n  folderName=$folderName" +
+                        "\n  fileSize=$fileSizeMb MB" +
+                        "\n  duration=${uploadDurationMs}ms" +
+                        "\n  statusCode=${attempt.statusCode}" +
+                        "\n  idempotencyKey=$idempotencyKey")
+
                 // Local file may have been a temp PDF — best-effort cleanup.
                 runCatching { if (file.parentFile?.absolutePath?.contains("cache") == true || file.parentFile == applicationContext.filesDir) file.delete() }
                 finalizeCompleted()
@@ -193,13 +237,31 @@ class UploadWorker(
                 code in 500..599 -> ERROR_SERVER
                 else -> ERROR_NETWORK
             }
+
+            FileLogger.e(TAG, "═══ UPLOAD FAILED ═══" +
+                    "\n  fileName=$fileName" +
+                    "\n  patientId=$patientId" +
+                    "\n  folderName=$folderName" +
+                    "\n  statusCode=$code" +
+                    "\n  reason=$reason" +
+                    "\n  retryable=${attempt.retryable}" +
+                    "\n  serverMessage=${attempt.message}" +
+                    "\n  duration=${uploadDurationMs}ms" +
+                    "\n  attempt=${runAttemptCount + 1}/$maxRetries")
+
             return@withContext if (attempt.retryable) {
                 maybeRetry(maxRetries, reason, attempt.message ?: "Upload failed")
             } else {
                 failWith(reason, attempt.message ?: "Upload rejected")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "upload error", e)
+            FileLogger.e(TAG, "═══ UPLOAD EXCEPTION ═══" +
+                    "\n  fileName=$fileName" +
+                    "\n  patientId=$patientId" +
+                    "\n  folderName=$folderName" +
+                    "\n  exception=${e.javaClass.simpleName}" +
+                    "\n  message=${e.message}" +
+                    "\n  attempt=${runAttemptCount + 1}/$maxRetries", e)
             if (isStopped) return@withContext cancelled()
             maybeRetry(maxRetries, ERROR_NETWORK, e.message ?: "Network error")
         }
@@ -275,6 +337,7 @@ class UploadWorker(
     }
 
     private fun cancelled(): Result {
+        FileLogger.w(TAG, "Upload cancelled — fileName=$fileName, workId=$id")
         UploadNotifier.cancel(applicationContext, notificationId)
         return Result.failure(
             Data.Builder()
@@ -286,7 +349,8 @@ class UploadWorker(
 
     private fun failWith(reason: String, message: String): Result {
         if (isStopped) return cancelled()
-        Log.e(TAG, "failed [$reason]: $message")
+        FileLogger.e(TAG, "Upload TERMINAL FAILURE — reason=$reason, message=$message, " +
+                "fileName=$fileName, workId=$id")
         val progress = UploadProgress(
             stage = UploadStage.FAILED,
             fileName = fileName,
@@ -317,7 +381,9 @@ class UploadWorker(
 
         return if (runAttemptCount < maxRetries) {
             val approxSec = (30L shl runAttemptCount).coerceAtMost(5 * 60L).toInt()
-            Log.w(TAG, "retrying [$reason]: $message (attempt=${runAttemptCount + 1}/$maxRetries)")
+            FileLogger.w(TAG, "Upload RETRYING — reason=$reason, message=$message, " +
+                    "attempt=${runAttemptCount + 1}/$maxRetries, backoff=${approxSec}s, " +
+                    "fileName=$fileName, workId=$id")
             val progress = UploadProgress(
                 stage = UploadStage.RETRYING,
                 fileName = fileName,
@@ -338,6 +404,8 @@ class UploadWorker(
             )
             Result.retry()
         } else {
+            FileLogger.e(TAG, "Upload MAX RETRIES EXHAUSTED — reason=$reason, " +
+                    "message=$message, maxRetries=$maxRetries, fileName=$fileName")
             failWith(reason, message)
         }
     }
@@ -345,6 +413,7 @@ class UploadWorker(
     private fun resolveFile(uriStr: String): File? {
         return try {
             val uri = Uri.parse(uriStr)
+            FileLogger.d(TAG, "Resolving file URI: scheme=${uri.scheme}, uri=$uriStr")
             when (uri.scheme) {
                 "file" -> uri.path?.let { File(it) }
                 "content" -> {
@@ -359,15 +428,20 @@ class UploadWorker(
                         applicationContext.cacheDir,
                         "upload_${System.currentTimeMillis()}.$ext"
                     )
+                    FileLogger.d(TAG, "Copying content:// URI to temp file: ${temp.absolutePath}, mimeType=$mimeType")
                     applicationContext.contentResolver.openInputStream(uri)?.use { input ->
                         FileOutputStream(temp).use { out -> input.copyTo(out) }
                     } ?: return null
+                    FileLogger.d(TAG, "Temp file created: ${temp.absolutePath}, size=${temp.length()} bytes")
                     temp
                 }
-                else -> null
+                else -> {
+                    FileLogger.w(TAG, "Unknown URI scheme: ${uri.scheme}")
+                    null
+                }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "resolveFile failed: ${e.message}")
+            FileLogger.e(TAG, "resolveFile FAILED — uri=$uriStr, error=${e.message}", e)
             null
         }
     }

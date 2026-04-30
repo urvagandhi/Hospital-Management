@@ -33,11 +33,13 @@ import com.hospital.management.presentation.viewmodel.PatientState
 import com.hospital.management.presentation.viewmodel.PatientViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
 import com.hospital.management.ui.scanner.ScannerActivity
+import com.hospital.management.utils.FileLogger
 import java.util.Collections
 
 class UploadActivity : BaseActivity() {
 
     companion object {
+        private const val TAG = "UploadActivity"
         private const val MAX_SERVER_UPLOAD_BYTES = 20L * 1024L * 1024L
     }
 
@@ -62,6 +64,13 @@ class UploadActivity : BaseActivity() {
         setupRecyclerView()
         setupClickListeners()
         setupFormFields()
+
+        FileLogger.i(TAG, "UploadActivity created:" +
+                "\n  patientId=$patientId" +
+                "\n  patientName=$patientName" +
+                "\n  folderName=$folderName" +
+                "\n  scannedPages=${scannedPages.size}" +
+                "\n  hasPdfUri=${scannedPdfUri != null}")
     }
 
     private var patientName: String = ""
@@ -238,9 +247,18 @@ class UploadActivity : BaseActivity() {
     private fun uploadFiles() {
         // Use class properties directly
         if (patientId.isEmpty() || folderName.isEmpty() || (scannedPages.isEmpty() && scannedPdfUri == null)) {
+            FileLogger.w(TAG, "Upload aborted — missing data: patientId=${patientId.isNotEmpty()}, " +
+                    "folderName=${folderName.isNotEmpty()}, pages=${scannedPages.size}, hasPdf=${scannedPdfUri != null}")
             Toast.makeText(this, "Missing patient info or documents", Toast.LENGTH_SHORT).show()
             return
         }
+
+        FileLogger.i(TAG, "═══ UPLOAD INITIATED ═══" +
+                "\n  patientId=$patientId" +
+                "\n  patientName=$patientName" +
+                "\n  folderName=$folderName" +
+                "\n  scannedPages=${scannedPages.size}" +
+                "\n  hasScannerPdf=${scannedPdfUri != null}")
 
         binding.btnUpload.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE
@@ -304,6 +322,7 @@ class UploadActivity : BaseActivity() {
                 val uploadProfileUsed = pdfResult?.profileUsed ?: -1
 
                 if (pdfFile == null) {
+                    FileLogger.e(TAG, "PDF creation FAILED — no file returned")
                     withContext(Dispatchers.Main) {
                         binding.progressBar.visibility = View.GONE
                         binding.btnUpload.isEnabled = true
@@ -313,16 +332,24 @@ class UploadActivity : BaseActivity() {
                     return@launch
                 }
 
-                // Keep generated PDFs within the backend's hard upload cap.
+                val fileSizeMb = "%.2f".format(pdfFile.length().toDouble() / (1024.0 * 1024.0))
+                FileLogger.i(TAG, "PDF created successfully:" +
+                        "\n  path=${pdfFile.absolutePath}" +
+                        "\n  size=${pdfFile.length()} bytes ($fileSizeMb MB)" +
+                        "\n  name=${pdfFile.name}" +
+                        "\n  profileUsed=$uploadProfileUsed")
+
                 if (pdfFile.length() > MAX_SERVER_UPLOAD_BYTES) {
+                    val sizeMbStr = "%.1f".format(pdfFile.length().toDouble() / (1024.0 * 1024.0))
+                    FileLogger.w(TAG, "PDF TOO LARGE — size=${pdfFile.length()} bytes ($sizeMbStr MB), " +
+                            "max=${MAX_SERVER_UPLOAD_BYTES} bytes, deleting temp file")
                     withContext(Dispatchers.Main) {
                         binding.progressBar.visibility = View.GONE
                         binding.btnUpload.isEnabled = true
                         binding.tvUploadProgress.visibility = View.GONE
-                        val sizeMb = "%.1f".format(pdfFile.length().toDouble() / (1024.0 * 1024.0))
                         Toast.makeText(
                             this@UploadActivity,
-                            "File is ${sizeMb}MB. Max upload is 20MB. Reduce pages and try again.",
+                            "File is ${sizeMbStr}MB. Max upload is 20MB. Reduce pages and try again.",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -331,9 +358,11 @@ class UploadActivity : BaseActivity() {
                 }
 
                 val isOnline = isNetworkAvailable()
+                FileLogger.i(TAG, "Network check: isOnline=$isOnline")
                 // One key per logical upload. Reused on offline save so the worker's
                 // retry dedupes server-side if the original request already succeeded.
                 val idempotencyKey = docRepository.newIdempotencyKey()
+                FileLogger.d(TAG, "Generated idempotencyKey=$idempotencyKey")
 
                 if (isOnline) {
                     // Hand off to a foreground UploadWorker so the upload survives
@@ -366,12 +395,22 @@ class UploadActivity : BaseActivity() {
                         )
                         .build()
 
+                    FileLogger.i(TAG, "Enqueuing UploadWorker:" +
+                            "\n  patientId=$patientId" +
+                            "\n  folderName=$folderName" +
+                            "\n  fileName=${pdfFile.name}" +
+                            "\n  fileSize=${pdfFile.length()} bytes" +
+                            "\n  idempotencyKey=$idempotencyKey" +
+                            "\n  ownerHospitalId=${ownerHospitalId.take(8)}…")
+
                     androidx.work.WorkManager.getInstance(applicationContext)
                         .enqueueUniqueWork(
                             "upload_${idempotencyKey}",
                             androidx.work.ExistingWorkPolicy.KEEP,
                             request
                         )
+
+                    FileLogger.i(TAG, "UploadWorker enqueued successfully — finishing UploadActivity")
 
                     binding.progressBar.visibility = View.GONE
                     binding.btnUpload.isEnabled = true
@@ -382,9 +421,14 @@ class UploadActivity : BaseActivity() {
                         Toast.LENGTH_LONG
                     ).show()
                     finish()
-                } else {
                     // Offline - save PDF locally with its key + owner tag
                     val ownerHospitalId = tokenManager.getHospitalId() ?: ""
+                    FileLogger.i(TAG, "OFFLINE SAVE:" +
+                            "\n  patientId=$patientId" +
+                            "\n  folderName=$folderName" +
+                            "\n  fileName=${pdfFile.name}" +
+                            "\n  fileSize=${pdfFile.length()} bytes" +
+                            "\n  idempotencyKey=$idempotencyKey")
                     docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), ownerHospitalId, idempotencyKey)
 
                     binding.progressBar.visibility = View.GONE
@@ -395,6 +439,11 @@ class UploadActivity : BaseActivity() {
                     finish()
                 }
             } catch (e: Exception) {
+                FileLogger.e(TAG, "═══ UPLOAD ERROR ═══" +
+                        "\n  exception=${e.javaClass.simpleName}" +
+                        "\n  message=${e.message}" +
+                        "\n  patientId=$patientId" +
+                        "\n  folderName=$folderName", e)
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     binding.progressBar.visibility = View.GONE

@@ -59,7 +59,4 @@
     <color name="border">@color/color_glass_stroke</color>
     <color name="border_focus">@color/brand_primary</color>
 
-    <!-- Shimmer -->
-    <color name="shimmer_base">@color/color_surface_variant</color>
-    <color name="shimmer_highlight">@color/color_glass_fill</color>
 </resources>

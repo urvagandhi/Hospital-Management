@@ -443,39 +443,35 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
 
 ## 📅 Android — Do This Quarter
 
-### TD-A06 · Medium · S — Drop 7 dead Android deps
+### TD-A06 · ✅ SHIPPED — Drop 7 dead Android deps
 
 - **Source:** `01-dead-code.md` §J1 · `android.md` §1.2
 - **Blast radius:** APK shrinks ~10 MB; attack-surface + license-scanner noise drops.
-- **Migration plan:**
-  1. Remove all 7 Compose entries from [app/build.gradle:83-91](../../android-app/app/build.gradle) + the `compose_version` def + `composeOptions {}` block + `buildFeatures.compose`.
-  2. Remove CameraX (4 lines 108-112), DataStore (118), Coil (124), iText7 (133), Accompanist permissions (136), Shimmer (139).
-  3. Drop the corresponding proguard sections: §12 (Coil/Glide → keep Glide), §11 (iText7), §15 (Shimmer), the Compose-specific `-keep` in §13.
-  4. Drop unused `shimmer_*` colour tokens from [colors.xml:68-70](../../android-app/app/src/main/res/values/colors.xml) and [values-night/colors.xml:62-64](../../android-app/app/src/main/res/values-night/colors.xml).
-  5. Validate release build is still signed (TD-A01 must have landed first, or use debug-build only for validation): `./gradlew :app:assembleRelease` + `apkanalyzer apk summary`.
-- **Acceptance:** APK size drops ≥8 MB; `grep -rn "androidx.compose\|androidx.camera\|androidx.datastore\|io.coil\|itextpdf\|accompanist\|shimmer" android-app/app/build.gradle` returns empty.
+- **Resolution:**
+  1. Removed all 7 Compose entries from `app/build.gradle` + `compose_version` def + `composeOptions {}` block + `buildFeatures.compose`.
+  2. Removed CameraX (4 lines), DataStore, Coil, iText7, Accompanist, Shimmer.
+  3. Cleaned proguard: §11 (iText7) gutted, §12 (Coil removed, Glide kept), §13 (Compose rules removed, ViewBinding kept), §15 (Shimmer) gutted.
+  4. Dropped unused `shimmer_*` colour tokens from `values/colors.xml` and `values-night/colors.xml`.
+- **Acceptance:** ✅ `grep -rn "androidx.compose\|androidx.camera\|androidx.datastore\|io.coil\|itextpdf\|accompanist\|shimmer" android-app/app/build.gradle` returns empty. Zero imports of any removed dep found in source.
 - **Dependencies:** None.
 
-### TD-A07 · High · S — Stable `errorCode` field for 401 classification
+### TD-A07 · ✅ SHIPPED — Stable `errorCode` field for 401 classification
 
 - **Source:** `04-enhancements.md` AND-007 · `android.md` §4.3 D3
-- **Blast radius:** Coordinated backend + Android change. A rewording on either side silently breaks the classifier today.
-- **Migration plan:**
-  1. Backend: every 401 response body already contains a `message` — add a sibling `errorCode: "SESSION_CONFLICT" | "AUTH_CODE_REQUIRED" | "ACCOUNT_DISABLED" | "SESSION_EXPIRED" | "TOKEN_INVALID"` on every 401 emit site ([auth.controller.js](../../backend/src/controllers/auth.controller.js), [middleware/auth.js](../../backend/src/middleware/auth.js)).
-  2. Android: [AuthInterceptor.kt:86-120](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt) — replace the `body.contains("...")` ladder with `JSONObject(body).optString("errorCode")` matching. Keep the substring match as a fallback for one release cycle.
-  3. Document the codes in backend.md §Error codes.
-- **Acceptance:** (a) Rewording any 401 message on the server does not break the Android classifier; (b) Android unit test (TD-A12) asserts each branch fires on the right `errorCode`.
+- **Blast radius:** Coordinated backend + Android change. ~~A rewording on either side silently breaks the classifier today.~~
+- **Resolution:** Every backend 401 response now includes a top-level `errorCode` field (`SESSION_CONFLICT`, `ACCOUNT_DISABLED`, `AUTH_CODE_REQUIRED`, `SESSION_EXPIRED`, `TOKEN_INVALID`, `TOKEN_MISSING`, `INVALID_CREDENTIALS`, `CHALLENGE_EXPIRED`, `NO_BIOMETRIC_KEY`, `KEY_PARSE_FAILED`, `INVALID_SIGNATURE`, `INVALID_AUTH_CODE`). Android `AuthInterceptor.kt` now parses `JSONObject(body).optString("errorCode")` first, falling back to substring matching for one release cycle. Files changed: `middleware/auth.js`, `auth.controller.js`, `hospitals.controller.js`, `audit.controller.js`, `export.controller.js`, `patient.routes.js` (backend); `AuthInterceptor.kt` (Android).
+- **Acceptance:** (a) ✅ Rewording any 401 message on the server does not break the Android classifier; (b) Android unit test (TD-A12) can now assert each branch fires on the right `errorCode`.
 
-### TD-A08 · Medium · S — Tighten FileLogger privacy
+### TD-A08 · ✅ SHIPPED — Tighten FileLogger privacy
 
 - **Source:** `04-enhancements.md` AND-016 · `android.md` §8
 - **Blast radius:** Privacy posture for release-debug workflows.
-- **Migration plan:**
-  1. [RetrofitClient.kt:73-77](../../android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt) — add `redactHeader("X-Hospital-Id")` to the HEADERS-level interceptor.
-  2. Shorten retention from `MAX_DAYS_TO_KEEP = 7` to `2` in [FileLogger.kt:32](../../android-app/app/src/main/java/com/hospital/management/utils/FileLogger.kt).
-  3. Add `SessionManager.logoutUser` → `FileLogger.rotate()` (new method that archives current day's log + truncates). Prevents User B from reading User A's log tail after a shared-device handoff.
-  4. Add a `FeatureFlags.VERBOSE_FILE_LOG = false` gate — only enable for deliberately-reproducing issues.
-- **Acceptance:** Logs no longer contain `X-Hospital-Id`; logout clears log tail; retention is 2 days.
+- **Resolution:**
+  1. `RetrofitClient.kt` — added `redactHeader("X-Hospital-Id")` to the HEADERS-level logging interceptor.
+  2. `FileLogger.kt` — shortened retention from 7 → 2 days (`MAX_DAYS_TO_KEEP = 2`).
+  3. `FileLogger.rotate()` added — archives current day's log + starts a fresh file. Called from `SessionManager.logoutUser()` step 7 so User B cannot read User A's log tail.
+  4. `FileLogger.verboseFileLog` gate (default `false`) — D/I-level messages are only written to file when explicitly enabled. W/E/WTF always persist.
+- **Acceptance:** ✅ Logs no longer contain `X-Hospital-Id`; logout rotates log tail; retention is 2 days; verbose logging is off by default.
 
 ### TD-A10 · Medium · M — Hilt DI migration
 

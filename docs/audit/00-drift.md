@@ -112,7 +112,7 @@ All chains match the baseline: `authLimiter`, `otpLimiter`, `verifyAccessToken`,
 | Claim source | Claim | Status | Evidence | Notes |
 |---|---|---|---|---|
 | backend.md §3 | `hospitalId`, `patientId`, `patientName`, `remarks(max 500)`, `folders[]` with embedded files[] | ✅ | [backend/src/models/Patient.js](../../backend/src/models/Patient.js) | Match. |
-| backend.md §3 | 10 default folders (list) | ✅ | Match. |
+| backend.md §3 | 11 default folders (list) | ✅ | Match. |
 | backend.md §3 | `Patient.toJSON()` strips `cloudinaryPublicId`, `resourceType`, `accessMode` | ✅ | Match. |
 | backend.md §3 | Compound unique `(hospitalId, patientId)` + `(hospitalId, createdAt)` + single `hospitalId`, `createdAt` | ✅ | Match. |
 

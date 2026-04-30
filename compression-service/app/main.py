@@ -13,12 +13,13 @@ from app.logging_config import setup_logging
 from app.endpoints.health import router as health_router
 from app.endpoints.folder import router as folder_router
 from app.endpoints.patient import router as patient_router
+from prometheus_client import make_asgi_app
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 # Paths that skip secret validation
-_PUBLIC_PATHS = {"/", "/api/health", "/docs", "/openapi.json"}
+_PUBLIC_PATHS = {"/", "/api/health", "/docs", "/openapi.json", "/metrics"}
 
 
 @asynccontextmanager
@@ -78,3 +79,6 @@ async def verify_internal_secret(request: Request, call_next):
 app.include_router(health_router)
 app.include_router(folder_router)
 app.include_router(patient_router)
+
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)

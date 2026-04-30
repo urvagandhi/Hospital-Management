@@ -146,19 +146,13 @@
 -dontwarn com.google.android.gms.**
 
 # ---------------------------------------------------------------------------
-# 11.  ITEXT7  (PDF generation — huge library, lots of internal reflection)
+# 11.  (removed — iText7 dep dropped in TD-A06)
 # ---------------------------------------------------------------------------
--keep class com.itextpdf.** { *; }
--dontwarn com.itextpdf.**
--dontwarn org.bouncycastle.**
--dontwarn org.slf4j.**
 
 # ---------------------------------------------------------------------------
-# 12.  COIL / GLIDE  (image loading)
+# 12.  GLIDE  (image loading)
 # ---------------------------------------------------------------------------
--keep class io.coil.**  { *; }
 -keep class com.bumptech.glide.** { *; }
--dontwarn io.coil.**
 -dontwarn com.bumptech.glide.**
 
 # Glide generated API (if using AppGlideModule)
@@ -170,7 +164,7 @@
 }
 
 # ---------------------------------------------------------------------------
-# 13.  VIEWBINDING / COMPOSE
+# 13.  VIEWBINDING
 # ---------------------------------------------------------------------------
 -keepclassmembers class * implements androidx.viewbinding.ViewBinding {
     public static * inflate(android.view.LayoutInflater);
@@ -178,9 +172,7 @@
     public static * bind(android.view.View);
 }
 
-# Jetpack Compose
--keep class androidx.compose.** { *; }
--dontwarn androidx.compose.**
+# (Compose rules removed — dep dropped in TD-A06)
 
 # ---------------------------------------------------------------------------
 # 14.  WORKMANAGER
@@ -191,10 +183,8 @@
 -keep class * extends androidx.work.CoroutineWorker { *; }
 
 # ---------------------------------------------------------------------------
-# 15.  FACEBOOK SHIMMER
+# 15.  (removed — Shimmer dep dropped in TD-A06)
 # ---------------------------------------------------------------------------
--keep class com.facebook.shimmer.** { *; }
--dontwarn com.facebook.shimmer.**
 
 # ---------------------------------------------------------------------------
 # 16.  MISC dontwarn suppressions (build noise from transitive deps)

@@ -29,17 +29,24 @@ import java.util.Locale
 object FileLogger {
 
     private const val LOG_DIR = "logs"
-    private const val MAX_DAYS_TO_KEEP = 7
+    private const val MAX_DAYS_TO_KEEP = 2
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private val timestampFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
 
     @Volatile
     private var logDir: File? = null
 
+    /**
+     * When false, only W/E/WTF are written to file.
+     * Defaulting to true so every log level (D/I/W/E) is captured
+     * on-device for production debugging.
+     */
+    @Volatile
+    var verboseFileLog: Boolean = true
+
     fun init(context: Context, maxDaysToKeep: Int = MAX_DAYS_TO_KEEP) {
-        // File logging is only active in release builds.
-        // In debug, Android Studio Logcat is always attached — no file needed.
-        if (BuildConfig.DEBUG) return
+        // File logging is active in ALL builds so production issues
+        // can be debugged from on-device logs pulled via adb.
         val dir = File(context.getExternalFilesDir(null), LOG_DIR)
         if (!dir.exists()) dir.mkdirs()
         logDir = dir
@@ -48,12 +55,12 @@ object FileLogger {
 
     fun d(tag: String, message: String) {
         Log.d(tag, message)
-        writeLog("D", tag, message)
+        if (verboseFileLog) writeLog("D", tag, message)
     }
 
     fun i(tag: String, message: String) {
         Log.i(tag, message)
-        writeLog("I", tag, message)
+        if (verboseFileLog) writeLog("I", tag, message)
     }
 
     fun w(tag: String, message: String, throwable: Throwable? = null) {
@@ -70,6 +77,26 @@ object FileLogger {
     fun wtf(tag: String, message: String, throwable: Throwable? = null) {
         if (throwable != null) Log.wtf(tag, message, throwable) else Log.wtf(tag, message)
         writeLog("WTF", tag, message, throwable)
+    }
+
+    /**
+     * Rotate logs on logout: archives today's log file with a timestamp
+     * suffix and truncates the active log. Prevents User B from reading
+     * User A's log tail after a shared-device handoff.
+     */
+    fun rotate() {
+        val dir = logDir ?: return
+        try {
+            val today = "log_${dateFormat.format(Date())}.txt"
+            val current = File(dir, today)
+            if (current.exists() && current.length() > 0) {
+                val ts = timestampFormat.format(Date()).replace(" ", "_").replace(":", "-")
+                val archived = File(dir, "log_${dateFormat.format(Date())}_rotated_$ts.txt")
+                current.renameTo(archived)
+            }
+        } catch (e: Exception) {
+            Log.e("FileLogger", "Failed to rotate logs", e)
+        }
     }
 
     private fun writeLog(level: String, tag: String, message: String, throwable: Throwable? = null) {

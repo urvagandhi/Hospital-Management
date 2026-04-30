@@ -34,6 +34,7 @@ from app.merged_cache import (
     upsert_meta as upsert_cache_meta,
 )
 from app.schemas import DownloadResponse, PatientDownloadRequest, SourcePdf
+from app.metrics import CACHE_HITS_TOTAL, CACHE_META_MISSING_TOTAL
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -108,6 +109,7 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                             },
                         },
                     )
+                    CACHE_META_MISSING_TOTAL.inc()
 
                 await write_audit_log(
                     db,
@@ -135,6 +137,7 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                         },
                     },
                 )
+                CACHE_HITS_TOTAL.labels(hit="true").inc()
                 return DownloadResponse(
                     merged_url=url,
                     content_hash=content_hash,
@@ -265,6 +268,7 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                     job_id=job_id,
                 )
 
+                CACHE_HITS_TOTAL.labels(hit="false").inc()
                 return DownloadResponse(
                     merged_url=url,
                     content_hash=content_hash,

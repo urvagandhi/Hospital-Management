@@ -24,7 +24,7 @@ Each finding: **ID** · **Severity** (Critical/High/Medium/Low/Info) · **Effort
 | **SEC-004** | ✅ SHIPPED 2026-04-21 (TD-002) | — | ~~Refresh tokens are not rotated.~~ Rotation + reuse detection shipped in [token.service.js](../../backend/src/services/token.service.js); replaying a rotated-out token revokes every active session for the hospital (`revokedReason: "REFRESH_TOKEN_REUSE"`) and emails the user. Unit coverage: [refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js). |
 | **SEC-005** | Info | — | Bcrypt cost factor 10 ([hash.js:8](../../backend/src/utils/hash.js)). Industry standard. |
 | **SEC-006** | ✅ SHIPPED 2026-04-25 (`09fae23`) | — | JWT verification is **pinned to HS256** via `algorithms: ["HS256"]` in [utils/jwt.js](../../backend/src/utils/jwt.js). Closes RS256-swap / `alg: none` exposure. |
-| **SEC-007** | Low | S | `.env.example` contains no hint that `JWT_SECRET` / `REFRESH_TOKEN_SECRET` must be different random strings. Recommendation: add explicit comment + generator hint. |
+| **SEC-007** | ✅ SHIPPED | — | ~~`.env.example` contains no hint that `JWT_SECRET` / `REFRESH_TOKEN_SECRET` must be different random strings.~~ Explicit comment + node `crypto` generator hint added to `.env.example`. |
 
 ### A03 — Injection
 
@@ -45,7 +45,7 @@ Each finding: **ID** · **Severity** (Critical/High/Medium/Low/Info) · **Effort
 
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
-| **SEC-013** | Low | XS | Helmet uses default config (no customisation) — default CSP is fairly strict for an API but does not set `Cross-Origin-Opener-Policy`; acceptable for now. [index.js:72](../../backend/src/index.js). |
+| **SEC-013** | ✅ SHIPPED | — | ~~Helmet uses default config (no customisation) — default CSP is fairly strict for an API but does not set `Cross-Origin-Opener-Policy`; acceptable for now.~~ Helmet config explicitly sets `Cross-Origin-Opener-Policy: same-origin` in [index.js](../../backend/src/index.js). |
 | **SEC-014** | ✅ SHIPPED 2026-04-21 (TD-004) | — | ~~`.env.example` contains dead TOTP + SMS + legacy SMTP vars~~ — 13 dead vars removed, 11 undocumented vars added, `LOG_LEVEL` documented. `.env.example` and code are now in sync. |
 
 ### A06 — Vulnerable Components
@@ -89,11 +89,11 @@ Each finding: **ID** · **Severity** (Critical/High/Medium/Low/Info) · **Effort
 | **PERF-001** | ✅ SHIPPED 2026-04-21 (TD-005) | — | ~~No pagination on `GET /api/hospitals`~~ — see SEC-001. Cursor pagination + server-side search shipped. |
 | **PERF-002** | ✅ SHIPPED 2026-04-25 (`d69f0be`, TD-D) | — | ~~`/api/patients` pagination is offset-based with no max cap.~~ Cursor pagination shipped: `limit` clamped 1–100 (default 20); opaque `cursor` token; `nextCursor` returned. Legacy `?skip=` shape still works as fallback. See [patient.controller.js:80-135](../../backend/src/controllers/patient.controller.js). |
 | **PERF-003** | Medium | M | **PDF/ZIP downloads are buffered into memory before streaming in some paths.** [pdf.service.js](../../backend/src/services/pdf.service.js) and [zip.service.js](../../backend/src/services/zip.service.js) — archiver pipes correctly, but pdf-lib merges the whole doc set in heap. Large patient bundles will OOM. Compression sidecar is the correct mitigation — ensure `USE_COMPRESSION_SERVICE=true` in prod. |
-| **PERF-004** | Low | XS | `bcrypt.compareSync` NOT used; all verify paths are async ([hash.js](../../backend/src/utils/hash.js)). ✓ |
-| **PERF-005** | Medium | S | **GeoIP synchronous lookup on session create could bottleneck login.** [geoip.service.js](../../backend/src/services/geoip.service.js) uses fire-and-forget per CLAUDE.md claim; verify: if called with `await`, it adds ~80-300ms per login. If already fire-and-forget, no action. |
+| **PERF-004** | ✅ SHIPPED | — | Verified `bcrypt.compareSync` is NOT used; all verify paths are properly async in [hash.js](../../backend/src/utils/hash.js). |
+| **PERF-005** | ✅ SHIPPED | — | Verified `geolocateIp` is properly fire-and-forget (not awaited) during session creation in `token.service.js`. It does not bottleneck login. |
 | **PERF-006** | ✅ SHIPPED 2026-04-21 (TD-011) | — | `/components-preview` + `/spinners-preview` are now `React.lazy()` in [AppRoutes.tsx:30-31](../../frontend/src/routes/AppRoutes.tsx). `recharts` + `lucide-react` are isolated to the `ComponentsPreview-*.js` chunk (438 kB raw / 121 kB gz). Main `index-*.js` dropped from ~872 kB / ~231 kB gz → **434 kB raw / 110 kB gz** (−438 kB / −121 kB gz). Gallery deps **intentionally kept**. |
 | **PERF-007** | ✅ SHIPPED 2026-04-21 (TD-015) | — | ~~Compression sidecar parallel fetches source PDFs with unbounded `asyncio.gather`.~~ Now capped at 10 concurrent downloads via `asyncio.Semaphore` (`_FETCH_CONCURRENCY = 10` in [cloudinary_client.py](../../compression-service/app/cloudinary_client.py)). |
-| **PERF-008** | Low | XS | Sidecar cache hit ratio has no observability. Logs say `cache_hit` but no counter. Recommendation: emit a Prometheus counter when/if metrics server added. |
+| **PERF-008** | ✅ SHIPPED | — | ~~Sidecar cache hit ratio has no observability. Logs say `cache_hit` but no counter. Recommendation: emit a Prometheus counter when/if metrics server added.~~ Added `prometheus_client`, mounted `/metrics`, and emitting `sidecar_cache_hits_total` Counter in sidecar endpoints. |
 
 ---
 
@@ -114,13 +114,13 @@ Each finding: **ID** · **Severity** (Critical/High/Medium/Low/Info) · **Effort
 
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
-| **OBS-001** | Medium | S | **`/api/health/deep` does not probe Cloudinary / Brevo / FCM / Sidecar.** [index.js:140-177](../../backend/src/index.js) checks Mongo, Redis, server only. Recommendation: add probe functions with 2-3s timeout each and degraded-if-any-fail reporting. |
-| **OBS-002** | Medium | S | **Audit gaps on mutations** (dup SEC-020). |
+| **OBS-001** | ✅ SHIPPED | — | Verified `/api/health/deep` now probes Cloudinary, Brevo, FCM, and Sidecar with strict timeouts and `degraded` reporting via `probeAllExternals` in [health.service.js](../../backend/src/services/health.service.js). |
+| **OBS-002** | ✅ SHIPPED | — | **Audit gaps on mutations** (dup SEC-020). Handled by SEC-020. |
 | **OBS-003** | ✅ SHIPPED 2026-04-25 (`8fbab6a`) | — | ~~No route-level ErrorBoundary in the frontend.~~ [MainLayout.tsx](../../frontend/src/layouts/MainLayout.tsx) now wraps `<Outlet />` in a second `<ErrorBoundary key={location.pathname} fullScreen={false}>` so a render error on one authenticated route can't blank the whole shell. The inner boundary remounts on navigation (key=pathname) so navigating away clears the error. |
-| **OBS-004** | ✅ DONE | M | ~~No structured logging in Node backend~~ — RESOLVED 2026-04-21 (TD-007). Pino + pino-http shipped: JSON in prod, pretty in dev, `LOG_LEVEL` env, per-request `X-Request-Id` + `req.log` child, redaction of Authorization/Cookie + password-like top-level + nested fields. Zero `console.*` remain in `backend/src/`. See [utils/logger.js](../../backend/src/utils/logger.js). |
+| **OBS-004** | ✅ DONE | — | ~~No structured logging in Node backend~~ — RESOLVED 2026-04-21 (TD-007). Pino + pino-http shipped: JSON in prod, pretty in dev, `LOG_LEVEL` env, per-request `X-Request-Id` + `req.log` child, redaction of Authorization/Cookie + password-like top-level + nested fields. Zero `console.*` remain in `backend/src/`. See [utils/logger.js](../../backend/src/utils/logger.js). |
 | **OBS-005** | ✅ SHIPPED 2026-04-21 (TD-014) | — | ~~Sidecar timeout message said "100s limit" but real timeout is 300s.~~ [folder.py:285](../../compression-service/app/endpoints/folder.py), [patient.py:301](../../compression-service/app/endpoints/patient.py), [schemas.py:73](../../compression-service/app/schemas.py) all now read `"Pipeline exceeded 300s limit"`. |
-| **OBS-006** | Info | — | Error responses properly differentiate prod/dev — no stack leaks ([errorHandler.js:54-58](../../backend/src/middleware/errorHandler.js)). |
-| **OBS-007** | Medium | S | **Sidecar cache-miss fallback silently downgrades `tier_used` to -1** ([folder.py:87-88](../../compression-service/app/endpoints/folder.py)). Good for availability, bad for ops visibility. Emit a log + counter on this path. |
+| **OBS-006** | ✅ VERIFIED | — | Error responses properly differentiate prod/dev — no stack leaks ([errorHandler.js:54-58](../../backend/src/middleware/errorHandler.js)). |
+| **OBS-007** | ✅ SHIPPED | — | ~~Sidecar cache-miss fallback silently downgrades `tier_used` to -1 ([folder.py:87-88](../../compression-service/app/endpoints/folder.py)). Good for availability, bad for ops visibility. Emit a log + counter on this path.~~ Added `CACHE_META_MISSING_TOTAL` Prometheus counter to track missing sidecar metadata. |
 
 ---
 
@@ -289,13 +289,13 @@ Added 2026-04-24 with first-pass Android audit. IDs prefixed `AND-` so they don'
 |---|---|---|---|
 | **AND-004** | 🟠 High | S | **`androidx.security:security-crypto:1.1.0-alpha06`** ([app/build.gradle:79](../../android-app/app/build.gradle)) is alpha. Tokens + hospital IDs of every user depend on it. Recommendation: downgrade to stable `1.1.0-alpha06` → `1.0.0` (stable) if Keystore tampering protection isn't required, or accept the alpha risk explicitly. |
 | **AND-005** | 🟡 Medium | S | **`com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1`** ([app/build.gradle:115](../../android-app/app/build.gradle)) is beta. Scanner is on the hot upload path. Recommendation: upgrade to GA once Google ships one. |
-| **AND-006** | 🟡 Medium | XS | **7 dead dependencies** (Compose tree × 7 artifacts, CameraX × 4, DataStore, Coil, iText7, Accompanist, Shimmer). ~10 MB APK bloat + unnecessary attack surface. See [`01-dead-code.md` §J1](01-dead-code.md) for the full list. Tracked as `TD-A06`. |
+| **AND-006** | ✅ SHIPPED | — | ~~7 dead dependencies~~ All 7 removed: Compose (8 entries), CameraX (4), DataStore, Coil, iText7, Accompanist, Shimmer. Proguard rules and shimmer colour tokens also cleaned. Tracked as `TD-A06`. |
 
 #### M3 — Insecure Authentication / Authorization
 
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
-| **AND-007** | 🟠 High | S | **401 classification relies on substring-matching the error body.** Evidence: [AuthInterceptor.kt:96, 105, 114](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt) — `body.contains("SESSION_CONFLICT")`, `body.contains("ACCOUNT_DISABLED")`, `body.contains("AUTH_CODE_REQUIRED")`. A rewording of any one message on the server silently breaks the classifier. Risk: AUTH_CODE_REQUIRED flow could miss-fire and land users in "Session expired" state; SESSION_CONFLICT miss would keep the user logged in on a device that should be kicked. Recommendation: return a stable `errorCode` field server-side and switch classifier to `json.optString("errorCode")`. Tracked as `TD-A07`. |
+| **AND-007** | ✅ SHIPPED | — | ~~401 classification relies on substring-matching the error body.~~ Every backend 401 now includes a stable `errorCode` JSON field. `AuthInterceptor.kt` uses `JSONObject(body).optString("errorCode")` with substring fallback for one release cycle. Tracked as `TD-A07`. |
 | **AND-008** | 🟡 Medium | S | **No rate-limiter / anti-enumeration UX around `POST /auth/session/check-conflict`** ([LoginActivity.kt:130-188](../../android-app/app/src/main/java/com/hospital/management/ui/auth/LoginActivity.kt)). It's unauthenticated and the server response reveals whether an `identifier` has any active session. If backend responds identically for non-existent identifiers this is fine — **verify** (depends on [auth.controller.js:checkSessionConflict](../../backend/src/controllers/auth.controller.js) behaviour; not re-audited in this pass). |
 | **AND-009** | ✅ Info | — | Biometric keypair is correctly `BIOMETRIC_STRONG` + `setUserAuthenticationRequired(true)` + `setInvalidatedByBiometricEnrollment(true)` ([BiometricHelper.kt:82-92](../../android-app/app/src/main/java/com/hospital/management/utils/BiometricHelper.kt)). Per-hospital alias scoping at [BiometricHelper.kt:37](../../android-app/app/src/main/java/com/hospital/management/utils/BiometricHelper.kt) means multi-account devices can't bleed. |
 
@@ -319,7 +319,7 @@ Added 2026-04-24 with first-pass Android audit. IDs prefixed `AND-` so they don'
 
 | ID | Sev | Eff | Finding |
 |---|---|---|---|
-| **AND-016** | 🟡 Medium | S | **FileLogger writes on-device logs in release builds** ([FileLogger.kt:39-46](../../android-app/app/src/main/java/com/hospital/management/utils/FileLogger.kt)) under `Android/data/com.hospital.management/files/logs/` with a 7-day retention. OkHttp `HEADERS`-level interceptor redacts `Authorization`/`Cookie`/`Set-Cookie` ([RetrofitClient.kt:73-77](../../android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt)) — but **not** `X-Hospital-Id` (attached by every request at [AuthInterceptor.kt:181](../../android-app/app/src/main/java/com/hospital/management/data/api/AuthInterceptor.kt)) and not URL paths (which contain hospital-display IDs like `SH-000001`). If a user hands over a rooted device or shares logs with support, their hospital ID + patient URL patterns are readable. Recommendation: either (a) redact `X-Hospital-Id` too + strip path params, or (b) tighten retention to 24 h + rotate on logout + disable entirely unless `FeatureFlags.VERBOSE_FILE_LOG` (added). Tracked as `TD-A08`. |
+| **AND-016** | ✅ SHIPPED | — | ~~FileLogger writes on-device logs in release builds with 7-day retention and unredacted X-Hospital-Id.~~ `X-Hospital-Id` now redacted in `RetrofitClient.kt`; retention shortened to 2 days; `FileLogger.rotate()` called on logout; D/I-level messages gated behind `verboseFileLog` (default off). Tracked as `TD-A08`. |
 | **AND-017** | 🟡 Medium | XS | **No Play Data Safety disclosure for on-device logs** — when the app is published, the Data Safety section must declare "Crash logs / Diagnostics" if `FileLogger` stays. Tracked alongside `TD-A01` (Play Store prep). |
 
 #### M7 — Insufficient Binary Protections

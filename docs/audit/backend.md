@@ -108,7 +108,7 @@ Fields as previously documented. Additional observations:
 
 Fields + embedded `folders[].files[]` as previously documented. `Patient.toJSON()` strips `cloudinaryPublicId`, `resourceType`, `accessMode`.
 
-Indexes: `hospitalId`, `createdAt`, compound `(hospitalId, createdAt)`, compound-unique `(hospitalId, patientId)`. Default 10 folders on create.
+Indexes: `hospitalId`, `createdAt`, compound `(hospitalId, createdAt)`, compound-unique `(hospitalId, patientId)`. Default 11 folders on create.
 
 ### Session (`sessions`)
 

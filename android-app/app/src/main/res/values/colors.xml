@@ -65,10 +65,6 @@
     <color name="border">@color/color_glass_stroke</color>
     <color name="border_focus">@color/brand_primary</color>
 
-    <!-- Shimmer -->
-    <color name="shimmer_base">@color/color_surface_variant</color>
-    <color name="shimmer_highlight">@color/color_glass_fill</color>
-
     <!-- Card Backgrounds (Subtle) -->
     <color name="card_bg_primary">#EFF6FF</color>
     <color name="card_bg_cyan">#ECFEFF</color>

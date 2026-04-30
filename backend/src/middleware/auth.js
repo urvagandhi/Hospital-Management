@@ -23,6 +23,7 @@ export const verifyAccessToken = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
+        errorCode: "TOKEN_MISSING",
         message: "No token provided",
       });
     }
@@ -32,6 +33,7 @@ export const verifyAccessToken = async (req, res, next) => {
     if (decoded.type !== "access") {
       return res.status(401).json({
         success: false,
+        errorCode: "TOKEN_INVALID",
         message: "Invalid token type",
       });
     }
@@ -41,6 +43,7 @@ export const verifyAccessToken = async (req, res, next) => {
     if (!decoded.sessionId) {
        return res.status(401).json({
          success: false,
+         errorCode: "TOKEN_INVALID",
          message: "Invalid token format. Please login again.",
        });
     }
@@ -49,12 +52,17 @@ export const verifyAccessToken = async (req, res, next) => {
     const session = await Session.findById(decoded.sessionId);
     if (!session || !session.isActive) {
       const reason = session?.revokedReason || "SESSION_EXPIRED";
+      const errorCode =
+        reason === "SESSION_CONFLICT"   ? "SESSION_CONFLICT" :
+        reason === "ACCOUNT_DISABLED"   ? "ACCOUNT_DISABLED" :
+                                          "SESSION_EXPIRED";
       const message =
         reason === "SESSION_CONFLICT"   ? "You were logged out because you signed in on another device." :
         reason === "ACCOUNT_DISABLED"   ? "ACCOUNT_DISABLED: Your account has been disabled by the administrator." :
                                           "Session expired or invalid. Please login again.";
       return res.status(401).json({
         success: false,
+        errorCode,
         message,
         reason,
       });
@@ -77,6 +85,7 @@ export const verifyAccessToken = async (req, res, next) => {
       if (age > AUTH_CODE_FRESH_WINDOW_MS) {
         return res.status(401).json({
           success: false,
+          errorCode: "AUTH_CODE_REQUIRED",
           code: "AUTH_CODE_REQUIRED",
           reason: "AUTH_CODE_STALE",
           message: "Please re-verify your 6-digit Auth Code to continue.",
@@ -117,6 +126,7 @@ export const verifyAccessToken = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       success: false,
+      errorCode: "TOKEN_INVALID",
       message: error.message,
     });
   }
@@ -136,6 +146,7 @@ export const verifyTempToken = (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
+        errorCode: "TOKEN_MISSING",
         message: "No token provided",
       });
     }
@@ -145,6 +156,7 @@ export const verifyTempToken = (req, res, next) => {
     if (decoded.type !== "temp") {
       return res.status(401).json({
         success: false,
+        errorCode: "TOKEN_INVALID",
         message: "Invalid token type.",
       });
     }
@@ -152,6 +164,7 @@ export const verifyTempToken = (req, res, next) => {
     if (decoded.purpose !== "AUTH_CODE") {
       return res.status(401).json({
         success: false,
+        errorCode: "TOKEN_INVALID",
         message: "Token purpose mismatch. Invalid token for this operation.",
       });
     }
@@ -162,6 +175,7 @@ export const verifyTempToken = (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       success: false,
+      errorCode: "TOKEN_INVALID",
       message: error.message,
     });
   }
@@ -178,6 +192,7 @@ export const attachHospitalData = async (req, res, next) => {
     if (!hospitalId) {
       return res.status(401).json({
         success: false,
+        errorCode: "TOKEN_INVALID",
         message: "Hospital ID not found in token",
       });
     }
@@ -221,7 +236,7 @@ export const verifyAdmin = async (req, res, next) => {
   try {
     const hospitalId = req.hospital?.id;
     if (!hospitalId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
     }
 
     const hospital = await Hospital.findById(hospitalId).select("role");
@@ -248,7 +263,7 @@ export const verifyAdminOrSelf = async (req, res, next) => {
     const targetId = req.params.id;
 
     if (!hospitalId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
     }
 
     // Allow if updating own record

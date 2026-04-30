@@ -85,7 +85,7 @@ erDiagram
     string patientId "SH-000001 etc; unique per hospital"
     string patientName
     string remarks "max 500"
-    array folders "embedded default 10"
+    array folders "embedded default 11"
     Date createdAt "indexed for auto-delete"
     Date updatedAt
   }

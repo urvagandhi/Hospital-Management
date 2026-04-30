@@ -15,7 +15,7 @@ export const listAudits = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
     if (!hospitalId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
     }
 
     const { action, status, from, to, cursor } = req.query;

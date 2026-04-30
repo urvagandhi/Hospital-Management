@@ -127,6 +127,7 @@ export const getCurrentHospital = async (req, res) => {
     if (!hospitalId) {
       return res.status(401).json({
         success: false,
+        errorCode: "TOKEN_INVALID",
         message: "Unauthorized",
       });
     }
@@ -517,7 +518,7 @@ export const patchMe = async (req, res) => {
   const userAgent = req.headers["user-agent"];
 
   try {
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
@@ -579,7 +580,7 @@ export const initContactChange = async (req, res) => {
   const userAgent = req.headers["user-agent"];
 
   try {
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     const { newEmail, newPhone } = req.body || {};
     if (!newEmail === !newPhone) {
@@ -680,7 +681,7 @@ export const resendContactChangeOtp = async (req, res) => {
   const userAgent = req.headers["user-agent"];
 
   try {
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     // Cooldown
     const last = resendContactOtpCooldown.get(hospitalId);
@@ -769,7 +770,7 @@ export const verifyContactChange = async (req, res) => {
   const userAgent = req.headers["user-agent"];
 
   try {
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     const { otp } = req.body || {};
     if (!otp || !/^\d{6}$/.test(String(otp))) {
@@ -874,7 +875,7 @@ function normalizePrefs(stored) {
 export const getNotificationPreferences = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     const hospital = await Hospital.findById(hospitalId).select("notificationPrefs").lean();
     if (!hospital) return res.status(404).json({ success: false, message: "Hospital not found" });
@@ -890,7 +891,7 @@ export const getNotificationPreferences = async (req, res) => {
 export const updateNotificationPreferences = async (req, res) => {
   try {
     const hospitalId = req.hospital?.id;
-    if (!hospitalId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!hospitalId) return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
 
     // Only accept known boolean keys — silently drop anything else.
     const allowed = ["newLoginAlert", "securityAlerts", "marketing"];
@@ -960,7 +961,7 @@ export const adminForceDelete = async (req, res) => {
 
     const admin = await Hospital.findById(adminId);
     if (!admin || !admin.passwordHash) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({ success: false, errorCode: "TOKEN_INVALID", message: "Unauthorized" });
     }
     const ok = await comparePassword(password, admin.passwordHash);
     if (!ok) {
@@ -972,7 +973,7 @@ export const adminForceDelete = async (req, res) => {
         userAgent: req.headers["user-agent"],
         details: { targetId: id, type: "admin_forced_deletion", reason: "bad_admin_password" },
       }).catch(() => {});
-      return res.status(401).json({ success: false, message: "Admin password is incorrect" });
+      return res.status(401).json({ success: false, errorCode: "INVALID_CREDENTIALS", message: "Admin password is incorrect" });
     }
 
     const hospital = await Hospital.findById(id);
