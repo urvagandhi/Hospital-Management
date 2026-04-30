@@ -2,7 +2,7 @@ package com.hospital.management.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.channels.awaitClose
@@ -48,7 +48,7 @@ class TokenManager(private val context: Context) {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (e: Exception) {
-            Log.e(TAG, "EncryptedSharedPreferences corrupted, clearing and recreating", e)
+            FileLogger.e(TAG, "EncryptedSharedPreferences corrupted, clearing and recreating", e)
             // Delete the corrupted prefs file and retry
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
             try {
@@ -67,7 +67,7 @@ class TokenManager(private val context: Context) {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
                 )
             } catch (e2: Exception) {
-                Log.e(TAG, "Failed to recreate EncryptedSharedPreferences, falling back", e2)
+                FileLogger.e(TAG, "Failed to recreate EncryptedSharedPreferences, falling back", e2)
                 // Last resort: use regular SharedPreferences so the app doesn't crash
                 context.getSharedPreferences("${PREFS_NAME}_fallback", Context.MODE_PRIVATE)
             }

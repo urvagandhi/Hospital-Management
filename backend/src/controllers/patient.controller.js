@@ -16,6 +16,7 @@ import {
   buildSignedUrl,
   buildThumbnailUrl,
   deleteFile as cloudinaryDeleteFile,
+  generateSignedUploadParams,
   SIGNED_UPLOADS_ENABLED,
 } from "../services/storage.service.js";
 import * as zipService from "../services/zip.service.js";
@@ -365,6 +366,150 @@ export const uploadFile = async (req, res) => {
     return res.status(error.message === "Patient not found" || error.message === "Folder not found" ? 404 : 500).json({
       success: false,
       message: error.message === "Patient not found" || error.message === "Folder not found" ? error.message : "Failed to upload file",
+    });
+  }
+};
+
+/**
+ * POST /api/patients/:patientId/files/:folderName/sign
+ * Mint signed Cloudinary upload params so the client can upload directly
+ * to Cloudinary, bypassing the Express/Render proxy entirely.
+ *
+ * Response: { success, params: { uploadUrl, apiKey, signature, timestamp, publicId, ... } }
+ */
+export const signUpload = async (req, res) => {
+  try {
+    const { patientId, folderName } = req.params;
+    const hospitalId = req.hospital?.id;
+    const { fileName } = req.body;
+
+    req.log.info(
+      { event: "sign_upload_attempt", patientId, folderName, fileName },
+      "[Patient Controller] Generating signed upload params"
+    );
+
+    // Validate folder name — same regex as the proxy upload route
+    if (!/^[a-zA-Z0-9_\-\.\s,()\/]+$/.test(folderName)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid folder name.",
+      });
+    }
+
+    // Verify patient exists and belongs to this hospital
+    const patient = await patientService.getPatientById(hospitalId, patientId);
+    if (!patient) {
+      return res.status(404).json({ success: false, message: "Patient not found" });
+    }
+
+    const params = generateSignedUploadParams(hospitalId, patientId, folderName, fileName);
+
+    req.log.info(
+      { event: "sign_upload_success", publicId: params.publicId },
+      "[Patient Controller] Signed upload params generated"
+    );
+
+    return res.status(200).json({ success: true, params });
+  } catch (error) {
+    req.log.error({ event: "sign_upload_error", err: error }, "[Patient Controller] Sign error");
+    const isNotFound = error.message?.includes("not found");
+    return res.status(isNotFound ? 404 : 500).json({
+      success: false,
+      message: isNotFound ? error.message : "Failed to generate upload params",
+    });
+  }
+};
+
+/**
+ * POST /api/patients/:patientId/files/:folderName/confirm
+ * After the client uploads directly to Cloudinary, it calls this endpoint
+ * with the Cloudinary response so we can persist the file metadata on the
+ * patient record — same DB write as the old proxy uploadFile handler.
+ *
+ * Body: { publicId, secureUrl, originalFileName, size, mimeType }
+ */
+export const confirmDirectUpload = async (req, res) => {
+  try {
+    const { patientId, folderName } = req.params;
+    const hospitalId = req.hospital?.id;
+    const { publicId, secureUrl, originalFileName, size, mimeType } = req.body;
+
+    req.log.info(
+      { event: "confirm_direct_upload", patientId, folderName, publicId, originalFileName, size },
+      "[Patient Controller] Confirming direct upload"
+    );
+
+    if (!publicId || !secureUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "publicId and secureUrl are required",
+      });
+    }
+
+    // Validate folder name
+    if (!/^[a-zA-Z0-9_\-\.\s,()\/]+$/.test(folderName)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid folder name.",
+      });
+    }
+
+    const isImage = (mimeType || "").startsWith("image/");
+    const resourceType = isImage ? "image" : "raw";
+    const accessMode = SIGNED_UPLOADS_ENABLED ? "signed" : "public";
+    const thumbnailUrl = isImage
+      ? buildThumbnailUrl({ publicId, resourceType, accessMode })
+      : null;
+
+    const patient = await patientService.addFileToFolder(hospitalId, patientId, folderName, {
+      fileName: originalFileName || "document.pdf",
+      fileUrl: secureUrl,
+      cloudinaryPublicId: publicId,
+      thumbnailUrl,
+      resourceType,
+      accessMode,
+      size: size || 0,
+      mimeType: mimeType || "application/pdf",
+    });
+
+    const responseBody = {
+      success: true,
+      data: patient,
+      message: "File uploaded successfully",
+    };
+
+    logAudit(hospitalId, "FILE_UPLOADED", req, {
+      patientId,
+      patientMongoId: String(patient._id),
+      humanPatientId: patient.patientId,
+      folderName,
+      fileName: originalFileName,
+      size,
+      mimeType,
+      accessMode,
+      resourceType,
+      uploadMethod: "direct-to-cloudinary",
+    });
+
+    // Cache idempotent response
+    const idemKey = req.header("Idempotency-Key");
+    if (idemKey) {
+      setUploadIdempotentResponse(hospitalId, idemKey, { status: 200, body: responseBody })
+        .catch((e) => req.log.error({ event: "upload_idem_cache_failed", err: e }, "[Patient Controller] idem cache failed"));
+    }
+
+    req.log.info(
+      { event: "confirm_direct_upload_success", patientId, folderName, publicId },
+      "[Patient Controller] Direct upload confirmed and saved"
+    );
+
+    return res.status(200).json(responseBody);
+  } catch (error) {
+    req.log.error({ event: "confirm_direct_upload_error", err: error }, "[Patient Controller] Confirm error");
+    const isNotFound = error.message === "Patient not found" || error.message === "Folder not found";
+    return res.status(isNotFound ? 404 : 500).json({
+      success: false,
+      message: isNotFound ? error.message : "Failed to confirm upload",
     });
   }
 };

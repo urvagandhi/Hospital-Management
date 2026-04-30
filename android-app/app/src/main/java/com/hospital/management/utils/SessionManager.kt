@@ -13,6 +13,7 @@ import com.hospital.management.worker.OfflineLogoutWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.hospital.management.utils.FileLogger
 
 object SessionManager {
     // Align client-side inactivity timeout with the server's 7-day session TTL.
@@ -174,10 +175,10 @@ object SessionManager {
                     val dao = AppDatabase.getDatabase(appCtx).documentDao()
                     val cancelled = dao.deleteAllForHospital(hospitalIdSnapshot)
                     if (cancelled > 0) {
-                        android.util.Log.w("SessionManager", "Logout cancelled $cancelled pending upload(s) for hospital $hospitalIdSnapshot")
+                        FileLogger.w("SessionManager", "Logout cancelled $cancelled pending upload(s) for hospital $hospitalIdSnapshot")
                     }
                 } catch (e: Throwable) {
-                    android.util.Log.w("SessionManager", "Failed to clear pending uploads on logout: ${e.message}")
+                    FileLogger.w("SessionManager", "Failed to clear pending uploads on logout: ${e.message}")
                 }
             }
 

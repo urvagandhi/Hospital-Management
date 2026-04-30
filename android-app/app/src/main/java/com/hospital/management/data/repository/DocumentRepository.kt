@@ -1,8 +1,8 @@
 package com.hospital.management.data.repository
 
 import android.content.Context
-import android.net.Uri
 import com.hospital.management.data.api.ApiService
+import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.DocumentDao
 import com.hospital.management.data.local.OfflineDocument
 import com.hospital.management.data.local.SyncStatus
@@ -10,6 +10,8 @@ import com.hospital.management.utils.FileLogger
 import com.hospital.management.worker.ProgressRequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
@@ -17,6 +19,7 @@ import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 data class UploadAttempt(
     val isSuccess: Boolean,
@@ -34,6 +37,25 @@ class DocumentRepository(
         private const val TAG = "DocumentRepository"
     }
 
+    // Dedicated OkHttpClient for Cloudinary direct uploads — no auth interceptor,
+    // no cookie jar, just raw HTTP with generous timeouts.
+    private val cloudinaryClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(300, TimeUnit.SECONDS)
+            .writeTimeout(300, TimeUnit.SECONDS)
+            .callTimeout(0, TimeUnit.SECONDS)
+            .build()
+    }
+
+    /**
+     * Direct-to-Cloudinary upload flow (3 steps):
+     *   1. POST /sign → get signed params from our backend (lightweight JSON, <1s)
+     *   2. POST to Cloudinary upload URL with signed params + file (heavy lift, Android → Cloudinary directly)
+     *   3. POST /confirm → tell our backend to save the metadata (lightweight JSON, <1s)
+     *
+     * Falls back to the legacy proxy upload if step 1 fails with 404 (old backend).
+     */
     suspend fun uploadDocument(
         patientId: String,
         folderName: String,
@@ -54,18 +76,209 @@ class DocumentRepository(
                 "\n  idempotencyKey=$idempotencyKey" +
                 "\n  uploadProfileUsed=$uploadProfileUsed")
 
+        // ── Step 1: Get signed params from our backend ──
+        FileLogger.i(TAG, "Step 1/3: Requesting signed upload params from backend...")
+        val signResult = try {
+            val signBody = mapOf("fileName" to file.name)
+            val signResponse = apiService.getSignedUploadParams(patientId, folderName, signBody)
+
+            if (signResponse.isSuccessful) {
+                val data = signResponse.body()
+                @Suppress("UNCHECKED_CAST")
+                val params = data?.get("params") as? Map<String, Any>
+                if (params != null) {
+                    FileLogger.i(TAG, "Step 1/3 SUCCESS — signed params received:" +
+                            "\n  publicId=${params["publicId"]}" +
+                            "\n  uploadUrl=${params["uploadUrl"]}" +
+                            "\n  cloudName=${params["cloudName"]}")
+                    params
+                } else {
+                    FileLogger.e(TAG, "Step 1/3 FAILED — params missing in response body")
+                    null
+                }
+            } else {
+                val code = signResponse.code()
+                FileLogger.w(TAG, "Step 1/3 FAILED — HTTP $code; falling back to legacy proxy upload")
+                null
+            }
+        } catch (e: Exception) {
+            FileLogger.w(TAG, "Step 1/3 EXCEPTION — ${e.javaClass.simpleName}: ${e.message}; falling back to legacy proxy upload")
+            null
+        }
+
+        // If sign fails (e.g. old backend without /sign endpoint), fall back to legacy proxy
+        if (signResult == null) {
+            FileLogger.i(TAG, "Falling back to LEGACY PROXY upload...")
+            return uploadDocumentLegacy(patientId, folderName, file, idempotencyKey, uploadProfileUsed, onByteProgress)
+        }
+
+        // ── Step 2: Upload file directly to Cloudinary ──
+        val uploadUrl = signResult["uploadUrl"] as? String ?: return UploadAttempt(false, message = "Missing uploadUrl", retryable = false)
+        val apiKey = signResult["apiKey"] as? String ?: return UploadAttempt(false, message = "Missing apiKey", retryable = false)
+        val signature = signResult["signature"] as? String ?: return UploadAttempt(false, message = "Missing signature", retryable = false)
+        val timestamp = signResult["timestamp"]?.toString() ?: return UploadAttempt(false, message = "Missing timestamp", retryable = false)
+        val publicId = signResult["publicId"] as? String ?: return UploadAttempt(false, message = "Missing publicId", retryable = false)
+        val resourceType = signResult["resourceType"] as? String ?: "raw"
+        val type = signResult["type"] as? String ?: "upload"
+
+        FileLogger.i(TAG, "Step 2/3: Uploading file DIRECTLY to Cloudinary..." +
+                "\n  uploadUrl=$uploadUrl" +
+                "\n  publicId=$publicId" +
+                "\n  fileSize=$fileSizeMb MB" +
+                "\n  fileName=${file.name}")
+
+        val cloudinaryResult = try {
+            val mediaType = when {
+                file.name.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                file.name.endsWith(".png", ignoreCase = true) -> "image/png"
+                else -> "image/jpeg"
+            }
+
+            val rawFileBody = file.asRequestBody(mediaType.toMediaTypeOrNull())
+            val trackedFileBody: RequestBody = if (onByteProgress != null) {
+                ProgressRequestBody(rawFileBody, onByteProgress)
+            } else {
+                rawFileBody
+            }
+
+            val multipartBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("file", file.name, trackedFileBody)
+                .addFormDataPart("api_key", apiKey)
+                .addFormDataPart("signature", signature)
+                .addFormDataPart("timestamp", timestamp)
+                .addFormDataPart("public_id", publicId)
+                .addFormDataPart("resource_type", resourceType)
+                .addFormDataPart("type", type)
+                .build()
+
+            val request = Request.Builder()
+                .url(uploadUrl)
+                .post(multipartBody)
+                .build()
+
+            val uploadStartMs = System.currentTimeMillis()
+            val response = cloudinaryClient.newCall(request).execute()
+            val uploadDurationMs = System.currentTimeMillis() - uploadStartMs
+
+            if (response.isSuccessful) {
+                val responseBodyStr = response.body?.string() ?: "{}"
+                FileLogger.i(TAG, "Step 2/3 SUCCESS — Cloudinary accepted the file:" +
+                        "\n  statusCode=${response.code}" +
+                        "\n  duration=${uploadDurationMs}ms" +
+                        "\n  responseSize=${responseBodyStr.length} chars")
+
+                // Parse secure_url from Cloudinary's JSON response
+                val secureUrlMatch = Regex("\"secure_url\"\\s*:\\s*\"([^\"]+)\"").find(responseBodyStr)
+                val secureUrl = secureUrlMatch?.groupValues?.get(1)
+                    ?.replace("\\/", "/")  // Cloudinary sometimes escapes slashes
+
+                if (secureUrl == null) {
+                    FileLogger.e(TAG, "Step 2/3 — secure_url not found in Cloudinary response: ${responseBodyStr.take(500)}")
+                    return UploadAttempt(false, statusCode = response.code, message = "Cloudinary response missing secure_url", retryable = true)
+                }
+
+                FileLogger.d(TAG, "Extracted secure_url=$secureUrl")
+                mapOf("secureUrl" to secureUrl, "publicId" to publicId)
+            } else {
+                val errorBody = response.body?.string()?.take(500) ?: ""
+                FileLogger.e(TAG, "Step 2/3 FAILED — Cloudinary rejected the upload:" +
+                        "\n  statusCode=${response.code}" +
+                        "\n  errorBody=$errorBody" +
+                        "\n  duration=${uploadDurationMs}ms")
+                return UploadAttempt(
+                    isSuccess = false,
+                    statusCode = response.code,
+                    message = "Cloudinary upload failed: ${response.code}",
+                    retryable = response.code >= 500
+                )
+            }
+        } catch (e: Exception) {
+            val retryable = e is IOException || e is SocketTimeoutException || e is UnknownHostException
+            FileLogger.e(TAG, "Step 2/3 EXCEPTION during Cloudinary upload:" +
+                    "\n  exception=${e.javaClass.simpleName}" +
+                    "\n  message=${e.message}" +
+                    "\n  retryable=$retryable", e)
+            return UploadAttempt(isSuccess = false, message = e.message, retryable = retryable)
+        }
+
+        // ── Step 3: Confirm with our backend ──
+        val secureUrl = cloudinaryResult["secureUrl"] as String
+        val confirmedPublicId = cloudinaryResult["publicId"] as String
+
+        FileLogger.i(TAG, "Step 3/3: Confirming upload with backend..." +
+                "\n  publicId=$confirmedPublicId" +
+                "\n  secureUrl=${secureUrl.take(80)}...")
+
+        return try {
+            val mimeType = when {
+                file.name.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                file.name.endsWith(".png", ignoreCase = true) -> "image/png"
+                else -> "image/jpeg"
+            }
+
+            val confirmBody = mapOf<String, Any>(
+                "publicId" to confirmedPublicId,
+                "secureUrl" to secureUrl,
+                "originalFileName" to file.name,
+                "size" to file.length(),
+                "mimeType" to mimeType
+            )
+
+            val confirmStartMs = System.currentTimeMillis()
+            val confirmResponse = apiService.confirmDirectUpload(patientId, folderName, confirmBody, idempotencyKey)
+            val confirmDurationMs = System.currentTimeMillis() - confirmStartMs
+
+            if (confirmResponse.isSuccessful) {
+                FileLogger.i(TAG, "Step 3/3 SUCCESS — backend confirmed upload:" +
+                        "\n  statusCode=${confirmResponse.code()}" +
+                        "\n  duration=${confirmDurationMs}ms" +
+                        "\n  publicId=$confirmedPublicId")
+                UploadAttempt(isSuccess = true, statusCode = confirmResponse.code())
+            } else {
+                val code = confirmResponse.code()
+                val message = runCatching { confirmResponse.errorBody()?.string() }
+                    .getOrNull()
+                    ?.takeIf { it.isNotBlank() }
+                    ?: confirmResponse.message()
+                FileLogger.e(TAG, "Step 3/3 FAILED — backend rejected confirmation:" +
+                        "\n  statusCode=$code" +
+                        "\n  errorBody=$message" +
+                        "\n  duration=${confirmDurationMs}ms")
+                // File is already on Cloudinary — retrying confirm is safe
+                UploadAttempt(isSuccess = false, statusCode = code, message = message, retryable = true)
+            }
+        } catch (e: Exception) {
+            FileLogger.e(TAG, "Step 3/3 EXCEPTION during confirmation:" +
+                    "\n  exception=${e.javaClass.simpleName}" +
+                    "\n  message=${e.message}", e)
+            // File is already on Cloudinary — retrying confirm is safe
+            UploadAttempt(isSuccess = false, message = e.message, retryable = true)
+        }
+    }
+
+    /**
+     * Legacy proxy upload — streams the file through our Express backend.
+     * Used as a fallback if the /sign endpoint isn't available (old backend version).
+     */
+    private suspend fun uploadDocumentLegacy(
+        patientId: String,
+        folderName: String,
+        file: File,
+        idempotencyKey: String,
+        uploadProfileUsed: Int = -1,
+        onByteProgress: ((uploadedBytes: Long, totalBytes: Long) -> Unit)? = null,
+    ): UploadAttempt {
+        FileLogger.i(TAG, "uploadDocumentLegacy() — proxy upload through backend")
+
         return try {
             val mediaType = when {
                 file.name.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
                 file.name.endsWith(".png", ignoreCase = true) -> "image/png"
                 else -> "image/jpeg"
             }
-            FileLogger.d(TAG, "Detected mediaType=$mediaType for file=${file.name}")
 
             val rawRequestFile: RequestBody = file.asRequestBody(mediaType.toMediaTypeOrNull())
-            // ProgressRequestBody is stateless — every retry of this suspend call
-            // builds a fresh wrapper, so byte counters always start at 0 instead
-            // of resuming mid-stream (which would corrupt notification progress).
             val requestFile: RequestBody = if (onByteProgress != null) {
                 ProgressRequestBody(rawRequestFile, onByteProgress)
             } else {
@@ -73,22 +286,12 @@ class DocumentRepository(
             }
             val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
 
-            FileLogger.i(TAG, "Sending multipart POST to /api/patients/$patientId/files/$folderName" +
-                    "\n  multipartFieldName=file" +
-                    "\n  originalFileName=${file.name}" +
-                    "\n  contentType=$mediaType")
-
             val startMs = System.currentTimeMillis()
             val response = apiService.uploadFile(patientId, folderName, body, idempotencyKey, uploadProfileUsed)
             val durationMs = System.currentTimeMillis() - startMs
 
             if (response.isSuccessful) {
-                FileLogger.i(TAG, "Upload HTTP SUCCESS:" +
-                        "\n  statusCode=${response.code()}" +
-                        "\n  fileName=${file.name}" +
-                        "\n  folderName=$folderName" +
-                        "\n  patientId=$patientId" +
-                        "\n  duration=${durationMs}ms")
+                FileLogger.i(TAG, "Legacy upload SUCCESS — statusCode=${response.code()}, duration=${durationMs}ms")
                 UploadAttempt(isSuccess = true, statusCode = response.code())
             } else {
                 val code = response.code()
@@ -96,14 +299,7 @@ class DocumentRepository(
                     .getOrNull()
                     ?.takeIf { it.isNotBlank() }
                     ?: response.message()
-                FileLogger.e(TAG, "Upload HTTP FAILED:" +
-                        "\n  statusCode=$code" +
-                        "\n  errorBody=$message" +
-                        "\n  fileName=${file.name}" +
-                        "\n  folderName=$folderName" +
-                        "\n  patientId=$patientId" +
-                        "\n  duration=${durationMs}ms" +
-                        "\n  retryable=${code == 408 || code == 429 || code >= 500}")
+                FileLogger.e(TAG, "Legacy upload FAILED — statusCode=$code, errorBody=$message, duration=${durationMs}ms")
                 UploadAttempt(
                     isSuccess = false,
                     statusCode = code,
@@ -118,18 +314,8 @@ class DocumentRepository(
                 is IOException -> true
                 else -> false
             }
-            FileLogger.e(TAG, "Upload EXCEPTION:" +
-                    "\n  exception=${e.javaClass.simpleName}" +
-                    "\n  message=${e.message}" +
-                    "\n  fileName=${file.name}" +
-                    "\n  folderName=$folderName" +
-                    "\n  patientId=$patientId" +
-                    "\n  retryable=$retryable", e)
-            UploadAttempt(
-                isSuccess = false,
-                message = e.message,
-                retryable = retryable
-            )
+            FileLogger.e(TAG, "Legacy upload EXCEPTION — ${e.javaClass.simpleName}: ${e.message}", e)
+            UploadAttempt(isSuccess = false, message = e.message, retryable = retryable)
         }
     }
 

@@ -11,7 +11,7 @@ import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -109,11 +109,11 @@ object PdfUtils {
             }
 
             if (!wrote || !outputFile.exists()) {
-                Log.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: write_failed")
+                FileLogger.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: write_failed")
                 continue
             }
 
-            Log.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: ${outputFile.length() / 1024}KB limit=${profile.maxOutputBytes / 1024}KB")
+            FileLogger.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: ${outputFile.length() / 1024}KB limit=${profile.maxOutputBytes / 1024}KB")
             if (outputFile.length() <= profile.maxOutputBytes) {
                 return PdfResult(outputFile, profileIndex)
             }
@@ -155,11 +155,11 @@ object PdfUtils {
                     }
 
                     if (!wrote || !outputFile.exists()) {
-                        Log.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: write_failed")
+                        FileLogger.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: write_failed")
                         continue
                     }
 
-                    Log.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: ${outputFile.length() / 1024}KB limit=${profile.maxOutputBytes / 1024}KB")
+                    FileLogger.d(TAG, "profile=$profileIndex q${profile.jpegQuality}: ${outputFile.length() / 1024}KB limit=${profile.maxOutputBytes / 1024}KB")
                     if (outputFile.length() <= profile.maxOutputBytes) {
                         return PdfResult(outputFile, profileIndex)
                     }

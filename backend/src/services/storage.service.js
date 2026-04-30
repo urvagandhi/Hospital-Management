@@ -250,6 +250,40 @@ async function listCloudinaryResources(prefix, resourceType = 'raw') {
 }
 
 // ---------------------------------------------------------------------------
+// generateSignedUploadParams — creates signed parameters for direct-to-
+// Cloudinary uploads from the mobile client.  The client POSTs the file
+// straight to `https://api.cloudinary.com/v1_1/<cloud>/raw/upload` with
+// these params, bypassing the Express/Render proxy entirely.
+// ---------------------------------------------------------------------------
+function generateSignedUploadParams(hospitalId, patientMongoId, folderName, originalFileName) {
+  const publicId = buildCloudinaryPublicId(hospitalId, patientMongoId, folderName);
+  const timestamp = Math.floor(Date.now() / 1000);
+
+  // Parameters that Cloudinary uses in signature generation.
+  // The order and set of keys MUST match what the client sends.
+  const paramsToSign = {
+    public_id: publicId,
+    resource_type: 'raw',
+    timestamp,
+    type: uploadType,
+  };
+
+  // cloudinary.utils.api_sign_request signs the params with the api_secret.
+  const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET);
+
+  return {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    signature,
+    timestamp,
+    publicId,
+    resourceType: 'raw',
+    type: uploadType,
+    uploadUrl: `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload`,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 export {
@@ -264,4 +298,5 @@ export {
   slugifyFolder,
   buildCloudinaryPublicId,
   listCloudinaryResources,
+  generateSignedUploadParams,
 };

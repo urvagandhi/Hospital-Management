@@ -148,7 +148,7 @@ const uploadObservabilityGuard = (req, res, next) => {
 
 /**
  * POST /api/patients/:patientId/files/:folderName
- * Upload file to folder
+ * Upload file to folder (legacy proxy route — streams through Express)
  */
 router.post(
   "/:patientId/files/:folderName",
@@ -156,6 +156,25 @@ router.post(
   uploadIdempotencyGuard,
   uploadDocument.single("file"),
   patientController.uploadFile,
+);
+
+/**
+ * POST /api/patients/:patientId/files/:folderName/sign
+ * Direct-to-Cloudinary: mint signed upload params (lightweight JSON, no file).
+ */
+router.post(
+  "/:patientId/files/:folderName/sign",
+  patientController.signUpload,
+);
+
+/**
+ * POST /api/patients/:patientId/files/:folderName/confirm
+ * Direct-to-Cloudinary: persist metadata after the client uploaded to Cloudinary.
+ */
+router.post(
+  "/:patientId/files/:folderName/confirm",
+  uploadIdempotencyGuard,
+  patientController.confirmDirectUpload,
 );
 
 /**

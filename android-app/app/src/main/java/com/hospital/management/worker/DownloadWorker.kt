@@ -6,7 +6,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.ForegroundInfo
@@ -162,7 +162,7 @@ class DownloadWorker(
                 )
             ))
         } catch (e: Exception) {
-            Log.w(TAG, "setForeground failed (permission? backgrounded?): ${e.message}")
+            FileLogger.w(TAG, "setForeground failed (permission? backgrounded?): ${e.message}")
         }
 
         // ── Rest of input parsing ────────────────────────────────────────────
@@ -234,7 +234,7 @@ class DownloadWorker(
                     val cachedFile = File(cached.localPath)
                     if (cachedFile.exists()) {
                         cacheDao.touchAccess(contentHash)
-                        Log.i(TAG, "cache_hit=true file=$fileName hash=${contentHash.take(12)}")
+                        FileLogger.i(TAG, "cache_hit=true file=$fileName hash=${contentHash.take(12)}")
                         saveToMediaStore(cachedFile, fileName, mimeType, subPath)
                         finalizeReady(cachedFile)
                         return@withContext Result.success(
@@ -248,7 +248,7 @@ class DownloadWorker(
                 }
             }
 
-            Log.i(TAG, "cache_hit=false method=$httpMethod file=$fileName hash=${contentHash.take(12)}")
+            FileLogger.i(TAG, "cache_hit=false method=$httpMethod file=$fileName hash=${contentHash.take(12)}")
 
             val cacheDir = File(applicationContext.filesDir, CACHE_DIR_NAME).also { it.mkdirs() }
             val tmpFile = File(cacheDir, "$contentHash.tmp")
@@ -263,7 +263,7 @@ class DownloadWorker(
                     val storedLastModified = partialMetaFile.readText().trim()
                     if (lastModified.isNotEmpty() && storedLastModified == lastModified) {
                         resumeOffset = tmpFile.length()
-                        Log.d(TAG, "resume from byte=$resumeOffset")
+                        FileLogger.d(TAG, "resume from byte=$resumeOffset")
                     } else {
                         tmpFile.delete(); partialMetaFile.delete()
                     }
@@ -337,9 +337,9 @@ class DownloadWorker(
                 val contentRange = conn.getHeaderField("Content-Range")
                 if (sentRange) {
                     if (conn.responseCode == 206) {
-                        Log.i(TAG, "resume OK 206 Content-Range=$contentRange offset=$resumeOffset")
+                        FileLogger.i(TAG, "resume OK 206 Content-Range=$contentRange offset=$resumeOffset")
                     } else {
-                        Log.w(TAG, "resume ignored — requested Range but got ${conn.responseCode} " +
+                        FileLogger.w(TAG, "resume ignored — requested Range but got ${conn.responseCode} " +
                             "(Content-Range=$contentRange); restarting from byte 0")
                     }
                 }
@@ -433,7 +433,7 @@ class DownloadWorker(
                     .build()
             )
         } catch (e: IOException) {
-            Log.e(TAG, "IO error", e)
+            FileLogger.e(TAG, "IO error", e)
             if (isStopped) return@withContext cancelled()
             if (e.message?.contains("No space", ignoreCase = true) == true) {
                 failWith(ERROR_STORAGE_FULL, "Not enough storage space", fileName)
@@ -444,7 +444,7 @@ class DownloadWorker(
                 )
             }
         } catch (e: Exception) {
-            Log.e(TAG, "error", e)
+            FileLogger.e(TAG, "error", e)
             if (isStopped) return@withContext cancelled()
             failWith(ERROR_NETWORK, e.message ?: "Unknown error", fileName)
         }
@@ -523,7 +523,7 @@ class DownloadWorker(
         // a "Session expired" notification that gets cancelled instantly.
         if (isStopped) return cancelled()
 
-        Log.e(TAG, "failed [$reason]: $message")
+        FileLogger.e(TAG, "failed [$reason]: $message")
         val progress = DownloadProgress(
             stage = DownloadStage.FAILED,
             fileName = fileNameForNotif,
@@ -595,7 +595,7 @@ class DownloadWorker(
         return if (runAttemptCount < maxRetries) {
             // Approximate next backoff delay from WorkManager's exponential default.
             val approxSec = (30L shl runAttemptCount).coerceAtMost(5 * 60L).toInt()
-            Log.w(TAG, "retrying [$reason]: $message (attempt=${runAttemptCount + 1}/$maxRetries)")
+            FileLogger.w(TAG, "retrying [$reason]: $message (attempt=${runAttemptCount + 1}/$maxRetries)")
             val progress = DownloadProgress(
                 stage = DownloadStage.RETRYING,
                 fileName = fileNameForNotif,
@@ -748,7 +748,7 @@ class DownloadWorker(
                 conn.disconnect()
             }
         } catch (e: Exception) {
-            Log.w(TAG, "HEAD failed: ${e.message}")
+            FileLogger.w(TAG, "HEAD failed: ${e.message}")
             HeadResult(lastModified = "", acceptRanges = false)
         }
     }
@@ -782,7 +782,7 @@ class DownloadWorker(
             if (file.exists()) file.delete()
             cacheDao.deleteByHash(entry.contentHash)
             freed += entry.sizeBytes
-            Log.d(TAG, "evicted ${entry.fileName} (${entry.sizeBytes} B)")
+            FileLogger.d(TAG, "evicted ${entry.fileName} (${entry.sizeBytes} B)")
         }
     }
 
@@ -808,7 +808,7 @@ class DownloadWorker(
             cv.put(MediaStore.Downloads.IS_PENDING, 0)
             resolver.update(uri, cv, null, null)
         } catch (e: Exception) {
-            Log.e(TAG, "MediaStore save failed: ${e.message}")
+            FileLogger.e(TAG, "MediaStore save failed: ${e.message}")
         }
     }
 }

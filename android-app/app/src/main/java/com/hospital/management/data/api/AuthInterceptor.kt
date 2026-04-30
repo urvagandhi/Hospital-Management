@@ -2,7 +2,6 @@ package com.hospital.management.data.api
 
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.hospital.management.utils.FileLogger
@@ -220,7 +219,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             refreshClient.newCall(request).execute().use { resp ->
                 if (!resp.isSuccessful) {
                     FileLogger.w(TAG, "performRefresh HTTP ${resp.code} — refresh rejected by server")
-                    Log.w(TAG, "Refresh failed with code ${resp.code}")
+                    FileLogger.w(TAG, "Refresh failed with code ${resp.code}")
                     return null
                 }
                 val bodyStr = resp.body?.string() ?: return null
@@ -248,7 +247,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
         } catch (e: Exception) {
             // Full stack trace logged — tells us if it's a network error, SSL error, JSON parse error, etc.
             FileLogger.e(TAG, "performRefresh EXCEPTION — ${e.javaClass.name}: ${e.message}", e)
-            Log.w(TAG, "Refresh-token call threw: ${e.message}")
+            FileLogger.w(TAG, "Refresh-token call threw: ${e.message}")
             null
         }
     }

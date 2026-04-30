@@ -3,7 +3,7 @@ package com.hospital.management.utils
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
@@ -25,7 +25,7 @@ class DownloadActionReceiver : BroadcastReceiver() {
         when (intent.action) {
             DownloadNotifier.ACTION_CANCEL -> handleCancel(context, intent, notificationId)
             DownloadNotifier.ACTION_RETRY  -> handleRetry(context, intent, notificationId)
-            else -> Log.w(TAG, "Unknown action: ${intent.action}")
+            else -> FileLogger.w(TAG, "Unknown action: ${intent.action}")
         }
     }
 
@@ -33,18 +33,18 @@ class DownloadActionReceiver : BroadcastReceiver() {
         val workIdStr = intent.getStringExtra(DownloadNotifier.EXTRA_WORK_ID) ?: return
         val workId = runCatching { UUID.fromString(workIdStr) }.getOrNull() ?: return
 
-        Log.i(TAG, "cancel requested work=$workId notif=$notificationId")
+        FileLogger.i(TAG, "cancel requested work=$workId notif=$notificationId")
         WorkManager.getInstance(context.applicationContext).cancelWorkById(workId)
         if (notificationId != -1) DownloadNotifier.cancel(context, notificationId)
     }
 
     private fun handleRetry(context: Context, intent: Intent, notificationId: Int) {
         val bytes = intent.getByteArrayExtra(DownloadNotifier.EXTRA_RETRY_INPUT) ?: run {
-            Log.w(TAG, "retry missing input data")
+            FileLogger.w(TAG, "retry missing input data")
             return
         }
         val inputData = runCatching { Data.fromByteArray(bytes) }.getOrNull() ?: run {
-            Log.w(TAG, "retry failed to deserialize input data")
+            FileLogger.w(TAG, "retry failed to deserialize input data")
             return
         }
 
@@ -62,7 +62,7 @@ class DownloadActionReceiver : BroadcastReceiver() {
 
         val url = inputData.getString(DownloadWorker.KEY_DOWNLOAD_URL) ?: ""
         val workName = "download_${url.hashCode()}"
-        Log.i(TAG, "retry enqueued work=${request.id} name=$workName")
+        FileLogger.i(TAG, "retry enqueued work=${request.id} name=$workName")
 
         WorkManager.getInstance(context.applicationContext)
             .enqueueUniqueWork(workName, ExistingWorkPolicy.REPLACE, request)

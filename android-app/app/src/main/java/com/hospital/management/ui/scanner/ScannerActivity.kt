@@ -3,7 +3,7 @@ package com.hospital.management.ui.scanner
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
@@ -43,7 +43,7 @@ class ScannerActivity : BaseActivity() {
 
                 scanningResult?.pages?.let { pages ->
                     if (pages.isNotEmpty() || !scannedPdfUri.isNullOrBlank()) {
-                        Log.d(TAG, "Scanned ${pages.size} page(s), pdf=${!scannedPdfUri.isNullOrBlank()}")
+                        FileLogger.d(TAG, "Scanned ${pages.size} page(s), pdf=${!scannedPdfUri.isNullOrBlank()}")
 
                         // Get URIs of all scanned pages
                         val pageUris = pages.map { it.imageUri.toString() }.toTypedArray()
@@ -70,7 +70,7 @@ class ScannerActivity : BaseActivity() {
                 } ?: run {
                     // PDF-only result path (some scanner versions/devices)
                     scanningResult?.pdf?.let { pdf ->
-                        Log.d(TAG, "PDF generated: ${pdf.uri}, ${pdf.pageCount} pages")
+                        FileLogger.d(TAG, "PDF generated: ${pdf.uri}, ${pdf.pageCount} pages")
                         val intent = Intent(this, UploadActivity::class.java).apply {
                             putExtra(EXTRA_SCANNED_PDF_URI, pdf.uri.toString())
                             putExtra("PATIENT_ID", getIntent().getStringExtra("PATIENT_ID"))
@@ -82,7 +82,7 @@ class ScannerActivity : BaseActivity() {
                     finish()
                 }
             } else {
-                Log.d(TAG, "Scanning cancelled or failed")
+                FileLogger.d(TAG, "Scanning cancelled or failed")
                 finish()
             }
         }
@@ -107,7 +107,7 @@ class ScannerActivity : BaseActivity() {
                 )
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "Failed to start scanner", e)
+                FileLogger.e(TAG, "Failed to start scanner", e)
                 Toast.makeText(
                     this,
                     "Failed to start scanner: ${e.message}",
@@ -129,7 +129,7 @@ class ScannerActivity : BaseActivity() {
             setFormats.invoke(builder, intArrayOf(RESULT_FORMAT_JPEG, pdfConst))
             return
         } catch (_: Exception) {
-            Log.d(TAG, "PDF result format not available in current ML Kit version")
+            FileLogger.d(TAG, "PDF result format not available in current ML Kit version")
         }
 
         builder.setResultFormats(RESULT_FORMAT_JPEG)
@@ -153,7 +153,7 @@ class ScannerActivity : BaseActivity() {
                 try {
                     val method = builder.javaClass.getMethod(methodName, Int::class.javaPrimitiveType)
                     method.invoke(builder, value)
-                    Log.d(TAG, "Scanner constrained to A4 via $methodName")
+                    FileLogger.d(TAG, "Scanner constrained to A4 via $methodName")
                     return
                 } catch (_: Exception) {
                     // Try next candidate method.
@@ -161,7 +161,7 @@ class ScannerActivity : BaseActivity() {
             }
         }
 
-        Log.d(TAG, "A4 scanner constraint API not exposed; A4 is enforced in upload PDF generation")
+        FileLogger.d(TAG, "A4 scanner constraint API not exposed; A4 is enforced in upload PDF generation")
     }
 
     private data class Candidate(

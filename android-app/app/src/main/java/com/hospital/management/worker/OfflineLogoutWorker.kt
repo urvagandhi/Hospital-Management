@@ -1,7 +1,7 @@
 package com.hospital.management.worker
 
 import android.content.Context
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -88,7 +88,7 @@ class OfflineLogoutWorker(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val refreshToken = inputData.getString(KEY_REFRESH_TOKEN)
         if (refreshToken.isNullOrEmpty()) {
-            Log.w(TAG, "No refresh token in input data — nothing to send")
+            FileLogger.w(TAG, "No refresh token in input data — nothing to send")
             return@withContext Result.success()
         }
 
@@ -104,24 +104,24 @@ class OfflineLogoutWorker(
             client.newCall(request).execute().use { resp ->
                 when {
                     resp.isSuccessful -> {
-                        Log.i(TAG, "Backend logout acknowledged (${resp.code})")
+                        FileLogger.i(TAG, "Backend logout acknowledged (${resp.code})")
                         Result.success()
                     }
                     resp.code in 400..499 -> {
                         // 401/403/404: session is gone or token rejected. Either
                         // way the row will not come back — treat as success so
                         // we don't loop forever.
-                        Log.w(TAG, "Backend logout returned ${resp.code} — treating as success (session already gone)")
+                        FileLogger.w(TAG, "Backend logout returned ${resp.code} — treating as success (session already gone)")
                         Result.success()
                     }
                     else -> {
-                        Log.w(TAG, "Backend logout 5xx (${resp.code}) — will retry")
+                        FileLogger.w(TAG, "Backend logout 5xx (${resp.code}) — will retry")
                         Result.retry()
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Backend logout network error: ${e.message} — will retry")
+            FileLogger.w(TAG, "Backend logout network error: ${e.message} — will retry")
             Result.retry()
         }
     }

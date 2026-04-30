@@ -7,7 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -87,13 +87,13 @@ object UploadNotifier {
     /** Post (or update) a notification. Silently no-ops if POST_NOTIFICATIONS is denied. */
     fun post(context: Context, notificationId: Int, notification: Notification) {
         if (!hasPostPermission(context)) {
-            Log.d(TAG, "post skipped — POST_NOTIFICATIONS denied")
+            FileLogger.d(TAG, "post skipped — POST_NOTIFICATIONS denied")
             return
         }
         try {
             NotificationManagerCompat.from(context).notify(notificationId, notification)
         } catch (e: SecurityException) {
-            Log.w(TAG, "notify denied: ${e.message}")
+            FileLogger.w(TAG, "notify denied: ${e.message}")
         }
     }
 

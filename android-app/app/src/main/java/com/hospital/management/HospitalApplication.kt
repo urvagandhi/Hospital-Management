@@ -9,7 +9,6 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -173,7 +172,7 @@ class HospitalApplication : Application() {
                     if (!response.isSuccessful) {
                         // Session revoked on server — broadcast so BaseActivity picks it up
                         val body = response.errorBody()?.string() ?: ""
-                        Log.w(TAG, "Session heartbeat: server rejected session (${response.code()}): $body")
+                        FileLogger.w(TAG, "Session heartbeat: server rejected session (${response.code()}): $body")
                         val intent = Intent(AuthInterceptor.ACTION_SESSION_REVOKED)
                         val reason = if (body.contains("SESSION_CONFLICT") || body.contains("another device", ignoreCase = true)) {
                             "SESSION_CONFLICT"
@@ -187,7 +186,7 @@ class HospitalApplication : Application() {
                     }
                 } catch (e: Exception) {
                     // Network error — skip this cycle, try again next interval
-                    Log.w(TAG, "Session heartbeat failed (network?): ${e.message}")
+                    FileLogger.w(TAG, "Session heartbeat failed (network?): ${e.message}")
                 }
             }
         }

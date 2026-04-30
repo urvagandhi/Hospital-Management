@@ -182,6 +182,23 @@ interface ApiService {
         @Header("X-Upload-Profile") uploadProfileUsed: Int
     ): Response<Map<String, Any>>
 
+    // ── Direct-to-Cloudinary upload (3-step) ──
+
+    @POST("/api/patients/{patientId}/files/{folderName}/sign")
+    suspend fun getSignedUploadParams(
+        @Path("patientId") patientId: String,
+        @Path("folderName") folderName: String,
+        @Body body: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    @POST("/api/patients/{patientId}/files/{folderName}/confirm")
+    suspend fun confirmDirectUpload(
+        @Path("patientId") patientId: String,
+        @Path("folderName") folderName: String,
+        @Body body: Map<String, Any>,
+        @Header("Idempotency-Key") idempotencyKey: String
+    ): Response<Map<String, Any>>
+
     @PATCH("/api/patients/{patientId}/files/{folderName}/{fileId}/rename")
     suspend fun renameFile(
         @Path("patientId") patientId: String,

@@ -45,6 +45,7 @@ import java.io.OutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.os.Environment
+import com.hospital.management.utils.FileLogger
 
 class FolderDetailsActivity : BaseActivity() {
 
@@ -474,7 +475,7 @@ class FolderDetailsActivity : BaseActivity() {
                                     // The feature-level UI here is the indeterminate progressBar;
                                     // richer consumers (e.g. a progress row) can read progress.percent /
                                     // formatDownloadSubtext(progress) to render bytes + speed.
-                                    android.util.Log.v(
+                                    FileLogger.d(
                                         "FolderDetailsActivity",
                                         "download progress stage=${progress.stage} " +
                                                 "pct=${progress.percent} " +

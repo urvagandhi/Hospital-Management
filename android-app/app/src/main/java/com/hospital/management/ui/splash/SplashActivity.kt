@@ -4,7 +4,7 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import android.view.View
 import android.view.animation.OvershootInterpolator
 import androidx.appcompat.app.AppCompatActivity
@@ -81,7 +81,7 @@ class SplashActivity : BaseActivity() {
                         .getAppVersion(currentVersion = currentVersion)
                 }
             } ?: run {
-                Log.w("SplashActivity", "Version check timed out — proceeding without gate")
+                FileLogger.w("SplashActivity", "Version check timed out — proceeding without gate")
                 return safeFallback
             }
             if (!resp.isSuccessful) return safeFallback
@@ -101,7 +101,7 @@ class SplashActivity : BaseActivity() {
                 releaseNotes = info.releaseNotes,
             )
         } catch (e: Exception) {
-            Log.w("SplashActivity", "Version check failed: ${e.message}")
+            FileLogger.w("SplashActivity", "Version check failed: ${e.message}")
             safeFallback
         }
     }
@@ -225,7 +225,7 @@ class SplashActivity : BaseActivity() {
             val response = withContext(Dispatchers.IO) { apiService.validateSession() }
             response.isSuccessful
         } catch (e: Exception) {
-            Log.w("SplashActivity", "Session validation failed (network?): ${e.message}")
+            FileLogger.w("SplashActivity", "Session validation failed (network?): ${e.message}")
             true // Allow through — AuthInterceptor will handle 401 on first API call
         }
     }

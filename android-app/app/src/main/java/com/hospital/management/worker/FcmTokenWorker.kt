@@ -1,7 +1,7 @@
 package com.hospital.management.worker
 
 import android.content.Context
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.hospital.management.data.api.RetrofitClient
@@ -22,7 +22,7 @@ class FcmTokenWorker(
         val pendingToken = prefs.getString(PENDING_FCM_TOKEN_KEY, null)
 
         if (pendingToken.isNullOrEmpty()) {
-            Log.d(TAG, "No pending FCM token found")
+            FileLogger.d(TAG, "No pending FCM token found")
             return Result.success()
         }
 
@@ -30,7 +30,7 @@ class FcmTokenWorker(
         val accessToken = tokenManager.getAccessToken()
 
         if (accessToken.isNullOrEmpty()) {
-            Log.w(TAG, "No auth token available, will retry")
+            FileLogger.w(TAG, "No auth token available, will retry")
             return Result.retry()
         }
 
@@ -40,14 +40,14 @@ class FcmTokenWorker(
 
             if (response.isSuccessful) {
                 prefs.edit().remove(PENDING_FCM_TOKEN_KEY).apply()
-                Log.d(TAG, "FCM token posted successfully")
+                FileLogger.d(TAG, "FCM token posted successfully")
                 Result.success()
             } else {
-                Log.w(TAG, "Failed to post FCM token: ${response.code()}")
+                FileLogger.w(TAG, "Failed to post FCM token: ${response.code()}")
                 Result.retry()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error posting FCM token", e)
+            FileLogger.e(TAG, "Error posting FCM token", e)
             Result.retry()
         }
     }

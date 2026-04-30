@@ -284,6 +284,7 @@ class UploadActivity : BaseActivity() {
                     val sanitizedFolderName = folderName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
                     "${sanitizedPatientName}_${sanitizedFolderName}_${System.currentTimeMillis()}.pdf"
                 }
+                FileLogger.d(TAG, "PDF filename generated: $pdfFileName (userInput='$userInput')")
 
                 val pdfResult: com.hospital.management.utils.PdfUtils.PdfResult? = when {
                     scannedPdfUri != null -> {
@@ -421,6 +422,7 @@ class UploadActivity : BaseActivity() {
                         Toast.LENGTH_LONG
                     ).show()
                     finish()
+                } else {
                     // Offline - save PDF locally with its key + owner tag
                     val ownerHospitalId = tokenManager.getHospitalId() ?: ""
                     FileLogger.i(TAG, "OFFLINE SAVE:" +

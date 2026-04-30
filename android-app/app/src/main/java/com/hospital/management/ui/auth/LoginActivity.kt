@@ -2,7 +2,7 @@ package com.hospital.management.ui.auth
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -173,7 +173,7 @@ class LoginActivity : BaseActivity() {
             } catch (e: Exception) {
                 binding.loadingOverlay.visibility = View.GONE
                 binding.btnLogin.isEnabled = true
-                Log.e("LoginActivity", "Conflict check failed: ${e.javaClass.name}", e)
+                FileLogger.e("LoginActivity", "Conflict check failed: ${e.javaClass.name}", e)
                 com.hospital.management.utils.FileLogger.e(
                     "LoginActivity",
                     "Conflict check failed: ${e.javaClass.name} :: ${e.message}",
@@ -229,7 +229,7 @@ class LoginActivity : BaseActivity() {
                                     try {
                                         RetrofitClient.getApiService(this@LoginActivity).postFcmToken(mapOf("fcmToken" to fcmToken))
                                     } catch (e: Exception) {
-                                        Log.e("LoginActivity", "Failed to register FCM token", e)
+                                        FileLogger.e("LoginActivity", "Failed to register FCM token", e)
                                     }
                                 }
                             }
@@ -245,7 +245,7 @@ class LoginActivity : BaseActivity() {
                             navigateToDashboard()
                         } else if (!biometricHelper.isBiometricAvailable()) {
                             val reason = biometricHelper.biometricUnavailableReason()
-                            Log.w("LoginActivity", "Biometric unavailable: $reason")
+                            FileLogger.w("LoginActivity", "Biometric unavailable: $reason")
                             if (reason != null) {
                                 GlassSnackbar.show(this@LoginActivity, reason, GlassSnackbar.Variant.INFO)
                             }
@@ -328,7 +328,7 @@ class LoginActivity : BaseActivity() {
                             GlassSnackbar.show(this@LoginActivity, "Failed to register biometric with server", GlassSnackbar.Variant.ERROR)
                         }
                     } catch (e: Exception) {
-                        Log.e("LoginActivity", "Biometric registration failed", e)
+                        FileLogger.e("LoginActivity", "Biometric registration failed", e)
                         biometricHelper.deleteKeyPair(hospitalId)
                         GlassSnackbar.show(this@LoginActivity, "Biometric setup failed", GlassSnackbar.Variant.ERROR)
                     }

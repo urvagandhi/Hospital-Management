@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
@@ -65,7 +65,7 @@ class SyncDocumentsWorker(
                     UploadNotifier.buildPreparing(context, notificationId, id, "")
                 ))
             } catch (e: Exception) {
-                Log.w(TAG, "setForeground failed: ${e.message}")
+                FileLogger.w(TAG, "setForeground failed: ${e.message}")
             }
 
             try {
@@ -84,7 +84,7 @@ class SyncDocumentsWorker(
                 if (currentHospitalId.isEmpty() || !hasToken) {
                     val orphaned = documentDao.getPendingCount()
                     if (orphaned > 0) {
-                        Log.w(TAG, "Sync skipped: no auth context. Dropping $orphaned orphaned doc(s).")
+                        FileLogger.w(TAG, "Sync skipped: no auth context. Dropping $orphaned orphaned doc(s).")
                         // Drop EVERY pending row — there's no signed-in user to
                         // own them, and we can't safely defer to a future login
                         // without risking cross-account leak.
@@ -102,7 +102,7 @@ class SyncDocumentsWorker(
                 // out offline before the queue drained.
                 val purged = documentDao.deleteAllNotOwnedBy(currentHospitalId)
                 if (purged > 0) {
-                    Log.w(TAG, "Sync purged $purged doc(s) not owned by current user $currentHospitalId")
+                    FileLogger.w(TAG, "Sync purged $purged doc(s) not owned by current user $currentHospitalId")
                 }
 
                 // Reset any docs stuck in UPLOADING (e.g. from a prior crashed worker run)
@@ -111,12 +111,12 @@ class SyncDocumentsWorker(
 
                 val pendingDocs = repository.getPendingDocuments()
                 if (pendingDocs.isEmpty()) {
-                    Log.d(TAG, "No pending documents to sync")
+                    FileLogger.d(TAG, "No pending documents to sync")
                     UploadNotifier.cancel(context, notificationId)
                     return@withContext Result.success()
                 }
 
-                Log.d(TAG, "Starting sync for ${pendingDocs.size} pending documents")
+                FileLogger.d(TAG, "Starting sync for ${pendingDocs.size} pending documents")
                 var successCount = 0
                 var retryableFailureCount = 0
                 val totalFiles = pendingDocs.size
@@ -193,7 +193,7 @@ class SyncDocumentsWorker(
                            }
 
                            if (result.isSuccess) {
-                               Log.d(TAG, "Successfully uploaded document")
+                               FileLogger.d(TAG, "Successfully uploaded document")
 
                                // Delete from database FIRST, then local file.
                                // If we crash between these two lines, the orphaned
@@ -204,7 +204,7 @@ class SyncDocumentsWorker(
 
                                successCount++
                            } else {
-                               Log.e(TAG, "Upload failed for document: ${result.message}")
+                               FileLogger.e(TAG, "Upload failed for document: ${result.message}")
                                // Always reset to PENDING so future sync runs (auto on
                                // network restore, manual on app open) pick this doc up
                                // again — the user explicitly wants every queued file
@@ -223,12 +223,12 @@ class SyncDocumentsWorker(
                         } else {
                             // File not found locally — likely already uploaded by a
                             // previously cancelled worker. Remove the orphaned DB entry.
-                            Log.w(TAG, "File not found locally (already synced?), removing orphaned entry: ${doc.fileUri}")
+                            FileLogger.w(TAG, "File not found locally (already synced?), removing orphaned entry: ${doc.fileUri}")
                             repository.deleteDocument(doc)
                             successCount++ // Don't count as failure
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error syncing document", e)
+                        FileLogger.e(TAG, "Error syncing document", e)
                         // Same as the result-not-success branch: keep PENDING so
                         // the next sync run picks it up again. Never permanently
                         // abandon a queued doc.
@@ -242,7 +242,7 @@ class SyncDocumentsWorker(
                     }
                 }
 
-                Log.d(TAG, "Sync completed: $successCount/${pendingDocs.size} successful")
+                FileLogger.d(TAG, "Sync completed: $successCount/${pendingDocs.size} successful")
 
                 // Always cancel the foreground/progress notification — the
                 // terminal-state notification is posted under completionId so
@@ -272,7 +272,7 @@ class SyncDocumentsWorker(
                     Result.retry()
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Sync worker failed", e)
+                FileLogger.e(TAG, "Sync worker failed", e)
                 UploadNotifier.cancel(context, notificationId)
                 Result.failure()
             }
@@ -333,7 +333,7 @@ class SyncDocumentsWorker(
                 val file = File(uri.path!!)
                 if (file.exists()) {
                     val deleted = file.delete()
-                    Log.d(TAG, "Local file deleted: $deleted - ${uri.path}")
+                    FileLogger.d(TAG, "Local file deleted: $deleted - ${uri.path}")
                 }
             }
             // For content:// URIs from app's private storage
@@ -342,11 +342,11 @@ class SyncDocumentsWorker(
                 val file = File(path)
                 if (file.exists()) {
                     val deleted = file.delete()
-                    Log.d(TAG, "Private file deleted: $deleted - $path")
+                    FileLogger.d(TAG, "Private file deleted: $deleted - $path")
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error deleting local file: ${uri.path}", e)
+            FileLogger.e(TAG, "Error deleting local file: ${uri.path}", e)
         }
     }
 
@@ -373,7 +373,7 @@ class SyncDocumentsWorker(
                 return file
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting file from URI: $uri", e)
+            FileLogger.e(TAG, "Error getting file from URI: $uri", e)
         }
         return null
     }

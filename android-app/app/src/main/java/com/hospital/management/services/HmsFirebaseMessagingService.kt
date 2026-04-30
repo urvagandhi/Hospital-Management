@@ -6,7 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.work.Constraints
@@ -44,7 +44,7 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d(TAG, "New FCM token received")
+        FileLogger.d(TAG, "New FCM token received")
 
         serviceScope.launch {
             try {
@@ -60,11 +60,11 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
                 val response = apiService.postFcmToken(mapOf("fcmToken" to token))
 
                 if (!response.isSuccessful) {
-                    Log.w(TAG, "Failed to post FCM token: ${response.code()}")
+                    FileLogger.w(TAG, "Failed to post FCM token: ${response.code()}")
                     savePendingTokenAndEnqueueWorker(token)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error posting FCM token", e)
+                FileLogger.e(TAG, "Error posting FCM token", e)
                 savePendingTokenAndEnqueueWorker(token)
             }
         }
@@ -83,12 +83,12 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
             .build()
 
         WorkManager.getInstance(applicationContext).enqueue(workRequest)
-        Log.d(TAG, "Enqueued FcmTokenWorker for pending token")
+        FileLogger.d(TAG, "Enqueued FcmTokenWorker for pending token")
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        Log.d(TAG, "Message received: ${message.data}")
+        FileLogger.d(TAG, "Message received: ${message.data}")
 
         val data = message.data
 
@@ -102,13 +102,13 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun handleSessionRevoked() {
-        Log.d(TAG, "Session revoke push received; validating current session before logout")
+        FileLogger.d(TAG, "Session revoke push received; validating current session before logout")
 
         serviceScope.launch {
             try {
                 val tokenManager = TokenManager(applicationContext)
                 if (!tokenManager.hasValidToken()) {
-                    Log.d(TAG, "No active local token; ignoring session revoke push")
+                    FileLogger.d(TAG, "No active local token; ignoring session revoke push")
                     return@launch
                 }
 
@@ -118,12 +118,12 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
                 val apiService = RetrofitClient.getApiService(applicationContext)
                 val response = apiService.validateSession()
                 if (response.isSuccessful) {
-                    Log.d(TAG, "Current session is still valid; ignoring revoke push for another device")
+                    FileLogger.d(TAG, "Current session is still valid; ignoring revoke push for another device")
                 } else {
-                    Log.w(TAG, "Current session is invalid after revoke push: code=${response.code()}")
+                    FileLogger.w(TAG, "Current session is invalid after revoke push: code=${response.code()}")
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Session validation after revoke push failed: ${e.message}")
+                FileLogger.w(TAG, "Session validation after revoke push failed: ${e.message}")
             }
         }
     }

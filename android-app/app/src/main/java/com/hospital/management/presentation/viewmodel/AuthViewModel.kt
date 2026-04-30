@@ -41,7 +41,7 @@ class AuthViewModel(
                 if (response.isSuccessful && response.body()?.success == true) {
                     val body = response.body()!!
                     val data = body.data
-                    android.util.Log.d("AuthViewModel", "Login response: requireAuthCode=${body.requireAuthCode} requirePasswordChange=${body.requirePasswordChange}")
+                    FileLogger.d("AuthViewModel", "Login response: requireAuthCode=${body.requireAuthCode} requirePasswordChange=${body.requirePasswordChange}")
 
                     when {
                         body.requirePasswordChange == true -> {
@@ -84,7 +84,7 @@ class AuthViewModel(
                     _authState.value = AuthState.Error(errorMsg)
                 }
             } catch (e: Exception) {
-                android.util.Log.e("AuthViewModel", "Login failed: ${e.javaClass.name}", e)
+                FileLogger.e("AuthViewModel", "Login failed: ${e.javaClass.name}", e)
                 FileLogger.e("AuthViewModel", "Login failed: ${e.javaClass.name} :: ${e.message}", e)
                 _authState.value = AuthState.Error("${e.javaClass.simpleName}: ${e.message ?: "no message"}")
             }

@@ -3,7 +3,7 @@ package com.hospital.management.utils
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import com.hospital.management.utils.FileLogger
 import androidx.work.WorkManager
 import java.util.UUID
 
@@ -18,7 +18,7 @@ class UploadActionReceiver : BroadcastReceiver() {
         val notificationId = intent.getIntExtra(UploadNotifier.EXTRA_NOTIFICATION_ID, -1)
         when (intent.action) {
             UploadNotifier.ACTION_CANCEL -> handleCancel(context, intent, notificationId)
-            else -> Log.w(TAG, "Unknown action: ${intent.action}")
+            else -> FileLogger.w(TAG, "Unknown action: ${intent.action}")
         }
     }
 
@@ -26,7 +26,7 @@ class UploadActionReceiver : BroadcastReceiver() {
         val workIdStr = intent.getStringExtra(UploadNotifier.EXTRA_WORK_ID) ?: return
         val workId = runCatching { UUID.fromString(workIdStr) }.getOrNull() ?: return
 
-        Log.i(TAG, "cancel requested work=$workId notif=$notificationId")
+        FileLogger.i(TAG, "cancel requested work=$workId notif=$notificationId")
         WorkManager.getInstance(context.applicationContext).cancelWorkById(workId)
         if (notificationId != -1) UploadNotifier.cancel(context, notificationId)
     }
