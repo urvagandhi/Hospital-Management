@@ -62,14 +62,25 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: st
         try:
             start_time = time.time()
             
-            # Pipe JPEG output from pdftoppm directly to stdout (-)
+            # Render page to PNG via stdout (-)
+            # -singlefile is critical for reliable stdout streaming on many systems
+            # Use pdftocairo if available (often more stable for stdout), fallback to pdftoppm
+            cmd = ["pdftoppm", "-png", "-singlefile", "-r", str(target_dpi), "-f", str(i), "-l", str(i), str(pdf_path), "-"]
+            
             proc = subprocess.run(
-                ["pdftoppm", "-jpeg", "-r", str(target_dpi), "-f", str(i), "-l", str(i), str(pdf_path), "-"],
-                check=True,
+                cmd,
+                check=False, # We'll handle the return code ourselves for better logging
                 capture_output=True,
                 timeout=60
             )
             
+            if proc.returncode != 0:
+                logger.warning(
+                    f"Page {i} render failed (code {proc.returncode})",
+                    extra={"job_id": job_id, "stderr": proc.stderr.decode(errors="replace")[:200]}
+                )
+                continue
+
             if not proc.stdout:
                 logger.warning(f"Page {i} produced no output", extra={"job_id": job_id})
                 continue
