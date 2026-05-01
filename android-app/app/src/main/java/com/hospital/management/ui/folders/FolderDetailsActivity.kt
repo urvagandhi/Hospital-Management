@@ -214,6 +214,9 @@ class FolderDetailsActivity : BaseActivity() {
                 },
                 onOptionClick = { view, file ->
                     showFileOptions(view, file)
+                },
+                onRetryClick = { file ->
+                    retryUpload(file)
                 }
             )
             rvFiles.adapter = fileAdapter
@@ -225,12 +228,71 @@ class FolderDetailsActivity : BaseActivity() {
         }
     }
 
+    private fun retryUpload(file: FileItem) {
+        if (!isNetworkAvailable()) {
+            Toast.makeText(this, "No internet connection available", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val idempotencyKey = file.idempotencyKey ?: return
+        
+        lifecycleScope.launch {
+            val db = AppDatabase.getDatabase(this@FolderDetailsActivity)
+            val doc = db.documentDao().getDocumentByIdempotencyKey(idempotencyKey)
+            if (doc != null) {
+                // Update status to PENDING
+                db.documentDao().update(doc.copy(status = com.hospital.management.data.local.SyncStatus.PENDING))
+                
+                // Enqueue UploadWorker with KEEP policy
+                val constraints = androidx.work.Constraints.Builder()
+                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                    .build()
+
+                val inputData = androidx.work.Data.Builder()
+                    .putLong(com.hospital.management.worker.UploadWorker.KEY_OFFLINE_DOC_ID, doc.id)
+                    .putString(com.hospital.management.worker.UploadWorker.KEY_PATIENT_ID, doc.patientId)
+                    .putString(com.hospital.management.worker.UploadWorker.KEY_FOLDER_NAME, doc.folderName)
+                    .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_URI, doc.fileUri)
+                    .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_NAME, android.net.Uri.parse(doc.fileUri).lastPathSegment ?: "document.pdf")
+                    .putString(com.hospital.management.worker.UploadWorker.KEY_IDEMPOTENCY_KEY, idempotencyKey)
+                    .putInt(com.hospital.management.worker.UploadWorker.KEY_UPLOAD_PROFILE_USED, doc.uploadProfileUsed)
+                    .putString(com.hospital.management.worker.UploadWorker.KEY_OWNER_HOSPITAL_ID, doc.ownerHospitalId)
+                    .build()
+
+                val request = androidx.work.OneTimeWorkRequestBuilder<com.hospital.management.worker.UploadWorker>()
+                    .setInputData(inputData)
+                    .setConstraints(constraints)
+                    .addTag(com.hospital.management.worker.UploadWorker.TAG_UPLOAD)
+                    .setBackoffCriteria(
+                        androidx.work.BackoffPolicy.EXPONENTIAL,
+                        30,
+                        java.util.concurrent.TimeUnit.SECONDS
+                    )
+                    .build()
+
+                androidx.work.WorkManager.getInstance(this@FolderDetailsActivity).enqueueUniqueWork(
+                    "upload_$idempotencyKey",
+                    androidx.work.ExistingWorkPolicy.KEEP,
+                    request
+                )
+                Toast.makeText(this@FolderDetailsActivity, "Retrying upload...", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun showFileOptions(view: View, file: FileItem) {
         val popup = androidx.appcompat.widget.PopupMenu(this, view)
-        popup.menu.add("Open with Drive PDF Viewer")
-        popup.menu.add("Download")
-        popup.menu.add("Rename")
-        popup.menu.add("Delete")
+        val isLocal = file.syncStatus != null
+
+        if (isLocal) {
+            popup.menu.add("Open with Drive PDF Viewer")
+            popup.menu.add("Delete from Queue")
+        } else {
+            popup.menu.add("Open with Drive PDF Viewer")
+            popup.menu.add("Download")
+            popup.menu.add("Rename")
+            popup.menu.add("Delete")
+        }
 
         popup.setOnMenuItemClickListener { item ->
             when (item.title) {
@@ -238,10 +300,31 @@ class FolderDetailsActivity : BaseActivity() {
                 "Download" -> downloadFile(file)
                 "Rename" -> showRenameDialog(file)
                 "Delete" -> confirmDelete(file)
+                "Delete from Queue" -> confirmDeleteLocal(file)
             }
             true
         }
         popup.show()
+    }
+
+    private fun confirmDeleteLocal(file: FileItem) {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.queue_action_delete_confirm_title))
+            .setMessage(getString(R.string.queue_action_delete_confirm_msg))
+            .setPositiveButton("Delete") { _, _ ->
+                val key = file.idempotencyKey ?: return@setPositiveButton
+                lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val db = AppDatabase.getDatabase(this@FolderDetailsActivity)
+                    val doc = db.documentDao().getDocumentByIdempotencyKey(key)
+                    if (doc != null) {
+                        db.documentDao().delete(doc)
+                        val localFile = java.io.File(android.net.Uri.parse(doc.fileUri).path ?: "")
+                        if (localFile.exists()) localFile.delete()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showRenameDialog(file: FileItem) {
@@ -859,23 +942,34 @@ class FolderDetailsActivity : BaseActivity() {
      */
     private fun setupPendingDocsObserver() {
         lifecycleScope.launch {
+            val hospitalId = tokenManager.getHospitalId() ?: ""
             var prevCount = -1
-            database.documentDao().observePendingForFolder(patientId, folderName)
+            database.documentDao().observeFolderQueue(patientId, folderName, hospitalId)
                 .distinctUntilChangedBy { it.size }
                 .collect { pendingDocs ->
                     pendingOfflineFiles = pendingDocs.map { doc ->
-                        val localFile = File(Uri.parse(doc.fileUri).path ?: "")
+                        val localFile = java.io.File(android.net.Uri.parse(doc.fileUri).path ?: "")
                         val fileSize = if (localFile.exists()) localFile.length() else 0L
                         val fileName = localFile.name
                         val mimeType = if (fileName.endsWith(".pdf")) "application/pdf" else "image/jpeg"
-                        FileItem(
-                            fileName = "[Pending] $fileName",
+                        
+                        val statusPrefix = when (doc.status) {
+                            com.hospital.management.data.local.SyncStatus.FAILED -> "[Failed] "
+                            com.hospital.management.data.local.SyncStatus.UPLOADING -> "[Uploading] "
+                            else -> "[Pending] "
+                        }
+                        
+                        com.hospital.management.data.models.FileItem(
+                            fileName = "$statusPrefix$fileName",
                             fileUrl = doc.fileUri,
                             size = fileSize,
                             mimeType = mimeType,
                             uploadedAt = java.text.SimpleDateFormat(
                                 "yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault()
-                            ).format(java.util.Date(doc.timestamp))
+                            ).format(java.util.Date(doc.timestamp)),
+                            syncStatus = doc.status.name,
+                            errorMessage = doc.errorMessage,
+                            idempotencyKey = doc.idempotencyKey
                         )
                     }
                     // Refresh display with current server files
@@ -1039,7 +1133,7 @@ class FolderDetailsActivity : BaseActivity() {
                                         }
                                     } else if (!fileItem.fileUrl.isNullOrEmpty()) {
                                         // Try plain file path string
-                                        val file = File(fileItem.fileUrl!!)
+                                        val file = File(fileItem.fileUrl)
                                         if (file.exists()) {
                                             inputStream = java.io.FileInputStream(file)
                                         }

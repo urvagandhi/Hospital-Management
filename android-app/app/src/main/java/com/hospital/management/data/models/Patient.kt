@@ -27,7 +27,11 @@ data class FileItem(
     val size: Long = 0,
     val mimeType: String? = null,
     val uploadedAt: String? = null,
-    val thumbnailUrl: String? = null
+    val thumbnailUrl: String? = null,
+    // Offline Queue Properties
+    val syncStatus: String? = null,
+    val errorMessage: String? = null,
+    val idempotencyKey: String? = null
 ) {
     val name: String get() = fileName
     val displayUrl: String get() = fileUrl ?: url ?: ""

@@ -129,7 +129,6 @@ object SessionManager {
 
             // 1. Snapshot — must happen BEFORE clearAll().
             val refreshTokenSnapshot = tm.getRefreshToken()
-            val hospitalIdSnapshot = tm.getHospitalId().orEmpty()
             val hadValidToken = tm.hasValidToken()
 
             // 2. Stop the upload-sync worker so it can't race the cancellation below.
@@ -166,10 +165,11 @@ object SessionManager {
                 }
             } catch (_: Throwable) { /* permission / API gaps — best-effort */ }
 
-            // 3. Cancel pending uploads owned by this hospital. Any docs
-            //    not owned by this hospital (legacy/foreign) are also
-            //    purged — the sync worker would drop them anyway, but
-            //    cleaning here keeps the local DB tidy.
+            // 3. Keep pending uploads (Phase 4.3). We no longer delete them
+            //    on logout so they remain available for the same hospital
+            //    after relogin. Owner-scoping ensures other hospitals
+            //    won't see them.
+            /*
             if (hospitalIdSnapshot.isNotEmpty()) {
                 try {
                     val dao = AppDatabase.getDatabase(appCtx).documentDao()
@@ -181,6 +181,7 @@ object SessionManager {
                     FileLogger.w("SessionManager", "Failed to clear pending uploads on logout: ${e.message}")
                 }
             }
+            */
 
             // 4. Direct backend logout (best-effort, survives cancellation).
             var directOk = false

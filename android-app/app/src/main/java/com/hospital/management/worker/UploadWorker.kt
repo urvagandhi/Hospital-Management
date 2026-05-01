@@ -63,6 +63,7 @@ class UploadWorker(
         const val KEY_UPLOAD_PROFILE_USED = "upload_profile_used"
         const val KEY_OWNER_HOSPITAL_ID = "owner_hospital_id"
         const val KEY_MAX_RETRIES = "max_retries"
+        const val KEY_OFFLINE_DOC_ID = "offline_doc_id"
 
         // Output keys
         const val KEY_STATUS = "status"
@@ -137,7 +138,7 @@ class UploadWorker(
         if (file == null || !file.exists()) {
             FileLogger.e(TAG, "FILE RESOLUTION FAILED — uri=$fileUriStr, " +
                     "resolved=${file?.absolutePath}, exists=${file?.exists()}")
-            return@withContext failWith(ERROR_FILE_MISSING, "Local file missing or unreadable")
+            return@withContext failWith(ERROR_FILE_MISSING, "Local file missing or unreadable", idempotencyKey)
         }
         if (fileName.isEmpty()) fileName = file.name
 
@@ -165,6 +166,9 @@ class UploadWorker(
                 database.documentDao(),
                 applicationContext
             )
+
+            // ── Phase 3: Mark row UPLOADING ──
+            repository.updateRowState(idempotencyKey, com.hospital.management.data.local.SyncStatus.UPLOADING)
 
             FileLogger.i(TAG, "Starting HTTP upload to server..." +
                     "\n  endpoint=POST /api/patients/$patientId/files/$folderName" +
@@ -231,8 +235,9 @@ class UploadWorker(
                         "\n  statusCode=${attempt.statusCode}" +
                         "\n  idempotencyKey=$idempotencyKey")
 
-                // Local file may have been a temp PDF — best-effort cleanup.
-                runCatching { if (file.parentFile?.absolutePath?.contains("cache") == true || file.parentFile == applicationContext.filesDir) file.delete() }
+                // ── Phase 3: Paired cleanup ──
+                repository.deleteRowAndDurableFile(idempotencyKey)
+                
                 finalizeCompleted()
                 return@withContext Result.success(
                     Data.Builder()
@@ -242,11 +247,22 @@ class UploadWorker(
             }
 
             val code = attempt.statusCode ?: 0
+            val mappedReason = when {
+                code == 401 || code == 403 -> "AUTH_REQUIRED:"
+                code == 413 -> "SIZE_EXCEEDED:"
+                code in 400..499 -> "SERVER_REJECTED:"
+                code in 500..599 -> "NETWORK:"
+                else -> "NETWORK:" // fallback for timeouts/unknown
+            }
             val reason = when {
                 code == 401 || code == 403 -> ERROR_AUTH_EXPIRED
                 code in 500..599 -> ERROR_SERVER
                 else -> ERROR_NETWORK
             }
+
+            // ── Phase 3: Persist FAILED state ──
+            val fullErrorMessage = "$mappedReason ${attempt.message ?: "Upload rejected ($code)"}"
+            repository.updateRowState(idempotencyKey, com.hospital.management.data.local.SyncStatus.FAILED, errorMessage = fullErrorMessage, retryCount = runAttemptCount + 1)
 
             FileLogger.e(TAG, "═══ UPLOAD FAILED ═══" +
                     "\n  fileName=$fileName" +
@@ -260,9 +276,9 @@ class UploadWorker(
                     "\n  attempt=${runAttemptCount + 1}/$maxRetries")
 
             return@withContext if (attempt.retryable) {
-                maybeRetry(maxRetries, reason, attempt.message ?: "Upload failed")
+                maybeRetry(maxRetries, reason, attempt.message ?: "Upload failed", idempotencyKey)
             } else {
-                failWith(reason, attempt.message ?: "Upload rejected")
+                failWith(reason, attempt.message ?: "Upload rejected", idempotencyKey)
             }
         } catch (e: Exception) {
             FileLogger.e(TAG, "═══ UPLOAD EXCEPTION ═══" +
@@ -272,8 +288,18 @@ class UploadWorker(
                     "\n  exception=${e.javaClass.simpleName}" +
                     "\n  message=${e.message}" +
                     "\n  attempt=${runAttemptCount + 1}/$maxRetries", e)
-            if (isStopped) return@withContext cancelled()
-            maybeRetry(maxRetries, ERROR_NETWORK, e.message ?: "Network error")
+            
+            if (idempotencyKey.isNotEmpty()) {
+                val database = AppDatabase.getDatabase(applicationContext)
+                val repository = DocumentRepository(
+                    RetrofitClient.getApiService(applicationContext),
+                    database.documentDao(),
+                    applicationContext
+                )
+                repository.updateRowState(idempotencyKey, com.hospital.management.data.local.SyncStatus.FAILED, errorMessage = "NETWORK: ${e.message}", retryCount = runAttemptCount + 1)
+            }
+            if (isStopped) return@withContext cancelled(idempotencyKey)
+            maybeRetry(maxRetries, ERROR_NETWORK, e.message ?: "Network error", idempotencyKey)
         }
     }
 
@@ -346,9 +372,20 @@ class UploadWorker(
         )
     }
 
-    private fun cancelled(): Result {
+    private fun cancelled(idempotencyKey: String = ""): Result {
         FileLogger.w(TAG, "Upload cancelled — fileName=$fileName, workId=$id")
         UploadNotifier.cancel(applicationContext, notificationId)
+        if (idempotencyKey.isNotEmpty()) {
+            kotlinx.coroutines.runBlocking {
+                val database = AppDatabase.getDatabase(applicationContext)
+                val repository = DocumentRepository(
+                    RetrofitClient.getApiService(applicationContext),
+                    database.documentDao(),
+                    applicationContext
+                )
+                repository.updateRowState(idempotencyKey, com.hospital.management.data.local.SyncStatus.FAILED, errorMessage = "CANCELLED: Upload cancelled by system")
+            }
+        }
         return Result.failure(
             Data.Builder()
                 .putString(KEY_ERROR_REASON, ERROR_CANCELLED)
@@ -357,8 +394,8 @@ class UploadWorker(
         )
     }
 
-    private fun failWith(reason: String, message: String): Result {
-        if (isStopped) return cancelled()
+    private fun failWith(reason: String, message: String, idempotencyKey: String = ""): Result {
+        if (isStopped) return cancelled(idempotencyKey)
         FileLogger.e(TAG, "Upload TERMINAL FAILURE — reason=$reason, message=$message, " +
                 "fileName=$fileName, workId=$id")
         val progress = UploadProgress(
@@ -385,9 +422,10 @@ class UploadWorker(
     private suspend fun maybeRetry(
         maxRetries: Int,
         reason: String,
-        message: String
+        message: String,
+        idempotencyKey: String = ""
     ): Result {
-        if (isStopped) return cancelled()
+        if (isStopped) return cancelled(idempotencyKey)
 
         return if (runAttemptCount < maxRetries) {
             val approxSec = (30L shl runAttemptCount).coerceAtMost(5 * 60L).toInt()
@@ -416,7 +454,7 @@ class UploadWorker(
         } else {
             FileLogger.e(TAG, "Upload MAX RETRIES EXHAUSTED — reason=$reason, " +
                     "message=$message, maxRetries=$maxRetries, fileName=$fileName")
-            failWith(reason, message)
+            failWith(reason, message, idempotencyKey)
         }
     }
 

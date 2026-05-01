@@ -4,41 +4,68 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Same configs as preprocessor for consistency in GS flags
+GS_TIER_CONFIGS = {
+    0: {"dpi": 300, "quality": 85, "downsample": "/Bicubic"},
+    1: {"dpi": 200, "quality": 72, "downsample": "/Bicubic"},
+    2: {"dpi": 150, "quality": 58, "downsample": "/Bicubic"},
+    3: {"dpi": 150, "quality": 45, "downsample": "/Average"},
+    4: {"dpi": 120, "quality": 32, "downsample": "/Subsample"},
+}
 
-async def run_ghostscript(
+async def run_ghostscript_explicit(
     input_path: Path,
     output_path: Path,
-    preset: str,
-    dpi: int,
-    grayscale: bool,
+    tier: int,
     job_id: str,
 ) -> None:
-    """Run Ghostscript as an async subprocess.
-
-    Args:
-        input_path: Source PDF.
-        output_path: Where to write compressed output.
-        preset: One of /printer, /ebook, /screen.
-        dpi: Target resolution.
-        grayscale: If True, convert to grayscale.
-        job_id: For log correlation.
-
-    Raises:
-        RuntimeError: If Ghostscript exits non-zero.
+    """Run Ghostscript with explicit flags for deep stream compression.
+    
+    Bypasses -dPDFSETTINGS presets in favor of fine-grained control.
+    Forces re-encoding using AutoFilterColorImages=false.
     """
+    config = GS_TIER_CONFIGS.get(tier, GS_TIER_CONFIGS[4])
+    dpi = config["dpi"]
+    quality = config["quality"]
+    downsample_type = config["downsample"]
+    grayscale = (tier >= 3)
+
     cmd = [
         "gs",
+        "-dBATCH", "-dNOPAUSE", "-dQUIET", "-dSAFER",
         "-sDEVICE=pdfwrite",
-        "-dNOPAUSE",
-        "-dBATCH",
-        "-dQUIET",
-        f"-dPDFSETTINGS={preset}",
-        f"-dDownsampleColorImages=true",
+        "-dCompatibilityLevel=1.4",
+        "-dSubsetFonts=true",
+        "-dEmbedAllFonts=false",
+        "-dCompressPages=true",
+        "-dUseFlateCompression=true",
+        "-dDetectDuplicateImages=true",
+        "-dAutoRotatePages=/None",
+        "-dOmitInfoDate=true",
+        
+        # Color Image Flags
+        "-dDownsampleColorImages=true",
+        f"-dColorImageDownsampleType={downsample_type}",
         f"-dColorImageResolution={dpi}",
-        f"-dDownsampleGrayImages=true",
+        "-dAutoFilterColorImages=false",
+        "-dColorImageFilter=/DCTEncode",
+        f"-dColorImageDict=<< /QFactor {100-quality} /HSampling [1 1 1 1] /VSampling [1 1 1 1] >>", # Simplified quality
+        # Actually GS uses -dJPEGQ for simpler control
+        f"-dJPEGQ={quality}",
+        
+        # Gray Image Flags
+        "-dDownsampleGrayImages=true",
+        f"-dGrayImageDownsampleType={downsample_type}",
         f"-dGrayImageResolution={dpi}",
-        f"-dDownsampleMonoImages=true",
-        f"-dMonoImageResolution={dpi}",
+        "-dAutoFilterGrayImages=false",
+        "-dGrayImageFilter=/DCTEncode",
+        f"-dGrayImageDict=<< /QFactor {100-quality} >>",
+        f"-dJPEGQ={quality}",
+
+        # Mono Image Flags
+        "-dDownsampleMonoImages=true",
+        "-dMonoImageResolution=300" if tier <= 2 else "-dMonoImageResolution=200",
+        
         f"-sOutputFile={output_path}",
     ]
 
@@ -51,12 +78,13 @@ async def run_ghostscript(
     cmd.append(str(input_path))
 
     logger.info(
-        "Running Ghostscript",
+        f"GS Tier {tier} Start",
         extra={
             "job_id": job_id,
-            "event": "gs_start",
-            "metrics": {"preset": preset, "dpi": dpi, "grayscale": grayscale},
-        },
+            "event": "gs_explicit_start",
+            "tier": tier,
+            "dpi": dpi
+        }
     )
 
     proc = await asyncio.create_subprocess_exec(
@@ -64,25 +92,22 @@ async def run_ghostscript(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    _, stderr = await proc.communicate()
+    
+    try:
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=240)
+    except asyncio.TimeoutError:
+        proc.kill()
+        raise RuntimeError("Ghostscript timed out after 240 seconds")
 
     if proc.returncode != 0:
         err_msg = stderr.decode(errors="replace")
-        logger.error(
-            "Ghostscript failed",
-            extra={
-                "job_id": job_id,
-                "event": "gs_error",
-                "metrics": {"returncode": proc.returncode, "stderr": err_msg[:500]},
-            },
-        )
-        raise RuntimeError(f"Ghostscript exited {proc.returncode}: {err_msg[:500]}")
+        raise RuntimeError(f"Ghostscript failed (code {proc.returncode}): {err_msg[:500]}")
 
     logger.info(
-        "Ghostscript completed",
+        f"GS Tier {tier} Done",
         extra={
             "job_id": job_id,
-            "event": "gs_done",
-            "metrics": {"output_size": output_path.stat().st_size},
-        },
+            "event": "gs_explicit_done",
+            "size": output_path.stat().st_size
+        }
     )

@@ -67,6 +67,9 @@ class HospitalApplication : Application() {
         // Initialize NetworkMonitor singleton (online/offline indicator)
         NetworkMonitor.init(this, BuildConfig.BASE_URL)
 
+        // Phase 4.5: Startup orphan file sweep
+        performOrphanFileSweep()
+
         // Register network connectivity listener for auto-sync
         registerNetworkCallback()
 
@@ -200,10 +203,14 @@ class HospitalApplication : Application() {
     private fun scheduleSyncIfNeeded() {
         applicationScope.launch(Dispatchers.IO) {
             try {
-                val database = AppDatabase.getDatabase(this@HospitalApplication)
-                val pendingCount = database.documentDao().getPendingCount()
+                val tokenManager = TokenManager(this@HospitalApplication)
+                val hospitalId = tokenManager.getHospitalId()
+                if (hospitalId.isNullOrEmpty()) return@launch
 
-                if (pendingCount > 0) {
+                val database = AppDatabase.getDatabase(this@HospitalApplication)
+                val eligibleDocs = database.documentDao().getEligibleForAutoSync(hospitalId)
+
+                if (eligibleDocs.isNotEmpty()) {
                     // Schedule sync worker with network constraint
                     val constraints = Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -247,6 +254,29 @@ class HospitalApplication : Application() {
                 description = getString(R.string.upload_channel_desc)
             }
             manager.createNotificationChannel(uploads)
+        }
+    }
+
+    private fun performOrphanFileSweep() {
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                val pendingDir = java.io.File(filesDir, "pending_uploads")
+                if (!pendingDir.exists()) return@launch
+
+                val db = AppDatabase.getDatabase(this@HospitalApplication)
+                val files = pendingDir.listFiles() ?: return@launch
+
+                for (file in files) {
+                    val fileUri = android.net.Uri.fromFile(file).toString()
+                    val existsInDb = db.documentDao().existsByFileUri(fileUri)
+                    if (!existsInDb) {
+                        FileLogger.w(TAG, "Deleting orphan file: ${file.name}")
+                        file.delete()
+                    }
+                }
+            } catch (e: Exception) {
+                FileLogger.e(TAG, "Orphan sweep failed", e)
+            }
         }
     }
 

@@ -108,9 +108,20 @@
     <string name="upload_completed_batch_text">Uploaded %1$d patient record(s)</string>
     <string name="upload_failed_title">Upload failed</string>
     <string name="upload_failed_text">Tap to retry from the app</string>
+    <string name="upload_failed_saved_offline">Saved offline · Tap to manage</string>
     <string name="upload_retrying_text">Waiting for connection · retry in %1$ds</string>
     <string name="upload_stage_preparing">Preparing</string>
     <string name="upload_stage_uploading">Uploading</string>
     <string name="upload_batch_prefix">File %1$d of %2$d</string>
     <string name="upload_in_progress_toast">Uploading in background. You\'ll get a notification when it\'s done.</string>
+
+    <!-- Upload Queue Screen -->
+    <string name="queue_screen_title">Upload Queue</string>
+    <string name="queue_empty_title">Your queue is empty</string>
+    <string name="queue_empty_subtitle">All documents have been synced</string>
+    <string name="queue_summary_count">%1$d file(s) waiting to sync</string>
+    <string name="queue_retention_warning">Queued files are saved locally on this device. They survive reboots but will be lost if you uninstall the app.</string>
+    <string name="queue_action_sync_all">Sync All Now</string>
+    <string name="queue_action_delete_confirm_title">Remove from queue?</string>
+    <string name="queue_action_delete_confirm_msg">This will permanently delete the scan from your device.</string>
 </resources>

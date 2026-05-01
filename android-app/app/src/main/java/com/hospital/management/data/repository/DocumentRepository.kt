@@ -404,4 +404,53 @@ class DocumentRepository(
                 "patientId=${document.patientId}, folderName=${document.folderName}")
         documentDao.delete(document)
     }
+
+    // ── Phase 1 additions for Durable Queue ────────────────────────────
+
+    fun getDurableUploadsDir(): File {
+        val dir = File(context.filesDir, "pending_uploads")
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        return dir
+    }
+
+    fun getDurableFile(idempotencyKey: String): File {
+        return File(getDurableUploadsDir(), "$idempotencyKey.pdf")
+    }
+
+    suspend fun insertQueuedRow(document: OfflineDocument): Long {
+        FileLogger.i(TAG, "Inserting queued row: idempotencyKey=${document.idempotencyKey}, status=${document.status}, fileUri=${document.fileUri}")
+        return documentDao.insert(document)
+    }
+
+    suspend fun updateRowState(
+        idempotencyKey: String,
+        status: SyncStatus,
+        errorMessage: String? = null,
+        retryCount: Int? = null,
+        fileUri: String? = null
+    ) {
+        val doc = documentDao.getDocumentByIdempotencyKey(idempotencyKey) ?: return
+        val updated = doc.copy(
+            status = status,
+            errorMessage = errorMessage ?: doc.errorMessage,
+            retryCount = retryCount ?: doc.retryCount,
+            fileUri = fileUri ?: doc.fileUri
+        )
+        documentDao.update(updated)
+    }
+
+    suspend fun deleteRowAndDurableFile(idempotencyKey: String) {
+        val doc = documentDao.getDocumentByIdempotencyKey(idempotencyKey)
+        if (doc != null) {
+            documentDao.delete(doc)
+            FileLogger.i(TAG, "Deleted offline row: idempotencyKey=$idempotencyKey")
+        }
+        val file = getDurableFile(idempotencyKey)
+        if (file.exists()) {
+            file.delete()
+            FileLogger.i(TAG, "Deleted durable file: ${file.absolutePath}")
+        }
+    }
 }

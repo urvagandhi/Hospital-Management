@@ -164,7 +164,14 @@ class FolderViewActivity : BaseActivity() {
         }
 
         lifecycleScope.launch {
-            patientViewModel.currentPatient.collect { patient ->
+            val db = com.hospital.management.data.local.AppDatabase.getDatabase(this@FolderViewActivity)
+            val hospitalId = tokenManager.getHospitalId() ?: ""
+            kotlinx.coroutines.flow.combine(
+                patientViewModel.currentPatient,
+                db.documentDao().observePatientQueue(patientId, hospitalId)
+            ) { patient, pendingDocs ->
+                Pair(patient, pendingDocs)
+            }.collect { (patient, pendingDocs) ->
                 if (patient != null && patient._id == patientId) {
                     // Update UI with patient details
                     findViewById<android.widget.TextView>(R.id.tvPatientName).text = patient.patientName
@@ -181,8 +188,41 @@ class FolderViewActivity : BaseActivity() {
                         layoutRemarks.visibility = View.GONE
                     }
 
-                    // Update folder list with current pending counts
-                    updateFolderList(patient)
+                    // Create a map of folder name -> pending count
+                    val pendingCounts = mutableMapOf<String, Int>()
+                    for (doc in pendingDocs) {
+                        pendingCounts[doc.folderName] = (pendingCounts[doc.folderName] ?: 0) + 1
+                    }
+
+                    val folders = patient.folders
+                    if (folders.isNotEmpty() || pendingCounts.isNotEmpty()) {
+                        // Create folder list with updated counts
+                        val updatedFolders = folders.map { folder ->
+                            val pendingCount = pendingCounts[folder.name] ?: 0
+                            com.hospital.management.data.models.Folder(
+                                name = folder.name,
+                                files = folder.files,
+                                _fileCount = folder.fileCount + pendingCount
+                            )
+                        }
+                        
+                        folderAdapter = FolderAdapter(updatedFolders) { folder ->
+                            // Navigate to folder details
+                            val intent = Intent(this@FolderViewActivity, FolderDetailsActivity::class.java)
+                            intent.putExtra("PATIENT_ID", patientId)
+                            intent.putExtra("FOLDER_NAME", folder.name)
+                            intent.putExtra("FILE_COUNT", folder.fileCount)
+                            intent.putExtra("PATIENT_NAME", patient.patientName)
+                            intent.putExtra("PATIENT_DISPLAY_ID", patient.patientId)
+                            startActivity(intent)
+                        }
+                        rvFolders.adapter = folderAdapter
+                        rvFolders.visibility = View.VISIBLE
+                        tvEmpty.visibility = View.GONE
+                    } else {
+                        rvFolders.visibility = View.GONE
+                        tvEmpty.visibility = View.VISIBLE
+                    }
                 }
             }
         }
@@ -204,50 +244,6 @@ class FolderViewActivity : BaseActivity() {
                     loadFolders()
                 }
             }
-    }
-
-    private fun updateFolderList(patient: com.hospital.management.data.models.Patient) {
-        lifecycleScope.launch {
-            // Get pending files count from local database
-            val database = com.hospital.management.data.local.AppDatabase.getDatabase(this@FolderViewActivity)
-            val pendingDocs = database.documentDao().getPendingForPatient(patientId)
-            
-            // Create a map of folder name -> pending count
-            val pendingCounts = mutableMapOf<String, Int>()
-            for (doc in pendingDocs) {
-                pendingCounts[doc.folderName] = (pendingCounts[doc.folderName] ?: 0) + 1
-            }
-
-            val folders = patient.folders
-            if (folders.isNotEmpty() || pendingCounts.isNotEmpty()) {
-                // Create folder list with updated counts
-                val updatedFolders = folders.map { folder ->
-                    val pendingCount = pendingCounts[folder.name] ?: 0
-                    Folder(
-                        name = folder.name,
-                        files = folder.files,
-                        _fileCount = folder.fileCount + pendingCount
-                    )
-                }
-                
-                folderAdapter = FolderAdapter(updatedFolders) { folder ->
-                    // Navigate to folder details
-                    val intent = Intent(this@FolderViewActivity, FolderDetailsActivity::class.java)
-                    intent.putExtra("PATIENT_ID", patientId)
-                    intent.putExtra("FOLDER_NAME", folder.name)
-                    intent.putExtra("FILE_COUNT", folder.fileCount)
-                    intent.putExtra("PATIENT_NAME", patient.patientName)
-                    intent.putExtra("PATIENT_DISPLAY_ID", patient.patientId)
-                    startActivity(intent)
-                }
-                rvFolders.adapter = folderAdapter
-                rvFolders.visibility = View.VISIBLE
-                tvEmpty.visibility = View.GONE
-            } else {
-                rvFolders.visibility = View.GONE
-                tvEmpty.visibility = View.VISIBLE
-            }
-        }
     }
 
     private fun showEditPatientDialog(patient: com.hospital.management.data.models.Patient) {

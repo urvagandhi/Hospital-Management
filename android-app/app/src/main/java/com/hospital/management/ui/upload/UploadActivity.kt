@@ -333,112 +333,98 @@ class UploadActivity : BaseActivity() {
                     return@launch
                 }
 
-                val fileSizeMb = "%.2f".format(pdfFile.length().toDouble() / (1024.0 * 1024.0))
-                FileLogger.i(TAG, "PDF created successfully:" +
-                        "\n  path=${pdfFile.absolutePath}" +
-                        "\n  size=${pdfFile.length()} bytes ($fileSizeMb MB)" +
-                        "\n  name=${pdfFile.name}" +
-                        "\n  profileUsed=$uploadProfileUsed")
+                // ── Phase 2: Move to durable storage and insert row first ──
+                val isOnline = isNetworkAvailable()
+                val idempotencyKey = docRepository.newIdempotencyKey()
+                val ownerHospitalId = tokenManager.getHospitalId() ?: ""
+                val durableFile = docRepository.getDurableFile(idempotencyKey)
 
-                if (pdfFile.length() > MAX_SERVER_UPLOAD_BYTES) {
-                    val sizeMbStr = "%.1f".format(pdfFile.length().toDouble() / (1024.0 * 1024.0))
-                    FileLogger.w(TAG, "PDF TOO LARGE — size=${pdfFile.length()} bytes ($sizeMbStr MB), " +
-                            "max=${MAX_SERVER_UPLOAD_BYTES} bytes, deleting temp file")
-                    withContext(Dispatchers.Main) {
-                        binding.progressBar.visibility = View.GONE
-                        binding.btnUpload.isEnabled = true
-                        binding.tvUploadProgress.visibility = View.GONE
-                        Toast.makeText(
-                            this@UploadActivity,
-                            "File is ${sizeMbStr}MB. Max upload is 20MB. Reduce pages and try again.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                    pdfFile.delete()
-                    return@launch
+                pdfFile.copyTo(durableFile, overwrite = true)
+                pdfFile.delete()
+
+                val fileSizeMb = "%.2f".format(durableFile.length().toDouble() / (1024.0 * 1024.0))
+                FileLogger.i(TAG, "PDF moved to durable storage:" +
+                        "\n  path=${durableFile.absolutePath}" +
+                        "\n  size=${durableFile.length()} bytes ($fileSizeMb MB)")
+
+                val isTooLarge = durableFile.length() > MAX_SERVER_UPLOAD_BYTES
+
+                val initialStatus = if (isTooLarge) {
+                    com.hospital.management.data.local.SyncStatus.FAILED
+                } else if (isOnline) {
+                    com.hospital.management.data.local.SyncStatus.UPLOADING
+                } else {
+                    com.hospital.management.data.local.SyncStatus.PENDING
                 }
 
-                val isOnline = isNetworkAvailable()
-                FileLogger.i(TAG, "Network check: isOnline=$isOnline")
-                // One key per logical upload. Reused on offline save so the worker's
-                // retry dedupes server-side if the original request already succeeded.
-                val idempotencyKey = docRepository.newIdempotencyKey()
-                FileLogger.d(TAG, "Generated idempotencyKey=$idempotencyKey")
+                val errorMessage = if (isTooLarge) "SIZE_EXCEEDED: File is $fileSizeMb MB (Max is 20 MB)" else null
 
-                if (isOnline) {
-                    // Hand off to a foreground UploadWorker so the upload survives
-                    // app backgrounding / Doze, and the user sees a system-style
-                    // progress notification with byte-level percentage. The worker
-                    // posts a "Upload complete" notification on success that taps
-                    // through to the dashboard. We finish() the Activity right
-                    // after enqueue — the notification carries the UX from here.
-                    val ownerHospitalId = tokenManager.getHospitalId() ?: ""
-                    val constraints = androidx.work.Constraints.Builder()
-                        .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                        .build()
-                    val inputData = androidx.work.Data.Builder()
-                        .putString(com.hospital.management.worker.UploadWorker.KEY_PATIENT_ID, patientId)
-                        .putString(com.hospital.management.worker.UploadWorker.KEY_FOLDER_NAME, folderName)
-                        .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_URI, android.net.Uri.fromFile(pdfFile).toString())
-                        .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_NAME, pdfFile.name)
-                        .putString(com.hospital.management.worker.UploadWorker.KEY_IDEMPOTENCY_KEY, idempotencyKey)
-                        .putInt(com.hospital.management.worker.UploadWorker.KEY_UPLOAD_PROFILE_USED, uploadProfileUsed)
-                        .putString(com.hospital.management.worker.UploadWorker.KEY_OWNER_HOSPITAL_ID, ownerHospitalId)
-                        .build()
-                    val request = androidx.work.OneTimeWorkRequestBuilder<com.hospital.management.worker.UploadWorker>()
-                        .setInputData(inputData)
-                        .setConstraints(constraints)
-                        .addTag(com.hospital.management.worker.UploadWorker.TAG_UPLOAD)
-                        .setBackoffCriteria(
-                            androidx.work.BackoffPolicy.EXPONENTIAL,
-                            30,
-                            java.util.concurrent.TimeUnit.SECONDS
-                        )
-                        .build()
+                val document = com.hospital.management.data.local.OfflineDocument(
+                    patientId = patientId,
+                    folderName = folderName,
+                    fileUri = android.net.Uri.fromFile(durableFile).toString(),
+                    status = initialStatus,
+                    errorMessage = errorMessage,
+                    idempotencyKey = idempotencyKey,
+                    uploadProfileUsed = uploadProfileUsed,
+                    ownerHospitalId = ownerHospitalId
+                )
 
-                    FileLogger.i(TAG, "Enqueuing UploadWorker:" +
-                            "\n  patientId=$patientId" +
-                            "\n  folderName=$folderName" +
-                            "\n  fileName=${pdfFile.name}" +
-                            "\n  fileSize=${pdfFile.length()} bytes" +
-                            "\n  idempotencyKey=$idempotencyKey" +
-                            "\n  ownerHospitalId=${ownerHospitalId.take(8)}…")
+                val rowId = docRepository.insertQueuedRow(document)
+                FileLogger.i(TAG, "Inserted queued row with id=$rowId, status=$initialStatus")
 
-                    androidx.work.WorkManager.getInstance(applicationContext)
-                        .enqueueUniqueWork(
-                            "upload_${idempotencyKey}",
-                            androidx.work.ExistingWorkPolicy.KEEP,
-                            request
-                        )
-
-                    FileLogger.i(TAG, "UploadWorker enqueued successfully — finishing UploadActivity")
-
-                    binding.progressBar.visibility = View.GONE
-                    binding.btnUpload.isEnabled = true
-                    binding.tvUploadProgress.visibility = View.GONE
-                    Toast.makeText(
-                        this@UploadActivity,
-                        getString(R.string.upload_in_progress_toast),
-                        Toast.LENGTH_LONG
-                    ).show()
-                    finish()
-                } else {
-                    // Offline - save PDF locally with its key + owner tag
-                    val ownerHospitalId = tokenManager.getHospitalId() ?: ""
-                    FileLogger.i(TAG, "OFFLINE SAVE:" +
-                            "\n  patientId=$patientId" +
-                            "\n  folderName=$folderName" +
-                            "\n  fileName=${pdfFile.name}" +
-                            "\n  fileSize=${pdfFile.length()} bytes" +
-                            "\n  idempotencyKey=$idempotencyKey")
-                    docRepository.saveOffline(patientId, folderName, android.net.Uri.fromFile(pdfFile).toString(), ownerHospitalId, idempotencyKey)
-
+                withContext(Dispatchers.Main) {
                     binding.progressBar.visibility = View.GONE
                     binding.btnUpload.isEnabled = true
                     binding.tvUploadProgress.visibility = View.GONE
 
-                    Toast.makeText(this@UploadActivity, "Saved offline. Will sync when connected.", Toast.LENGTH_LONG).show()
-                    finish()
+                    if (isTooLarge) {
+                        Toast.makeText(
+                            this@UploadActivity,
+                            "File is ${fileSizeMb}MB. Max upload is 20MB. Saved offline as Failed.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        finish()
+                        return@withContext
+                    }
+
+                    if (isOnline) {
+                        val constraints = androidx.work.Constraints.Builder()
+                            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                            .build()
+                        val inputData = androidx.work.Data.Builder()
+                            .putLong("offline_doc_id", rowId)
+                            .putString(com.hospital.management.worker.UploadWorker.KEY_PATIENT_ID, patientId)
+                            .putString(com.hospital.management.worker.UploadWorker.KEY_FOLDER_NAME, folderName)
+                            .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_URI, android.net.Uri.fromFile(durableFile).toString())
+                            .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_NAME, pdfFileName)
+                            .putString(com.hospital.management.worker.UploadWorker.KEY_IDEMPOTENCY_KEY, idempotencyKey)
+                            .putInt(com.hospital.management.worker.UploadWorker.KEY_UPLOAD_PROFILE_USED, uploadProfileUsed)
+                            .putString(com.hospital.management.worker.UploadWorker.KEY_OWNER_HOSPITAL_ID, ownerHospitalId)
+                            .build()
+                        val request = androidx.work.OneTimeWorkRequestBuilder<com.hospital.management.worker.UploadWorker>()
+                            .setInputData(inputData)
+                            .setConstraints(constraints)
+                            .addTag(com.hospital.management.worker.UploadWorker.TAG_UPLOAD)
+                            .build()
+
+                        androidx.work.WorkManager.getInstance(applicationContext)
+                            .enqueueUniqueWork(
+                                "upload_${idempotencyKey}",
+                                androidx.work.ExistingWorkPolicy.KEEP,
+                                request
+                            )
+
+                        Toast.makeText(
+                            this@UploadActivity,
+                            getString(R.string.upload_in_progress_toast),
+                            Toast.LENGTH_LONG
+                        ).show()
+                        finish()
+                    } else {
+                        Toast.makeText(this@UploadActivity, "Saved offline. Will sync when connected.", Toast.LENGTH_LONG).show()
+                        finish()
+                    }
                 }
             } catch (e: Exception) {
                 FileLogger.e(TAG, "═══ UPLOAD ERROR ═══" +

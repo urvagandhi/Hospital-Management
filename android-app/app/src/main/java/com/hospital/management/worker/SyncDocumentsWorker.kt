@@ -109,172 +109,68 @@ class SyncDocumentsWorker(
                 // so they're retried rather than silently skipped
                 documentDao.resetStuckUploading()
 
-                val pendingDocs = repository.getPendingDocuments()
-                if (pendingDocs.isEmpty()) {
-                    FileLogger.d(TAG, "No pending documents to sync")
+                // ── Phase 4: Sync worker adopts the eligible docs query ──
+                val eligibleDocs = documentDao.getEligibleForAutoSync(currentHospitalId)
+                if (eligibleDocs.isEmpty()) {
+                    FileLogger.d(TAG, "No eligible documents to sync")
                     UploadNotifier.cancel(context, notificationId)
                     return@withContext Result.success()
                 }
 
-                FileLogger.d(TAG, "Starting sync for ${pendingDocs.size} pending documents")
-                var successCount = 0
-                var retryableFailureCount = 0
-                val totalFiles = pendingDocs.size
+                FileLogger.d(TAG, "Starting sync for ${eligibleDocs.size} eligible documents")
 
-                for ((index, doc) in pendingDocs.withIndex()) {
+                // ── Phase 4: Loop and enqueue UploadWorker for each ──
+                val workManager = androidx.work.WorkManager.getInstance(context)
+                val constraints = androidx.work.Constraints.Builder()
+                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                    .build()
+
+                for (doc in eligibleDocs) {
                     if (isStopped) break
 
-                    // No retry cap — every queued doc must eventually upload.
-                    // WorkManager exponential backoff (~30s → 5min cap) plus
-                    // network-availability + app-open triggers in
-                    // HospitalApplication mean we won't burn battery
-                    // hammering. retryCount is still tracked for diagnostics
-                    // but no longer gates execution.
-
-                    try {
-                        repository.updateStatus(doc, SyncStatus.UPLOADING)
-
-                        val uri = Uri.parse(doc.fileUri)
-                        val file = getFileFromUri(context, uri)
-
-                        if (file != null && file.exists()) {
-                           // Legacy rows (pre-migration) have no key — backfill one so subsequent
-                           // retries within this run dedupe against each other via the header.
-                           val key = doc.idempotencyKey.ifEmpty { repository.newIdempotencyKey() }
-                           if (key != doc.idempotencyKey) {
-                               documentDao.update(doc.copy(idempotencyKey = key))
-                           }
-
-                           // Per-file progress: emit a PREPARING tick so the
-                           // notification updates the "File N of M" prefix
-                           // before bytes start flowing.
-                           val displayName = file.name.takeIf { it.isNotBlank() } ?: "document"
-                           val totalBytes = file.length().coerceAtLeast(0L)
-                           emit(UploadProgress(
-                               stage = UploadStage.UPLOADING,
-                               bytesUploaded = 0L,
-                               totalBytes = totalBytes,
-                               fileName = displayName,
-                               currentFileIndex = index + 1,
-                               totalFiles = totalFiles
-                           ), force = true)
-
-                           // Speed window — per-file. Captured by the byte
-                           // callback, which fires on each okio buffer flush.
-                           var windowStartMs = System.currentTimeMillis()
-                           var windowStartBytes = 0L
-                           var lastSpeed = 0L
-
-                           val result = repository.uploadDocument(
-                               doc.patientId,
-                               doc.folderName,
-                               file,
-                               key,
-                               doc.uploadProfileUsed
-                           ) { uploaded, total ->
-                               if (isStopped) return@uploadDocument
-                               val now = System.currentTimeMillis()
-                               val elapsed = now - windowStartMs
-                               if (elapsed >= SPEED_WINDOW_MS) {
-                                   val delta = uploaded - windowStartBytes
-                                   lastSpeed = (delta * 1000L / elapsed).coerceAtLeast(0)
-                                   windowStartMs = now
-                                   windowStartBytes = uploaded
-                               }
-                               emitBlocking(UploadProgress(
-                                   stage = UploadStage.UPLOADING,
-                                   bytesUploaded = uploaded,
-                                   totalBytes = if (total > 0) total else totalBytes,
-                                   speedBytesPerSec = lastSpeed,
-                                   fileName = displayName,
-                                   currentFileIndex = index + 1,
-                                   totalFiles = totalFiles
-                               ))
-                           }
-
-                           if (result.isSuccess) {
-                               FileLogger.d(TAG, "Successfully uploaded document")
-
-                               // Delete from database FIRST, then local file.
-                               // If we crash between these two lines, the orphaned
-                               // local file is harmless; the reverse (file deleted,
-                               // DB entry alive) causes the stuck-pending bug.
-                               repository.deleteDocument(doc)
-                               deleteLocalFile(uri)
-
-                               successCount++
-                           } else {
-                               FileLogger.e(TAG, "Upload failed for document: ${result.message}")
-                               // Always reset to PENDING so future sync runs (auto on
-                               // network restore, manual on app open) pick this doc up
-                               // again — the user explicitly wants every queued file
-                               // to upload eventually, no matter how many retries it
-                               // takes. retryCount is still incremented for diagnostics.
-                               val updatedDoc = doc.copy(
-                                   status = SyncStatus.PENDING,
-                                   retryCount = doc.retryCount + 1,
-                                   errorMessage = result.message?.take(200) ?: "Upload returned error"
-                               )
-                               documentDao.update(updatedDoc)
-                               // Count both retryable and non-retryable failures the same way:
-                               // we want WorkManager to keep retrying with backoff.
-                               retryableFailureCount++
-                           }
-                        } else {
-                            // File not found locally — likely already uploaded by a
-                            // previously cancelled worker. Remove the orphaned DB entry.
-                            FileLogger.w(TAG, "File not found locally (already synced?), removing orphaned entry: ${doc.fileUri}")
-                            repository.deleteDocument(doc)
-                            successCount++ // Don't count as failure
-                        }
-                    } catch (e: Exception) {
-                        FileLogger.e(TAG, "Error syncing document", e)
-                        // Same as the result-not-success branch: keep PENDING so
-                        // the next sync run picks it up again. Never permanently
-                        // abandon a queued doc.
-                        val updatedDoc = doc.copy(
-                            status = SyncStatus.PENDING,
-                            retryCount = doc.retryCount + 1,
-                            errorMessage = e.message?.take(200)
-                        )
-                        documentDao.update(updatedDoc)
-                        retryableFailureCount++
+                    val idempotencyKey = doc.idempotencyKey.ifEmpty { repository.newIdempotencyKey() }
+                    if (idempotencyKey != doc.idempotencyKey) {
+                        documentDao.update(doc.copy(idempotencyKey = idempotencyKey))
                     }
-                }
 
-                FileLogger.d(TAG, "Sync completed: $successCount/${pendingDocs.size} successful")
+                    // Pass necessary data to UploadWorker
+                    val inputData = androidx.work.Data.Builder()
+                        .putLong(com.hospital.management.worker.UploadWorker.KEY_OFFLINE_DOC_ID, doc.id)
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_PATIENT_ID, doc.patientId)
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_FOLDER_NAME, doc.folderName)
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_URI, doc.fileUri)
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_NAME, android.net.Uri.parse(doc.fileUri).lastPathSegment ?: "document.pdf")
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_IDEMPOTENCY_KEY, idempotencyKey)
+                        .putInt(com.hospital.management.worker.UploadWorker.KEY_UPLOAD_PROFILE_USED, doc.uploadProfileUsed)
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_OWNER_HOSPITAL_ID, currentHospitalId)
+                        .build()
 
-                // Always cancel the foreground/progress notification — the
-                // terminal-state notification is posted under completionId so
-                // it survives WorkManager's stopForeground(STOP_FOREGROUND_REMOVE).
-                UploadNotifier.cancel(context, notificationId)
-                if (successCount > 0) {
-                    UploadNotifier.post(
-                        context,
-                        completionId,
-                        UploadNotifier.buildCompleted(
-                            context,
-                            completionId,
-                            fileCount = successCount
+                    val request = androidx.work.OneTimeWorkRequestBuilder<com.hospital.management.worker.UploadWorker>()
+                        .setInputData(inputData)
+                        .setConstraints(constraints)
+                        .addTag(com.hospital.management.worker.UploadWorker.TAG_UPLOAD)
+                        .setBackoffCriteria(
+                            androidx.work.BackoffPolicy.EXPONENTIAL,
+                            30,
+                            java.util.concurrent.TimeUnit.SECONDS
                         )
+                        .build()
+
+                    // KEEP policy ensures deduplication (Phase 4.2)
+                    workManager.enqueueUniqueWork(
+                        "upload_$idempotencyKey",
+                        androidx.work.ExistingWorkPolicy.KEEP,
+                        request
                     )
+                    FileLogger.i(TAG, "Enqueued UploadWorker for eligible doc: idempotencyKey=$idempotencyKey")
                 }
 
-                if (successCount == pendingDocs.size) {
-                    // Everything cleared — let WorkManager mark this run done.
-                    Result.success()
-                } else {
-                    // Anything still pending (failed this round) → ask
-                    // WorkManager to retry with exponential backoff. Network
-                    // callback in HospitalApplication will also re-enqueue
-                    // when connectivity returns. The combination guarantees
-                    // every queued doc keeps trying until it lands.
-                    Result.retry()
-                }
+                UploadNotifier.cancel(context, notificationId)
+                return@withContext Result.success()
             } catch (e: Exception) {
                 FileLogger.e(TAG, "Sync worker failed", e)
                 UploadNotifier.cancel(context, notificationId)
-                Result.failure()
+                return@withContext Result.failure()
             }
         }
     }
@@ -327,54 +223,5 @@ class SyncDocumentsWorker(
         else -> null
     }
 
-    private fun deleteLocalFile(uri: Uri) {
-        try {
-            if (uri.scheme == "file") {
-                val file = File(uri.path!!)
-                if (file.exists()) {
-                    val deleted = file.delete()
-                    FileLogger.d(TAG, "Local file deleted: $deleted - ${uri.path}")
-                }
-            }
-            // For content:// URIs from app's private storage
-            val path = uri.path
-            if (path != null && path.contains(applicationContext.filesDir.path)) {
-                val file = File(path)
-                if (file.exists()) {
-                    val deleted = file.delete()
-                    FileLogger.d(TAG, "Private file deleted: $deleted - $path")
-                }
-            }
-        } catch (e: Exception) {
-            FileLogger.e(TAG, "Error deleting local file: ${uri.path}", e)
-        }
-    }
-
-    private fun getFileFromUri(context: Context, uri: Uri): File? {
-        try {
-            if (uri.scheme == "file") {
-                return File(uri.path!!)
-            } else if (uri.scheme == "content") {
-                val mimeType = context.contentResolver.getType(uri) ?: "application/pdf"
-                val extension = when (mimeType) {
-                    "application/pdf" -> "pdf"
-                    "image/jpeg", "image/jpg" -> "jpg"
-                    "image/png" -> "png"
-                    else -> "pdf"
-                }
-                val fileName = "temp_upload_${System.currentTimeMillis()}.$extension"
-                val file = File(context.cacheDir, fileName)
-
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    FileOutputStream(file).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                return file
-            }
-        } catch (e: Exception) {
-            FileLogger.e(TAG, "Error getting file from URI: $uri", e)
-        }
-        return null
-    }
+    // ─── Unused legacy functions removed ───
 }

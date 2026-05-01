@@ -96,7 +96,7 @@ object PdfUtils {
                     working = trimWhiteBorders(working!!)
                     val normalized = normalizeForPdf(working, p, grayscale)
                     if (normalized !== working) {
-                        working?.recycle()
+                        working.recycle()
                     }
                     normalized
                 } catch (_: Exception) {

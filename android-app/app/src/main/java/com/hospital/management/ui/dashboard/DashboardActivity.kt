@@ -124,7 +124,9 @@ class DashboardActivity : BaseActivity() {
     private fun observePendingBadge() {
         val db = AppDatabase.getDatabase(this)
         lifecycleScope.launch {
-            db.documentDao().observePendingCount().collect { count ->
+            val hospitalId = tokenManager.getHospitalId() ?: ""
+            db.documentDao().observeHospitalQueue(hospitalId).collect { docs ->
+                val count = docs.size
                 val badge = syncBadge ?: BadgeDrawable.create(this@DashboardActivity).also { syncBadge = it }
                 if (count > 0) {
                     badge.number = count
@@ -144,7 +146,10 @@ class DashboardActivity : BaseActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_logout -> { showLogoutDialog(); true }
-            R.id.action_sync -> { startSync(); true }
+            R.id.action_sync -> {
+                startActivity(Intent(this, com.hospital.management.ui.folders.QueueActivity::class.java))
+                true
+            }
             R.id.action_profile -> {
                 startActivity(Intent(this, com.hospital.management.ui.profile.ProfileActivity::class.java))
                 true

@@ -14,12 +14,15 @@ import com.hospital.management.data.models.FileItem
 class FileAdapter(
     private val files: List<FileItem>,
     private val onFileClick: (FileItem) -> Unit,
-    private val onOptionClick: (View, FileItem) -> Unit
+    private val onOptionClick: (View, FileItem) -> Unit,
+    private val onRetryClick: ((FileItem) -> Unit)? = null
 ) : RecyclerView.Adapter<FileAdapter.FileViewHolder>() {
 
     inner class FileViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvFileName: TextView = itemView.findViewById(R.id.tvFileName)
         private val tvFileSize: TextView = itemView.findViewById(R.id.tvFileSize)
+        private val tvErrorMessage: TextView = itemView.findViewById(R.id.tvErrorMessage)
+        private val btnRetry: android.widget.Button = itemView.findViewById(R.id.btnRetry)
         private val btnMore: android.widget.ImageButton = itemView.findViewById(R.id.btnMore)
         private val ivThumbnail: ImageView? = itemView.findViewById(R.id.ivThumbnail)
         private val ivFileIcon: ImageView? = itemView.findViewById(R.id.ivFileIcon)
@@ -39,6 +42,18 @@ class FileAdapter(
             } else {
                 ivThumbnail?.visibility = View.GONE
                 ivFileIcon?.visibility = View.VISIBLE
+            }
+
+            if (file.syncStatus == "FAILED") {
+                tvErrorMessage.visibility = View.VISIBLE
+                tvErrorMessage.text = file.errorMessage ?: "Upload failed"
+                btnRetry.visibility = View.VISIBLE
+                btnRetry.setOnClickListener { onRetryClick?.invoke(file) }
+                tvFileSize.visibility = View.GONE
+            } else {
+                tvErrorMessage.visibility = View.GONE
+                btnRetry.visibility = View.GONE
+                tvFileSize.visibility = View.VISIBLE
             }
 
             itemView.setOnClickListener {

@@ -45,6 +45,7 @@ object UploadNotifier {
 
     const val EXTRA_WORK_ID = "work_id"
     const val EXTRA_NOTIFICATION_ID = "notif_id"
+    const val EXTRA_IDEMPOTENCY_KEY = "idempotency_key"
 
     // ────────────────────────────────────────────────────────────────────────
     // Public API — notification IDs + builders
@@ -227,7 +228,9 @@ object UploadNotifier {
                 .setProgress(0, 0, true)
                 .addAction(cancelAction(context, notificationId, workId))
         } else {
-            builder.setContentText(context.getString(R.string.upload_failed_text))
+            // Phase 7: "saved offline" terminal copy — tells user file is safe and can be
+            // managed from the queue screen instead of implying total failure.
+            builder.setContentText(context.getString(R.string.upload_failed_saved_offline))
                 .setSubText(progress.fileName)
                 .setContentIntent(openAppPendingIntent(context, notificationId))
         }
@@ -253,13 +256,15 @@ object UploadNotifier {
     fun cancelAction(
         context: Context,
         notificationId: Int,
-        workId: UUID
+        workId: UUID,
+        idempotencyKey: String? = null
     ): NotificationCompat.Action {
         val intent = Intent(context, UploadActionReceiver::class.java).apply {
             action = ACTION_CANCEL
             setPackage(context.packageName)
             putExtra(EXTRA_WORK_ID, workId.toString())
             putExtra(EXTRA_NOTIFICATION_ID, notificationId)
+            if (!idempotencyKey.isNullOrEmpty()) putExtra(EXTRA_IDEMPOTENCY_KEY, idempotencyKey)
         }
         val pi = PendingIntent.getBroadcast(
             context, notificationId, intent,

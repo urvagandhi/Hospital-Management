@@ -70,6 +70,28 @@
                 android:fontFamily="@font/inter"
                 android:textColor="@color/color_on_surface_muted"
                 android:layout_marginTop="2dp" />
+
+            <TextView
+                android:id="@+id/tvErrorMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:fontFamily="@font/inter"
+                android:textColor="@color/error"
+                android:visibility="gone"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btnRetry"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Retry"
+                android:textColor="@color/brand_primary"
+                android:visibility="gone"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:layout_marginTop="4dp" />
         </LinearLayout>
 
         <ImageButton

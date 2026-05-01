@@ -20,14 +20,11 @@ from app.cloudinary_client import (
     generate_delivery_url,
     upload_merged,
 )
-from app.compression.classifier import PdfType, classify_for_processing
+from app.compression.classifier import PdfType
+from app.pipeline import pipeline
+from app.compression.adaptive_loop import CompressionResult
+from app.compression.tier_ladder import SizeFloorBreached
 from app.compression.hasher import compute_content_hash
-from app.compression.tier_ladder import (
-    CompressionResult,
-    SizeFloorBreached,
-    compress_digital_pdf,
-    run_tier_ladder,
-)
 from app.compression.cover_page import generate_cover_page
 from app.merged_cache import (
     get_meta as get_cache_meta,
@@ -212,24 +209,8 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                         },
                     )
 
-                # Classify + compress
-                pdf_type = classify_for_processing(local_paths)
-                result: CompressionResult
-
-                if pdf_type == PdfType.DIGITAL:
-                    compressed = await compress_digital_pdf(
-                        merged_path, job_dir, job_id
-                    )
-                    output_size = compressed.stat().st_size
-                    result = CompressionResult(
-                        output_path=compressed,
-                        tier_used=0,
-                        output_size_bytes=output_size,
-                    )
-                else:
-                    result = await run_tier_ladder(
-                        merged_path, target_bytes, job_dir, job_id
-                    )
+                # Use the new adaptive pipeline
+                result = await pipeline.run(merged_path, target_bytes, job_id)
 
                 # Upload
                 loop = asyncio.get_running_loop()

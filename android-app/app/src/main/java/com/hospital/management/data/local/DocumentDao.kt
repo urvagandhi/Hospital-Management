@@ -66,4 +66,29 @@ interface DocumentDao {
 
     @Query("SELECT * FROM offline_documents WHERE owner_hospital_id = :hospitalId AND status IN ('PENDING', 'FAILED') ORDER BY timestamp ASC")
     suspend fun getPendingForHospital(hospitalId: String): List<OfflineDocument>
+
+    // ── Phase 1 additions for Durable Queue ────────────────────────────
+
+    // Patient-scoped flow
+    @Query("SELECT * FROM offline_documents WHERE patientId = :patientId AND owner_hospital_id = :hospitalId AND status != 'COMPLETED' ORDER BY timestamp DESC")
+    fun observePatientQueue(patientId: String, hospitalId: String): Flow<List<OfflineDocument>>
+
+    // Folder-scoped flow
+    @Query("SELECT * FROM offline_documents WHERE patientId = :patientId AND folderName = :folderName AND owner_hospital_id = :hospitalId AND status != 'COMPLETED' ORDER BY timestamp DESC")
+    fun observeFolderQueue(patientId: String, folderName: String, hospitalId: String): Flow<List<OfflineDocument>>
+
+    // Hospital queue flow
+    @Query("SELECT * FROM offline_documents WHERE owner_hospital_id = :hospitalId AND status != 'COMPLETED' ORDER BY timestamp DESC")
+    fun observeHospitalQueue(hospitalId: String): Flow<List<OfflineDocument>>
+
+    // Auto-sync eligibility query
+    @Query("SELECT * FROM offline_documents WHERE owner_hospital_id = :hospitalId AND (status = 'PENDING' OR (status = 'FAILED' AND errorMessage LIKE 'NETWORK:%')) ORDER BY timestamp ASC")
+    suspend fun getEligibleForAutoSync(hospitalId: String): List<OfflineDocument>
+
+    // Document by idempotency key
+    @Query("SELECT * FROM offline_documents WHERE idempotencyKey = :idempotencyKey LIMIT 1")
+    suspend fun getDocumentByIdempotencyKey(idempotencyKey: String): OfflineDocument?
+
+    @Query("SELECT EXISTS(SELECT 1 FROM offline_documents WHERE fileUri = :fileUri)")
+    suspend fun existsByFileUri(fileUri: String): Boolean
 }
