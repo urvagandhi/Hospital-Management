@@ -37,5 +37,5 @@ USER appuser
 
 EXPOSE 8000
 
-# Exec form CMD for faster startup and proper signal handling
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log"]
+# Use shell form with exec to respect $PORT while maintaining fast startup and signal handling
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log
