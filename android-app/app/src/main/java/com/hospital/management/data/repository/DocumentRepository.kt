@@ -201,13 +201,19 @@ class DocumentRepository(
                 val secureUrl = secureUrlMatch?.groupValues?.get(1)
                     ?.replace("\\/", "/")  // Cloudinary sometimes escapes slashes
 
+                // Parse public_id from Cloudinary's JSON response because Cloudinary 
+                // appends the file extension to raw uploads
+                val publicIdMatch = Regex("\"public_id\"\\s*:\\s*\"([^\"]+)\"").find(responseBodyStr)
+                val actualPublicId = publicIdMatch?.groupValues?.get(1)
+                    ?.replace("\\/", "/") ?: publicId
+
                 if (secureUrl == null) {
                     FileLogger.e(TAG, "Step 2/3 — secure_url not found in Cloudinary response: ${responseBodyStr.take(500)}")
                     return UploadAttempt(false, statusCode = response.code, message = "Cloudinary response missing secure_url", retryable = true)
                 }
 
-                FileLogger.d(TAG, "Extracted secure_url=$secureUrl")
-                mapOf("secureUrl" to secureUrl, "publicId" to publicId)
+                FileLogger.d(TAG, "Extracted secure_url=$secureUrl, actualPublicId=$actualPublicId")
+                mapOf("secureUrl" to secureUrl, "publicId" to actualPublicId)
             } else {
                 val errorBody = response.body?.string()?.take(500) ?: ""
                 FileLogger.e(TAG, "Step 2/3 FAILED — Cloudinary rejected the upload:" +
