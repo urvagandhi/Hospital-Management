@@ -22,8 +22,7 @@ from app.cloudinary_client import (
 )
 from app.compression.classifier import PdfType
 from app.pipeline import pipeline
-from app.compression.adaptive_loop import CompressionResult
-from app.compression.tier_ladder import SizeFloorBreached
+from app.compression.adaptive_loop import CompressionResult, SizeFloorBreached
 from app.compression.hasher import compute_content_hash
 from app.compression.cover_page import generate_cover_page
 from app.merged_cache import (
