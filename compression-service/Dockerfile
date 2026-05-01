@@ -1,5 +1,10 @@
 FROM python:3.11-slim
 
+# Prevent Python from writing .pyc files and enable unbuffered logging
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONOPTIMIZE=1
+
 # System deps for Ghostscript + PDF processing
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -10,21 +15,27 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Non-root user
+# Non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
 
 WORKDIR /app
 
+# Copy requirements first to leverage Docker layer caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy application code
 COPY app/ ./app/
 
-# /tmp writable for job temp files
+# Pre-compile Python bytecode for faster startup
+RUN python -m compileall app/
+
+# Ensure /tmp/jobs is writable for job temp files
 RUN mkdir -p /tmp/jobs && chown -R appuser:appuser /app /tmp/jobs
 
 USER appuser
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Exec form CMD for faster startup and proper signal handling
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log"]
