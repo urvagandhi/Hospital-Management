@@ -1,3 +1,4 @@
+import asyncio
 import gc
 import logging
 import psutil
@@ -97,14 +98,25 @@ async def run_adaptive_compression_loop(
             tier_dir.mkdir(parents=True, exist_ok=True)
             
             try:
-                # 2. Preprocess (images)
-                image_paths = preprocess_scanned_pdf(input_path, tier, tier_dir, job_id)
+                loop = asyncio.get_running_loop()
+
+                # 2. Preprocess (images) - Run in executor to avoid blocking event loop
+                image_paths = await loop.run_in_executor(
+                    None,
+                    preprocess_scanned_pdf,
+                    input_path, tier, tier_dir, job_id
+                )
+                
                 if not image_paths:
                     continue
                     
-                # 3. Rebuild (clean PDF)
+                # 3. Rebuild (clean PDF) - Run in executor to avoid blocking event loop
                 rebuilt_pdf = tier_dir / "rebuilt.pdf"
-                rebuild_pdf_from_images(image_paths, rebuilt_pdf)
+                await loop.run_in_executor(
+                    None,
+                    rebuild_pdf_from_images,
+                    image_paths, rebuilt_pdf
+                )
                 
                 # Fast path: Check if rebuild alone hit target
                 current_size = rebuilt_pdf.stat().st_size

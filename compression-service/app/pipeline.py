@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import shutil
 import uuid
@@ -37,25 +38,33 @@ class CompressionPipeline:
         work_dir.mkdir(parents=True, exist_ok=True)
         
         try:
+            loop = asyncio.get_running_loop()
+            
             # 1. Merge if necessary (if passed a list)
             if isinstance(pdf_paths, list):
                 if len(pdf_paths) > 1:
                     merged_path = work_dir / "merged_source.pdf"
-                    self._merge_pdfs(pdf_paths, merged_path)
+                    # Small merge tasks are usually okay, but we'll stick to async pattern
+                    await loop.run_in_executor(None, self._merge_pdfs, pdf_paths, merged_path)
                     source_pdf = merged_path
                 else:
                     source_pdf = pdf_paths[0]
             else:
                 source_pdf = pdf_paths
 
-            # 2. Classify
-            pdf_type = classify_pdf(source_pdf)
+            # 2. Classify - Run in executor to avoid blocking
+            pdf_type = await loop.run_in_executor(None, classify_pdf, source_pdf)
             logger.info(f"PDF classified as {pdf_type.value}", extra={"job_id": job_id})
 
             # 3. Route
             if pdf_type == PdfType.DIGITAL:
                 output_path = work_dir / "compressed_final.pdf"
-                final_path = compress_digital_pdf_enhanced(source_pdf, output_path, job_id)
+                # Digital compression is CPU-bound
+                final_path = await loop.run_in_executor(
+                    None, 
+                    compress_digital_pdf_enhanced, 
+                    source_pdf, output_path, job_id
+                )
                 return CompressionResult(
                     output_path=final_path,
                     tier_used=0,
