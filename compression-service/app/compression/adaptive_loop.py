@@ -11,6 +11,7 @@ from app.compression.preprocessor import preprocess_scanned_pdf
 from app.compression.rebuilder import rebuild_pdf_from_images
 from app.compression.ghostscript import run_ghostscript_explicit
 from app.compression.classifier import PdfType
+from app.cpu_executor import get_cpu_pool
 from dataclasses import dataclass
 
 @dataclass
@@ -99,21 +100,23 @@ async def run_adaptive_compression_loop(
             
             try:
                 loop = asyncio.get_running_loop()
+                cpu_pool = get_cpu_pool()
 
-                # 2. Preprocess (images) - Run in executor to avoid blocking event loop
+                # 2. Preprocess (images) — off-process so PIL/pdfimages CPU
+                # does not starve the asyncio event loop on Render.
                 image_paths = await loop.run_in_executor(
-                    None,
+                    cpu_pool,
                     preprocess_scanned_pdf,
                     input_path, tier, tier_dir, job_id
                 )
-                
+
                 if not image_paths:
                     continue
-                    
-                # 3. Rebuild (clean PDF) - Run in executor to avoid blocking event loop
+
+                # 3. Rebuild (clean PDF) — off-process for the same reason.
                 rebuilt_pdf = tier_dir / "rebuilt.pdf"
                 await loop.run_in_executor(
-                    None,
+                    cpu_pool,
                     rebuild_pdf_from_images,
                     image_paths, rebuilt_pdf
                 )

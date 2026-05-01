@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.config import config
+from app.cpu_executor import get_cpu_pool, shutdown_cpu_pool
 from app.logging_config import setup_logging
 from app.endpoints.health import router as health_router
 from app.endpoints.folder import router as folder_router
@@ -39,6 +40,12 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
 
     print(f"[Database] \u2713 MongoDB connected successfully")
     print(f"[Database] Database: {db.name}")
+
+    # Warm the CPU process pool BEFORE accepting traffic \u2014 first
+    # spawn() takes ~300ms which we don't want on the critical path of
+    # the first compression job.
+    get_cpu_pool()
+
     print(f"""
 \u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557
 \u2551   HospitALL Compression Service      \u2551
@@ -49,8 +56,9 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
 """)
     logger.info("Compression service started", extra={"event": "startup"})
     yield
-    # Shutdown: close Mongo
+    # Shutdown: close Mongo + CPU pool
     client.close()
+    shutdown_cpu_pool()
     logger.info("Compression service stopped", extra={"event": "shutdown"})
 
 
