@@ -1,5 +1,6 @@
 import logging
 import subprocess
+import time
 from pathlib import Path
 from PIL import Image
 import pikepdf
@@ -66,8 +67,13 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path) -> list[Pa
     # Collect and sort extracted files (img-000.jpg, img-001.png, etc)
     extracted_files = sorted(extract_dir.glob("img-*"))
     if not extracted_files:
-        logger.warning(f"No images extracted from {pdf_path}")
+        logger.warning(f"No images extracted from {pdf_path}", extra={"job_id": job_id})
         return []
+
+    logger.info(
+        f"Extracted {len(extracted_files)} images from {pdf_path}",
+        extra={"job_id": job_id, "image_count": len(extracted_files)}
+    )
 
     # Get page dimensions for DPI estimation
     page_dims = get_page_dimensions(pdf_path)
@@ -79,6 +85,7 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path) -> list[Pa
     # We'll process each extracted image.
     for i, img_path in enumerate(extracted_files):
         try:
+            start_time = time.time()
             with Image.open(img_path) as img:
                 # Estimate current DPI
                 # Use the first page dim as a proxy if we have many images
@@ -112,8 +119,12 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path) -> list[Pa
                 )
                 processed_files.append(out_path)
                 
+            elapsed = (time.time() - start_time) * 1000
+            if i % 10 == 0: # Log every 10 images to avoid log flooding
+                logger.debug(f"Processed image {i} in {elapsed:.0f}ms", extra={"job_id": job_id})
+                
         except Exception as e:
-            logger.warning(f"Failed to process image {img_path}: {e}")
+            logger.warning(f"Failed to process image {img_path}: {e}", extra={"job_id": job_id})
             continue
             
     return processed_files

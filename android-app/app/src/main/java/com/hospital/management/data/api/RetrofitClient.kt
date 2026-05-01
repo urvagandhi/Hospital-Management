@@ -67,8 +67,8 @@ object RetrofitClient {
             // slow network. connectTimeout stays short — TCP handshake should
             // never need that long.
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(300, TimeUnit.SECONDS)
-            .writeTimeout(300, TimeUnit.SECONDS)
+            .readTimeout(600, TimeUnit.SECONDS)
+            .writeTimeout(600, TimeUnit.SECONDS)
             .callTimeout(0, TimeUnit.SECONDS) // 0 = no overall call cap; per-stage timeouts above are the limits
 
         // Network-level logging interceptor that writes every request/response
