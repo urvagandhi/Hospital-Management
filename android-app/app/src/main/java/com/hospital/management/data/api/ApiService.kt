@@ -188,16 +188,16 @@ interface ApiService {
     suspend fun getSignedUploadParams(
         @Path("patientId") patientId: String,
         @Path("folderName") folderName: String,
-        @Body body: Map<String, String>
-    ): Response<Map<String, Any>>
+        @Body body: SignUploadRequest
+    ): Response<SignUploadResponse>
 
     @POST("/api/patients/{patientId}/files/{folderName}/confirm")
     suspend fun confirmDirectUpload(
         @Path("patientId") patientId: String,
         @Path("folderName") folderName: String,
-        @Body body: Map<String, Any>,
+        @Body body: ConfirmDirectUploadRequest,
         @Header("Idempotency-Key") idempotencyKey: String
-    ): Response<Map<String, Any>>
+    ): Response<DirectUploadConfirmResponse>
 
     @PATCH("/api/patients/{patientId}/files/{folderName}/{fileId}/rename")
     suspend fun renameFile(

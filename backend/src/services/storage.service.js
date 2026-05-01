@@ -258,12 +258,14 @@ async function listCloudinaryResources(prefix, resourceType = 'raw') {
 function generateSignedUploadParams(hospitalId, patientMongoId, folderName, originalFileName) {
   const publicId = buildCloudinaryPublicId(hospitalId, patientMongoId, folderName);
   const timestamp = Math.floor(Date.now() / 1000);
+  const uploadType = SIGNED_UPLOADS_ENABLED ? 'authenticated' : 'upload';
 
   // Parameters that Cloudinary uses in signature generation.
   // The order and set of keys MUST match what the client sends.
   const paramsToSign = {
     public_id: publicId,
     timestamp,
+    type: uploadType,
   };
 
   // cloudinary.utils.api_sign_request signs the params with the api_secret.
@@ -275,6 +277,7 @@ function generateSignedUploadParams(hospitalId, patientMongoId, folderName, orig
     signature,
     timestamp,
     publicId,
+    type: uploadType,
     uploadUrl: `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload`,
   };
 }

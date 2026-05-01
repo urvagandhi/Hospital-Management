@@ -13,11 +13,12 @@ import * as patientService from "../services/patient.service.js";
 import * as pdfService from "../services/pdf.service.js";
 import { setUploadIdempotentResponse } from "../services/redis.service.js";
 import {
-  buildSignedUrl,
-  buildThumbnailUrl,
-  deleteFile as cloudinaryDeleteFile,
-  generateSignedUploadParams,
-  SIGNED_UPLOADS_ENABLED,
+    buildSignedUrl,
+    buildThumbnailUrl,
+    cloudinary,
+    deleteFile as cloudinaryDeleteFile,
+    generateSignedUploadParams,
+    SIGNED_UPLOADS_ENABLED,
 } from "../services/storage.service.js";
 import * as zipService from "../services/zip.service.js";
 import getClientIp from "../utils/clientIp.js";
@@ -446,6 +447,14 @@ export const confirmDirectUpload = async (req, res) => {
       });
     }
 
+    const expectedPrefix = `HospitALL/h_${hospitalId}/p_${patientId}/`;
+    if (!publicId.startsWith(expectedPrefix)) {
+      return res.status(400).json({
+        success: false,
+        message: "publicId does not belong to this patient",
+      });
+    }
+
     // Validate folder name
     if (!/^[a-zA-Z0-9_\-\.\s,()\/]+$/.test(folderName)) {
       return res.status(400).json({
@@ -454,16 +463,47 @@ export const confirmDirectUpload = async (req, res) => {
       });
     }
 
-    const isImage = (mimeType || "").startsWith("image/");
-    const resourceType = isImage ? "image" : "raw";
     const accessMode = SIGNED_UPLOADS_ENABLED ? "signed" : "public";
-    const thumbnailUrl = isImage
-      ? buildThumbnailUrl({ publicId, resourceType, accessMode })
-      : null;
+    const cloudinaryType = accessMode === "signed" ? "authenticated" : "upload";
+
+    let cloudinaryAsset;
+    try {
+      cloudinaryAsset = await cloudinary.api.resource(publicId, {
+        resource_type: "raw",
+        type: cloudinaryType,
+      });
+    } catch (error) {
+      const isMissingAsset = error?.http_code === 404 || error?.message?.includes("Not Found");
+      if (isMissingAsset) {
+        return res.status(404).json({
+          success: false,
+          message: "Cloudinary asset not found",
+        });
+      }
+      throw error;
+    }
+
+    const resourceType = "raw";
+    const thumbnailUrl = null;
+    const resolvedSecureUrl = cloudinaryAsset?.secure_url;
+
+    if (!resolvedSecureUrl) {
+      return res.status(500).json({
+        success: false,
+        message: "Cloudinary secure URL unavailable",
+      });
+    }
+
+    if (cloudinaryAsset?.resource_type && cloudinaryAsset.resource_type !== "raw") {
+      return res.status(400).json({
+        success: false,
+        message: "Cloudinary asset must be a raw resource",
+      });
+    }
 
     const patient = await patientService.addFileToFolder(hospitalId, patientId, folderName, {
       fileName: originalFileName || "document.pdf",
-      fileUrl: secureUrl,
+      fileUrl: resolvedSecureUrl,
       cloudinaryPublicId: publicId,
       thumbnailUrl,
       resourceType,

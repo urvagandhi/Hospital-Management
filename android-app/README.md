@@ -126,13 +126,13 @@ flowchart TD
 
 All bulk transfers run through foreground WorkManager workers — never inline on the UI thread.
 
-| Worker | Drives | Notes |
-|--------|--------|-------|
-| `DownloadWorker` | folder PDF, folder ZIP, patient PDF, patient ZIP | Accepts JSON request bodies for bulk merges. Resumes partial transfers via `RandomAccessFile`. `pollUntilReady(statusUrl)` polls the sidecar's status URL when a server-side merge is in progress. Inline-download plumbing was deleted in commit `8d8956f`. |
-| `UploadWorker` | online direct uploads | Foreground notification + byte-level progress via `ProgressRequestBody`. |
-| `SyncDocumentsWorker` | offline-queue drain | Promoted to foreground service in the same wave. Retry cap was removed (`df13d0f`) — every queued upload must eventually land. |
-| `FcmTokenWorker` | Push token re-register | |
-| `OfflineLogoutWorker` | Deferred logout when offline | |
+| Worker                | Drives                                           | Notes                                                                                                                                                                                                                                                        |
+| --------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DownloadWorker`      | folder PDF, folder ZIP, patient PDF, patient ZIP | Accepts JSON request bodies for bulk merges. Resumes partial transfers via `RandomAccessFile`. `pollUntilReady(statusUrl)` polls the sidecar's status URL when a server-side merge is in progress. Inline-download plumbing was deleted in commit `8d8956f`. |
+| `UploadWorker`        | online direct uploads                            | Foreground notification + byte-level progress via `ProgressRequestBody`.                                                                                                                                                                                     |
+| `SyncDocumentsWorker` | offline-queue drain                              | Promoted to foreground service in the same wave. Retry cap was removed (`df13d0f`) — every queued upload must eventually land.                                                                                                                               |
+| `FcmTokenWorker`      | Push token re-register                           |                                                                                                                                                                                                                                                              |
+| `OfflineLogoutWorker` | Deferred logout when offline                     |                                                                                                                                                                                                                                                              |
 
 The `WorkProgressBanner` ([ui/components/WorkProgressBanner.kt](app/src/main/java/com/hospital/management/ui/components/WorkProgressBanner.kt)) on Dashboard aggregates state from all in-flight workers. `NetworkMonitor` debounces ONLINE↔OFFLINE flips so scanner / background transitions don't flicker (`3573f1a`).
 
@@ -304,6 +304,7 @@ flowchart LR
 ```
 
 Configured in `network_security_config.xml`:
+
 - Pins SHA-256 hash of server certificate
 - Cleartext traffic disabled globally
 - Localhost exempted for development
@@ -313,16 +314,16 @@ Configured in `network_security_config.xml`:
 
 All sensitive data stored via `EncryptedSharedPreferences` (AES256-SIV key, AES256-GCM value, AES256-GCM master key).
 
-| Key | Description |
-|-----|-------------|
-| `access_token` | JWT access token |
-| `refresh_token` | JWT refresh token |
-| `temp_token` | Temporary token (Auth Code, password-change, forgot-password flows) |
-| `hospital_id` | Current hospital ID |
-| `hospital_name` | Display name |
-| `logo_url` | Hospital logo URL |
-| `session_timestamp` | Last interaction time |
-| `biometric_enrolled` | Biometric auth flag |
+| Key                  | Description                                                         |
+| -------------------- | ------------------------------------------------------------------- |
+| `access_token`       | JWT access token                                                    |
+| `refresh_token`      | JWT refresh token                                                   |
+| `temp_token`         | Temporary token (Auth Code, password-change, forgot-password flows) |
+| `hospital_id`        | Current hospital ID                                                 |
+| `hospital_name`      | Display name                                                        |
+| `logo_url`           | Hospital logo URL                                                   |
+| `session_timestamp`  | Last interaction time                                               |
+| `biometric_enrolled` | Biometric auth flag                                                 |
 
 ### Document Scanner
 
@@ -345,17 +346,17 @@ Release APK login was failing with a masked "Network error" because R8 rewrote t
 
 ## Build Requirements
 
-| Requirement | Version |
-|-------------|---------|
-| Android Studio | Hedgehog+ |
-| Kotlin | 1.9.x |
-| Gradle | 8.x |
-| Min SDK | 26 (Android 8.0) |
-| Target SDK | **35** (TD-A03 / TD-A04, 2026-04-25) |
-| Compile SDK | **35** |
-| Java | 1.8 |
-| versionCode | **2** (bump every Play upload) |
-| versionName | **1.0.1** |
+| Requirement    | Version                              |
+| -------------- | ------------------------------------ |
+| Android Studio | Hedgehog+                            |
+| Kotlin         | 1.9.x                                |
+| Gradle         | 8.x                                  |
+| Min SDK        | 26 (Android 8.0)                     |
+| Target SDK     | **35** (TD-A03 / TD-A04, 2026-04-25) |
+| Compile SDK    | **35**                               |
+| Java           | 1.8                                  |
+| versionCode    | **2** (bump every Play upload)       |
+| versionName    | **1.0.1**                            |
 
 ## Setup
 
@@ -414,28 +415,28 @@ The release APK runs correctly via sideload but has never been uploaded to Googl
 
 ## Dependencies
 
-| Library | Purpose |
-|---------|---------|
-| Retrofit + OkHttp | HTTP client + cert pinning |
-| Room v4 | SQLite database (offline queue + patient/file cache) |
-| Coroutines + Flow | Async + reactive UI updates |
-| WorkManager | Background sync, downloads, uploads, FCM token registration |
-| ML Kit Document Scanner | Document capture |
-| Glide | Image loading |
-| Biometric | Fingerprint / face auth (RSA keypair per device) |
-| EncryptedSharedPreferences | AES-256 encrypted storage |
-| Firebase Messaging | FCM push |
+| Library                    | Purpose                                                     |
+| -------------------------- | ----------------------------------------------------------- |
+| Retrofit + OkHttp          | HTTP client + cert pinning                                  |
+| Room v4                    | SQLite database (offline queue + patient/file cache)        |
+| Coroutines + Flow          | Async + reactive UI updates                                 |
+| WorkManager                | Background sync, downloads, uploads, FCM token registration |
+| ML Kit Document Scanner    | Document capture                                            |
+| Glide                      | Image loading                                               |
+| Biometric                  | Fingerprint / face auth (RSA keypair per device)            |
+| EncryptedSharedPreferences | AES-256 encrypted storage                                   |
+| Firebase Messaging         | FCM push                                                    |
 
-`speakeasy` / TOTP / BackupCode dependencies were never added to Android (TOTP was a backend-only legacy concept that was removed entirely — see [backend/scripts/migrate-remove-totp.js](../backend/scripts/migrate-remove-totp.js)).
+`speakeasy` / TOTP / BackupCode dependencies were never added to Android (TOTP was a backend-only legacy concept that has been removed entirely).
 
 **Dependency bloat ([TD-A06](../docs/audit/06-tech-debt-ledger.md)):** Jetpack Compose, CameraX, DataStore, Coil, iText7, Accompanist, and Shimmer are declared but **unused** (zero `@Composable`, zero CameraX import, etc.) — ~10 MB APK bloat. Plan to drop them when convenient.
 
 ## Permissions
 
-| Permission | Purpose |
-|------------|---------|
-| `INTERNET` | API communication |
-| `CAMERA` | Document scanning |
-| `POST_NOTIFICATIONS` | Sync / download / upload status notifications |
+| Permission                                            | Purpose                                                                             |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `INTERNET`                                            | API communication                                                                   |
+| `CAMERA`                                              | Document scanning                                                                   |
+| `POST_NOTIFICATIONS`                                  | Sync / download / upload status notifications                                       |
 | `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_DATA_SYNC` | DownloadWorker / UploadWorker / SyncDocumentsWorker (special permission on API 34+) |
-| `USE_BIOMETRIC` | Biometric login |
+| `USE_BIOMETRIC`                                       | Biometric login                                                                     |

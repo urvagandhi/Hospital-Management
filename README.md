@@ -46,7 +46,7 @@ graph TB
 
 ## Authentication Flow
 
-Two-step login on every email/password attempt. The 6-digit **Auth Code** (immutable, per-hospital) is the only second factor — TOTP was removed (see [backend/scripts/migrate-remove-totp.js](backend/scripts/migrate-remove-totp.js)). Biometric is the only path that bypasses the Auth Code step on Android. SMS gateway is deferred — all OTP flows go through email.
+Two-step login on every email/password attempt. The 6-digit **Auth Code** (immutable, per-hospital) is the only second factor. Biometric is the only path that bypasses the Auth Code step on Android. SMS gateway is deferred — all OTP flows go through email.
 
 ```mermaid
 sequenceDiagram
@@ -246,7 +246,7 @@ docker-compose up --build
 ```
 
 | Service  | URL                     |
-|----------|-------------------------|
+| -------- | ----------------------- |
 | Frontend | `http://localhost`      |
 | Backend  | `http://localhost:5000` |
 | Sidecar  | `http://localhost:8000` |
@@ -280,7 +280,7 @@ Open `android-app/` in Android Studio, configure your upload keystore (see [andr
 
 ## File Pipeline & Downloads
 
-- Android uploads files via multipart → backend → Cloudinary at public_id `HospitALL/h_{hospitalId}/p_{patientId}/{folder_slug}/{date}_{hash}`. Files are either `public` or `signed` (5-min TTL). 120×120 thumbnails for images.
+- Android uploads files via multipart → backend → Cloudinary at public*id `HospitALL/h*{hospitalId}/p*{patientId}/{folder_slug}/{date}*{hash}`. Files are either `public`or`signed` (5-min TTL). 120×120 thumbnails for images.
 - Downloads come in three modes: per-file, per-folder, per-patient. PDF (merged) and ZIP (per-folder) are gated by a size pre-check (soft 10 MB / hard 100 MB).
 - The compression sidecar handles PDF merging + size reduction. The backend calls it with `X-Internal-Secret`; the sidecar fetches inputs from Cloudinary, runs a tier ladder (digital / scanned / aggressive), uploads the result, and caches by SHA256 of inputs. **Mandatory in prod (TD-D4)** — the in-process pdf-lib fallback OOMs at scale.
 - A nightly cron (00:00 UTC) hard-deletes patients older than 90 days and cascades the Cloudinary delete. There is no soft-delete or trash UI.
@@ -289,20 +289,20 @@ Open `android-app/` in Android Studio, configure your upload keystore (see [andr
 
 ## Security
 
-| Concern | Mechanism |
-|---------|-----------|
-| Password hashing | bcryptjs |
-| Second factor | 6-digit immutable Auth Code (per-hospital) |
-| Token format | JWT (access 24h) + JWT refresh (httpOnly cookie, 365d, **rotated** on every refresh — TD-002) |
-| Reuse detection | Replaying a rotated-out refresh token revokes every active session for the hospital and emails the operator |
-| Brute-force | 5 failed password attempts → account lock + email |
-| OTP enumeration | `forgot-password/init` always returns 200 |
-| Rate limiting | Per-endpoint (auth, OTP, patient downloads, …); see [backend/README.md](backend/README.md) |
-| Headers | helmet defaults |
-| Android | Biometric (RSA), root detection, EncryptedSharedPreferences, certificate pinning |
-| Audit | All sensitive actions emit an `AuditLog` (40+ action enum values); fire-and-forget, never blocks the request |
-| GeoIP | ipinfo.io (keyed) → ip-api.com (keyless fallback); attached to sessions + login emails |
-| Logging | pino + pino-http; auto-redacts Authorization, Cookie, password*, token, refreshToken, otp, authCode |
+| Concern          | Mechanism                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| Password hashing | bcryptjs                                                                                                     |
+| Second factor    | 6-digit immutable Auth Code (per-hospital)                                                                   |
+| Token format     | JWT (access 24h) + JWT refresh (httpOnly cookie, 365d, **rotated** on every refresh — TD-002)                |
+| Reuse detection  | Replaying a rotated-out refresh token revokes every active session for the hospital and emails the operator  |
+| Brute-force      | 5 failed password attempts → account lock + email                                                            |
+| OTP enumeration  | `forgot-password/init` always returns 200                                                                    |
+| Rate limiting    | Per-endpoint (auth, OTP, patient downloads, …); see [backend/README.md](backend/README.md)                   |
+| Headers          | helmet defaults                                                                                              |
+| Android          | Biometric (RSA), root detection, EncryptedSharedPreferences, certificate pinning                             |
+| Audit            | All sensitive actions emit an `AuditLog` (40+ action enum values); fire-and-forget, never blocks the request |
+| GeoIP            | ipinfo.io (keyed) → ip-api.com (keyless fallback); attached to sessions + login emails                       |
+| Logging          | pino + pino-http; auto-redacts Authorization, Cookie, password\*, token, refreshToken, otp, authCode         |
 
 ---
 
@@ -310,20 +310,20 @@ Open `android-app/` in Android Studio, configure your upload keystore (see [andr
 
 52 endpoints total (auth 24 · patients 20 · hospitals 12 · export 1 · audit 2 · admin 2 · version 1 · health 2). See [backend/README.md](backend/README.md) for the full table.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/auth/login` | Login (returns tempToken, purpose=AUTH_CODE) |
-| `POST` | `/api/auth/verify-auth-code` | Exchange tempToken + Auth Code → access/refresh |
-| `POST` | `/api/auth/refresh-token` | Rotate refresh token, mint new access |
-| `POST` | `/api/auth/biometric/{register,challenge,verify}` | Android biometric flow |
-| `POST` | `/api/auth/forgot-password/{init,verify-otp,reset}` | Forgot-password 3-step |
-| `POST` | `/api/auth/register-hospital` | Admin: create hospital (welcome email + temp password) |
-| `POST` | `/api/auth/register` | Self-service registration (sends OTP) |
-| `GET`  | `/api/patients` | List patients (paginated, searchable) |
-| `POST` | `/api/patients/:id/folders/:folder/files` | Upload file |
-| `GET`  | `/api/patients/:id/download/{pdf,zip}` | Download all (size-checked) |
-| `GET`  | `/api/audits` | Admin-only, hospital-scoped audit log |
-| `GET`  | `/api/health`, `/api/health/deep` | Liveness + dependency probes |
+| Method | Endpoint                                            | Description                                            |
+| ------ | --------------------------------------------------- | ------------------------------------------------------ |
+| `POST` | `/api/auth/login`                                   | Login (returns tempToken, purpose=AUTH_CODE)           |
+| `POST` | `/api/auth/verify-auth-code`                        | Exchange tempToken + Auth Code → access/refresh        |
+| `POST` | `/api/auth/refresh-token`                           | Rotate refresh token, mint new access                  |
+| `POST` | `/api/auth/biometric/{register,challenge,verify}`   | Android biometric flow                                 |
+| `POST` | `/api/auth/forgot-password/{init,verify-otp,reset}` | Forgot-password 3-step                                 |
+| `POST` | `/api/auth/register-hospital`                       | Admin: create hospital (welcome email + temp password) |
+| `POST` | `/api/auth/register`                                | Self-service registration (sends OTP)                  |
+| `GET`  | `/api/patients`                                     | List patients (paginated, searchable)                  |
+| `POST` | `/api/patients/:id/folders/:folder/files`           | Upload file                                            |
+| `GET`  | `/api/patients/:id/download/{pdf,zip}`              | Download all (size-checked)                            |
+| `GET`  | `/api/audits`                                       | Admin-only, hospital-scoped audit log                  |
+| `GET`  | `/api/health`, `/api/health/deep`                   | Liveness + dependency probes                           |
 
 ---
 
@@ -331,18 +331,18 @@ Open `android-app/` in Android Studio, configure your upload keystore (see [andr
 
 See [.env.example](.env.example) for the full list (in sync with code as of 2026-04-21, TD-004). Critical ones:
 
-| Variable | Required | Notes |
-|----------|----------|-------|
-| `JWT_SECRET`, `REFRESH_TOKEN_SECRET` | Yes | 64+ chars, no `dev-` prefix in prod |
-| `MONGODB_URI` | Yes | MongoDB connection string |
-| `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | Yes | Primary file storage |
-| `BREVO_API_KEY` | prod | Email delivery (Mailtrap in dev) |
-| `FIREBASE_PROJECT_ID` / `_PRIVATE_KEY` / `_CLIENT_EMAIL` | Yes (mobile) | FCM push |
-| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Optional | Falls back to in-memory `Map` |
+| Variable                                                                           | Required       | Notes                                                                                       |
+| ---------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`, `REFRESH_TOKEN_SECRET`                                               | Yes            | 64+ chars, no `dev-` prefix in prod                                                         |
+| `MONGODB_URI`                                                                      | Yes            | MongoDB connection string                                                                   |
+| `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET`                               | Yes            | Primary file storage                                                                        |
+| `BREVO_API_KEY`                                                                    | prod           | Email delivery (Mailtrap in dev)                                                            |
+| `FIREBASE_PROJECT_ID` / `_PRIVATE_KEY` / `_CLIENT_EMAIL`                           | Yes (mobile)   | FCM push                                                                                    |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN`                                                | Optional       | Falls back to in-memory `Map`                                                               |
 | `USE_COMPRESSION_SERVICE`, `COMPRESSION_SERVICE_URL`, `COMPRESSION_SERVICE_SECRET` | **Yes (prod)** | Mandatory (TD-D4) — `env.js` refuses to boot without `USE_COMPRESSION_SERVICE=true` in prod |
-| `IPINFO_TOKEN` | Optional | Activates ipinfo.io as primary GeoIP provider |
-| `TRUST_PROXY_HOPS` | Optional | Default `2`; must be a numeric value (not `true`) |
-| `LOG_LEVEL` | Optional | Default `info` in prod, `debug` in dev |
+| `IPINFO_TOKEN`                                                                     | Optional       | Activates ipinfo.io as primary GeoIP provider                                               |
+| `TRUST_PROXY_HOPS`                                                                 | Optional       | Default `2`; must be a numeric value (not `true`)                                           |
+| `LOG_LEVEL`                                                                        | Optional       | Default `info` in prod, `debug` in dev                                                      |
 
 R2 / S3 keys (`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, …) remain in `.env.example` as a **legacy fallback**. Active code uses Cloudinary. `r2.service.js` is currently dead code (TD-003).
 
@@ -350,29 +350,29 @@ R2 / S3 keys (`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, …) remain in `.env.example` a
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|------------|
-| Backend | Node 20 · Express · Mongoose 7 · JWT · bcryptjs · Multer · Cloudinary · Brevo · Firebase Admin · Upstash Redis · pdfkit · pdf-lib · archiver · node-cron · pino + pino-http |
-| Frontend | React 18 · TypeScript 5 · Vite · Tailwind CSS 3 · React Router 6 · Axios · Headless UI · React Context |
-| Android | Kotlin · Retrofit · Room v4 · WorkManager · BiometricPrompt · FCM · ML Kit Document Scanner |
-| Sidecar | Python 3.12 · FastAPI · pikepdf · pypdfium2 · fpdf2 · GhostScript · Motor (async Mongo) |
-| Storage | Cloudinary (primary) · R2 / S3 (legacy fallback, dead code) |
-| Database | MongoDB 7 |
-| Cache / KV | Upstash Redis (REST), with in-memory `Map` fallback |
-| Deployment | Docker Compose (dev), Render (prod) |
+| Component  | Technology                                                                                                                                                                  |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend    | Node 20 · Express · Mongoose 7 · JWT · bcryptjs · Multer · Cloudinary · Brevo · Firebase Admin · Upstash Redis · pdfkit · pdf-lib · archiver · node-cron · pino + pino-http |
+| Frontend   | React 18 · TypeScript 5 · Vite · Tailwind CSS 3 · React Router 6 · Axios · Headless UI · React Context                                                                      |
+| Android    | Kotlin · Retrofit · Room v4 · WorkManager · BiometricPrompt · FCM · ML Kit Document Scanner                                                                                 |
+| Sidecar    | Python 3.12 · FastAPI · pikepdf · pypdfium2 · fpdf2 · GhostScript · Motor (async Mongo)                                                                                     |
+| Storage    | Cloudinary (primary) · R2 / S3 (legacy fallback, dead code)                                                                                                                 |
+| Database   | MongoDB 7                                                                                                                                                                   |
+| Cache / KV | Upstash Redis (REST), with in-memory `Map` fallback                                                                                                                         |
+| Deployment | Docker Compose (dev), Render (prod)                                                                                                                                         |
 
 ---
 
 ## Documentation
 
-| Module | README |
-|--------|--------|
-| Backend API | [backend/README.md](backend/README.md) |
-| Frontend Web | [frontend/README.md](frontend/README.md) |
-| Android App | [android-app/README.md](android-app/README.md) |
-| Compression Sidecar | [compression-service/README.md](compression-service/README.md) |
-| Canonical project context | [CLAUDE.md](CLAUDE.md) |
-| Audit set (drift, dead code, diagrams, enhancements, tech-debt) | [docs/audit/README.md](docs/audit/README.md) |
+| Module                                                          | README                                                         |
+| --------------------------------------------------------------- | -------------------------------------------------------------- |
+| Backend API                                                     | [backend/README.md](backend/README.md)                         |
+| Frontend Web                                                    | [frontend/README.md](frontend/README.md)                       |
+| Android App                                                     | [android-app/README.md](android-app/README.md)                 |
+| Compression Sidecar                                             | [compression-service/README.md](compression-service/README.md) |
+| Canonical project context                                       | [CLAUDE.md](CLAUDE.md)                                         |
+| Audit set (drift, dead code, diagrams, enhancements, tech-debt) | [docs/audit/README.md](docs/audit/README.md)                   |
 
 ---
 

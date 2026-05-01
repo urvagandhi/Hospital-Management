@@ -6,6 +6,8 @@ import com.hospital.management.data.api.RetrofitClient
 import com.hospital.management.data.local.DocumentDao
 import com.hospital.management.data.local.OfflineDocument
 import com.hospital.management.data.local.SyncStatus
+import com.hospital.management.data.models.ConfirmDirectUploadRequest
+import com.hospital.management.data.models.SignUploadRequest
 import com.hospital.management.utils.FileLogger
 import com.hospital.management.worker.ProgressRequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -79,18 +81,17 @@ class DocumentRepository(
         // ── Step 1: Get signed params from our backend ──
         FileLogger.i(TAG, "Step 1/3: Requesting signed upload params from backend...")
         val signResult = try {
-            val signBody = mapOf("fileName" to file.name)
+            val signBody = SignUploadRequest(fileName = file.name)
             val signResponse = apiService.getSignedUploadParams(patientId, folderName, signBody)
 
             if (signResponse.isSuccessful) {
                 val data = signResponse.body()
-                @Suppress("UNCHECKED_CAST")
-                val params = data?.get("params") as? Map<String, Any>
+                val params = data?.params
                 if (params != null) {
                     FileLogger.i(TAG, "Step 1/3 SUCCESS — signed params received:" +
-                            "\n  publicId=${params["publicId"]}" +
-                            "\n  uploadUrl=${params["uploadUrl"]}" +
-                            "\n  cloudName=${params["cloudName"]}")
+                            "\n  publicId=${params.publicId}" +
+                            "\n  uploadUrl=${params.uploadUrl}" +
+                            "\n  cloudName=${params.cloudName}")
                     params
                 } else {
                     FileLogger.e(TAG, "Step 1/3 FAILED — params missing in response body")
@@ -98,12 +99,28 @@ class DocumentRepository(
                 }
             } else {
                 val code = signResponse.code()
-                FileLogger.w(TAG, "Step 1/3 FAILED — HTTP $code; falling back to legacy proxy upload")
-                null
+                if (code == 404) {
+                    FileLogger.w(TAG, "Step 1/3 FAILED — HTTP 404; falling back to legacy proxy upload")
+                    null
+                } else {
+                    val message = runCatching { signResponse.errorBody()?.string() }
+                        .getOrNull()
+                        ?.takeIf { it.isNotBlank() }
+                        ?: signResponse.message()
+                    val retryable = code >= 500
+                    FileLogger.w(TAG, "Step 1/3 FAILED — HTTP $code; not falling back to legacy proxy upload")
+                    return UploadAttempt(
+                        isSuccess = false,
+                        statusCode = code,
+                        message = message,
+                        retryable = retryable
+                    )
+                }
             }
         } catch (e: Exception) {
-            FileLogger.w(TAG, "Step 1/3 EXCEPTION — ${e.javaClass.simpleName}: ${e.message}; falling back to legacy proxy upload")
-            null
+            val retryable = e is IOException || e is SocketTimeoutException || e is UnknownHostException
+            FileLogger.w(TAG, "Step 1/3 EXCEPTION — ${e.javaClass.simpleName}: ${e.message}; not falling back to legacy proxy upload")
+            return UploadAttempt(isSuccess = false, message = e.message, retryable = retryable)
         }
 
         // If sign fails (e.g. old backend without /sign endpoint), fall back to legacy proxy
@@ -113,15 +130,12 @@ class DocumentRepository(
         }
 
         // ── Step 2: Upload file directly to Cloudinary ──
-        val uploadUrl = signResult["uploadUrl"] as? String ?: return UploadAttempt(false, message = "Missing uploadUrl", retryable = false)
-        val apiKey = signResult["apiKey"] as? String ?: return UploadAttempt(false, message = "Missing apiKey", retryable = false)
-        val signature = signResult["signature"] as? String ?: return UploadAttempt(false, message = "Missing signature", retryable = false)
-        val timestamp = when (val rawTimestamp = signResult["timestamp"]) {
-            is Number -> rawTimestamp.toLong().toString()
-            is String -> rawTimestamp
-            else -> rawTimestamp?.toString()
-        } ?: return UploadAttempt(false, message = "Missing timestamp", retryable = false)
-        val publicId = signResult["publicId"] as? String ?: return UploadAttempt(false, message = "Missing publicId", retryable = false)
+        val uploadUrl = signResult.uploadUrl ?: return UploadAttempt(false, message = "Missing uploadUrl", retryable = false)
+        val apiKey = signResult.apiKey ?: return UploadAttempt(false, message = "Missing apiKey", retryable = false)
+        val signature = signResult.signature ?: return UploadAttempt(false, message = "Missing signature", retryable = false)
+        val timestamp = signResult.timestamp?.toString() ?: return UploadAttempt(false, message = "Missing timestamp", retryable = false)
+        val publicId = signResult.publicId ?: return UploadAttempt(false, message = "Missing publicId", retryable = false)
+        val uploadType = signResult.type ?: "upload"
 
         FileLogger.i(TAG, "Step 2/3: Uploading file DIRECTLY to Cloudinary..." +
                 "\n  uploadUrl=$uploadUrl" +
@@ -163,6 +177,7 @@ class DocumentRepository(
                 .addFormDataPart("signature", signature)
                 .addFormDataPart("timestamp", timestamp)
                 .addFormDataPart("public_id", publicId)
+                .addFormDataPart("type", uploadType)
                 .build()
 
             val request = Request.Builder()
@@ -230,12 +245,12 @@ class DocumentRepository(
                 else -> "image/jpeg"
             }
 
-            val confirmBody = mapOf<String, Any>(
-                "publicId" to confirmedPublicId,
-                "secureUrl" to secureUrl,
-                "originalFileName" to file.name,
-                "size" to file.length(),
-                "mimeType" to mimeType
+            val confirmBody = ConfirmDirectUploadRequest(
+                publicId = confirmedPublicId,
+                secureUrl = secureUrl,
+                originalFileName = file.name,
+                size = file.length(),
+                mimeType = mimeType
             )
 
             val confirmStartMs = System.currentTimeMillis()
