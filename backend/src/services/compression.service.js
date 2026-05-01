@@ -144,8 +144,8 @@ export async function compressPatient({
  * Includes a retry mechanism to handle Cloudinary CDN propagation delays.
  */
 export async function fetchMergedStream(mergedUrl) {
-  const MAX_RETRIES = 5;
-  const INITIAL_DELAY = 1000; // 1s
+  const MAX_RETRIES = 8;
+  const INITIAL_DELAY = 2000; // 2s
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const res = await fetch(mergedUrl);

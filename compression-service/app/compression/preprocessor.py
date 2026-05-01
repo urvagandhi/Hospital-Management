@@ -1,6 +1,8 @@
 import logging
+import psutil
 import subprocess
 import time
+import gc
 from pathlib import Path
 from PIL import Image
 import pikepdf
@@ -121,7 +123,11 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: st
                 
             elapsed = (time.time() - start_time) * 1000
             if i % 10 == 0: # Log every 10 images to avoid log flooding
-                logger.debug(f"Processed image {i} in {elapsed:.0f}ms", extra={"job_id": job_id})
+                used_ram = psutil.Process().memory_info().rss / (1024 * 1024)
+                logger.info(
+                    f"Processed image {i} in {elapsed:.0f}ms (RAM: {used_ram:.1f}MB)", 
+                    extra={"job_id": job_id}
+                )
                 
         except Exception as e:
             logger.warning(f"Failed to process image {img_path}: {e}", extra={"job_id": job_id})
