@@ -36,13 +36,10 @@ async def run_ghostscript_explicit(
         "-dBATCH", "-dNOPAUSE", "-dQUIET", "-dSAFER",
         "-sDEVICE=pdfwrite",
         "-dCompatibilityLevel=1.4",
+        "-dPDFSETTINGS=/screen", # Base preset for good defaults
+        "-dEmbedAllFonts=true",
         "-dSubsetFonts=true",
-        "-dEmbedAllFonts=false",
-        "-dCompressPages=true",
-        "-dUseFlateCompression=true",
-        "-dDetectDuplicateImages=true",
         "-dAutoRotatePages=/None",
-        "-dOmitInfoDate=true",
         
         # Color Image Flags
         "-dDownsampleColorImages=true",
@@ -50,8 +47,6 @@ async def run_ghostscript_explicit(
         f"-dColorImageResolution={dpi}",
         "-dAutoFilterColorImages=false",
         "-dColorImageFilter=/DCTEncode",
-        f"-dColorImageDict=<< /QFactor {100-quality} /HSampling [1 1 1 1] /VSampling [1 1 1 1] >>", # Simplified quality
-        # Actually GS uses -dJPEGQ for simpler control
         f"-dJPEGQ={quality}",
         
         # Gray Image Flags
@@ -60,8 +55,6 @@ async def run_ghostscript_explicit(
         f"-dGrayImageResolution={dpi}",
         "-dAutoFilterGrayImages=false",
         "-dGrayImageFilter=/DCTEncode",
-        f"-dGrayImageDict=<< /QFactor {100-quality} >>",
-        f"-dJPEGQ={quality}",
 
         # Mono Image Flags
         "-dDownsampleMonoImages=true",
@@ -84,7 +77,8 @@ async def run_ghostscript_explicit(
             "job_id": job_id,
             "event": "gs_explicit_start",
             "tier": tier,
-            "dpi": dpi
+            "dpi": dpi,
+            "quality": quality
         }
     )
 
@@ -95,14 +89,23 @@ async def run_ghostscript_explicit(
     )
     
     try:
-        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
     except asyncio.TimeoutError:
         proc.kill()
         raise RuntimeError("Ghostscript timed out after 300 seconds")
 
     if proc.returncode != 0:
         err_msg = stderr.decode(errors="replace")
-        raise RuntimeError(f"Ghostscript failed (code {proc.returncode}): {err_msg[:500]}")
+        out_msg = stdout.decode(errors="replace")
+        logger.error(
+            f"Ghostscript failed with code {proc.returncode}",
+            extra={
+                "job_id": job_id,
+                "stderr": err_msg,
+                "stdout": out_msg
+            }
+        )
+        raise RuntimeError(f"Ghostscript failed (code {proc.returncode}): {err_msg[:200]}")
 
     logger.info(
         f"GS Tier {tier} Done",

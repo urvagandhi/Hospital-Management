@@ -28,7 +28,13 @@ class FileAdapter(
         private val ivFileIcon: ImageView? = itemView.findViewById(R.id.ivFileIcon)
 
         fun bind(file: FileItem) {
-            tvFileName.text = file.name
+            val displayName = if (isUuid(file.name)) {
+                val ext = if (file.name.contains(".")) file.name.substringAfterLast(".") else "pdf"
+                "Document.$ext"
+            } else {
+                file.name
+            }
+            tvFileName.text = displayName
             tvFileSize.text = formatFileSize(file.size)
 
             // A3: show thumbnail for images when backend provided it
@@ -63,6 +69,11 @@ class FileAdapter(
             btnMore.setOnClickListener {
                 onOptionClick(it, file)
             }
+        }
+
+        private fun isUuid(name: String): Boolean {
+            val base = name.substringBeforeLast(".")
+            return base.matches(Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", RegexOption.IGNORE_CASE))
         }
 
         private fun formatFileSize(bytes: Long): String {

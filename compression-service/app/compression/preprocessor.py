@@ -19,17 +19,6 @@ TIER_CONFIGS = {
     4: {"dpi": 120, "quality": 32, "subsampling": 2, "grayscale": True},
 }
 
-def get_page_dimensions(pdf_path: Path):
-    """Get dimensions (points) for each page using pikepdf."""
-    dims = []
-    with pikepdf.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            # MediaBox is [x, y, width, height]
-            box = page.mediabox
-            width_pts = float(box[2] - box[0])
-            height_pts = float(box[3] - box[1])
-            dims.append((width_pts, height_pts))
-    return dims
 
 def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: str) -> list[Path]:
     """Extract, downsample, and re-encode images from a scanned PDF.
@@ -49,58 +38,42 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: st
     processed_dir = work_dir / "processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Extract images using pdfimages
-    # -all: extract as JPEG/PNG/TIFF
-    # -j: try to extract as JPEG if possible (fast)
-    # -jp2: try to extract as JPEG2000 if possible
+    # 1. Render pages to images using pdftoppm
+    # This preserves digital content (like cover pages) by rendering them to pixels.
+    # -jpeg: output as JPEG
+    # -r {dpi}: render at the target resolution directly
     try:
         subprocess.run(
-            ["pdfimages", "-all", "-j", "-jp2", str(pdf_path), str(extract_dir / "img")],
+            ["pdftoppm", "-jpeg", "-r", str(target_dpi), str(pdf_path), str(extract_dir / "page")],
             check=True,
             capture_output=True,
             timeout=300
         )
     except subprocess.CalledProcessError as e:
-        logger.error(f"pdfimages failed: {e.stderr.decode()}")
-        raise RuntimeError(f"Image extraction failed: {e.stderr.decode()}")
+        logger.error(f"pdftoppm failed: {e.stderr.decode()}", extra={"job_id": job_id})
+        raise RuntimeError(f"Page rendering failed: {e.stderr.decode()}")
 
-    # Collect and sort extracted files (img-000.jpg, img-001.png, etc)
-    extracted_files = sorted(extract_dir.glob("img-*"))
+    # Collect and sort extracted files (page-1.jpg, page-2.jpg, etc)
+    # Note: pdftoppm is 1-indexed by default
+    extracted_files = sorted(extract_dir.glob("page-*.jpg"))
     if not extracted_files:
-        logger.warning(f"No images extracted from {pdf_path}", extra={"job_id": job_id})
+        logger.warning(f"No pages rendered from {pdf_path}", extra={"job_id": job_id})
         return []
 
     logger.info(
-        f"Extracted {len(extracted_files)} images from {pdf_path}",
-        extra={"job_id": job_id, "image_count": len(extracted_files)}
+        f"Rendered {len(extracted_files)} pages from {pdf_path} at {target_dpi} DPI",
+        extra={"job_id": job_id, "page_count": len(extracted_files)}
     )
 
-    # Get page dimensions for DPI estimation
-    page_dims = get_page_dimensions(pdf_path)
-    
+    # Note: Since pdftoppm already did the scaling via '-r', 
+    # we just use PIL for color conversion and final JPEG optimization.
     processed_files = []
     
-    # Note: pdfimages might extract multiple images per page or none. 
-    # For ML Kit PDFs, it's usually 1 image per page.
-    # We'll process each extracted image.
     for i, img_path in enumerate(extracted_files):
         try:
             start_time = time.time()
             with Image.open(img_path) as img:
-                # Estimate current DPI
-                # Use the first page dim as a proxy if we have many images
-                page_idx = min(i, len(page_dims) - 1)
-                page_w_pts, page_h_pts = page_dims[page_idx]
-                page_w_in = page_w_pts / 72.0
-                
-                curr_dpi = img.width / page_w_in if page_w_in > 0 else 300
-                
-                # Decision: Only downsample if current DPI > target DPI * 1.1
                 final_img = img
-                if curr_dpi > (target_dpi * 1.1):
-                    scale = target_dpi / curr_dpi
-                    new_size = (int(img.width * scale), int(img.height * scale))
-                    final_img = img.resize(new_size, Image.Resampling.LANCZOS)
                 
                 # Color conversion
                 if config["grayscale"] and final_img.mode != "L":
@@ -108,7 +81,7 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: st
                 elif not config["grayscale"] and final_img.mode == "RGBA":
                     final_img = final_img.convert("RGB")
                 
-                # Save as JPEG
+                # Save with our specific quality/subsampling settings
                 out_path = processed_dir / f"page_{i:04d}.jpg"
                 final_img.save(
                     out_path,
@@ -120,11 +93,11 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: st
                 processed_files.append(out_path)
                 
             elapsed = (time.time() - start_time) * 1000
-            if i % 10 == 0: # Log every 10 images to avoid log flooding
-                logger.debug(f"Processed image {i} in {elapsed:.0f}ms", extra={"job_id": job_id})
+            if i % 10 == 0:
+                logger.debug(f"Processed page {i} in {elapsed:.0f}ms", extra={"job_id": job_id})
                 
         except Exception as e:
-            logger.warning(f"Failed to process image {img_path}: {e}", extra={"job_id": job_id})
+            logger.warning(f"Failed to process page {img_path}: {e}", extra={"job_id": job_id})
             continue
             
     return processed_files

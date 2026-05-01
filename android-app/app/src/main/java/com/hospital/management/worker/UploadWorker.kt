@@ -188,6 +188,7 @@ class UploadWorker(
                 folderName = folderName,
                 file = file,
                 idempotencyKey = idempotencyKey,
+                displayName = fileName,
                 uploadProfileUsed = uploadProfileUsed
             ) { uploadedBytes, total ->
                 try {

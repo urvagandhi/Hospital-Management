@@ -63,6 +63,7 @@ class DocumentRepository(
         folderName: String,
         file: File,
         idempotencyKey: String,
+        displayName: String = file.name,
         uploadProfileUsed: Int = -1,
         onByteProgress: ((uploadedBytes: Long, totalBytes: Long) -> Unit)? = null,
     ): UploadAttempt {
@@ -81,7 +82,7 @@ class DocumentRepository(
         // ── Step 1: Get signed params from our backend ──
         FileLogger.i(TAG, "Step 1/3: Requesting signed upload params from backend...")
         val signResult = try {
-            val signBody = SignUploadRequest(fileName = file.name)
+            val signBody = SignUploadRequest(fileName = displayName)
             val signResponse = apiService.getSignedUploadParams(patientId, folderName, signBody)
 
             if (signResponse.isSuccessful) {
@@ -254,7 +255,7 @@ class DocumentRepository(
             val confirmBody = ConfirmDirectUploadRequest(
                 publicId = confirmedPublicId,
                 secureUrl = secureUrl,
-                originalFileName = file.name,
+                originalFileName = displayName,
                 size = file.length(),
                 mimeType = mimeType
             )

@@ -141,11 +141,26 @@ export async function compressPatient({
  * Fetch the merged PDF from the public Cloudinary URL returned by the
  * compression service. Merged PDFs are uploaded as raw/upload (public),
  * same as source documents — no signing needed.
+ * Includes a retry mechanism to handle Cloudinary CDN propagation delays.
  */
 export async function fetchMergedStream(mergedUrl) {
-  const res = await fetch(mergedUrl);
-  if (!res.ok) {
+  const MAX_RETRIES = 5;
+  const INITIAL_DELAY = 1000; // 1s
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const res = await fetch(mergedUrl);
+    if (res.ok) return res;
+
+    if (res.status === 404 && attempt < MAX_RETRIES - 1) {
+      const delay = INITIAL_DELAY * Math.pow(2, attempt);
+      logger.info(
+        { event: "fetch_retry", attempt: attempt + 1, delay_ms: delay },
+        `Merged PDF not yet available (404), retrying in ${delay}ms...`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      continue;
+    }
+
     throw new ServiceUnavailableError(`Failed to fetch merged PDF: HTTP ${res.status}`);
   }
-  return res;
 }

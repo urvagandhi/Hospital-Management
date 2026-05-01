@@ -1,6 +1,6 @@
 """Cover page generator matching Node backend's pdf-lib design.
 
-Produces a US Letter (612×792pt) page with:
+Produces an A4 (210×297mm) page with:
 - Dark navy header bar with folder name + "MEDICAL RECORDS" subtitle
 - Decorative divider with accent dot
 - Patient name card with blue left accent stripe
@@ -31,9 +31,9 @@ _WHITE = (255, 255, 255)
 _BLUE_LIGHT = (181, 210, 252)    # #B5D2FC
 _ROW_ALT = (246, 248, 252)       # light blue tint for alternating rows
 
-# US Letter in mm (fpdf2 uses mm by default)
-_W = 215.9  # 612pt
-_H = 279.4  # 792pt
+# A4 in mm (fpdf2 uses mm by default)
+_W = 210.0
+_H = 297.0
 
 # Conversion: 1pt = 0.3528mm
 _PT = 0.3528
@@ -52,7 +52,7 @@ def generate_cover_page(
     """
     output_path = job_dir / f"cover_{folder_index}.pdf"
 
-    pdf = FPDF(unit="mm", format="Letter")
+    pdf = FPDF(unit="mm", format="A4")
     pdf.set_auto_page_break(auto=False)
     pdf.add_page()
 
@@ -214,7 +214,7 @@ def generate_cover_page(
     pdf.set_xy(40 * _PT, footer_y + 5 * _PT)
     pdf.cell(0, 7.5 * _PT, "Hospital Management System")
 
-    pdf.set_xy(415 * _PT, footer_y + 5 * _PT)
+    pdf.set_xy(_W - 55, footer_y + 5 * _PT)
     pdf.cell(0, 7.5 * _PT, "Confidential Medical Records")
 
     pdf.output(str(output_path))
