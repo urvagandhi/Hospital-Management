@@ -14,7 +14,12 @@ def rebuild_pdf_from_images(image_paths: list[Path], output_path: Path) -> Path:
         # A4 in points (72 DPI)
         a4_width = img2pdf.mm_to_pt(210)
         a4_height = img2pdf.mm_to_pt(297)
-        layout_fun = img2pdf.get_layout_fun((a4_width, a4_height))
+        # FitMode.exact stretches images to fill the full A4 page edge-to-edge,
+        # so scanned pages look visually identical in size to the cover pages.
+        layout_fun = img2pdf.get_layout_fun(
+            pagesize=(a4_width, a4_height),
+            fit=img2pdf.FitMode.exact,
+        )
 
         with open(output_path, "wb") as f:
             f.write(img2pdf.convert(
