@@ -17,8 +17,9 @@ class CompressionResult:
 
 logger = logging.getLogger(__name__)
 
-# Render free tier limit is 512MB. We leave 150MB buffer.
-MIN_AVAILABLE_RAM_MB = 150
+# Render free tier limit is 512MB. We leave 200MB buffer.
+MIN_AVAILABLE_RAM_MB = 200
+import gc
 
 class SizeFloorBreached(Exception):
     """Raised when even Tier 4 cannot meet the target size."""
@@ -101,6 +102,7 @@ async def run_adaptive_compression_loop(
             # 5. Cleanup tier-specific extracted/processed images to save RAM/Disk
             shutil.rmtree(tier_dir / "extracted", ignore_errors=True)
             shutil.rmtree(tier_dir / "processed", ignore_errors=True)
+            gc.collect()
 
         except Exception as e:
             logger.error(f"Tier {tier} failed: {e}", exc_info=True)

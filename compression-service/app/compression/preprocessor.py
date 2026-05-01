@@ -38,50 +38,60 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: st
     processed_dir = work_dir / "processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Render pages to images using pdftoppm
-    # This preserves digital content (like cover pages) by rendering them to pixels.
-    # -jpeg: output as JPEG
-    # -r {dpi}: render at the target resolution directly
+    # 1. Get total page count using pdfinfo
     try:
-        subprocess.run(
-            ["pdftoppm", "-jpeg", "-r", str(target_dpi), str(pdf_path), str(extract_dir / "page")],
+        info_proc = subprocess.run(
+            ["pdfinfo", str(pdf_path)],
             check=True,
             capture_output=True,
-            timeout=300
+            text=True
         )
-    except subprocess.CalledProcessError as e:
-        logger.error(f"pdftoppm failed: {e.stderr.decode()}", extra={"job_id": job_id})
-        raise RuntimeError(f"Page rendering failed: {e.stderr.decode()}")
+        page_count = 0
+        for line in info_proc.stdout.splitlines():
+            if line.startswith("Pages:"):
+                page_count = int(line.split(":")[1].strip())
+                break
+    except Exception as e:
+        logger.error(f"pdfinfo failed: {e}", extra={"job_id": job_id})
+        raise RuntimeError(f"Failed to get page count: {e}")
 
-    # Collect and sort extracted files (page-1.jpg, page-2.jpg, etc)
-    # Note: pdftoppm is 1-indexed by default
-    extracted_files = sorted(extract_dir.glob("page-*.jpg"))
-    if not extracted_files:
-        logger.warning(f"No pages rendered from {pdf_path}", extra={"job_id": job_id})
+    if page_count == 0:
+        logger.warning(f"No pages found in {pdf_path}", extra={"job_id": job_id})
         return []
 
-    logger.info(
-        f"Rendered {len(extracted_files)} pages from {pdf_path} at {target_dpi} DPI",
-        extra={"job_id": job_id, "page_count": len(extracted_files)}
-    )
-
-    # Note: Since pdftoppm already did the scaling via '-r', 
-    # we just use PIL for color conversion and final JPEG optimization.
+    # 2. Render pages one-by-one to keep memory usage low
     processed_files = []
-    
-    for i, img_path in enumerate(extracted_files):
+    for i in range(1, page_count + 1):
         try:
             start_time = time.time()
+            page_prefix = f"page_{i:04d}"
+            # -f {i} -l {i}: only render the specific page
+            subprocess.run(
+                ["pdftoppm", "-jpeg", "-r", str(target_dpi), "-f", str(i), "-l", str(i), 
+                 str(pdf_path), str(extract_dir / page_prefix)],
+                check=True,
+                capture_output=True,
+                timeout=60
+            )
+            
+            # pdftoppm appends '-1.jpg' when rendering a range
+            img_path = extract_dir / f"{page_prefix}-1.jpg"
+            if not img_path.exists():
+                # Fallback check if it didn't append -1 (depends on version)
+                img_path = extract_dir / f"{page_prefix}.jpg"
+            
+            if not img_path.exists():
+                logger.warning(f"Page {i} failed to render", extra={"job_id": job_id})
+                continue
+
+            # 3. Process the single page image with PIL
             with Image.open(img_path) as img:
                 final_img = img
-                
-                # Color conversion
                 if config["grayscale"] and final_img.mode != "L":
                     final_img = final_img.convert("L")
                 elif not config["grayscale"] and final_img.mode == "RGBA":
                     final_img = final_img.convert("RGB")
                 
-                # Save with our specific quality/subsampling settings
                 out_path = processed_dir / f"page_{i:04d}.jpg"
                 final_img.save(
                     out_path,
@@ -91,13 +101,16 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: st
                     optimize=True
                 )
                 processed_files.append(out_path)
+            
+            # Immediate cleanup of the raw render to save disk/RAM
+            img_path.unlink(missing_ok=True)
                 
             elapsed = (time.time() - start_time) * 1000
-            if i % 10 == 0:
-                logger.debug(f"Processed page {i} in {elapsed:.0f}ms", extra={"job_id": job_id})
+            if i % 5 == 0 or i == page_count:
+                logger.info(f"Processed page {i}/{page_count} in {elapsed:.0f}ms", extra={"job_id": job_id})
                 
         except Exception as e:
-            logger.warning(f"Failed to process page {img_path}: {e}", extra={"job_id": job_id})
+            logger.warning(f"Failed to process page {i}: {e}", extra={"job_id": job_id})
             continue
             
     return processed_files
