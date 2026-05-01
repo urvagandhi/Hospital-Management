@@ -65,7 +65,7 @@ async def run_adaptive_compression_loop(
         
         try:
             # 2. Preprocess (images)
-            image_paths = preprocess_scanned_pdf(input_path, tier, tier_dir)
+            image_paths = preprocess_scanned_pdf(input_path, tier, tier_dir, job_id)
             if not image_paths:
                 continue
                 

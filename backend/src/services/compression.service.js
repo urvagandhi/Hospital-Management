@@ -44,7 +44,7 @@ export class ServiceUnavailableError extends Error {
 
 const SERVICE_URL = config.COMPRESSION_SERVICE_URL;
 const SERVICE_SECRET = config.COMPRESSION_SERVICE_SECRET;
-const TIMEOUT_MS = 300_000;
+const TIMEOUT_MS = 600_000;
 
 // ── Internal helper ────────────────────────────────────────
 

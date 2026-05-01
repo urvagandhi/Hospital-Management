@@ -31,7 +31,7 @@ def get_page_dimensions(pdf_path: Path):
             dims.append((width_pts, height_pts))
     return dims
 
-def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path) -> list[Path]:
+def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: str) -> list[Path]:
     """Extract, downsample, and re-encode images from a scanned PDF.
     
     Returns a list of paths to processed JPEG images in page order.
