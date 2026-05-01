@@ -36,10 +36,13 @@ async def run_ghostscript_explicit(
         "-dBATCH", "-dNOPAUSE", "-dQUIET", "-dSAFER",
         "-sDEVICE=pdfwrite",
         "-dCompatibilityLevel=1.4",
-        "-dPDFSETTINGS=/screen", # Base preset for good defaults
-        "-dEmbedAllFonts=true",
         "-dSubsetFonts=true",
+        "-dEmbedAllFonts=false",
+        "-dCompressPages=true",
+        "-dUseFlateCompression=true",
+        "-dDetectDuplicateImages=true",
         "-dAutoRotatePages=/None",
+        "-dOmitInfoDate=true",
         
         # Color Image Flags
         "-dDownsampleColorImages=true",
@@ -77,8 +80,7 @@ async def run_ghostscript_explicit(
             "job_id": job_id,
             "event": "gs_explicit_start",
             "tier": tier,
-            "dpi": dpi,
-            "quality": quality
+            "dpi": dpi
         }
     )
 
@@ -101,11 +103,11 @@ async def run_ghostscript_explicit(
             f"Ghostscript failed with code {proc.returncode}",
             extra={
                 "job_id": job_id,
-                "stderr": err_msg,
-                "stdout": out_msg
+                "stderr": err_msg[:300],
+                "stdout": out_msg[:300],
             }
         )
-        raise RuntimeError(f"Ghostscript failed (code {proc.returncode}): {err_msg[:200]}")
+        raise RuntimeError(f"Ghostscript failed (code {proc.returncode}): {err_msg[:500]}")
 
     logger.info(
         f"GS Tier {tier} Done",

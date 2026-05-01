@@ -1,134 +1,130 @@
-"""Preprocessor: render PDF pages to JPEG using Ghostscript.
-
-Ghostscript renders one page at a time with a true streaming architecture —
-it never loads the entire PDF into RAM. This is critical for the Render free
-tier (512 MB hard limit) where pdftoppm was causing OOM crashes.
-"""
-
 import logging
 import subprocess
 import time
-import gc
 from pathlib import Path
 from PIL import Image
+import pikepdf
 
 logger = logging.getLogger(__name__)
 
-# Adaptive Tiering Constants
-ABSOLUTE_FLOOR_DPI = 150  # We never go below 150 DPI for medical records
+# Medical safety floors
+MIN_MEDICAL_DPI = 150
+ABSOLUTE_FLOOR_DPI = 120
 
 TIER_CONFIGS = {
-    0: {"dpi": 200, "quality": 85, "subsampling": 0, "grayscale": False},
-    1: {"dpi": 150, "quality": 72, "subsampling": 0, "grayscale": False},
-    2: {"dpi": 150, "quality": 58, "subsampling": 2, "grayscale": False},
-    3: {"dpi": 120, "quality": 45, "subsampling": 2, "grayscale": True},
-    4: {"dpi": 100, "quality": 32, "subsampling": 2, "grayscale": True},
+    0: {"dpi": 300, "quality": 85, "subsampling": 0, "grayscale": False},  # subsampling 0 is 4:4:4
+    1: {"dpi": 200, "quality": 72, "subsampling": 0, "grayscale": False},
+    2: {"dpi": 150, "quality": 58, "subsampling": 2, "grayscale": False},  # subsampling 2 is 4:2:0
+    3: {"dpi": 150, "quality": 45, "subsampling": 2, "grayscale": True},
+    4: {"dpi": 120, "quality": 32, "subsampling": 2, "grayscale": True},
 }
 
-
-def _get_page_count(pdf_path: Path, job_id: str) -> int:
-    """Get page count via pdfinfo (fast, no rendering)."""
-    try:
-        info = subprocess.run(
-            ["pdfinfo", str(pdf_path)],
-            check=True, capture_output=True, text=True, timeout=30,
-        )
-        for line in info.stdout.splitlines():
-            if line.lower().startswith("pages:"):
-                return int(line.split(":")[1].strip())
-    except Exception as exc:
-        logger.error(f"pdfinfo failed: {exc}", extra={"job_id": job_id})
-        raise RuntimeError(f"Failed to get page count: {exc}")
-    return 0
-
-
-def _render_page_gs(pdf_path: Path, page_num: int, out_path: Path, dpi: int, grayscale: bool) -> bool:
-    """Render a single page to JPEG using Ghostscript.
-
-    Ghostscript streams the PDF; it never loads the full document into RAM
-    at once, making it safe on memory-constrained hosts.
-    """
-    device = "jpeggray" if grayscale else "jpeg"
-    result = subprocess.run(
-        [
-            "gs",
-            "-dBATCH", "-dNOPAUSE", "-dQUIET", "-dSAFER",
-            f"-sDEVICE={device}",
-            f"-r{dpi}",
-            f"-dFirstPage={page_num}",
-            f"-dLastPage={page_num}",
-            f"-sOutputFile={out_path}",
-            str(pdf_path),
-        ],
-        check=False,
-        capture_output=True,
-        timeout=60,
-    )
-    return result.returncode == 0
-
+def get_page_dimensions(pdf_path: Path):
+    """Get dimensions (points) for each page using pikepdf."""
+    dims = []
+    with pikepdf.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            # MediaBox is [x, y, width, height]
+            box = page.mediabox
+            width_pts = float(box[2] - box[0])
+            height_pts = float(box[3] - box[1])
+            dims.append((width_pts, height_pts))
+    return dims
 
 def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: str) -> list[Path]:
-    """Render each PDF page to JPEG using Ghostscript (page-by-page, memory-safe)."""
+    """Extract, downsample, and re-encode images from a scanned PDF.
+    
+    Returns a list of paths to processed JPEG images in page order.
+    """
     config = TIER_CONFIGS.get(tier, TIER_CONFIGS[4])
-    dpi = max(config["dpi"], ABSOLUTE_FLOOR_DPI)
-
+    target_dpi = config["dpi"]
+    
+    # Ensure we never drift below absolute floor
+    if target_dpi < ABSOLUTE_FLOOR_DPI:
+        target_dpi = ABSOLUTE_FLOOR_DPI
+        
+    extract_dir = work_dir / "extracted"
+    extract_dir.mkdir(parents=True, exist_ok=True)
+    
     processed_dir = work_dir / "processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
 
-    page_count = _get_page_count(pdf_path, job_id)
-    if page_count == 0:
-        logger.warning(f"No pages in {pdf_path}", extra={"job_id": job_id})
+    # 1. Extract images using pdfimages
+    # -all: extract as JPEG/PNG/TIFF
+    # -j: try to extract as JPEG if possible (fast)
+    # -jp2: try to extract as JPEG2000 if possible
+    try:
+        subprocess.run(
+            ["pdfimages", "-all", "-j", "-jp2", str(pdf_path), str(extract_dir / "img")],
+            check=True,
+            capture_output=True,
+            timeout=300
+        )
+    except subprocess.CalledProcessError as e:
+        logger.error(f"pdfimages failed: {e.stderr.decode()}", extra={"job_id": job_id})
+        raise RuntimeError(f"Image extraction failed: {e.stderr.decode()}")
+
+    # Collect and sort extracted files (img-000.jpg, img-001.png, etc)
+    extracted_files = sorted(extract_dir.glob("img-*"))
+    if not extracted_files:
+        logger.warning(f"No images extracted from {pdf_path}", extra={"job_id": job_id})
         return []
 
     logger.info(
-        f"Rendering {page_count} pages at {dpi} DPI via Ghostscript (tier {tier})",
-        extra={"job_id": job_id},
+        f"Extracted {len(extracted_files)} images from {pdf_path}",
+        extra={"job_id": job_id, "image_count": len(extracted_files)}
     )
 
-    processed_files: list[Path] = []
-    raw_path = work_dir / "page_raw.jpg"  # reuse single temp file
-
-    for i in range(1, page_count + 1):
+    # Get page dimensions for DPI estimation
+    page_dims = get_page_dimensions(pdf_path)
+    
+    processed_files = []
+    
+    # Note: pdfimages might extract multiple images per page or none. 
+    # For ML Kit PDFs, it's usually 1 image per page.
+    # We'll process each extracted image.
+    for i, img_path in enumerate(extracted_files):
         try:
-            t0 = time.time()
-
-            # Render page i to the shared temp file
-            ok = _render_page_gs(pdf_path, i, raw_path, dpi, config["grayscale"])
-            if not ok or not raw_path.exists() or raw_path.stat().st_size == 0:
-                logger.warning(f"GS render failed for page {i}", extra={"job_id": job_id})
-                continue
-
-            # PIL: re-encode with our quality/subsampling settings
-            out_path = processed_dir / f"page_{i:04d}.jpg"
-            with Image.open(raw_path) as img:
-                if config["grayscale"] and img.mode != "L":
-                    img = img.convert("L")
-                elif not config["grayscale"] and img.mode == "RGBA":
-                    img = img.convert("RGB")
-
-                img.save(
-                    out_path, "JPEG",
+            start_time = time.time()
+            with Image.open(img_path) as img:
+                # Estimate current DPI
+                # Use the first page dim as a proxy if we have many images
+                page_idx = min(i, len(page_dims) - 1)
+                page_w_pts, page_h_pts = page_dims[page_idx]
+                page_w_in = page_w_pts / 72.0
+                
+                curr_dpi = img.width / page_w_in if page_w_in > 0 else 300
+                
+                # Decision: Only downsample if current DPI > target DPI * 1.1
+                final_img = img
+                if curr_dpi > (target_dpi * 1.1):
+                    scale = target_dpi / curr_dpi
+                    new_size = (int(img.width * scale), int(img.height * scale))
+                    final_img = img.resize(new_size, Image.Resampling.LANCZOS)
+                
+                # Color conversion
+                if config["grayscale"] and final_img.mode != "L":
+                    final_img = final_img.convert("L")
+                elif not config["grayscale"] and final_img.mode == "RGBA":
+                    final_img = final_img.convert("RGB")
+                
+                # Save as JPEG
+                out_path = processed_dir / f"page_{i:04d}.jpg"
+                final_img.save(
+                    out_path,
+                    "JPEG",
                     quality=config["quality"],
                     subsampling=config["subsampling"],
-                    optimize=True,
+                    optimize=True
                 )
-
-            processed_files.append(out_path)
-
-            # Free the raw temp file and run GC to reclaim memory
-            raw_path.unlink(missing_ok=True)
-            gc.collect()
-
-            elapsed_ms = int((time.time() - t0) * 1000)
-            if i % 5 == 0 or i == page_count:
-                logger.info(
-                    f"Page {i}/{page_count} done in {elapsed_ms}ms",
-                    extra={"job_id": job_id},
-                )
-
-        except Exception as exc:
-            logger.warning(f"Error on page {i}: {exc}", extra={"job_id": job_id})
-            raw_path.unlink(missing_ok=True)
+                processed_files.append(out_path)
+                
+            elapsed = (time.time() - start_time) * 1000
+            if i % 10 == 0: # Log every 10 images to avoid log flooding
+                logger.debug(f"Processed image {i} in {elapsed:.0f}ms", extra={"job_id": job_id})
+                
+        except Exception as e:
+            logger.warning(f"Failed to process image {img_path}: {e}", extra={"job_id": job_id})
             continue
-
+            
     return processed_files

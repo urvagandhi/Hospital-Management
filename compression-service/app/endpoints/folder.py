@@ -162,10 +162,11 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                         for fi, src in zip(files_info, source_pdfs_opened)
                     ]
 
-                # Merge (with optional cover page)
+                # Merge content ONLY (no cover page) for compression
                 merged_path = job_dir / "merged.pdf"
                 merged = pikepdf.Pdf.new()
 
+                cover_path = None
                 if body.display_name:
                     cover_path = generate_cover_page(
                         title=body.display_name,
@@ -173,13 +174,15 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                         files_info=files_info,
                         job_dir=job_dir,
                     )
-                    cover_pdf = pikepdf.open(cover_path)
-                    merged.pages.extend(cover_pdf.pages)
 
                 for src in source_pdfs_opened:
                     merged.pages.extend(src.pages)
                 merged.save(merged_path)
                 merged.close()
+
+                # Close source PDFs to free memory
+                for src in source_pdfs_opened:
+                    src.close()
 
                 if len(local_paths) > 50:
                     logger.warning(
@@ -191,8 +194,25 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                         },
                     )
 
-                # Use the new adaptive pipeline
+                # Compress content-only PDF
                 result = await pipeline.run(merged_path, target_bytes, job_id)
+
+                # Merge cover page back in if it exists
+                if cover_path is not None:
+                    final_path = job_dir / "final_with_cover.pdf"
+                    compressed = pikepdf.open(result.output_path)
+                    final_pdf = pikepdf.Pdf.new()
+
+                    cover = pikepdf.open(cover_path)
+                    final_pdf.pages.extend(cover.pages)
+                    final_pdf.pages.extend(compressed.pages)
+
+                    final_pdf.save(final_path)
+                    final_pdf.close()
+                    compressed.close()
+
+                    result.output_path = final_path
+                    result.output_size_bytes = final_path.stat().st_size
 
                 # Upload
                 loop = asyncio.get_running_loop()

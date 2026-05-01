@@ -1,3 +1,4 @@
+import gc
 import logging
 import psutil
 import shutil
@@ -17,9 +18,8 @@ class CompressionResult:
 
 logger = logging.getLogger(__name__)
 
-# Render free tier limit is 512MB. We leave 200MB buffer.
-MIN_AVAILABLE_RAM_MB = 200
-import gc
+# Render free tier limit is 512MB. We leave 150MB buffer.
+MIN_AVAILABLE_RAM_MB = 150
 
 class SizeFloorBreached(Exception):
     """Raised when even Tier 4 cannot meet the target size."""
