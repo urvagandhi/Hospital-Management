@@ -216,7 +216,7 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
 
                 # Upload
                 loop = asyncio.get_running_loop()
-                await loop.run_in_executor(
+                url = await loop.run_in_executor(
                     None,
                     partial(upload_merged, result.output_path, content_hash, job_id),
                 )
@@ -233,7 +233,6 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                     job_id=job_id,
                 )
 
-                url = generate_delivery_url(content_hash)
                 elapsed_ms = int((time.monotonic() - start) * 1000)
 
                 await write_audit_log(

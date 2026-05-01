@@ -184,11 +184,11 @@ def upload_merged(
     local_path: Path,
     content_hash: str,
     job_id: str,
-) -> None:
+) -> str:
     """Upload merged PDF to Cloudinary under HospitALL_merged/{hash}.
 
     Uses type=upload + resource_type=raw — public delivery via plain URL.
-    The public_id is a SHA-256 hash so it's unguessable.
+    Returns the secure delivery URL.
     """
     public_id = f"{_CACHE_PREFIX}/{content_hash}.pdf"
 
@@ -201,7 +201,7 @@ def upload_merged(
         },
     )
 
-    cloudinary.uploader.upload(
+    result = cloudinary.uploader.upload(
         str(local_path),
         public_id=public_id,
         resource_type="raw",
@@ -213,3 +213,5 @@ def upload_merged(
         "Upload complete",
         extra={"job_id": job_id, "event": "upload_done"},
     )
+    
+    return result.get("secure_url")
