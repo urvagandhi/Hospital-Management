@@ -31,7 +31,11 @@ data class OfflineDocument(
     // account. Empty for legacy rows (pre-migration); those are treated as
     // orphaned and dropped by the worker.
     @ColumnInfo(name = "owner_hospital_id", defaultValue = "")
-    val ownerHospitalId: String = ""
+    val ownerHospitalId: String = "",
+    // The user-friendly name of the file (e.g. PatientName_FolderName_Timestamp.pdf)
+    // Persisted so the UI can show a meaningful name during upload/failure states.
+    @ColumnInfo(name = "display_name", defaultValue = "document.pdf")
+    val displayName: String = "document.pdf"
 )
 
 enum class SyncStatus {

@@ -5,6 +5,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Same configs as preprocessor for consistency in GS flags
+GS_PIPELINE_TIMEOUT = 600.0
 GS_TIER_CONFIGS = {
     0: {"dpi": 300, "quality": 85, "downsample": "/Bicubic"},
     1: {"dpi": 200, "quality": 72, "downsample": "/Bicubic"},
@@ -94,10 +95,10 @@ async def run_ghostscript_explicit(
     )
     
     try:
-        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=240)
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
     except asyncio.TimeoutError:
         proc.kill()
-        raise RuntimeError("Ghostscript timed out after 240 seconds")
+        raise RuntimeError("Ghostscript timed out after 300 seconds")
 
     if proc.returncode != 0:
         err_msg = stderr.decode(errors="replace")

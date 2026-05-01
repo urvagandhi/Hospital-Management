@@ -2,7 +2,7 @@ import logging
 import shutil
 import uuid
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
 import pikepdf
 
@@ -27,12 +27,13 @@ class CompressionPipeline:
 
     async def run(
         self, 
-        pdf_paths: List[Path] | Path, 
+        pdf_paths: Union[List[Path], Path], 
         target_size_bytes: int, 
         job_id: str
     ) -> CompressionResult:
-        # Create a unique work directory for this job
-        work_dir = self.base_temp_dir / f"{uuid.uuid4()}"
+        # Use the provided job_id as the work directory name
+        # This aligns with the directory created by the endpoints
+        work_dir = self.base_temp_dir / job_id
         work_dir.mkdir(parents=True, exist_ok=True)
         
         try:
@@ -71,12 +72,9 @@ class CompressionPipeline:
                 )
 
         except Exception as e:
-            logger.error(f"Pipeline failed: {e}", exc_info=True)
+            logger.error(f"Pipeline failed: {e}", exc_info=True, extra={"job_id": job_id})
             # Re-raise so the endpoint can handle it
             raise
-        # Note: We don't shutil.rmtree(work_dir) here because the caller 
-        # needs the final file. The cleanup must happen AFTER the file 
-        # is uploaded to Cloudinary, usually in main.py's finally block.
 
     def _merge_pdfs(self, paths: List[Path], output_path: Path):
         """Merge multiple PDFs using pikepdf."""

@@ -50,13 +50,14 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path) -> list[Pa
 
     # 1. Extract images using pdfimages
     # -all: extract as JPEG/PNG/TIFF
-    # prefix: img
+    # -j: try to extract as JPEG if possible (fast)
+    # -jp2: try to extract as JPEG2000 if possible
     try:
         subprocess.run(
-            ["pdfimages", "-all", str(pdf_path), str(extract_dir / "img")],
+            ["pdfimages", "-all", "-j", "-jp2", str(pdf_path), str(extract_dir / "img")],
             check=True,
             capture_output=True,
-            timeout=120
+            timeout=300
         )
     except subprocess.CalledProcessError as e:
         logger.error(f"pdfimages failed: {e.stderr.decode()}")

@@ -277,12 +277,14 @@ class UploadActivity : BaseActivity() {
                 // Build filename: use user input if provided, otherwise auto-generate
                 val userInput = binding.etFileName.text.toString().trim()
                 val sanitizedPatientName = patientName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
+                val sanitizedFolderName = folderName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
+                
                 val pdfFileName = if (userInput.isNotEmpty()) {
                     val sanitizedInput = userInput.replace(Regex("[^A-Za-z0-9_\\- ]"), "_")
-                    "${sanitizedPatientName}_${sanitizedInput}.pdf"
+                    "${sanitizedPatientName}_${sanitizedFolderName}_${sanitizedInput}.pdf"
                 } else {
-                    val sanitizedFolderName = folderName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
-                    "${sanitizedPatientName}_${sanitizedFolderName}_${System.currentTimeMillis()}.pdf"
+                    val random = System.currentTimeMillis().toString().takeLast(6)
+                    "${sanitizedPatientName}_${sanitizedFolderName}_${random}.pdf"
                 }
                 FileLogger.d(TAG, "PDF filename generated: $pdfFileName (userInput='$userInput')")
 
@@ -367,7 +369,8 @@ class UploadActivity : BaseActivity() {
                     errorMessage = errorMessage,
                     idempotencyKey = idempotencyKey,
                     uploadProfileUsed = uploadProfileUsed,
-                    ownerHospitalId = ownerHospitalId
+                    ownerHospitalId = ownerHospitalId,
+                    displayName = pdfFileName
                 )
 
                 val rowId = docRepository.insertQueuedRow(document)

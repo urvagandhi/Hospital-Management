@@ -71,7 +71,7 @@ class QueueActivity : BaseActivity() {
                 val fileItems = sortedDocs.map { doc ->
                     val localFile = File(Uri.parse(doc.fileUri).path ?: "")
                     val fileSize = if (localFile.exists()) localFile.length() else 0L
-                    val fileName = localFile.name
+                    val fileName = doc.displayName
                     val mimeType = if (fileName.endsWith(".pdf")) "application/pdf" else "image/jpeg"
                     
                     val statusPrefix = when (doc.status) {
@@ -195,6 +195,7 @@ class QueueActivity : BaseActivity() {
         val inputData = Data.Builder()
             .putLong(UploadWorker.KEY_OFFLINE_DOC_ID, doc.id)
             .putString(UploadWorker.KEY_IDEMPOTENCY_KEY, doc.idempotencyKey)
+            .putString(UploadWorker.KEY_FILE_NAME, doc.displayName)
             .putString(UploadWorker.KEY_OWNER_HOSPITAL_ID, doc.ownerHospitalId)
             .build()
 

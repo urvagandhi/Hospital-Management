@@ -35,7 +35,7 @@ from app.metrics import CACHE_HITS_TOTAL, CACHE_META_MISSING_TOTAL
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_PIPELINE_TIMEOUT = 300.0
+_PIPELINE_TIMEOUT = 600.0
 
 
 @router.post("/api/folder-download")

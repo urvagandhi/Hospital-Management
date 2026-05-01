@@ -950,7 +950,7 @@ class FolderDetailsActivity : BaseActivity() {
                     pendingOfflineFiles = pendingDocs.map { doc ->
                         val localFile = java.io.File(android.net.Uri.parse(doc.fileUri).path ?: "")
                         val fileSize = if (localFile.exists()) localFile.length() else 0L
-                        val fileName = localFile.name
+                        val fileName = doc.displayName
                         val mimeType = if (fileName.endsWith(".pdf")) "application/pdf" else "image/jpeg"
                         
                         val statusPrefix = when (doc.status) {

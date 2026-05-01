@@ -139,7 +139,7 @@ class SyncDocumentsWorker(
                         .putString(com.hospital.management.worker.UploadWorker.KEY_PATIENT_ID, doc.patientId)
                         .putString(com.hospital.management.worker.UploadWorker.KEY_FOLDER_NAME, doc.folderName)
                         .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_URI, doc.fileUri)
-                        .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_NAME, android.net.Uri.parse(doc.fileUri).lastPathSegment ?: "document.pdf")
+                        .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_NAME, doc.displayName)
                         .putString(com.hospital.management.worker.UploadWorker.KEY_IDEMPOTENCY_KEY, idempotencyKey)
                         .putInt(com.hospital.management.worker.UploadWorker.KEY_UPLOAD_PROFILE_USED, doc.uploadProfileUsed)
                         .putString(com.hospital.management.worker.UploadWorker.KEY_OWNER_HOSPITAL_ID, currentHospitalId)
