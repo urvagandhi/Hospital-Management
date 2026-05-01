@@ -65,6 +65,7 @@ class FolderDetailsActivity : BaseActivity() {
     private var patientName: String = ""
     private var hospitalName: String = ""
     private var pendingOfflineFiles: List<FileItem> = emptyList()
+    private val completedUploadWorkIds = mutableSetOf<java.util.UUID>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,6 +93,7 @@ class FolderDetailsActivity : BaseActivity() {
         setupViews()
         setupObservers()
         setupPendingDocsObserver()
+        setupUploadObserver()
         loadFiles()
     }
 
@@ -181,6 +183,24 @@ class FolderDetailsActivity : BaseActivity() {
                 displayFiles(serverFiles)
             }
         }
+    }
+
+    private fun setupUploadObserver() {
+        androidx.work.WorkManager.getInstance(this)
+            .getWorkInfosByTagLiveData(com.hospital.management.worker.UploadWorker.TAG_UPLOAD)
+            .observe(this) { workInfos ->
+                var shouldRefresh = false
+                workInfos?.forEach { workInfo ->
+                    if (workInfo.state == androidx.work.WorkInfo.State.SUCCEEDED) {
+                        if (completedUploadWorkIds.add(workInfo.id)) {
+                            shouldRefresh = true
+                        }
+                    }
+                }
+                if (shouldRefresh) {
+                    loadFiles()
+                }
+            }
     }
 
     private fun displayFiles(serverFiles: List<FileItem>) {

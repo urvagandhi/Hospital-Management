@@ -59,6 +59,7 @@ class FolderViewActivity : BaseActivity() {
     private var patientName: String = ""
     private var hospitalName: String = ""
     private var isDownloading = false
+    private val completedUploadWorkIds = mutableSetOf<java.util.UUID>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,6 +79,7 @@ class FolderViewActivity : BaseActivity() {
 
         setupViews()
         setupObservers()
+        setupUploadObserver()
         loadFolders()
     }
 
@@ -184,6 +186,24 @@ class FolderViewActivity : BaseActivity() {
                 }
             }
         }
+    }
+
+    private fun setupUploadObserver() {
+        WorkManager.getInstance(this)
+            .getWorkInfosByTagLiveData(com.hospital.management.worker.UploadWorker.TAG_UPLOAD)
+            .observe(this) { workInfos ->
+                var shouldRefresh = false
+                workInfos?.forEach { workInfo ->
+                    if (workInfo.state == WorkInfo.State.SUCCEEDED) {
+                        if (completedUploadWorkIds.add(workInfo.id)) {
+                            shouldRefresh = true
+                        }
+                    }
+                }
+                if (shouldRefresh) {
+                    loadFolders()
+                }
+            }
     }
 
     private fun updateFolderList(patient: com.hospital.management.data.models.Patient) {
