@@ -62,9 +62,9 @@ sequenceDiagram
     C->>S: POST /api/auth/verify-auth-code (Bearer tempToken)
     S-->>C: 200 { accessToken (24h) + refreshToken (httpOnly, 365d) }
 
-    Note over C,S: Access token in module-scoped memory<br/>(NOT sessionStorage — TD-029)
+    Note over C,S: Access token in module-scoped memory (NOT sessionStorage — TD-029)
 
-    Note over C,S: Refresh rotation (TD-002): every<br/>/refresh-token mints a fresh token;<br/>replaying a rotated-out token revokes<br/>every active session for the hospital
+    Note over C,S: Refresh rotation (TD-002): every /refresh-token call mints a fresh token; replaying a rotated-out token revokes every active session for the hospital
 ```
 
 **Android-only specifics:**
