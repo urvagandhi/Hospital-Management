@@ -343,7 +343,7 @@ npm run lint        # ESLint check
 ```bash
 docker build \
   --build-arg VITE_API_URL=/api \
-  --build-arg VITE_APP_NAME="Hospital Management System" \
+  --build-arg VITE_APP_NAME="MediVault" \
   -t hospital-frontend .
 ```
 
