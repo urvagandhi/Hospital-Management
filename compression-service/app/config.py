@@ -2,6 +2,7 @@ import os
 import re
 
 _DEFAULT_DB = "hospital-management"
+_DEFAULT_JOB_TMP_DIR = "/tmp/jobs"
 
 
 class Config:
@@ -12,6 +13,7 @@ class Config:
     CLOUDINARY_API_KEY: str
     CLOUDINARY_API_SECRET: str
     MONGO_URI: str
+    JOB_TMP_DIR: str
 
     def __init__(self) -> None:
         required = [
@@ -31,6 +33,10 @@ class Config:
 
         # Ensure URI always has a DB name — same behavior as Mongoose in the Node backend
         self.MONGO_URI = self._ensure_db_name(self.MONGO_URI)
+
+        # Scratch dir for in-flight merge/compress jobs. Container images set this
+        # to a writable, app-owned path; falls back to /tmp/jobs for legacy hosts.
+        self.JOB_TMP_DIR = os.environ.get("JOB_TMP_DIR", _DEFAULT_JOB_TMP_DIR)
 
     @staticmethod
     def _ensure_db_name(uri: str) -> str:

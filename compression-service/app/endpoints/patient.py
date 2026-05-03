@@ -12,6 +12,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from app.audit import write_audit_log
+from app.config import config
 from app.cloudinary_client import (
     SourceFetchError,
     check_cache,
@@ -42,7 +43,7 @@ _PIPELINE_TIMEOUT = 600.0
 async def patient_download(body: PatientDownloadRequest, request: Request):
     job_id = str(uuid.uuid4())
     start = time.monotonic()
-    job_dir = Path(f"/tmp/jobs/{job_id}")
+    job_dir = Path(config.JOB_TMP_DIR) / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
     db = request.app.state.mongo_db
 

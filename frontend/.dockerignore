@@ -1,7 +1,70 @@
+# ── Frontend .dockerignore ──
+# Files/dirs excluded from the Docker build context to keep the image small,
+# the build fast, and secrets out of the build layers.
+
+# ── Dependencies & build output (re-created inside the image) ───────────────
 node_modules
 dist
+.cache
+.parcel-cache
+.vite
+.next
+.turbo
+
+# ── Build artefacts / runtime state ─────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pids
+*.pid
+*.tgz
+*.tar.gz
+tmp
+temp
+
+# ── Vite timestamp scratch files (committed by accident sometimes) ──────────
+vite.config.ts.timestamp-*
+vite.config.js.timestamp-*
+
+# ── Secrets & local environment (NEVER bake into image) ─────────────────────
 .env
-.env.local
+.env.*
+!.env.example
+
+# ── VCS & editor noise ──────────────────────────────────────────────────────
 .git
 .gitignore
+.gitattributes
+.vscode
+.idea
 .DS_Store
+
+# ── Tests / coverage / lint cache (not needed at build) ─────────────────────
+__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+coverage
+.nyc_output
+.eslintcache
+
+# ── Tooling configs not needed by Vite at build time ────────────────────────
+.eslintrc*
+.prettierrc*
+.editorconfig
+
+# ── Platform-specific deploy configs (Vercel/Render/etc — not for Docker) ───
+vercel.json
+
+# ── Docs (kept in repo, not in image) ───────────────────────────────────────
+README.md
+*.md
+
+# ── One-off scripts that aren't part of the app ─────────────────────────────
+read_log.cjs
+
+# ── Docker artefacts (not needed inside the image) ──────────────────────────
+Dockerfile
+.dockerignore

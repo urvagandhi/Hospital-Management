@@ -1,88 +1,180 @@
-version: "3.8"
+# ─────────────────────────────────────────────────────────────────────────────
+# Hospital Management — Production Compose (single droplet, 4 containers)
+#
+#   nginx (edge, public)  ──►  backend (Node)  ──►  compression (FastAPI)
+#                                    │
+#                                    └──►  mongo (local)
+#
+#   Redis stays on Upstash (REST). Local Redis migration needs a backend code
+#   patch (ioredis adapter) — see README "Data Migration" follow-up workstream.
+#
+# Run:
+#   docker compose up -d --build       # bring everything up
+#   docker compose ps                  # check container health
+#   docker compose logs -f --tail=50   # tail all logs
+#
+# Required files at repo root:
+#   .env                       # MONGO_ROOT_USER, MONGO_ROOT_PASSWORD (compose interpolation)
+#   backend/.env               # backend app secrets (loaded into backend container)
+#   compression-service/.env   # sidecar app secrets (loaded into compression container)
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
-  # ── MongoDB ──
+
+  # ── MongoDB 7 (local, internal-only, password-protected) ───────────────────
   mongo:
     image: mongo:7
+    container_name: hms-mongo
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-changeme}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?Set MONGO_ROOT_USER in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
       MONGO_INITDB_DATABASE: hospital-management
+    # --auth is implicit when MONGO_INITDB_ROOT_* are set.
+    # wiredTigerCacheSizeGB capped low for the 1 GB droplet floor.
+    command:
+      - "mongod"
+      - "--wiredTigerCacheSizeGB"
+      - "0.25"
+      - "--bind_ip_all"
     volumes:
       - mongo_data:/data/db
-    ports:
-      - "27017:27017"
+    networks:
+      - hms-internal
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 30s
+    mem_limit: 400m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # ── Redis ──
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme}
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ── Backend (Node/Express API) ──
+  # ── Backend (Node + Express) ───────────────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: hms-backend:latest
+    container_name: hms-backend
     restart: unless-stopped
     env_file:
-      - .env
+      - ./backend/.env
     environment:
+      # These override anything in backend/.env so the operator can never
+      # accidentally point prod backend at the wrong Mongo / sidecar.
       NODE_ENV: production
-      PORT: 5000
-      MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@mongo:27017/hospital-management?authSource=admin
-      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
-    ports:
-      - "5000:5000"
+      PORT: "5000"
+      MONGODB_URI: "mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/hospital-management?authSource=admin"
+      USE_COMPRESSION_SERVICE: "true"
+      COMPRESSION_SERVICE_URL: "http://compression:8000"
+      TRUST_PROXY_HOPS: "1"        # nginx is the only hop in front of us
     depends_on:
       mongo:
         condition: service_healthy
-      redis:
-        condition: service_healthy
+    networks:
+      - hms-internal
+    # Bound to localhost only — nginx reaches it via the docker network.
+    # Operator can `curl 127.0.0.1:5000/api/health` on the droplet for debugging.
+    ports:
+      - "127.0.0.1:5000:5000"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
-      interval: 15s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/api/health"]
+      interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 20s
+    mem_limit: 300m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # ── Frontend (React/Vite → Nginx) ──
-  frontend:
+  # ── Compression sidecar (FastAPI + GhostScript + pikepdf) ──────────────────
+  compression:
+    build:
+      context: ./compression-service
+      dockerfile: Dockerfile
+    image: hms-compression:latest
+    container_name: hms-compression
+    restart: unless-stopped
+    env_file:
+      - ./compression-service/.env
+    environment:
+      # Sidecar needs the SAME Mongo connection (it writes merged_pdf_cache +
+      # compression_audits). Override anything in compression-service/.env.
+      MONGO_URI: "mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongo:27017/hospital-management?authSource=admin"
+      JOB_TMP_DIR: "/app/tmp/jobs"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - hms-internal
+    ports:
+      - "127.0.0.1:8000:8000"     # localhost-only, for droplet-side debugging
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    mem_limit: 400m   # spikes during large patient PDF merges
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── nginx edge (serves built React SPA + reverse-proxies /api/) ────────────
+  nginx:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # VITE_* vars are baked in at build time
         VITE_API_URL: /api
         VITE_APP_NAME: ${VITE_APP_NAME:-Hospital Management System}
+    image: hms-web:latest
+    container_name: hms-web
     restart: unless-stopped
-    ports:
-      - "80:80"
     depends_on:
       backend:
         condition: service_healthy
+    networks:
+      - hms-internal
+    ports:
+      - "80:80"
+      - "443:443"     # not yet served — placeholder for certbot follow-up
+    volumes:
+      # Mounted now so the container doesn't need to be recreated when certbot
+      # is wired up. Empty until then; nginx config currently listens on :80 only.
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
-      interval: 15s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 10s
+    mem_limit: 80m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
+# ─── Networks ────────────────────────────────────────────────────────────────
+networks:
+  hms-internal:
+    driver: bridge
+
+# ─── Volumes ─────────────────────────────────────────────────────────────────
 volumes:
-  mongo_data:
-  redis_data:
+  mongo_data:        # MongoDB persistent storage
+  letsencrypt:       # Let's Encrypt certs (populated by certbot in step 8)
+  certbot_www:       # ACME http-01 challenge webroot (shared with certbot)

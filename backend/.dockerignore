@@ -1,0 +1,56 @@
+# ── Backend .dockerignore ──
+# Files/dirs excluded from the Docker build context to keep the image small,
+# the build fast, and secrets out of the layers.
+
+# ── Dependencies (re-installed inside the image) ────────────────────────────
+node_modules
+.npm
+.cache
+
+# ── Build artifacts / runtime state ─────────────────────────────────────────
+coverage
+*.log
+npm-debug.log*
+pids
+*.pid
+*.seed
+*.tgz
+*.tar.gz
+tmp
+temp
+
+# ── Secrets & local environment (NEVER bake into image) ─────────────────────
+.env
+.env.*
+!.env.example
+
+# ── VCS & editor noise ──────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+.vscode
+.idea
+.DS_Store
+
+# ── Tests (not needed at runtime) ───────────────────────────────────────────
+src/__tests__
+**/*.test.js
+**/*.spec.js
+
+# ── Tooling configs (not needed at runtime) ─────────────────────────────────
+.eslintrc*
+.prettierrc*
+.editorconfig
+nodemon.json
+jest.config*
+
+# ── Docker artefacts (not needed inside the image) ──────────────────────────
+Dockerfile
+.dockerignore
+
+# ── Documentation (kept in repo, not in image) ──────────────────────────────
+README.md
+*.md
+
+# ── Local upload sandbox (legacy / dev only) ────────────────────────────────
+uploads

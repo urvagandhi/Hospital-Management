@@ -32,8 +32,9 @@ class CompressionPipeline:
     4. Adaptive loop (if scanned)
     """
     
-    def __init__(self, base_temp_dir: str = "/tmp/jobs"):
-        self.base_temp_dir = Path(base_temp_dir)
+    def __init__(self, base_temp_dir: str | None = None):
+        from app.config import config
+        self.base_temp_dir = Path(base_temp_dir or config.JOB_TMP_DIR)
         self.base_temp_dir.mkdir(parents=True, exist_ok=True)
 
     async def run(
