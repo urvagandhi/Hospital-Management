@@ -13,7 +13,7 @@ COPY . .
 # VITE_* env vars must be present at build time
 # They are passed via docker-compose build args
 ARG VITE_API_URL=/api
-ARG VITE_APP_NAME="Hospital Management System"
+ARG VITE_APP_NAME="MediVault"
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_APP_NAME=$VITE_APP_NAME
 

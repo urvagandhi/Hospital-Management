@@ -56,7 +56,15 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:5000/api/health",
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -70,7 +78,7 @@ services:
       args:
         # VITE_* vars are baked in at build time
         VITE_API_URL: /api
-        VITE_APP_NAME: ${VITE_APP_NAME:-Hospital Management System}
+        VITE_APP_NAME: ${VITE_APP_NAME:-MediVault}
     restart: unless-stopped
     ports:
       - "80:80"
@@ -78,7 +86,15 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:80/",
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
