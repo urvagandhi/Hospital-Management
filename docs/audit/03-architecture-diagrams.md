@@ -361,7 +361,7 @@ sequenceDiagram
   API->>IG: verify key not seen (Redis)
   IG-->>API: ok OR replay → 200 cached response
   API->>MU: parse body
-  MU->>CL: upload stream (public_id=HospitALL/h_X/p_Y/slug/YYYYMMDD_hash)
+  MU->>CL: upload stream (public_id=MediVault/h_X/p_Y/slug/YYYYMMDD_hash)
   CL-->>MU: fileUrl + publicId + thumbnailUrl
   MU-->>API: req.file
   API->>PT: findOneAndUpdate { _id, hospitalId } $push folders.$.files
@@ -574,7 +574,7 @@ flowchart TB
   Auth --> Router["BrowserRouter"]
   Router --> ML["MainLayout (protected)"]
   ML --> NB["Navbar fixed z-50"]
-  NB --> LC["LeftCluster: Logo + HospitALL wordmark → /dashboard"]
+  NB --> LC["LeftCluster: Logo + MediVault wordmark → /dashboard"]
   NB --> CN["CenterNav: Dashboard (always), Hospitals (admin-gated)"]
   NB --> RC["RightCluster"]
   RC --> Chip["HospitalChip + online dot → HospitalProfileModal"]
@@ -650,7 +650,7 @@ flowchart TD
 
 ---
 
-*17 diagrams, all derived from live code. Proceed to `04-enhancements.md` for the findings feed.*
+_17 diagrams, all derived from live code. Proceed to `04-enhancements.md` for the findings feed._
 
 ---
 
@@ -1316,4 +1316,4 @@ flowchart LR
 
 ---
 
-*13 Android diagrams (§18–§30) + 17 backend / web / sidecar diagrams (§1–§17) = 30 total.*
+_13 Android diagrams (§18–§30) + 17 backend / web / sidecar diagrams (§1–§17) = 30 total._

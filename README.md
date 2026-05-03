@@ -248,13 +248,6 @@ docker-compose up --build
 | Sidecar  | `http://localhost:8000` |
 | MongoDB  | `localhost:27017`       |
 
-### 3. Seed Demo Data
-
-```bash
-cd backend
-node src/seed.js
-```
-
 ### 4. Run Without Docker (Development)
 
 ```bash
@@ -276,7 +269,7 @@ Open `android-app/` in Android Studio, configure your upload keystore (see [andr
 
 ## File Pipeline & Downloads
 
-- Android uploads files via multipart → backend → Cloudinary at public*id `HospitALL/h*{hospitalId}/p*{patientId}/{folder_slug}/{date}*{hash}`. Files are either `public`or`signed` (5-min TTL). 120×120 thumbnails for images.
+- Android uploads files via multipart → backend → Cloudinary at public*id `MediVault/h*{hospitalId}/p*{patientId}/{folder_slug}/{date}*{hash}`. Files are either `public`or`signed` (5-min TTL). 120×120 thumbnails for images.
 - Downloads come in three modes: per-file, per-folder, per-patient. PDF (merged) and ZIP (per-folder) are gated by a size pre-check (soft 10 MB / hard 100 MB).
 - The compression sidecar handles PDF merging + size reduction. The backend calls it with `X-Internal-Secret`; the sidecar fetches inputs from Cloudinary, runs a tier ladder (digital / scanned / aggressive), uploads the result, and caches by SHA256 of inputs. **Mandatory in prod (TD-D4)** — the in-process pdf-lib fallback OOMs at scale.
 - A nightly cron (00:00 UTC) hard-deletes patients older than 90 days and cascades the Cloudinary delete. There is no soft-delete or trash UI.
@@ -398,18 +391,18 @@ Recommended droplet: **2 GB RAM / 2 vCPU / 50 GB SSD** (1 GB is too tight once M
 
 ### Step 0 — What to hand to the operator
 
-| Item | How to deliver |
-| --- | --- |
-| Source code | **GitHub repo access** — add them as a read-only Collaborator OR generate a read-only **deploy key** scoped to this repo. Do **not** ship a zip; updates must be `git pull`-able. |
-| `backend/.env` | Out-of-band (encrypted email / 1Password share). NEVER commit. |
-| `compression-service/.env` | Same — out-of-band. |
-| Shared `INTERNAL_API_SECRET` | Generate fresh (`openssl rand -hex 32`); same value in both `.env` files (`COMPRESSION_SERVICE_SECRET` on backend, `INTERNAL_API_SECRET` on sidecar). |
-| Cloudinary keys | Out-of-band. |
-| Brevo API key | Out-of-band. |
-| Firebase service account JSON | Out-of-band; either set `FIREBASE_SERVICE_ACCOUNT_JSON` env or upload the JSON file and point `FIREBASE_SERVICE_ACCOUNT_PATH` at it. |
-| Upstash Redis URL + token | Out-of-band (until local Redis migration). |
-| Domain name | e.g. `api.yourdomain.in`. Point an `A` record to the droplet IP **before** running certbot. |
-| Branch | `main` |
+| Item                          | How to deliver                                                                                                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source code                   | **GitHub repo access** — add them as a read-only Collaborator OR generate a read-only **deploy key** scoped to this repo. Do **not** ship a zip; updates must be `git pull`-able. |
+| `backend/.env`                | Out-of-band (encrypted email / 1Password share). NEVER commit.                                                                                                                    |
+| `compression-service/.env`    | Same — out-of-band.                                                                                                                                                               |
+| Shared `INTERNAL_API_SECRET`  | Generate fresh (`openssl rand -hex 32`); same value in both `.env` files (`COMPRESSION_SERVICE_SECRET` on backend, `INTERNAL_API_SECRET` on sidecar).                             |
+| Cloudinary keys               | Out-of-band.                                                                                                                                                                      |
+| Brevo API key                 | Out-of-band.                                                                                                                                                                      |
+| Firebase service account JSON | Out-of-band; either set `FIREBASE_SERVICE_ACCOUNT_JSON` env or upload the JSON file and point `FIREBASE_SERVICE_ACCOUNT_PATH` at it.                                              |
+| Upstash Redis URL + token     | Out-of-band (until local Redis migration).                                                                                                                                        |
+| Domain name                   | e.g. `api.yourdomain.in`. Point an `A` record to the droplet IP **before** running certbot.                                                                                       |
+| Branch                        | `main`                                                                                                                                                                            |
 
 ---
 
@@ -525,17 +518,17 @@ sudo env PATH=$PATH pm2 startup systemd -u deploy --hp /home/deploy
 
 Backend `.env` deltas vs `.env.example` for this droplet:
 
-| Key | Value |
-| --- | --- |
-| `NODE_ENV` | `production` |
-| `PORT` | `5000` |
-| `TRUST_PROXY_HOPS` | `1` (one hop = nginx; not `2` like Render+Cloudflare) |
-| `FRONTEND_URL` | `https://your-web-domain` (CORS allow-list) |
-| `MONGODB_URI` | Atlas URI **or** `mongodb://hms_app:...@127.0.0.1:27017/...` once Step 2 is done |
-| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Keep Upstash for now; local-Redis migration is a separate workstream |
-| `USE_COMPRESSION_SERVICE` | `true` (mandatory in prod — `env.js` refuses to boot without it) |
-| `COMPRESSION_SERVICE_URL` | `http://127.0.0.1:8000` |
-| `COMPRESSION_SERVICE_SECRET` | Same value as sidecar's `INTERNAL_API_SECRET` |
+| Key                                 | Value                                                                            |
+| ----------------------------------- | -------------------------------------------------------------------------------- |
+| `NODE_ENV`                          | `production`                                                                     |
+| `PORT`                              | `5000`                                                                           |
+| `TRUST_PROXY_HOPS`                  | `1` (one hop = nginx; not `2` like Render+Cloudflare)                            |
+| `FRONTEND_URL`                      | `https://your-web-domain` (CORS allow-list)                                      |
+| `MONGODB_URI`                       | Atlas URI **or** `mongodb://hms_app:...@127.0.0.1:27017/...` once Step 2 is done |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Keep Upstash for now; local-Redis migration is a separate workstream             |
+| `USE_COMPRESSION_SERVICE`           | `true` (mandatory in prod — `env.js` refuses to boot without it)                 |
+| `COMPRESSION_SERVICE_URL`           | `http://127.0.0.1:8000`                                                          |
+| `COMPRESSION_SERVICE_SECRET`        | Same value as sidecar's `INTERNAL_API_SECRET`                                    |
 
 ---
 
@@ -566,11 +559,11 @@ pm2 save
 
 Sidecar `.env` essentials:
 
-| Key | Value |
-| --- | --- |
-| `INTERNAL_API_SECRET` | Same value as backend's `COMPRESSION_SERVICE_SECRET` |
-| `MONGODB_URI` | Same Mongo connection (sidecar writes `merged_pdf_cache` + `compression_audits` collections) |
-| `CLOUDINARY_*` | Same Cloudinary creds — sidecar fetches inputs from Cloudinary |
+| Key                   | Value                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| `INTERNAL_API_SECRET` | Same value as backend's `COMPRESSION_SERVICE_SECRET`                                         |
+| `MONGODB_URI`         | Same Mongo connection (sidecar writes `merged_pdf_cache` + `compression_audits` collections) |
+| `CLOUDINARY_*`        | Same Cloudinary creds — sidecar fetches inputs from Cloudinary                               |
 
 > Bind to `127.0.0.1`, **never** `0.0.0.0`. Only the backend on the same droplet should be able to reach the sidecar.
 
@@ -655,6 +648,198 @@ These are intentional next steps once the current build is verified live. Do **n
 3. **Move Mongo from Atlas → local Mongo on the droplet.** Step 2 above is the prep; cutover is a `mongodump` / `mongorestore` + `MONGODB_URI` swap.
 4. **Backups.** Add a nightly cron: `mongodump` → tar → upload to DO Spaces with 14-day retention. No backups currently exist.
 5. **Monitoring.** PM2 covers process health; add UptimeRobot (or similar) hitting `/api/health` every minute for external alerting.
+
+---
+
+## Data Migration — Existing Mongo + Cloudinary
+
+This section covers moving **existing production data** off the current hosts onto the new droplet. Two independent operations; do them in this order. Section A (Mongo) is mandatory before any cutover; Section B (Cloudinary) can wait weeks if needed because the migrated DB still serves files from Cloudinary as long as those URLs remain valid.
+
+### A) MongoDB — current host → droplet's local Mongo
+
+Same procedure regardless of source (Atlas / Render add-on / other): `mongodump` from old, `mongorestore` to new, then flip `MONGODB_URI`.
+
+**A1. Dump from the current Mongo** (laptop or droplet):
+
+```bash
+# Install mongodb-database-tools (separate from mongosh)
+# Rocky:  dnf install -y mongodb-database-tools
+# macOS:  brew install mongodb/brew/mongodb-database-tools
+
+mongodump \
+  --uri="<CURRENT_MONGODB_URI>" \
+  --gzip \
+  --archive=hms-$(date +%Y%m%d-%H%M).gz
+```
+
+The single archive contains every collection (`hospitals`, `patients`, `sessions`, `auditlogs`, `appversions`, `merged_pdf_cache`, `compression_audits`). Keep this file — it's also the pre-migration backup.
+
+**A2. Restore into the droplet's local Mongo** (after Step 2 of the deployment runbook above has created the `hms_app` user):
+
+```bash
+scp hms-*.gz deploy@<droplet-ip>:/home/deploy/
+
+mongorestore \
+  --uri="mongodb://hms_app:<APP_PASSWORD>@127.0.0.1:27017/hospital_management?authSource=hospital_management" \
+  --gzip \
+  --archive=/home/deploy/hms-*.gz \
+  --nsInclude="hospital_management.*" \
+  --drop                          # add only on re-runs / empty target
+```
+
+**A3. Verify counts before cutover**:
+
+```bash
+mongosh "mongodb://hms_app:<APP_PASSWORD>@127.0.0.1:27017/hospital_management" --eval '
+  db.hospitals.countDocuments({});
+  db.patients.countDocuments({});
+  db.sessions.countDocuments({});
+  db.auditlogs.countDocuments({});
+'
+```
+
+Counts must match the source DB. If they don't, do **not** proceed.
+
+**A4. Cutover** (≈ 2–10 min downtime):
+
+```bash
+# 1. brief read-only window
+pm2 stop hms-backend hms-compression
+
+# 2. final incremental dump from source (catch any writes since A1)
+mongodump --uri="<CURRENT_MONGODB_URI>" --gzip --archive=hms-final.gz
+scp hms-final.gz deploy@<droplet>:/home/deploy/
+
+# 3. restore over the top, this time WITH --drop
+mongorestore --uri="mongodb://hms_app:...@127.0.0.1:27017/hospital_management" \
+  --gzip --archive=/home/deploy/hms-final.gz --drop --nsInclude="hospital_management.*"
+
+# 4. flip MONGODB_URI in BOTH backend/.env and compression-service/.env to the local URI
+
+# 5. restart and watch logs
+pm2 start hms-backend hms-compression
+pm2 logs hms-backend --lines 50      # expect "MongoDB connected"
+```
+
+Re-run the count check from A3 against the live app. **Keep the source Mongo paid-up for at least 7 days post-cutover** as a rollback safety net — flipping `MONGODB_URI` back is the entire rollback procedure.
+
+> **Why files keep working after Mongo migration:** `patient.folders[].files[]` stores a `fileUrl` that still points at Cloudinary. As long as Cloudinary keys + public_ids stay valid, the migrated DB serves files correctly. So **migrate Mongo first, leave Cloudinary in place, verify the app**, then start Section B.
+
+---
+
+### B) Cloudinary → DigitalOcean Spaces (or droplet disk)
+
+More involved than Mongo: every file URL in the database has to be rewritten **after** the bytes are copied. Three sub-steps — copy, rewrite, code-switch.
+
+**B0. Pick the destination first.**
+
+| Option                                  | Cost             | Pros                                                                                                                                                                      | Cons                                                                              |
+| --------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **DigitalOcean Spaces** (S3-compatible) | $5/mo for 250 GB | Same model as Cloudinary (URLs, signed URLs, CDN). `r2.service.js` is already 90% of the integration — Spaces speaks S3, same SDK, just different endpoint. Easy backups. | Still external                                                                    |
+| **Droplet local disk** + nginx          | $0 extra         | All-in-one, no third-party                                                                                                                                                | Backups are your problem; disk fills fast; no built-in CDN; signed URLs need code |
+
+**Recommendation: DO Spaces.**
+
+**B1. Inventory** before anything else:
+
+```bash
+cloudinary admin usage
+cloudinary admin resources --prefix=MediVault/ --max-results=500 > cloudinary-inventory.json
+```
+
+Tells you whether you're moving 5 GB or 50 GB and shapes the plan.
+
+**B2. Copy every file Cloudinary → Spaces.** A one-shot Node script (~80 lines, uses `cloudinary` + `@aws-sdk/client-s3`) that:
+
+1. Iterates `cloudinary.api.resources({ prefix: "MediVault/" })` paginated.
+2. For each resource: download `secure_url`.
+3. Upload to Spaces under the **same key path** (e.g. `MediVault/h_<hospitalId>/p_<patientId>/<folder>/<filename>`).
+4. Append `{cloudinary_public_id, spaces_key, spaces_url}` to a JSONL log used by B3.
+
+Make it re-runnable: skip resources whose Spaces key already exists (`HeadObjectCommand`). Run with `--limit=20 --dry-run` first to verify the key shape, then for real. Figure ~1 hour per 10,000 files on a decent connection.
+
+**B3. Rewrite every DB URL** using the JSONL log from B2:
+
+```js
+// backend/scripts/migrate-files-to-spaces.js (sketch)
+import mongoose from "mongoose";
+import fs from "node:fs";
+import readline from "node:readline";
+
+const mapping = new Map(); // cloudinary_public_id → spaces_url
+const rl = readline.createInterface({
+  input: fs.createReadStream("migration.jsonl"),
+});
+for await (const line of rl) {
+  const { cloudinary_public_id, spaces_url } = JSON.parse(line);
+  mapping.set(cloudinary_public_id, spaces_url);
+}
+
+await mongoose.connect(process.env.MONGODB_URI);
+const Patient = mongoose.model(
+  "Patient",
+  new mongoose.Schema({}, { strict: false }),
+  "patients",
+);
+
+const cursor = Patient.find({}).cursor();
+for await (const p of cursor) {
+  let dirty = false;
+  for (const folder of p.folders || []) {
+    for (const f of folder.files || []) {
+      const newUrl = mapping.get(f.cloudinaryPublicId);
+      if (newUrl && f.fileUrl !== newUrl) {
+        f.fileUrl = newUrl;
+        dirty = true;
+      }
+      // also rewrite thumbnailUrl if you re-derived thumbnails
+    }
+  }
+  if (dirty) await p.save();
+}
+```
+
+**Take a Mongo backup five minutes before running this.** Don't trust any migration script.
+
+**B4. Switch the active upload path** (separate code PR):
+
+- `services/storage` (Cloudinary writes) → Spaces writer using existing `r2.service.js` as the starting point.
+- `compression-service/app/cloudinary_client.py` → S3 reads against Spaces.
+- Signed URLs → S3 presigned URLs (5-min TTL, same as today).
+- Delete Cloudinary upload calls.
+- **Keep the Cloudinary read path alive for 14 days** as a fallback for any URL missed in B3.
+
+**B5. Cutover order:**
+
+```text
+1. Migrate Mongo (Section A)              ← downtime ~5 min
+2. Verify app works on local Mongo, files still served from Cloudinary
+3. Run B2 (file copy)                     ← no downtime, runs hours/days
+4. Tag a code release with Spaces writer + dual-read (Spaces first, Cloudinary fallback)
+5. Run B3 (DB URL rewrite)                ← 1–2 min, do during low-traffic window
+6. Deploy the new code release
+7. Watch logs 48h for any 404s on file fetches
+8. After 14 days clean: remove Cloudinary fallback, cancel Cloudinary plan
+```
+
+**B6. Gotchas to read before starting B:**
+
+- **Public vs signed files:** the model has `accessMode: "public" | "signed"`. Generate fresh S3 presigned URLs at request time — never store signed URLs in the DB.
+- **Thumbnails:** Cloudinary auto-generated 120×120 thumbnails server-side. Spaces doesn't. Either pre-generate during B2 with `sharp`, or shift thumbnail generation into the backend on upload going forward.
+- **Public IDs vs object keys:** Cloudinary `public_id` has no extension; Spaces keys do. Use `<public_id>.<original_extension>` so the mapping is reversible.
+- **Sidecar cache:** the `merged_pdf_cache` collection holds Cloudinary URLs of already-merged PDFs. Either rewrite those entries in B3 too, or just `db.merged_pdf_cache.deleteMany({})` and let the cache repopulate (cheaper than risk).
+
+---
+
+### Migration scripts — TODO
+
+Two scripts will be added to `backend/scripts/` when this migration is scheduled. They are **not in the repo yet** because they need three inputs first:
+
+1. **Where is the current Mongo hosted?** (Atlas / Render / other — affects the dump command and whether a built-in export is preferable.)
+2. **Roughly how many GB live in Cloudinary?** (Determines whether B2 is 30 minutes or 30 hours, and whether to rate-limit it.)
+3. **Are we moving Cloudinary at all in v1, or is "Mongo local now, Cloudinary later" acceptable?** Common pragmatic path: migrate Mongo on the deployment day, leave Cloudinary alone for 1–2 months, move files when there's a calm week.
+
+Once those answers exist, ship `backend/scripts/cloudinary-to-spaces.mjs` (B2) + `backend/scripts/migrate-files-to-spaces.js` (B3) tailored to the actual data shape.
 
 ---
 

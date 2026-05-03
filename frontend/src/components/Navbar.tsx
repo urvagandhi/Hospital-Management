@@ -105,11 +105,11 @@ export const Navbar: React.FC = () => {
             >
               <img
                 src={appLogo}
-                alt="HMS"
+                alt="MediVault"
                 className="h-8 w-8 rounded-lg object-cover shadow-card"
               />
               <span className="hidden sm:inline font-heading text-base lg:text-lg font-bold tracking-tight bg-gradient-primary bg-clip-text text-transparent">
-                HospitALL
+                MediVault
               </span>
             </Link>
           </div>
@@ -126,8 +126,8 @@ export const Navbar: React.FC = () => {
                     to={item.to}
                     aria-current={active ? "page" : undefined}
                     className={`relative px-4 py-2 text-sm font-semibold transition-colors rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 ${active
-                        ? "text-primary-700"
-                        : "text-neutral-500 hover:text-primary-600 hover:bg-primary-50/60"
+                      ? "text-primary-700"
+                      : "text-neutral-500 hover:text-primary-600 hover:bg-primary-50/60"
                       }`}
                   >
                     {item.label}
@@ -228,8 +228,8 @@ export const Navbar: React.FC = () => {
                         <Link
                           to="/profile"
                           className={`group flex items-center px-4 py-2 text-sm transition-colors ${active
-                              ? "bg-primary-50 text-primary-700"
-                              : "text-neutral-700"
+                            ? "bg-primary-50 text-primary-700"
+                            : "text-neutral-700"
                             }`}
                         >
                           <svg
@@ -255,8 +255,8 @@ export const Navbar: React.FC = () => {
                         <Link
                           to="/notifications"
                           className={`group flex items-center px-4 py-2 text-sm transition-colors ${active
-                              ? "bg-primary-50 text-primary-700"
-                              : "text-neutral-700"
+                            ? "bg-primary-50 text-primary-700"
+                            : "text-neutral-700"
                             }`}
                         >
                           <svg
@@ -289,8 +289,8 @@ export const Navbar: React.FC = () => {
                         <Link
                           to="/password"
                           className={`group flex items-center px-4 py-2 text-sm transition-colors ${active
-                              ? "bg-primary-50 text-primary-700"
-                              : "text-neutral-700"
+                            ? "bg-primary-50 text-primary-700"
+                            : "text-neutral-700"
                             }`}
                         >
                           <svg
@@ -316,8 +316,8 @@ export const Navbar: React.FC = () => {
                         <Link
                           to="/sessions"
                           className={`group flex items-center px-4 py-2 text-sm transition-colors ${active
-                              ? "bg-primary-50 text-primary-700"
-                              : "text-neutral-700"
+                            ? "bg-primary-50 text-primary-700"
+                            : "text-neutral-700"
                             }`}
                         >
                           <svg
@@ -347,8 +347,8 @@ export const Navbar: React.FC = () => {
                         <button
                           onClick={handleLogoutClick}
                           className={`group flex w-full items-center px-4 py-2 text-sm transition-colors ${active
-                              ? "bg-danger/5 text-danger"
-                              : "text-neutral-700"
+                            ? "bg-danger/5 text-danger"
+                            : "text-neutral-700"
                             }`}
                         >
                           <svg

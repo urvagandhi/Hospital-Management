@@ -236,7 +236,7 @@ flowchart TD
 | `DELETE` | `/:id`                                  | Delete patient + cascade Cloudinary delete                                                                         |
 | `POST`   | `/:id/folders`                          | Create folder                                                                                                      |
 | `GET`    | `/:id/folders/:folder/files`            | List files                                                                                                         |
-| `POST`   | `/:id/folders/:folder/files`            | Upload file (multipart, Cloudinary public*id `HospitALL/h*{hospitalId}/p*{patientId}/{folder_slug}/{date}*{hash}`) |
+| `POST`   | `/:id/folders/:folder/files`            | Upload file (multipart, Cloudinary public*id `MediVault/h*{hospitalId}/p*{patientId}/{folder_slug}/{date}*{hash}`) |
 | `PATCH`  | `/:id/folders/:folder/files/:fileId`    | Rename file                                                                                                        |
 | `DELETE` | `/:id/folders/:folder/files/:fileId`    | Delete file                                                                                                        |
 | `GET`    | `/:id/files/:folder/:fileId/signed-url` | 5-min signed URL                                                                                                   |
@@ -493,7 +493,7 @@ docker-compose up --build backend
 | `IPINFO_TOKEN`                                                             | —                                        | Optional — activates ipinfo.io as primary GeoIP provider              |
 | `GEOIP_DEV_OVERRIDE_IP`                                                    | —                                        | e.g. `8.8.8.8` — forces every lookup to that IP for localhost testing |
 | `TRUST_PROXY_HOPS`                                                         | 2                                        | Numeric only — `true` is rejected                                     |
-| `FRONTEND_URL`                                                             | <http://localhost:5173>                    | CORS allowed origin (comma-separated list OK)                         |
+| `FRONTEND_URL`                                                             | <http://localhost:5173>                  | CORS allowed origin (comma-separated list OK)                         |
 | `LOG_LEVEL`                                                                | info (prod) / debug (dev)                | pino level                                                            |
 | `R2_ENDPOINT` / `R2_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` / `_BUCKET_NAME` | —                                        | Legacy fallback only — `r2.service.js` is dead code (TD-003)          |
 

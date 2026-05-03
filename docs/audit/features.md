@@ -26,6 +26,7 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 ## A. Authentication & Account
 
 ### A1. Self-service hospital registration
+
 - **Who:** public (anyone)
 - **FE:** mobile app primarily; web `/register` is admin-only (A2). No web self-serve path.
 - **BE:** `POST /api/auth/register` → `POST /api/auth/register/verify-otp` → optional `POST /api/auth/register/resend-otp`.
@@ -33,12 +34,14 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 - **Gotchas:** 6-digit OTP, 10-min TTL, admin-path is A2.
 
 ### A2. Admin-initiated hospital onboarding
+
 - **Who:** admin
 - **FE:** `/register` (AdminRoute).
 - **BE:** `POST /api/auth/register-hospital` (multipart).
 - **DB:** inserts `hospitals` with `mustChangePassword=true`, auto-generated unique `authCode` (via pre-validate hook), sends welcome email. Response includes `tempPassword` for admin visibility.
 
 ### A3. Login (web + mobile)
+
 - **Who:** both
 - **FE:** `/login` → `/verify-auth-code` (→ `/change-password` if first login).
 - **BE:** `POST /api/auth/login` → `POST /api/auth/login/verify-auth-code`. (TD-030, 2026-04-25: `POST /api/auth/login/resend-auth-code` was removed — `auth/login` already issues a fresh tempToken on retry, the dedicated endpoint had no caller.)
@@ -46,24 +49,29 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 - **Gotchas:** Auth Code strict on every mobile email/password login; biometric bypasses it. Lock at 5 failed attempts (423). Both platforms require Auth Code. JWTs are signed AND verified with `algorithms: ["HS256"]` only — no `alg: none` / RS256-swap acceptance.
 
 ### A4. First-login forced password change
+
 - `/change-password` with tempToken `purpose=PASSWORD_CHANGE` → `POST /api/auth/change-password`. Updates `passwordHash`, clears `mustChangePassword`, issues session.
 
 ### A5. Forgot password (self-service)
+
 - `/forgot-password` single route, 3-step UI.
 - `POST /api/auth/forgot-password/{init,verify,reset}`.
 - Init ALWAYS returns 200 (no enumeration). 5 OTP attempts max.
 
 ### A6. Biometric login (Android only)
+
 - Mobile-only. `POST /api/auth/biometric/register` (authed) → `/challenge` → `/verify`.
 - Writes `hospitals.biometricKeys`, creates session, updates `authCodeVerifiedAt` (resets 7-day clock).
 
 ### A7. Session list / revoke
+
 - `/sessions`. `GET /api/auth/session/list`, `POST /api/auth/session/revoke/:id`, `POST /api/auth/session/revoke-all-others`.
 - Current session cannot self-revoke; "Sign out all others" keeps current.
 - 🛠️ Session list returns `lastSeenIp` alongside `ipAddress` (mobile devices roaming WiFi↔cellular surface a different IP from the one they logged in on); auth middleware re-runs geoip when `lastSeenIp` changes (`7377d76`).
 - 🛠️ Server-side idle sweep ([jobs/idleSweep.job.js](../../backend/src/jobs/idleSweep.job.js)) revokes web sessions with `lastSeenAt` older than 60 min (`revokedReason: "IDLE_TIMEOUT"`, audit `SESSION_IDLE_REVOKED`). **Mobile sessions are exempt** (`61fa6ad`) because backgrounded mobile apps make no API calls but are alive. Sessions list filters out web sessions past the same 60-min cutoff so UI matches the sweep instantly.
 
 ### A8. Token refresh & session conflict
+
 - `POST /api/auth/refresh-token` (cookie), `POST /api/auth/session/check-conflict`, `POST /api/auth/session/force-logout`.
 - Mobile: 1 session per `(hospitalId, deviceId)`; 3rd mobile login across devices evicts the oldest with `SESSION_CONFLICT`.
 - Web is multi-session.
@@ -71,12 +79,15 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 - 🛠️ Revoke reasons are split: `TOKEN_ROTATION` (rotation churn — not a security event), `IDLE_TIMEOUT` (60-min web sweep), `REFRESH_TOKEN_REUSE` (replay), `SESSION_REVOKED` (manual), `SESSION_LIMIT_EXCEEDED` (3rd-mobile eviction), `USER_LOGOUT`. Audit history must not conflate these (`7377d76`).
 
 ### A9. 7-day Auth Code re-verification (mobile only)
+
 - `POST /api/auth/session/reverify-auth-code`. Middleware returns 401 `AUTH_CODE_REQUIRED` after 7 days of `authCodeVerifiedAt` staleness. Web exempt.
 
 ### A10. Logout
+
 - `POST /api/auth/logout` — marks session `isActive=false`, reason `USER_LOGOUT`, clears refresh cookie.
 
 ### A11. FCM token registration (mobile)
+
 - `POST /api/auth/fcm-token` → writes `hospitals.fcmToken.{token, updatedAt}`.
 
 ---
@@ -84,10 +95,12 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 ## B. Profile, Security & Preferences
 
 ### B1. View / edit profile (non-sensitive)
+
 - `/profile`. `GET /api/hospitals/me`, `PATCH /api/hospitals/me` (multipart: name, address, logo).
 - 🛠️ Emits `PROFILE_PATCHED` audit (TD-001, 2026-04-21).
 
 ### B2. Change email or phone (sensitive)
+
 - `/profile` modal. Three-endpoint flow:
   - `POST /api/hospitals/me/change-contact/init`
   - `POST /api/hospitals/me/change-contact/resend` **(newly documented here; was missing from prior audit)**
@@ -95,13 +108,16 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 - Email change OTP → new email; phone change OTP → current email.
 
 ### B3. Change password (in-session)
+
 - `/password`. `POST /api/auth/password/change`. Logs out all other sessions, keeps current.
 
 ### B4. Notification preferences
+
 - `/notifications`. `GET/PUT /api/hospitals/me/notification-preferences`.
 - `notificationPrefs.{newLoginAlert, securityAlerts, marketing}` gates both email and push paths (see D).
 
 ### B5. View Auth Code
+
 - `/sessions` (masked; reveal toggle). No dedicated API — code comes with login payload and lives in auth state.
 - Immutable unless admin resend-welcome regenerates (only if `mustChangePassword=true`).
 
@@ -110,52 +126,65 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 ## C. Patients & Documents
 
 ### C1. List patients
+
 - `/dashboard`. `GET /api/patients`. Scoped to own hospital.
 - 🛠️ **Cursor pagination** (TD-D / `d69f0be`, 2026-04-25): `?limit` clamped 1–100 (default 20), opaque `?cursor=<token>`, response carries `nextCursor`. Legacy `?skip=` still works as a fallback for older callers; new callers should use the cursor — see [patient.controller.js:80-135](../../backend/src/controllers/patient.controller.js).
 
 ### C2. Create patient
+
 - Mobile primarily; web has the modal but the Edit-Patient flow is commented out (web is read-only per §11 of CLAUDE.md).
 - `POST /api/patients`. Atomic `$inc patientIdCounter` → patientId like `SH-000001`. Creates 11 default folders.
 - 🛠️ Emits `PATIENT_CREATED` audit (TD-001).
 
 ### C3. View patient detail + folders
+
 - `/patients/:patientId`. `GET /api/patients/:patientId`. `Patient.toJSON()` strips internal IDs.
 
 ### C4. Update patient
+
 - `PUT /api/patients/:patientId`. **Web Edit flow commented out** (`02-commented-code.md` §1); any mutation comes from mobile.
 - 🛠️ Emits `PATIENT_UPDATED` audit (TD-001).
 
 ### C5. Create folder
+
 - `POST /api/patients/:patientId/folders`.
 - 🛠️ Emits `FOLDER_CREATED` audit (TD-001).
 
 ### C6. List / upload / rename / delete files
+
 - Web shows the list (read-only); mutations are mobile-only.
 - `GET /files/:folderName`, `POST /files/:folderName` (multipart + `Idempotency-Key`), `PATCH /.../:fileId/rename`, `DELETE /.../:fileId`.
-- Cloudinary public_id: `HospitALL/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{YYYYMMDD}_{hash}`.
+- Cloudinary public*id: `MediVault/h*{hospitalId}/p*{patientMongoId}/{folder_slug}/{YYYYMMDD}*{hash}`.
 - 🛠️ All four mutation paths emit audits (TD-001): `FILE_UPLOADED`, `FILE_RENAMED`, `PATIENT_FILE_DELETE`. The `AuditLog.action` enum picked up the previously-rejected values in the same wave.
 
 ### C7. View / stream / signed-URL file
+
 - Web uses `GET /files/.../:fileId/signed-url` (5-min TTL) + iframe preview. Image thumbnails from Cloudinary (120×120).
 - `GET /files/.../stream` exists (mobile-only usage).
 
 ### C8. Single-file compressed download
+
 - `GET /files/.../:fileId/compressed`. Backend calls sidecar `/api/folder-download` with `X-Internal-Secret`; returns merged/compressed URL to client.
 
 ### C9. Folder-level download (PDF or ZIP)
+
 - `GET /patients/:id/folders/:folder/download/{pdf,zip}`. Legacy aliases without `/download/` still valid.
 
 ### C10. Patient-level download (PDF or ZIP, with size gate)
+
 - `/patients/:id`. `GET /download/zip/size-check` (413 if > 100 MB), `POST /download/zip` (body `{ selectedFolders? }`), `POST /download/pdf` (body `{ mode: "merged" | "per-folder" }`).
 - Soft 10 MB warning, hard 100 MB limit. Merged → single PDF. Per-folder → ZIP of PDFs.
 
 ### C11. Patients PDF bulk export
+
 - `/dashboard` "Export all". `GET /api/export/patients/pdf` (blob, 300s timeout).
 
 ### C12. Multi-module archive export
+
 - 🛠️ ~~`POST /api/export/archive`~~ — REMOVED 2026-04-25 (TD-030, `65f1012`). Endpoint had no frontend or Android caller; deleted in the dead-route sweep along with `/api/export/sample-cover`, `/api/patients/.../stream`, `/api/auth/login/resend-auth-code`, and the entire `/api/notifications` mount.
 
 ### C13. Auto-delete of old patients
+
 - Nightly 00:00 UTC cron (`autoDelete.job.js`). Hard delete `patients` older than 90 days + cascade Cloudinary delete. One aggregate `AUTO_DELETE` audit row per run.
 
 ---
@@ -163,16 +192,19 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 ## D. Notifications (Email + Push)
 
 ### D1. Transactional emails
+
 - Templates: welcome, OTP, session-revoked, new-login, password-changed, account-locked, account-disabled, account-deleted, account-deleted.
 - Routes through Brevo REST (prod) or Mailtrap SMTP (dev).
 - Gated by `notificationPrefs.newLoginAlert` / `.securityAlerts`.
 
 ### D2. Push notifications (FCM)
+
 - Types: `NEW_LOGIN`, `PASSWORD_CHANGED`, `SESSION_REVOKED`, `CUSTOM`.
 - Sent to `hospital.fcmToken.token` if present and pref allows.
 - Preview / test endpoints removed 2026-04-25 (TD-030) — `GET /api/notifications/sample`, `GET /api/notifications/preview`, `POST /api/notifications/test` + the whole `/api/notifications` mount are gone. Debug by reading push payloads directly in [push.service.js](../../backend/src/services/push.service.js) or observing FCM telemetry.
 
 ### D3. SMS gateway — deferred
+
 - No active integration. Auth Code + email OTP carry all 2FA/OTP. `.env.example` `SMS_GATEWAY_*` vars are dead.
 
 ---
@@ -180,22 +212,28 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 ## E. Admin-only
 
 ### E1. List all hospitals
+
 - `/hospitals`. `GET /api/hospitals`. 🛠️ **Cursor-paginated** (TD-005, 2026-04-21) — `?limit` (default 50, cap 100), `?cursor=<_id>`, `?search=<string>`. First-page response includes `{ totals: { total, active, recentWeek }, nextCursor }`. Admin UI fetches 50 rows at a time with debounced server-side search + "Load more".
 
 ### E2. Edit any hospital
+
 - Edit modal. `PUT /api/hospitals/:id`.
 - 🛠️ Emits `HOSPITAL_UPDATED` on every patch + an active-state-transition `PROFILE_PATCHED` when enable/disable flips (TD-001).
 
 ### E3. Resend welcome email
+
 - `POST /api/hospitals/:id/resend-welcome`. Regenerates temp password if `mustChangePassword=true`.
 
 ### E4. Force-delete hospital
+
 - `DELETE /api/hospitals/:id` body `{ password, reason }`. Scrubs PII, revokes sessions, preserves auditlogs. Requires password + 10-char reason + literal "DELETE".
 
 ### E5. Activity / audit log
+
 - `/activity`. `GET /api/audits` (hospital-scoped server-side; admin only; cursor pagination), `GET /api/audits/actions`.
 
 ### E6. Cloudinary orphan cleanup
+
 - `GET /api/admin/cloudinary/orphans` (dry-run), `DELETE /api/admin/cloudinary/orphans`. Manual, no cron.
 - 🛠️ Emits `ORPHAN_CLEANUP` audit (TD-001).
 
@@ -204,13 +242,16 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 ## F. App & Infra
 
 ### F1. App version gating
+
 - `GET /api/version?platform=android`. `appversions` collection updated manually via `scripts/manage-app-version.js`.
 - 🛠️ ~~App version admin endpoints exist in hospitalService.ts but have no UI caller~~ — RESOLVED 2026-04-21 (TD-010, `a09c738`). The unused `listAppVersions/createAppVersion/updateAppVersion` exports were dropped from `hospitalService.ts`. Updates remain script-only.
 
 ### F2. Health checks
+
 - `GET /api/health` (lightweight). `GET /api/health/deep` (Mongo + Redis + server only — does NOT probe Cloudinary / Brevo / FCM / sidecar today).
 
 ### F3. Compression sidecar
+
 - Python FastAPI at `/compression-service`. `POST /api/folder-download`, `POST /api/patient-download` with `X-Internal-Secret`. Shared DB for `merged_pdf_cache` + `compression_audits`.
 - Pipeline: fetch → classify → optional cover → pikepdf merge → tier ladder (0 digital, 1–4 scanned) → Cloudinary upload → cache upsert.
 - Hard 300s timeout (🛠️ error body now correctly reads "Pipeline exceeded 300s limit" — TD-014), 502 on Cloudinary fetch fail, 413 on size floor.
@@ -222,15 +263,15 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 
 ## G. Web-only Pages
 
-| Page | Route | Purpose |
-|---|---|---|
-| Landing | `/` | Marketing/entry. |
-| Terms | `/terms` | Legal. |
-| Privacy | `/privacy` | Legal. |
-| Components preview | `/components-preview` | Design system sandbox (pulls `recharts` + `lucide-react`). |
-| Loading spinners preview | `/spinners-preview` | 19-variant Spinner showcase, unlinked. |
-| Legacy redirect | `/security` → `/sessions` | Backward compat. |
-| Not found | `*` | Renders `NotFound` (NOT redirects). |
+| Page                     | Route                     | Purpose                                                    |
+| ------------------------ | ------------------------- | ---------------------------------------------------------- |
+| Landing                  | `/`                       | Marketing/entry.                                           |
+| Terms                    | `/terms`                  | Legal.                                                     |
+| Privacy                  | `/privacy`                | Legal.                                                     |
+| Components preview       | `/components-preview`     | Design system sandbox (pulls `recharts` + `lucide-react`). |
+| Loading spinners preview | `/spinners-preview`       | 19-variant Spinner showcase, unlinked.                     |
+| Legacy redirect          | `/security` → `/sessions` | Backward compat.                                           |
+| Not found                | `*`                       | Renders `NotFound` (NOT redirects).                        |
 
 ---
 

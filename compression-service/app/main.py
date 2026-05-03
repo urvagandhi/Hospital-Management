@@ -48,7 +48,7 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
 
     print(f"""
 \u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557
-\u2551   HospitALL Compression Service      \u2551
+        \u2551   MediVault Compression Service       \u2551
 \u2551   \u2713 Server running on port {port:<11s}\u2551
 \u2551   \u2713 DB: MongoDB Connected              \u2551
 \u2551   \u2713 Cloudinary: {config.CLOUDINARY_CLOUD_NAME:<21s}\u2551
@@ -62,7 +62,7 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Compression service stopped", extra={"event": "shutdown"})
 
 
-app = FastAPI(title="HospitALL Compression Service", lifespan=lifespan)
+app = FastAPI(title="MediVault Compression Service", lifespan=lifespan)
 
 
 @app.middleware("http")

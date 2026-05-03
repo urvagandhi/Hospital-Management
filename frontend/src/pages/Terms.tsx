@@ -145,8 +145,8 @@ const Terms: React.FC = () => {
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src={appLogo} alt="HospitAll logo" className="h-7 w-7 rounded-md object-cover" />
-            <span className="text-sm font-semibold text-gray-900">HospitAll</span>
+            <img src={appLogo} alt="MediVault logo" className="h-7 w-7 rounded-md object-cover" />
+            <span className="text-sm font-semibold text-gray-900">MediVault</span>
           </div>
           <button
             onClick={handleBack}
@@ -178,7 +178,7 @@ const Terms: React.FC = () => {
             </span>
           </div>
           <p className="text-sm text-gray-600 max-w-xl">
-            Please read these terms carefully before using the HospitAll platform. By using the Service, you agree to be bound by these conditions.
+            Please read these terms carefully before using the MediVault platform. By using the Service, you agree to be bound by these conditions.
           </p>
         </div>
       </header>
@@ -205,7 +205,7 @@ const Terms: React.FC = () => {
       <footer className="border-t border-gray-200 bg-gray-50 py-6">
         <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-gray-500">
-            &copy; {new Date().getFullYear()} HospitAll. All rights reserved.
+            &copy; {new Date().getFullYear()} MediVault. All rights reserved.
           </p>
           <button
             onClick={() => navigate("/")}

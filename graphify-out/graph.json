@@ -11444,7 +11444,7 @@
       "id": "cloudinary_client_rationale_136"
     },
     {
-      "label": "Upload merged PDF to Cloudinary under HospitALL_merged/{hash}.      Uses type=up",
+      "label": "Upload merged PDF to Cloudinary under MediVault_merged/{hash}.      Uses type=up",
       "file_type": "rationale",
       "source_file": "compression-service/app/cloudinary_client.py",
       "source_location": "L188",
@@ -14537,7 +14537,7 @@
       "id": "android_dependencies"
     },
     {
-      "label": "HospitALL Compression Service README",
+      "label": "MediVault Compression Service README",
       "file_type": "document",
       "source_file": "compression-service/README.md",
       "source_location": null,
@@ -14546,7 +14546,7 @@
       "author": null,
       "contributor": null,
       "community": 36,
-      "norm_label": "hospitall compression service readme",
+      "norm_label": "medivault compression service readme",
       "is_doc_hub": true,
       "id": "compression_readme"
     },
@@ -15678,7 +15678,7 @@
       "id": "ic_platform_logo_transparent_bg"
     },
     {
-      "label": "HospitALL Brand",
+      "label": "MediVault Brand",
       "file_type": "image",
       "source_file": "android-app/app/src/main/res/drawable/ic_platform_logo.png",
       "source_location": null,
@@ -15687,7 +15687,7 @@
       "author": null,
       "contributor": null,
       "community": 47,
-      "norm_label": "hospitall brand",
+      "norm_label": "medivault brand",
       "id": "ic_platform_logo_brand_hospitall"
     },
     {
@@ -15749,7 +15749,7 @@
       "id": "sortarrowsprite_istanbulsortarrow"
     },
     {
-      "label": "HospitALL Frontend Public Favicon/Logo",
+      "label": "MediVault Frontend Public Favicon/Logo",
       "file_type": "image",
       "source_file": "frontend/public/logo.png",
       "source_location": null,
@@ -15757,14 +15757,14 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "description": "Public-facing favicon/logo for the HospitALL React web app. Brand mark depicts a teal/blue shield containing a stack of medical folders/documents (with a gear icon and a heart-marked clipboard), overlaid with a prominent medical cross and a stethoscope curling around the right side. Color palette is a teal-to-deep-blue gradient (cyan/teal transitioning to navy) on a transparent background. Glyphs: shield (security/protection), medical cross (healthcare), folder stack (records management), heart on clipboard (patient care), stethoscope (clinical), gear (settings/management). Communicates secure hospital records management.",
+      "description": "Public-facing favicon/logo for the MediVault React web app. Brand mark depicts a teal/blue shield containing a stack of medical folders/documents (with a gear icon and a heart-marked clipboard), overlaid with a prominent medical cross and a stethoscope curling around the right side. Color palette is a teal-to-deep-blue gradient (cyan/teal transitioning to navy) on a transparent background. Glyphs: shield (security/protection), medical cross (healthcare), folder stack (records management), heart on clipboard (patient care), stethoscope (clinical), gear (settings/management). Communicates secure hospital records management.",
       "confidence_score": 0.92,
       "community": 48,
-      "norm_label": "hospitall frontend public favicon/logo",
+      "norm_label": "medivault frontend public favicon/logo",
       "id": "logo_frontendpublicfavicon"
     },
     {
-      "label": "HospitALL Frontend Logo Asset (Logo.jpeg)",
+      "label": "MediVault Frontend Logo Asset (Logo.jpeg)",
       "file_type": "image",
       "source_file": "frontend/src/assets/Logo.jpeg",
       "source_location": null,
@@ -15772,10 +15772,10 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "description": "React-bundled brand logo for HospitALL. Composition: a navy/teal shield emblem centered above a two-line wordmark. Inside the shield, a stylized blue medical folder with a white medical cross overlays a stack of clinical documents (one shows a heart-icon clipboard, one a gear/settings icon, plus a stethoscope curl on the right). Palette: dark navy, mid blue, teal/cyan accent, with white negative space for the cross and document highlights, on an off-white/cream background. Typography: bold uppercase 'HOSPITAL RECORD' in navy on top line, 'MANAGEMENT' in mid-blue below, separated from the shield by a thin teal divider rule.",
+      "description": "React-bundled brand logo for MediVault. Composition: a navy/teal shield emblem centered above a two-line wordmark. Inside the shield, a stylized blue medical folder with a white medical cross overlays a stack of clinical documents (one shows a heart-icon clipboard, one a gear/settings icon, plus a stethoscope curl on the right). Palette: dark navy, mid blue, teal/cyan accent, with white negative space for the cross and document highlights, on an off-white/cream background. Typography: bold uppercase 'HOSPITAL RECORD' in navy on top line, 'MANAGEMENT' in mid-blue below, separated from the shield by a thin teal divider rule.",
       "confidence_score": 0.95,
       "community": 48,
-      "norm_label": "hospitall frontend logo asset (logo.jpeg)",
+      "norm_label": "medivault frontend logo asset (logo.jpeg)",
       "id": "logo_frontendassetjpeg"
     },
     {
@@ -15891,7 +15891,7 @@
       "id": "logo_flat_vector_style"
     },
     {
-      "label": "HospitALL Logo (frontend/src/assets/logo.png)",
+      "label": "MediVault Logo (frontend/src/assets/logo.png)",
       "file_type": "image",
       "source_file": "frontend/src/assets/logo.png",
       "source_location": null,
@@ -15899,7 +15899,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "description": "Bundled React asset PNG logo for HospitALL. Glyph: a teal/blue rounded shield containing a stylized medical folder with a white medical cross, layered with document/clipboard icons (one bearing a heart), a gear/settings cog, and a stethoscope curve. Palette: deep navy/teal blues (#0E2E4A / #154E6E), mid teal (#2C8FA8), light cyan/mint highlights (#A8DDE5), with white cross and document accents.",
+      "description": "Bundled React asset PNG logo for MediVault. Glyph: a teal/blue rounded shield containing a stylized medical folder with a white medical cross, layered with document/clipboard icons (one bearing a heart), a gear/settings cog, and a stethoscope curve. Palette: deep navy/teal blues (#0E2E4A / #154E6E), mid teal (#2C8FA8), light cyan/mint highlights (#A8DDE5), with white cross and document accents.",
       "glyph": "shield + folder + medical cross + clipboard with heart + gear + stethoscope",
       "palette": [
         "deep navy",
@@ -15908,7 +15908,7 @@
         "white"
       ],
       "community": 48,
-      "norm_label": "hospitall logo (frontend/src/assets/logo.png)",
+      "norm_label": "medivault logo (frontend/src/assets/logo.png)",
       "id": "logo_frontendassetpng"
     },
     {

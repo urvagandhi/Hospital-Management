@@ -1,4 +1,5 @@
-# HospitALL Compression Service — Upgrade Plan
+# MediVault Compression Service — Upgrade Plan
+
 ## iLovePDF-Level Pipeline Implementation
 
 ---
@@ -17,6 +18,7 @@
 ## WHAT CHANGES VS WHAT STAYS
 
 **Stays untouched:**
+
 - Auth middleware (`X-Internal-Secret`)
 - Cache layer (`merged_pdf_cache` MongoDB collection)
 - Compression audit logging (`compression_audits`)
@@ -26,6 +28,7 @@
 - Health check endpoint
 
 **Changes:**
+
 - The entire compression engine inside the pipeline
 - How tiers are defined and iterated
 - Addition of PDF classifier
@@ -46,6 +49,7 @@ Add these to `requirements.txt` (check if already present first):
 - `pdfminer.six` — for text layer detection (classifier stage)
 
 System dependency in `Dockerfile`:
+
 - `poppler-utils` — provides `pdfimages` CLI tool for image extraction
 - Ghostscript is already installed, verify it's version 9.56+
 
@@ -83,6 +87,7 @@ app/
 **Purpose:** Detect if PDF is digital (has real text layer) or scanned (image-only)
 
 **Logic:**
+
 - Open PDF with pikepdf
 - For each page (check first 3 pages max for speed), attempt to extract text using pdfminer
 - If total extracted text characters across sampled pages exceeds a threshold (suggest 50 characters), classify as `"digital"`
@@ -90,6 +95,7 @@ app/
 - Return a simple string: `"digital"` or `"scanned"`
 
 **Edge cases to handle:**
+
 - Encrypted PDFs → treat as `"scanned"`, don't crash
 - Single page PDFs → sample just that one page
 - Mixed PDFs (some text, some image pages) → if ANY page has text, treat whole doc as `"digital"` (safer for medical)
@@ -107,11 +113,13 @@ app/
 **Logic:**
 
 Step 1 — Extract images using `pdfimages` CLI:
+
 - Run `pdfimages -all <input.pdf> <tempdir>/img` via subprocess
 - This dumps every embedded image as a file into tempdir
 - Collect all output files, sort by filename (preserves page order)
 
 Step 2 — Per-image processing using Pillow:
+
 - Open each extracted image file
 - **Estimate current DPI** from the image dimensions vs the page mediabox (use pikepdf to read page dimensions in points, divide image pixel width by page width in inches)
 - **Decide whether to downsample:** Only resize if current DPI exceeds target DPI by more than 10%. If already at or below target, skip resize entirely (don't re-encode unnecessarily — this is where most tools make a mistake)
@@ -126,6 +134,7 @@ Step 2 — Per-image processing using Pillow:
 - Save each processed image as `.jpg` into tempdir
 
 **DPI targets per tier:**
+
 - Tier 0: 300 DPI
 - Tier 1: 200 DPI
 - Tier 2: 150 DPI (medical floor)
@@ -145,6 +154,7 @@ Step 2 — Per-image processing using Pillow:
 **Why not just pass images into Ghostscript:** `img2pdf` embeds JPEGs into PDF without re-encoding them. Zero quality loss at this stage. Ghostscript then has a clean, simple PDF to work with and doesn't fight against existing compression artifacts.
 
 **Logic:**
+
 - Take the ordered list of processed `.jpg` files from Stage 2
 - Use `img2pdf.convert()` to combine them into a single PDF
 - Write output to `<tempdir>/rebuilt.pdf`
@@ -163,6 +173,7 @@ Step 2 — Per-image processing using Pillow:
 **Flags to use (explicit, not `/ebook` or `/screen`):**
 
 Base flags always present:
+
 - `-dBATCH -dNOPAUSE -dQUIET -dSAFER`
 - `-sDEVICE=pdfwrite`
 - `-dCompatibilityLevel=1.4`
@@ -175,6 +186,7 @@ Base flags always present:
 - `-dOmitInfoDate=true` (strip metadata)
 
 Image flags (vary by tier):
+
 - `-dDownsampleColorImages=true`
 - `-dColorImageDownsampleType=/Bicubic` (tiers 0–2), `/Average` (tier 3), `/Subsample` (tier 4)
 - `-dColorImageResolution=<dpi>` — same DPI targets as Stage 2
@@ -185,12 +197,14 @@ Image flags (vary by tier):
 - Mono image flags: `-dDownsampleMonoImages=true`, resolution 300 for tiers 0–2, 200 for 3–4
 
 Color conversion (tier 3 and 4 only):
+
 - `-sColorConversionStrategy=Gray`
 - `-dProcessColorModel=/DeviceGray`
 
 **Why `AutoFilterColorImages=false` is critical:** Without it, Ghostscript detects your images are already JPEG and passes them through untouched. You lose all the gains from Stage 2. This flag forces re-encoding.
 
 **Subprocess execution:**
+
 - Run GS as a subprocess with a timeout of 240 seconds (leave 60s buffer for the 300s backend timeout)
 - Capture stderr — if GS prints "Error" or exits non-zero, raise a specific `GhostscriptError` exception
 - Log the GS command to the audit log (useful for debugging)
@@ -206,12 +220,14 @@ Color conversion (tier 3 and 4 only):
 **Replaces:** The existing fixed tier cascade
 
 **Inputs:**
+
 - `input_path` — original PDF (after classification, before any processing)
 - `target_size_bytes` — from the request
 - `pdf_type` — `"digital"` or `"scanned"`
 - `temp_dir` — working directory for this request
 
 **Logic for scanned PDFs:**
+
 ```
 for tier in 0 to 4:
     1. Run preprocessor.py with this tier → processed images
@@ -229,16 +245,19 @@ If no tier hits target: return tier 4 result (best effort)
 ```
 
 **Logic for digital PDFs:**
+
 - Skip tiers 0–4 entirely
 - Go straight to `digital_path.py`
 - Digital PDFs are already text/vector, Ghostscript would just bloat them
 
 **RAM guard:**
+
 - Before each tier, check available system memory using `psutil`
 - If available RAM < 150MB, skip to the next tier immediately and log a warning
 - This prevents OOM on Render's 512MB limit
 
 **Temp directory management:**
+
 - Each request gets its own UUID-named temp directory under `/tmp/`
 - Always clean up in a `finally` block regardless of success or failure
 
@@ -261,6 +280,7 @@ If no tier hits target: return tier 4 result (best effort)
   - `stream_decode_level=pikepdf.StreamDecodeLevel.generalized`
 
 **Also strip before saving:**
+
 - Remove `/Metadata` stream if present (XMP metadata bloat)
 - Remove `/PieceInfo` (Adobe-specific private data)
 - Remove `/LastModified` entries
@@ -274,6 +294,7 @@ If no tier hits target: return tier 4 result (best effort)
 **Purpose:** Single entry point that the FastAPI endpoints call
 
 **Logic:**
+
 1. Receive: list of PDF paths (already fetched from Cloudinary), target size bytes
 2. If multiple PDFs → merge with pikepdf first (existing merge logic, unchanged)
 3. Call `classifier.py` on merged/single PDF
@@ -287,9 +308,11 @@ If no tier hits target: return tier 4 result (best effort)
 ## DOCKERFILE CHANGES
 
 Add to the apt-get install line:
+
 - `poppler-utils` (for `pdfimages` CLI)
 
 Verify already present:
+
 - `ghostscript`
 - Python packages installed via pip
 

@@ -9,19 +9,19 @@
 
 ## 0. Changes Since Previous Audit (2026-04-20)
 
-| Area | Change | Pointer |
-|---|---|---|
-| Route count | **21 routes** (20 paths + catch-all) — prior audit said 24; CLAUDE.md still cites 24, that count is loose | `00-drift.md` §6.1 |
-| Catch-all | Renders `<NotFound />`, does NOT redirect to `/dashboard` | `00-drift.md` §6.2 |
-| `/spinners-preview` | Route exists ([AppRoutes.tsx:77-84](../../frontend/src/routes/AppRoutes.tsx)) — unlinked design gallery, lazy-loaded along with `/components-preview` | §2 |
-| `useDocumentTitle` rule | 🛠️ **All 21 pages compliant** (TD-009 swept 2026-04-21 in `2194f0e`). Prior 7 violators (Dashboard, Login, Password, Profile, Sessions, VerifyAuthCode, ForgotPassword) all switched. | §9 |
-| Access-token storage | 🛠️ **In-memory** in [api.ts](../../frontend/src/services/api.ts) (TD-D3, 2026-04-25, `621ca05`) — `_accessToken` module variable. `sessionStorage.accessToken` is gone. Refresh cookie bootstraps a fresh token on tab/refresh inside `AuthProvider`. | §6 |
-| Sessions list | 🛠️ Renders `lastSeenIp` alongside `ipAddress` (`7377d76`); web sessions idle > 60 min are filtered out, mobile sessions are exempt (`61fa6ad`). | §3 |
-| ErrorBoundary | 🛠️ Two-layer: top-level in [App.tsx](../../frontend/src/App.tsx), inner one wrapping `<Outlet />` in [MainLayout.tsx](../../frontend/src/layouts/MainLayout.tsx) keyed by `location.pathname` so a render error on one authenticated route can't blank the shell (`8fbab6a`). | §8 |
-| Modal portal rule | All 8 expected modals verified `createPortal + z-[100]`. No violations. | `00-drift.md` §7.2 |
-| `min-h-screen` rule | No violations inside MainLayout. | `00-drift.md` §7.1 |
-| Dead code | `services/patientApi.ts` (all exports), `CountdownTimer`, `SkeletonLoader`, `Toast` components: 0 importers. `hospitalService.listAppVersions/createAppVersion/updateAppVersion`: 0 callers. | `01-dead-code.md` §C |
-| Gallery-only deps (intentional) | `recharts`, `lucide-react` used ONLY by `/components-preview` and isolated to a `React.lazy` chunk (TD-011 shipped). Kept by decision; zero bytes in main bundle. | `01-dead-code.md` §A |
+| Area                            | Change                                                                                                                                                                                                                                                                        | Pointer              |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| Route count                     | **21 routes** (20 paths + catch-all) — prior audit said 24; CLAUDE.md still cites 24, that count is loose                                                                                                                                                                     | `00-drift.md` §6.1   |
+| Catch-all                       | Renders `<NotFound />`, does NOT redirect to `/dashboard`                                                                                                                                                                                                                     | `00-drift.md` §6.2   |
+| `/spinners-preview`             | Route exists ([AppRoutes.tsx:77-84](../../frontend/src/routes/AppRoutes.tsx)) — unlinked design gallery, lazy-loaded along with `/components-preview`                                                                                                                         | §2                   |
+| `useDocumentTitle` rule         | 🛠️ **All 21 pages compliant** (TD-009 swept 2026-04-21 in `2194f0e`). Prior 7 violators (Dashboard, Login, Password, Profile, Sessions, VerifyAuthCode, ForgotPassword) all switched.                                                                                         | §9                   |
+| Access-token storage            | 🛠️ **In-memory** in [api.ts](../../frontend/src/services/api.ts) (TD-D3, 2026-04-25, `621ca05`) — `_accessToken` module variable. `sessionStorage.accessToken` is gone. Refresh cookie bootstraps a fresh token on tab/refresh inside `AuthProvider`.                         | §6                   |
+| Sessions list                   | 🛠️ Renders `lastSeenIp` alongside `ipAddress` (`7377d76`); web sessions idle > 60 min are filtered out, mobile sessions are exempt (`61fa6ad`).                                                                                                                               | §3                   |
+| ErrorBoundary                   | 🛠️ Two-layer: top-level in [App.tsx](../../frontend/src/App.tsx), inner one wrapping `<Outlet />` in [MainLayout.tsx](../../frontend/src/layouts/MainLayout.tsx) keyed by `location.pathname` so a render error on one authenticated route can't blank the shell (`8fbab6a`). | §8                   |
+| Modal portal rule               | All 8 expected modals verified `createPortal + z-[100]`. No violations.                                                                                                                                                                                                       | `00-drift.md` §7.2   |
+| `min-h-screen` rule             | No violations inside MainLayout.                                                                                                                                                                                                                                              | `00-drift.md` §7.1   |
+| Dead code                       | `services/patientApi.ts` (all exports), `CountdownTimer`, `SkeletonLoader`, `Toast` components: 0 importers. `hospitalService.listAppVersions/createAppVersion/updateAppVersion`: 0 callers.                                                                                  | `01-dead-code.md` §C |
+| Gallery-only deps (intentional) | `recharts`, `lucide-react` used ONLY by `/components-preview` and isolated to a `React.lazy` chunk (TD-011 shipped). Kept by decision; zero bytes in main bundle.                                                                                                             | `01-dead-code.md` §A |
 
 ---
 
@@ -33,29 +33,29 @@ React `^18.2.0` · TypeScript `^5.2.0` · Vite `^8.0.3` · React Router `^6.15.0
 
 ## 2. Routing Map (Corrected)
 
-| # | Path | Page | Guard | Inside MainLayout? | Line |
-|---|---|---|---|---|---|
-| 1 | `/` | `LandingPage` | — | ❌ | 31 |
-| 2 | `/login` | `Login` | — | ❌ | 32 |
-| 3 | `/register` | `HospitalRegistration` | AdminRoute | ❌ | 33-39 |
-| 4 | `/verify-auth-code` | `VerifyAuthCode` | — | ❌ | 43 |
-| 5 | `/change-password` | `ChangePassword` | — | ❌ | 46 |
-| 6 | `/forgot-password` | `ForgotPassword` | — | ❌ | 49 |
-| 7 | `/terms` | `Terms` | — | ❌ | 52 |
-| 8 | `/privacy` | `Privacy` | — | ❌ | 53 |
-| 9 | `/components-preview` | `ComponentsPreview` | — | ❌ | 56 |
-| 10 | `/spinners-preview` | `LoadingSpinners` | — | ❌ | 59 |
-| 11 | `/dashboard` | `Dashboard` | ProtectedRoute | ✅ | 69 |
-| 12 | `/hospitals` | `HospitalsList` | ProtectedRoute + AdminRoute | ✅ | 70-76 |
-| 13 | `/password` | `Password` | ProtectedRoute | ✅ | 78 |
-| 14 | `/sessions` | `Sessions` | ProtectedRoute | ✅ | 79 |
-| 15 | `/security` | Navigate → `/sessions` | ProtectedRoute | ✅ | 81 |
-| 16 | `/activity` | `ActivityLog` | ProtectedRoute + AdminRoute | ✅ | 82-88 |
-| 17 | `/profile` | `Profile` | ProtectedRoute | ✅ | 90 |
-| 18 | `/notifications` | `NotificationSettings` | ProtectedRoute | ✅ | 91 |
-| 19 | `/patients/:patientId` | `PatientDetails` | ProtectedRoute | ✅ | 92 |
-| 20 | `/patients/:patientId/folders/:folderName` | `FolderView` | ProtectedRoute | ✅ | 93 |
-| 21 | `*` | `NotFound` | — | ❌ | 97 |
+| #   | Path                                       | Page                   | Guard                       | Inside MainLayout? | Line  |
+| --- | ------------------------------------------ | ---------------------- | --------------------------- | ------------------ | ----- |
+| 1   | `/`                                        | `LandingPage`          | —                           | ❌                 | 31    |
+| 2   | `/login`                                   | `Login`                | —                           | ❌                 | 32    |
+| 3   | `/register`                                | `HospitalRegistration` | AdminRoute                  | ❌                 | 33-39 |
+| 4   | `/verify-auth-code`                        | `VerifyAuthCode`       | —                           | ❌                 | 43    |
+| 5   | `/change-password`                         | `ChangePassword`       | —                           | ❌                 | 46    |
+| 6   | `/forgot-password`                         | `ForgotPassword`       | —                           | ❌                 | 49    |
+| 7   | `/terms`                                   | `Terms`                | —                           | ❌                 | 52    |
+| 8   | `/privacy`                                 | `Privacy`              | —                           | ❌                 | 53    |
+| 9   | `/components-preview`                      | `ComponentsPreview`    | —                           | ❌                 | 56    |
+| 10  | `/spinners-preview`                        | `LoadingSpinners`      | —                           | ❌                 | 59    |
+| 11  | `/dashboard`                               | `Dashboard`            | ProtectedRoute              | ✅                 | 69    |
+| 12  | `/hospitals`                               | `HospitalsList`        | ProtectedRoute + AdminRoute | ✅                 | 70-76 |
+| 13  | `/password`                                | `Password`             | ProtectedRoute              | ✅                 | 78    |
+| 14  | `/sessions`                                | `Sessions`             | ProtectedRoute              | ✅                 | 79    |
+| 15  | `/security`                                | Navigate → `/sessions` | ProtectedRoute              | ✅                 | 81    |
+| 16  | `/activity`                                | `ActivityLog`          | ProtectedRoute + AdminRoute | ✅                 | 82-88 |
+| 17  | `/profile`                                 | `Profile`              | ProtectedRoute              | ✅                 | 90    |
+| 18  | `/notifications`                           | `NotificationSettings` | ProtectedRoute              | ✅                 | 91    |
+| 19  | `/patients/:patientId`                     | `PatientDetails`       | ProtectedRoute              | ✅                 | 92    |
+| 20  | `/patients/:patientId/folders/:folderName` | `FolderView`           | ProtectedRoute              | ✅                 | 93    |
+| 21  | `*`                                        | `NotFound`             | —                           | ❌                 | 97    |
 
 ---
 
@@ -91,13 +91,13 @@ Forms: Login, HospitalRegistration (2-step), Profile (non-sensitive + OTP contac
 
 **Auth state** in React Context (`AuthProvider` at [hooks/useAuth.tsx](../../frontend/src/hooks/useAuth.tsx)):
 
-| Storage | Key | Content | Lifetime |
-|---|---|---|---|
-| module memory | `_accessToken` in [api.ts](../../frontend/src/services/api.ts) | 24h JWT (TD-D3) | tab lifetime; bootstrapped on cold start via `/auth/refresh-token` + httpOnly refresh cookie |
-| sessionStorage | `tempToken` | mid-flow JWT (login step 2 / first-login password change) | until flow completes |
-| sessionStorage | `resetToken` | forgot-password mid-flow JWT | until flow completes |
-| localStorage | `hospital` | stringified hospital object (logoUrl stripped if > 1 KB) | persistent until logout / 401 `ACCOUNT_DISABLED` |
-| httpOnly cookie | (refresh) | rotated 365d refresh token (TD-002 — rotated on every `/auth/refresh-token`, reuse revokes all sessions) | server-managed |
+| Storage         | Key                                                            | Content                                                                                                  | Lifetime                                                                                     |
+| --------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| module memory   | `_accessToken` in [api.ts](../../frontend/src/services/api.ts) | 24h JWT (TD-D3)                                                                                          | tab lifetime; bootstrapped on cold start via `/auth/refresh-token` + httpOnly refresh cookie |
+| sessionStorage  | `tempToken`                                                    | mid-flow JWT (login step 2 / first-login password change)                                                | until flow completes                                                                         |
+| sessionStorage  | `resetToken`                                                   | forgot-password mid-flow JWT                                                                             | until flow completes                                                                         |
+| localStorage    | `hospital`                                                     | stringified hospital object (logoUrl stripped if > 1 KB)                                                 | persistent until logout / 401 `ACCOUNT_DISABLED`                                             |
+| httpOnly cookie | (refresh)                                                      | rotated 365d refresh token (TD-002 — rotated on every `/auth/refresh-token`, reuse revokes all sessions) | server-managed                                                                               |
 
 15-minute client-side inactivity timeout: `useInactivityTimeout(handleInactivityTimeout, state.isAuthenticated)` at [useAuth.tsx:211](../../frontend/src/hooks/useAuth.tsx). Backend additionally runs a 60-min server-side idle sweep against web sessions only ([jobs/idleSweep.job.js](../../backend/src/jobs/idleSweep.job.js)).
 
@@ -110,6 +110,7 @@ Forms: Login, HospitalRegistration (2-step), Profile (non-sensitive + OTP contac
 `services/api.ts` — Axios wrapper, `baseURL = VITE_API_URL || "/api"`, `withCredentials: true`, request interceptor reads the access token from the module-scoped `_accessToken` variable (TD-D3) and attaches `Authorization: Bearer <accessToken>` (falls back to tempToken from sessionStorage), response interceptor handles 401 with refresh-mutex + subscriber queue (see diagram #7 in `03-architecture-diagrams.md`). Exports `setAccessToken` / `getAccessToken` / `clearAccessToken` for `AuthProvider` to drive the lifecycle.
 
 **Services (one file per domain):**
+
 - `authService.ts` — login, OTP, session list/revoke, password, forgot-password.
 - `hospitalService.ts` — profile, contact-change, notifications, admin force-delete, file signed-url/compressed. 🛠️ App-version CRUD exports removed 2026-04-21 (TD-010).
 - `audit.service.ts` — `listAudits`, `listAuditActions`.
@@ -121,7 +122,7 @@ Forms: Login, HospitalRegistration (2-step), Profile (non-sensitive + OTP contac
 
 `MainLayout` provides `min-h-screen bg-gray-50` + fixed Navbar + `pt-16` for navbar offset. Pages inside **must** use `min-h-[calc(100vh-4rem)]`, not `min-h-screen`.
 
-Navbar 3-column: LEFT (logo + HospitALL wordmark → /dashboard), CENTER (Dashboard + admin Hospitals), RIGHT (hospital chip with online dot, settings gear → Account/Security/Sign-out menu, avatar). No bell. No search. Admin nav hidden below md breakpoint (known gap).
+Navbar 3-column: LEFT (logo + MediVault wordmark → /dashboard), CENTER (Dashboard + admin Hospitals), RIGHT (hospital chip with online dot, settings gear → Account/Security/Sign-out menu, avatar). No bell. No search. Admin nav hidden below md breakpoint (known gap).
 
 Standalone pages (Login, VerifyAuthCode, ChangePassword, ForgotPassword, Privacy, Terms, LandingPage, HospitalRegistration, NotFound) live outside MainLayout. Their Back button must use `navigate(-1)` with `location.key !== "default"` fallback to `/` (not `navigate("/")` directly).
 
@@ -133,11 +134,11 @@ Standalone pages (Login, VerifyAuthCode, ChangePassword, ForgotPassword, Privacy
 
 Per CLAUDE.md §8:
 
-| Rule | Status |
-|---|---|
-| 1. `min-h-[calc(100vh-4rem)]` inside MainLayout | ✅ all 9 pages compliant |
-| 2. Every full-viewport modal uses `createPortal(..., document.body)` + `z-[100]` | ✅ all 8 verified (see `00-drift.md` §7.2) |
-| 3. Every page sets tab title via `useDocumentTitle` | 🛠️ ✅ **All 21 pages compliant** (TD-009 swept 2026-04-21 in `2194f0e`) |
+| Rule                                                                             | Status                                                                  |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1. `min-h-[calc(100vh-4rem)]` inside MainLayout                                  | ✅ all 9 pages compliant                                                |
+| 2. Every full-viewport modal uses `createPortal(..., document.body)` + `z-[100]` | ✅ all 8 verified (see `00-drift.md` §7.2)                              |
+| 3. Every page sets tab title via `useDocumentTitle`                              | 🛠️ ✅ **All 21 pages compliant** (TD-009 swept 2026-04-21 in `2194f0e`) |
 
 Why it matters: the hook restores the prior title on unmount; direct assignment does not, so stale titles can leak on navigation. New pages MUST call `useDocumentTitle("...")` — never assign `document.title` directly.
 

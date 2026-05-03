@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">HospitALL</string>
-    
+    <string name="app_name">MediVault</string>
+
     <!-- Login Screen -->
     <string name="login_title">Hospital Management System</string>
     <string name="phone_hint">Enter Phone Number</string>
     <string name="send_otp">Sign In</string>
     <string name="invalid_phone">Please enter a valid 10-digit phone number</string>
-    
+
     <!-- OTP Screen -->
     <string name="otp_title">Verify Your Identity</string>
     <string name="otp_sent_success">OTP Sent Successfully</string>
@@ -19,13 +19,13 @@
     <string name="resend_in">Resend in %1$ds</string>
     <string name="back_to_login">Back to Login</string>
     <string name="enter_6_digit_otp">Enter 6-Digit OTP</string>
-    
+
     <!-- Dashboard -->
     <string name="dashboard_title">Dashboard</string>
     <string name="new_admission">New Patient</string>
     <string name="scan_uhid">Scan UHID</string>
     <string name="logout">Logout</string>
-    
+
     <!-- Admission -->
     <string name="admission_title">Patient Admission</string>
     <string name="patient_name">Patient Name</string>
@@ -35,17 +35,17 @@
     <string name="admission_date">Admission Date</string>
     <string name="upload_documents">Upload Documents</string>
     <string name="submit">Submit</string>
-    
+
     <!-- Scanner -->
     <string name="scanner_title">Scan UHID</string>
     <string name="scan_instructions">Align QR code within frame to scan</string>
-    
+
     <!-- Upload -->
     <string name="upload_title">Upload Documents</string>
     <string name="take_photo">Take Photo</string>
     <string name="select_from_gallery">Select from Gallery</string>
     <string name="upload">Upload</string>
-    
+
     <!-- Common -->
     <string name="loading">Loading…</string>
     <string name="error">Error</string>
@@ -113,15 +113,18 @@
     <string name="upload_stage_preparing">Preparing</string>
     <string name="upload_stage_uploading">Uploading</string>
     <string name="upload_batch_prefix">File %1$d of %2$d</string>
-    <string name="upload_in_progress_toast">Uploading in background. You\'ll get a notification when it\'s done.</string>
+    <string name="upload_in_progress_toast">Uploading in background. You\'ll get a notification when
+        it\'s done.</string>
 
     <!-- Upload Queue Screen -->
     <string name="queue_screen_title">Upload Queue</string>
     <string name="queue_empty_title">Your queue is empty</string>
     <string name="queue_empty_subtitle">All documents have been synced</string>
     <string name="queue_summary_count">%1$d file(s) waiting to sync</string>
-    <string name="queue_retention_warning">Queued files are saved locally on this device. They survive reboots but will be lost if you uninstall the app.</string>
+    <string name="queue_retention_warning">Queued files are saved locally on this device. They
+        survive reboots but will be lost if you uninstall the app.</string>
     <string name="queue_action_sync_all">Sync All Now</string>
     <string name="queue_action_delete_confirm_title">Remove from queue?</string>
-    <string name="queue_action_delete_confirm_msg">This will permanently delete the scan from your device.</string>
+    <string name="queue_action_delete_confirm_msg">This will permanently delete the scan from your
+        device.</string>
 </resources>

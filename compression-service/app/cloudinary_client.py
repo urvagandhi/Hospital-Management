@@ -23,7 +23,7 @@ cloudinary.config(
     secure=True,
 )
 
-_CACHE_PREFIX = "HospitALL_compressed"
+_CACHE_PREFIX = "MediVault_compressed"
 
 
 def _merged_url(public_id: str) -> str:
@@ -147,7 +147,9 @@ async def fetch_source_pdfs(
 
     async def _fetch_one(src: SourcePdf, index: int) -> Path:
         async with semaphore:
-            url = _source_delivery_url(src.public_id, src.resource_type, src.access_mode)
+            url = _source_delivery_url(
+                src.public_id, src.resource_type, src.access_mode
+            )
             dest = job_dir / f"source_{index}.pdf"
 
             try:
@@ -185,7 +187,7 @@ def upload_merged(
     content_hash: str,
     job_id: str,
 ) -> str:
-    """Upload merged PDF to Cloudinary under HospitALL_merged/{hash}.
+    """Upload merged PDF to Cloudinary under MediVault_merged/{hash}.
 
     Uses type=upload + resource_type=raw — public delivery via plain URL.
     Returns the secure delivery URL.
@@ -197,7 +199,10 @@ def upload_merged(
         extra={
             "job_id": job_id,
             "event": "upload_start",
-            "metrics": {"public_id": public_id, "size_bytes": local_path.stat().st_size},
+            "metrics": {
+                "public_id": public_id,
+                "size_bytes": local_path.stat().st_size,
+            },
         },
     )
 
@@ -213,5 +218,5 @@ def upload_merged(
         "Upload complete",
         extra={"job_id": job_id, "event": "upload_done"},
     )
-    
+
     return result.get("secure_url")

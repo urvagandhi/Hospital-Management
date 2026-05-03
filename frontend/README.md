@@ -94,7 +94,7 @@ graph TD
     ML --> NAV["Navbar — fixed top, z-50"]
     ML --> OUTLET["Page Content<br/>min-h-[calc(100vh-4rem)]"]
 
-    NAV --> BRAND["Logo + HospitALL wordmark<br/>→ /dashboard"]
+    NAV --> BRAND["Logo + MediVault wordmark<br/>→ /dashboard"]
     NAV --> LINKS["Dashboard<br/>+ Hospitals admin-gated"]
     NAV --> CHIP["Hospital chip + green/red online dot"]
     NAV --> GEAR["Settings menu<br/>Headless-UI Menu"]
@@ -236,29 +236,29 @@ These three rules are enforced across every page in `AppRoutes.tsx`. Violations 
 
 24 total. Catch-all `*` renders [pages/NotFound.tsx](src/pages/NotFound.tsx) — never silent-redirect.
 
-| Path | Component | Auth | Notes |
-|------|-----------|------|-------|
-| `/` | LandingPage | Public | Marketing homepage |
-| `/login` | Login | Public | Email/phone + password |
-| `/verify-auth-code` | VerifyAuthCode | Temp Token | 6-digit Auth Code (immutable per-hospital) |
-| `/forgot-password` | ForgotPassword | Public | 3-step: init → verify-otp → reset |
-| `/change-password` | ChangePassword | Temp Token | First-login enforcement (CLAUDE.md §5) |
-| `/terms` | Terms | Public | |
-| `/privacy` | Privacy | Public | Reachable URL required for Play Store |
-| `/components-preview` | ComponentsPreview | Public | Design gallery, unlinked |
-| `/spinners-preview` | LoadingSpinners | Public | 19-variant spinner showcase |
-| `/dashboard` | Dashboard | Protected | Greeting + bento stats + patients table |
-| `/patients/:id` | PatientDetails | Protected | Edit-Patient modal intentionally commented (read-only) |
-| `/patients/:id/folders/:name` | FolderView | Protected | |
-| `/profile` | Profile | Protected | Hospital profile (with portaled contact-change modal) |
-| `/password` | Password | Protected | Change password while authenticated |
-| `/sessions` | Sessions | Protected | Active devices + GeoIP city/country per session |
-| `/notifications` | NotificationSettings | Protected | Toggle newLoginAlert / securityAlerts / marketing |
-| `/security` | (legacy alias) | Protected | Kept for old links |
-| `/activity` | ActivityLog | Admin | Admin-only audit log |
-| `/register` | HospitalRegistration | Admin | Create hospital → welcome email + temp password |
-| `/hospitals` | HospitalsList | Admin | Cursor pagination + server-side search (TD-005) |
-| `*` | NotFound | Public | Renders the 404 page — no redirect |
+| Path                          | Component            | Auth       | Notes                                                  |
+| ----------------------------- | -------------------- | ---------- | ------------------------------------------------------ |
+| `/`                           | LandingPage          | Public     | Marketing homepage                                     |
+| `/login`                      | Login                | Public     | Email/phone + password                                 |
+| `/verify-auth-code`           | VerifyAuthCode       | Temp Token | 6-digit Auth Code (immutable per-hospital)             |
+| `/forgot-password`            | ForgotPassword       | Public     | 3-step: init → verify-otp → reset                      |
+| `/change-password`            | ChangePassword       | Temp Token | First-login enforcement (CLAUDE.md §5)                 |
+| `/terms`                      | Terms                | Public     |                                                        |
+| `/privacy`                    | Privacy              | Public     | Reachable URL required for Play Store                  |
+| `/components-preview`         | ComponentsPreview    | Public     | Design gallery, unlinked                               |
+| `/spinners-preview`           | LoadingSpinners      | Public     | 19-variant spinner showcase                            |
+| `/dashboard`                  | Dashboard            | Protected  | Greeting + bento stats + patients table                |
+| `/patients/:id`               | PatientDetails       | Protected  | Edit-Patient modal intentionally commented (read-only) |
+| `/patients/:id/folders/:name` | FolderView           | Protected  |                                                        |
+| `/profile`                    | Profile              | Protected  | Hospital profile (with portaled contact-change modal)  |
+| `/password`                   | Password             | Protected  | Change password while authenticated                    |
+| `/sessions`                   | Sessions             | Protected  | Active devices + GeoIP city/country per session        |
+| `/notifications`              | NotificationSettings | Protected  | Toggle newLoginAlert / securityAlerts / marketing      |
+| `/security`                   | (legacy alias)       | Protected  | Kept for old links                                     |
+| `/activity`                   | ActivityLog          | Admin      | Admin-only audit log                                   |
+| `/register`                   | HospitalRegistration | Admin      | Create hospital → welcome email + temp password        |
+| `/hospitals`                  | HospitalsList        | Admin      | Cursor pagination + server-side search (TD-005)        |
+| `*`                           | NotFound             | Public     | Renders the 404 page — no redirect                     |
 
 ---
 
@@ -306,10 +306,10 @@ stateDiagram-v2
     }
 ```
 
-| Indicator | Location | Purpose |
-|-----------|----------|---------|
-| NetworkStatusPill | Navbar (top-right) | Green / yellow / red dot |
-| NetworkStatusBanner | Below navbar | Full-width offline warning |
+| Indicator           | Location           | Purpose                    |
+| ------------------- | ------------------ | -------------------------- |
+| NetworkStatusPill   | Navbar (top-right) | Green / yellow / red dot   |
+| NetworkStatusBanner | Below navbar       | Full-width offline warning |
 
 ---
 
@@ -325,10 +325,10 @@ npm run dev   # Vite on http://localhost:5173
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VITE_API_URL` | `/api` | Backend API base URL |
-| `VITE_APP_NAME` | Hospital Management System | App title |
+| Variable        | Default                    | Description          |
+| --------------- | -------------------------- | -------------------- |
+| `VITE_API_URL`  | `/api`                     | Backend API base URL |
+| `VITE_APP_NAME` | Hospital Management System | App title            |
 
 ### Build
 
@@ -361,16 +361,16 @@ Multi-stage build: Node 20 Alpine (build) → Nginx 1.25 Alpine (serve).
 
 ## Tech Stack
 
-| Technology | Purpose |
-|------------|---------|
-| React 18 | UI framework |
-| TypeScript 5 | Type safety |
-| Vite | Build tool + HMR dev server |
-| Tailwind CSS 3 | Utility-first styling |
-| React Router 6 | Client-side routing |
-| Axios | HTTP client + interceptors |
-| Headless UI | Accessible menu / disclosure (Navbar settings menu) |
-| React Context | Auth state, network status (no Redux/Zustand) |
+| Technology     | Purpose                                             |
+| -------------- | --------------------------------------------------- |
+| React 18       | UI framework                                        |
+| TypeScript 5   | Type safety                                         |
+| Vite           | Build tool + HMR dev server                         |
+| Tailwind CSS 3 | Utility-first styling                               |
+| React Router 6 | Client-side routing                                 |
+| Axios          | HTTP client + interceptors                          |
+| Headless UI    | Accessible menu / disclosure (Navbar settings menu) |
+| React Context  | Auth state, network status (no Redux/Zustand)       |
 
 `recharts` and `lucide-react` are gallery-only deps, **intentionally kept** and isolated to the `ComponentsPreview-*.js` lazy chunk via `React.lazy()` in [AppRoutes.tsx](src/routes/AppRoutes.tsx) (TD-011). Zero bytes in the main bundle.
 

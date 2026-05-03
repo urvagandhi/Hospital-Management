@@ -4,18 +4,51 @@
  * Web = light mode only.
  */
 
-import React, { useState, useRef, useEffect } from "react";
 import {
-  LayoutDashboard, Users, FolderOpen, Settings, Bell, Search, Download,
-  MoreVertical, Eye, EyeOff, X, CheckCircle, AlertTriangle, Info,
-  AlertCircle, Plus, Upload, FileText, Shield, BarChart2, Pill,
-  ClipboardCheck, Building, Receipt, CreditCard, User, Lock,
-  ChevronLeft, ChevronRight, ChevronDown, Trash2, Edit2, File,
-  Image as LucideImage, Menu, LogOut, RefreshCw, Check, Folder,
+  AlertCircle,
+  AlertTriangle,
+  BarChart2,
+  Bell,
+  Building,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  ClipboardCheck,
+  CreditCard,
+  Download,
+  Edit2,
+  Eye, EyeOff,
+  File,
+  FileText,
+  FolderOpen,
+  Info,
+  LayoutDashboard,
+  Lock,
+  Image as LucideImage,
+  MoreVertical,
+  Pill,
+  Plus,
+  Receipt,
+  Search,
+  Settings,
+  Shield,
+  Trash2,
+  Upload,
+  User,
+  Users,
+  X
 } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
-  PieChart, Pie, Cell,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer, Tooltip,
+  XAxis, YAxis,
 } from "recharts";
 
 import appLogo from "../assets/logo.png";
@@ -36,38 +69,38 @@ const BAR_DATA = [
 ];
 
 const DONUT_DATA = [
-  { name: "Male",   value: 540 },
+  { name: "Male", value: 540 },
   { name: "Female", value: 380 },
-  { name: "Other",  value: 82  },
+  { name: "Other", value: 82 },
 ];
 const DONUT_COLORS = ["#2B7FE0", "#8B5CF6", "#ADD6FF"];
 
 const PATIENTS = [
-  { id: "#100001", name: "Ahmad Lipshutz",   email: "ahmad@gmail.com",    age: "25 yrs", diagnosis: "Stroke",             status: "Hospital"     as const, initials: "AL" },
-  { id: "#100002", name: "Charlie Bricoh",   email: "charlie@gmail.com",  age: "25 yrs", diagnosis: "Heart Failure",       status: "Consultation" as const, initials: "CB" },
-  { id: "#100003", name: "Arlean Schrufer",  email: "arlean@gmail.com",   age: "30 yrs", diagnosis: "Nutritional Nerve",   status: "Healthy"      as const, initials: "AS" },
-  { id: "#100004", name: "Tony Parekha",     email: "tony@gmail.com",     age: "37 yrs", diagnosis: "Heart Attack",        status: "Hospital"     as const, initials: "TP" },
-  { id: "#100005", name: "Pruell Miles",     email: "pruell@gmail.com",   age: "28 yrs", diagnosis: "Heart Failure",       status: "Consultation" as const, initials: "PM" },
-  { id: "#100006", name: "Savannah Nguyen",  email: "savannah@gmail.com", age: "32 yrs", diagnosis: "Nutritional Nerve",   status: "Healthy"      as const, initials: "SN" },
+  { id: "#100001", name: "Ahmad Lipshutz", email: "ahmad@gmail.com", age: "25 yrs", diagnosis: "Stroke", status: "Hospital" as const, initials: "AL" },
+  { id: "#100002", name: "Charlie Bricoh", email: "charlie@gmail.com", age: "25 yrs", diagnosis: "Heart Failure", status: "Consultation" as const, initials: "CB" },
+  { id: "#100003", name: "Arlean Schrufer", email: "arlean@gmail.com", age: "30 yrs", diagnosis: "Nutritional Nerve", status: "Healthy" as const, initials: "AS" },
+  { id: "#100004", name: "Tony Parekha", email: "tony@gmail.com", age: "37 yrs", diagnosis: "Heart Attack", status: "Hospital" as const, initials: "TP" },
+  { id: "#100005", name: "Pruell Miles", email: "pruell@gmail.com", age: "28 yrs", diagnosis: "Heart Failure", status: "Consultation" as const, initials: "PM" },
+  { id: "#100006", name: "Savannah Nguyen", email: "savannah@gmail.com", age: "32 yrs", diagnosis: "Nutritional Nerve", status: "Healthy" as const, initials: "SN" },
 ];
 
 const SECTIONS = [
-  { id: "colors",      label: "Colors"           },
-  { id: "typography",  label: "Typography"       },
-  { id: "buttons",     label: "Buttons"          },
-  { id: "inputs",      label: "Inputs"           },
-  { id: "cards",       label: "Cards"            },
-  { id: "table",       label: "Table"            },
-  { id: "badges",      label: "Badges"           },
-  { id: "navigation",  label: "Navigation"       },
-  { id: "modals",      label: "Modals"           },
-  { id: "toasts",      label: "Toasts"           },
-  { id: "loading",     label: "Loading States"   },
-  { id: "empty",       label: "Empty States"     },
-  { id: "dropdowns",   label: "Dropdowns"        },
-  { id: "forms",       label: "Form Patterns"    },
-  { id: "files",       label: "File Components"  },
-  { id: "charts",      label: "Charts"           },
+  { id: "colors", label: "Colors" },
+  { id: "typography", label: "Typography" },
+  { id: "buttons", label: "Buttons" },
+  { id: "inputs", label: "Inputs" },
+  { id: "cards", label: "Cards" },
+  { id: "table", label: "Table" },
+  { id: "badges", label: "Badges" },
+  { id: "navigation", label: "Navigation" },
+  { id: "modals", label: "Modals" },
+  { id: "toasts", label: "Toasts" },
+  { id: "loading", label: "Loading States" },
+  { id: "empty", label: "Empty States" },
+  { id: "dropdowns", label: "Dropdowns" },
+  { id: "forms", label: "Form Patterns" },
+  { id: "files", label: "File Components" },
+  { id: "charts", label: "Charts" },
 ];
 
 // ─────────────────────────────────────────────
@@ -99,11 +132,11 @@ const PreviewCard: React.FC<{ children: React.ReactNode; className?: string }> =
 type StatusType = "Hospital" | "Consultation" | "Healthy" | "Suspended" | "Active";
 
 const STATUS_CONFIG: Record<StatusType, { bg: string; text: string; dot: string }> = {
-  Hospital:     { bg: "bg-red-50",    text: "text-danger",  dot: "bg-danger"  },
-  Consultation: { bg: "bg-blue-50",   text: "text-info",    dot: "bg-info"    },
-  Healthy:      { bg: "bg-green-50",  text: "text-success", dot: "bg-success" },
-  Suspended:    { bg: "bg-amber-50",  text: "text-warning", dot: "bg-warning" },
-  Active:       { bg: "bg-green-50",  text: "text-success", dot: "bg-success" },
+  Hospital: { bg: "bg-red-50", text: "text-danger", dot: "bg-danger" },
+  Consultation: { bg: "bg-blue-50", text: "text-info", dot: "bg-info" },
+  Healthy: { bg: "bg-green-50", text: "text-success", dot: "bg-success" },
+  Suspended: { bg: "bg-amber-50", text: "text-warning", dot: "bg-warning" },
+  Active: { bg: "bg-green-50", text: "text-success", dot: "bg-success" },
 };
 
 const StatusBadge: React.FC<{ status: StatusType }> = ({ status }) => {
@@ -134,7 +167,7 @@ const Avatar: React.FC<{ initials: string; size?: "sm" | "md" | "lg" }> = ({ ini
 // ─────────────────────────────────────────────
 
 type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "icon";
-type BtnSize    = "sm" | "md" | "lg";
+type BtnSize = "sm" | "md" | "lg";
 
 interface HMSButtonProps {
   children: React.ReactNode;
@@ -159,11 +192,11 @@ const HMSButton: React.FC<HMSButtonProps> = ({
   };
 
   const variants: Record<BtnVariant, string> = {
-    primary:   "bg-gradient-primary text-white shadow-primary hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]",
+    primary: "bg-gradient-primary text-white shadow-primary hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]",
     secondary: "bg-white border-[1.5px] border-primary-200 text-primary-500 hover:bg-primary-50",
-    ghost:     "bg-transparent text-neutral-500 hover:bg-neutral-50",
-    danger:    "bg-danger text-white shadow-danger hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]",
-    icon:      "w-10 h-10 rounded-[12px] bg-transparent text-neutral-500 hover:bg-primary-50 hover:text-primary-500 p-0",
+    ghost: "bg-transparent text-neutral-500 hover:bg-neutral-50",
+    danger: "bg-danger text-white shadow-danger hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]",
+    icon: "w-10 h-10 rounded-[12px] bg-transparent text-neutral-500 hover:bg-primary-50 hover:text-primary-500 p-0",
   };
 
   return (
@@ -225,9 +258,9 @@ const HMSInput: React.FC<HMSInputProps> = ({
             ? "border-danger focus:border-danger focus:ring-red-100"
             : "border-neutral-200 focus:border-primary-500 focus:ring-primary-50"
           }
-          ${leftIcon  ? "pl-10" : ""}
+          ${leftIcon ? "pl-10" : ""}
           ${rightSlot ? "pr-10" : ""}
-          ${disabled  ? "opacity-50 cursor-not-allowed bg-neutral-50" : ""}
+          ${disabled ? "opacity-50 cursor-not-allowed bg-neutral-50" : ""}
         `}
       />
       {rightSlot && (
@@ -297,14 +330,14 @@ const Skel: React.FC<{ className?: string }> = ({ className = "" }) => (
 // ─────────────────────────────────────────────
 
 const FOLDERS = [
-  { name: "ID",                   icon: CreditCard,      color: "#3B82F6", count: 3  },
-  { name: "Claim Paper",          icon: FileText,        color: "#8B5CF6", count: 7  },
-  { name: "Hospital Bills",       icon: Receipt,         color: "#F59E0B", count: 12 },
-  { name: "Discharge Summary",    icon: ClipboardCheck,  color: "#10B981", count: 2  },
-  { name: "Hospital Documents",   icon: Building,        color: "#6366F1", count: 5  },
-  { name: "Reports",              icon: BarChart2,       color: "#EC4899", count: 8  },
-  { name: "Prescriptions",        icon: Pill,            color: "#14B8A6", count: 15 },
-  { name: "Consent",              icon: Shield,          color: "#F97316", count: 1  },
+  { name: "ID", icon: CreditCard, color: "#3B82F6", count: 3 },
+  { name: "Claim Paper", icon: FileText, color: "#8B5CF6", count: 7 },
+  { name: "Hospital Bills", icon: Receipt, color: "#F59E0B", count: 12 },
+  { name: "Discharge Summary", icon: ClipboardCheck, color: "#10B981", count: 2 },
+  { name: "Hospital Documents", icon: Building, color: "#6366F1", count: 5 },
+  { name: "Reports", icon: BarChart2, color: "#EC4899", count: 8 },
+  { name: "Prescriptions", icon: Pill, color: "#14B8A6", count: 15 },
+  { name: "Consent", icon: Shield, color: "#F97316", count: 1 },
 ];
 
 // ─────────────────────────────────────────────
@@ -314,16 +347,16 @@ const FOLDERS = [
 const ComponentsPreview: React.FC = () => {
   useDocumentTitle("Components — Hospital Management");
   // — demo state —
-  const [pwVisible,   setPwVisible]   = useState(false);
-  const [searchVal,   setSearchVal]   = useState("");
-  const [modalOpen,   setModalOpen]   = useState(false);
+  const [pwVisible, setPwVisible] = useState(false);
+  const [searchVal, setSearchVal] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [typeConfirm, setTypeConfirm] = useState("");
-  const [dropOpen,    setDropOpen]    = useState(false);
-  const [sidebarExp,  setSidebarExp]  = useState(true);
-  const [toastType,   setToastType]   = useState<"success"|"error"|"warning"|"info"|null>(null);
+  const [dropOpen, setDropOpen] = useState(false);
+  const [sidebarExp, setSidebarExp] = useState(true);
+  const [toastType, setToastType] = useState<"success" | "error" | "warning" | "info" | null>(null);
   const [activeToast, setActiveToast] = useState(false);
-  const [page,        setPage]        = useState(1);
+  const [page, setPage] = useState(1);
   const dropRef = useRef<HTMLDivElement>(null);
 
   // close dropdown on outside click
@@ -351,48 +384,48 @@ const ComponentsPreview: React.FC = () => {
   // ── TOAST CONFIG ──
   const TOAST_CFG = {
     success: {
-      wrapper:   "bg-[#F0FDF4] border border-[#BBF7D0]",
-      iconBg:    "bg-[#DCFCE7]",
-      icon:      <CheckCircle   className="w-5 h-5 text-[#16A34A]" />,
-      barColor:  "bg-[#22C55E]",
-      titleCls:  "text-[#14532D]",
-      msgCls:    "text-[#166534]",
-      closeCls:  "text-[#4ADE80] hover:text-[#16A34A]",
+      wrapper: "bg-[#F0FDF4] border border-[#BBF7D0]",
+      iconBg: "bg-[#DCFCE7]",
+      icon: <CheckCircle className="w-5 h-5 text-[#16A34A]" />,
+      barColor: "bg-[#22C55E]",
+      titleCls: "text-[#14532D]",
+      msgCls: "text-[#166534]",
+      closeCls: "text-[#4ADE80] hover:text-[#16A34A]",
       title: "Saved Successfully",
-      msg:   "Patient record has been saved.",
+      msg: "Patient record has been saved.",
     },
     error: {
-      wrapper:   "bg-[#FEF2F2] border border-[#FECACA]",
-      iconBg:    "bg-[#FEE2E2]",
-      icon:      <AlertCircle   className="w-5 h-5 text-[#DC2626]" />,
-      barColor:  "bg-[#EF4444]",
-      titleCls:  "text-[#450A0A]",
-      msgCls:    "text-[#991B1B]",
-      closeCls:  "text-[#FCA5A5] hover:text-[#DC2626]",
+      wrapper: "bg-[#FEF2F2] border border-[#FECACA]",
+      iconBg: "bg-[#FEE2E2]",
+      icon: <AlertCircle className="w-5 h-5 text-[#DC2626]" />,
+      barColor: "bg-[#EF4444]",
+      titleCls: "text-[#450A0A]",
+      msgCls: "text-[#991B1B]",
+      closeCls: "text-[#FCA5A5] hover:text-[#DC2626]",
       title: "Action Failed",
-      msg:   "Something went wrong. Please try again.",
+      msg: "Something went wrong. Please try again.",
     },
     warning: {
-      wrapper:   "bg-[#FFFBEB] border border-[#FDE68A]",
-      iconBg:    "bg-[#FEF3C7]",
-      icon:      <AlertTriangle className="w-5 h-5 text-[#D97706]" />,
-      barColor:  "bg-[#F59E0B]",
-      titleCls:  "text-[#451A03]",
-      msgCls:    "text-[#92400E]",
-      closeCls:  "text-[#FCD34D] hover:text-[#D97706]",
+      wrapper: "bg-[#FFFBEB] border border-[#FDE68A]",
+      iconBg: "bg-[#FEF3C7]",
+      icon: <AlertTriangle className="w-5 h-5 text-[#D97706]" />,
+      barColor: "bg-[#F59E0B]",
+      titleCls: "text-[#451A03]",
+      msgCls: "text-[#92400E]",
+      closeCls: "text-[#FCD34D] hover:text-[#D97706]",
       title: "Warning",
-      msg:   "This action cannot be undone.",
+      msg: "This action cannot be undone.",
     },
     info: {
-      wrapper:   "bg-[#EFF6FF] border border-[#BFDBFE]",
-      iconBg:    "bg-[#DBEAFE]",
-      icon:      <Info          className="w-5 h-5 text-[#2563EB]" />,
-      barColor:  "bg-[#3B82F6]",
-      titleCls:  "text-[#1E3A5F]",
-      msgCls:    "text-[#1E40AF]",
-      closeCls:  "text-[#93C5FD] hover:text-[#2563EB]",
+      wrapper: "bg-[#EFF6FF] border border-[#BFDBFE]",
+      iconBg: "bg-[#DBEAFE]",
+      icon: <Info className="w-5 h-5 text-[#2563EB]" />,
+      barColor: "bg-[#3B82F6]",
+      titleCls: "text-[#1E3A5F]",
+      msgCls: "text-[#1E40AF]",
+      closeCls: "text-[#93C5FD] hover:text-[#2563EB]",
       title: "Session Notice",
-      msg:   "Your session will expire in 10 minutes.",
+      msg: "Your session will expire in 10 minutes.",
     },
   };
 
@@ -400,10 +433,10 @@ const ComponentsPreview: React.FC = () => {
 
   // nav sidebar items
   const NAV_ITEMS = [
-    { icon: LayoutDashboard, label: "Dashboard",  active: true  },
-    { icon: Users,           label: "Patients",   active: false },
-    { icon: FolderOpen,      label: "Documents",  active: false },
-    { icon: Settings,        label: "Settings",   active: false },
+    { icon: LayoutDashboard, label: "Dashboard", active: true },
+    { icon: Users, label: "Patients", active: false },
+    { icon: FolderOpen, label: "Documents", active: false },
+    { icon: Settings, label: "Settings", active: false },
   ];
 
   return (
@@ -413,7 +446,7 @@ const ComponentsPreview: React.FC = () => {
         <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl overflow-hidden bg-white border border-neutral-100 flex items-center justify-center">
-              <img src={appLogo} alt="HospitAll" className="w-full h-full object-contain" />
+              <img src={appLogo} alt="MediVault" className="w-full h-full object-contain" />
             </div>
             <div>
               <p className="font-heading font-bold text-[15px] text-neutral-900 leading-none">HMS Design System</p>
@@ -465,14 +498,14 @@ const ComponentsPreview: React.FC = () => {
             <SubLabel text="Primary Blue Scale" />
             <div className="flex gap-2 flex-wrap">
               {([
-                ["50",  "#EBF5FF"],
+                ["50", "#EBF5FF"],
                 ["100", "#D6EBFF"],
                 ["200", "#ADD6FF"],
                 ["400", "#4DA3FF"],
                 ["500", "#2B7FE0"],
                 ["600", "#1A5FB0"],
                 ["700", "#0D3F80"],
-              ] as [string,string][]).map(([shade, hex]) => (
+              ] as [string, string][]).map(([shade, hex]) => (
                 <div key={shade} className="flex flex-col items-center gap-1.5">
                   <div className="w-16 h-16 rounded-xl shadow-sm border border-black/5" style={{ background: hex }} />
                   <p className="text-[11px] font-mono font-medium text-neutral-500">{shade}</p>
@@ -488,12 +521,12 @@ const ComponentsPreview: React.FC = () => {
               <SubLabel text="Semantic Colours" />
               <div className="flex gap-3 flex-wrap">
                 {([
-                  ["Success",  "#10B981"],
-                  ["Warning",  "#F59E0B"],
-                  ["Danger",   "#EF4444"],
-                  ["Info",     "#3B82F6"],
-                  ["Purple",   "#8B5CF6"],
-                ] as [string,string][]).map(([name, hex]) => (
+                  ["Success", "#10B981"],
+                  ["Warning", "#F59E0B"],
+                  ["Danger", "#EF4444"],
+                  ["Info", "#3B82F6"],
+                  ["Purple", "#8B5CF6"],
+                ] as [string, string][]).map(([name, hex]) => (
                   <div key={name} className="flex flex-col items-center gap-1.5">
                     <div className="w-14 h-14 rounded-xl shadow-sm border border-black/5" style={{ background: hex }} />
                     <p className="text-[11px] font-mono font-medium text-neutral-500">{name}</p>
@@ -507,13 +540,13 @@ const ComponentsPreview: React.FC = () => {
               <SubLabel text="Surface & Neutral" />
               <div className="flex gap-3 flex-wrap">
                 {([
-                  ["surface-bg",   "#F0F6FF"],
-                  ["neutral-100",  "#F1F5F9"],
-                  ["neutral-200",  "#E2E8F0"],
-                  ["neutral-400",  "#94A3B8"],
-                  ["neutral-700",  "#334155"],
-                  ["neutral-900",  "#0F172A"],
-                ] as [string,string][]).map(([name, hex]) => (
+                  ["surface-bg", "#F0F6FF"],
+                  ["neutral-100", "#F1F5F9"],
+                  ["neutral-200", "#E2E8F0"],
+                  ["neutral-400", "#94A3B8"],
+                  ["neutral-700", "#334155"],
+                  ["neutral-900", "#0F172A"],
+                ] as [string, string][]).map(([name, hex]) => (
                   <div key={name} className="flex flex-col items-center gap-1.5">
                     <div className="w-14 h-14 rounded-xl shadow-sm border border-black/5" style={{ background: hex }} />
                     <p className="text-[10px] font-mono text-neutral-500 text-center leading-tight">{name}</p>
@@ -620,7 +653,7 @@ const ComponentsPreview: React.FC = () => {
           <PreviewCard>
             <SubLabel text="Sizes" />
             <div className="flex flex-wrap items-end gap-4">
-              {(["sm","md","lg"] as BtnSize[]).map(sz => (
+              {(["sm", "md", "lg"] as BtnSize[]).map(sz => (
                 <div key={sz} className="flex flex-col items-center gap-2">
                   <HMSButton variant="primary" size={sz}>Save Changes</HMSButton>
                   <p className="text-[10px] font-mono text-neutral-400">{sz}</p>
@@ -731,9 +764,9 @@ const ComponentsPreview: React.FC = () => {
           <SubLabel text="Stat Cards (Dashboard)" />
           <div className="grid grid-cols-3 gap-5">
             {[
-              { label: "TOTAL PATIENT",  value: "102", change: "+12.8%", dir: "up",   sub: "New: 48  ·  Old: 54",  icon: Users,        iconBg: "bg-primary-50",  iconColor: "text-primary-500" },
-              { label: "OVERALL ROOM",   value: "128", change: "+4.5%",  dir: "up",   sub: "Occupied: 96  ·  Free: 32", icon: Building, iconBg: "bg-purple-50", iconColor: "text-purple" },
-              { label: "APPOINTMENT",    value: "254", change: "-3.2%",  dir: "down", sub: "Today: 18  ·  Pending: 6",  icon: ClipboardCheck, iconBg: "bg-green-50", iconColor: "text-success" },
+              { label: "TOTAL PATIENT", value: "102", change: "+12.8%", dir: "up", sub: "New: 48  ·  Old: 54", icon: Users, iconBg: "bg-primary-50", iconColor: "text-primary-500" },
+              { label: "OVERALL ROOM", value: "128", change: "+4.5%", dir: "up", sub: "Occupied: 96  ·  Free: 32", icon: Building, iconBg: "bg-purple-50", iconColor: "text-purple" },
+              { label: "APPOINTMENT", value: "254", change: "-3.2%", dir: "down", sub: "Today: 18  ·  Pending: 6", icon: ClipboardCheck, iconBg: "bg-green-50", iconColor: "text-success" },
             ].map(card => {
               const Icon = card.icon;
               return (
@@ -877,7 +910,7 @@ const ComponentsPreview: React.FC = () => {
                 >
                   Previous
                 </button>
-                {[1,2,3,4,5].map(n => (
+                {[1, 2, 3, 4, 5].map(n => (
                   <button
                     key={n}
                     onClick={() => setPage(n)}
@@ -907,7 +940,7 @@ const ComponentsPreview: React.FC = () => {
             <div>
               <SubLabel text="Status Badges" />
               <div className="flex flex-wrap gap-3">
-                {(["Hospital","Consultation","Healthy","Suspended","Active"] as StatusType[]).map(s => (
+                {(["Hospital", "Consultation", "Healthy", "Suspended", "Active"] as StatusType[]).map(s => (
                   <StatusBadge key={s} status={s} />
                 ))}
               </div>
@@ -916,7 +949,7 @@ const ComponentsPreview: React.FC = () => {
             <div>
               <SubLabel text="File Count Badge" />
               <div className="flex gap-3 items-center">
-                {[3,7,12,0].map(n => (
+                {[3, 7, 12, 0].map(n => (
                   <span key={n} className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${n === 0 ? "bg-neutral-100 text-neutral-400" : "bg-primary-50 text-primary-600"}`}>
                     {n} file{n !== 1 ? "s" : ""}
                   </span>
@@ -964,7 +997,7 @@ const ComponentsPreview: React.FC = () => {
                 {/* Logo */}
                 <div className="px-4 mb-4 flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-neutral-100 flex items-center justify-center flex-shrink-0">
-                    <img src={appLogo} alt="HospitAll" className="w-full h-full object-contain" />
+                    <img src={appLogo} alt="MediVault" className="w-full h-full object-contain" />
                   </div>
                   <div>
                     <p className="text-[13px] font-heading font-bold text-neutral-900 leading-none">HMS</p>
@@ -1005,7 +1038,7 @@ const ComponentsPreview: React.FC = () => {
               {/* Collapsed */}
               <div className="w-[72px] bg-white border border-neutral-100 rounded-xl shadow-card flex flex-col items-center py-3">
                 <div className="w-9 h-9 mb-4 rounded-lg overflow-hidden bg-white border border-neutral-100 flex items-center justify-center">
-                  <img src={appLogo} alt="HospitAll" className="w-full h-full object-contain" />
+                  <img src={appLogo} alt="MediVault" className="w-full h-full object-contain" />
                 </div>
                 {NAV_ITEMS.map(item => {
                   const Icon = item.icon;
@@ -1059,11 +1092,11 @@ const ComponentsPreview: React.FC = () => {
               <SubLabel text="Mobile Bottom Navigation (preview)" />
               <div className="bg-white border border-neutral-100 rounded-xl flex items-center justify-around h-16 shadow-card">
                 {[
-                  { icon: LayoutDashboard, label: "Home",     active: true  },
-                  { icon: Users,           label: "Patients", active: false },
-                  { icon: FolderOpen,      label: "Docs",     active: false },
-                  { icon: User,            label: "Profile",  active: false },
-                  { icon: Settings,        label: "Settings", active: false },
+                  { icon: LayoutDashboard, label: "Home", active: true },
+                  { icon: Users, label: "Patients", active: false },
+                  { icon: FolderOpen, label: "Docs", active: false },
+                  { icon: User, label: "Profile", active: false },
+                  { icon: Settings, label: "Settings", active: false },
                 ].map(item => {
                   const Icon = item.icon;
                   return (
@@ -1130,7 +1163,7 @@ const ComponentsPreview: React.FC = () => {
         <PreviewCard className="mb-16">
           {/* Click triggers */}
           <div className="flex flex-wrap gap-3 mb-6">
-            {(["success","error","warning","info"] as const).map(t => (
+            {(["success", "error", "warning", "info"] as const).map(t => (
               <HMSButton key={t} variant={t === "error" ? "danger" : "secondary"} size="sm" onClick={() => showToast(t)}>
                 Show {t.charAt(0).toUpperCase() + t.slice(1)} Toast
               </HMSButton>
@@ -1181,7 +1214,7 @@ const ComponentsPreview: React.FC = () => {
           <PreviewCard>
             <SubLabel text="Table Row Skeletons" />
             <div className="space-y-4">
-              {[0,1,2,3].map(i => (
+              {[0, 1, 2, 3].map(i => (
                 <div key={i} className="flex items-center gap-3">
                   <Skel className="w-8 h-8 rounded-full flex-shrink-0" />
                   <div className="flex-1 space-y-1.5">
@@ -1198,7 +1231,7 @@ const ComponentsPreview: React.FC = () => {
           <PreviewCard>
             <SubLabel text="Folder Grid Skeleton" />
             <div className="grid grid-cols-2 gap-3">
-              {[0,1,2,3].map(i => (
+              {[0, 1, 2, 3].map(i => (
                 <div key={i} className="bg-neutral-50 rounded-xl p-3 space-y-2">
                   <Skel className="w-10 h-10 rounded-xl" />
                   <Skel className="h-3 w-full" />
@@ -1313,8 +1346,8 @@ const ComponentsPreview: React.FC = () => {
               {dropOpen && (
                 <div className="absolute left-0 top-12 z-10 bg-white border border-neutral-100 rounded-xl shadow-toast p-1.5 min-w-[180px] animate-scale-in">
                   {[
-                    { icon: Eye,    label: "View Details",  color: "" },
-                    { icon: Edit2,  label: "Edit Patient",  color: "" },
+                    { icon: Eye, label: "View Details", color: "" },
+                    { icon: Edit2, label: "Edit Patient", color: "" },
                     { icon: Download, label: "Download Files", color: "" },
                   ].map(item => {
                     const Icon = item.icon;
@@ -1343,7 +1376,7 @@ const ComponentsPreview: React.FC = () => {
               <p className="px-3 py-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">Download as</p>
               {[
                 { icon: FileText, label: "Individual Files" },
-                { icon: File,     label: "Merge as PDF" },
+                { icon: File, label: "Merge as PDF" },
                 { icon: FolderOpen, label: "ZIP Archive" },
               ].map(opt => {
                 const Icon = opt.icon;
@@ -1366,7 +1399,7 @@ const ComponentsPreview: React.FC = () => {
                 <ChevronDown className="w-4 h-4 text-neutral-400" />
               </div>
               <div className="border border-neutral-100 rounded-xl overflow-hidden shadow-card">
-                {(["All","Hospital","Consultation","Healthy"] as const).map((opt, i) => (
+                {(["All", "Hospital", "Consultation", "Healthy"] as const).map((opt, i) => (
                   <div key={opt} className={`flex items-center justify-between px-4 py-2.5 text-[13px] cursor-pointer transition-colors ${i === 0 ? "bg-primary-50 text-primary-600 font-medium" : "text-neutral-700 hover:bg-neutral-50"}`}>
                     {opt}
                     {i === 0 && <Check className="w-3.5 h-3.5" />}
@@ -1509,8 +1542,8 @@ const ComponentsPreview: React.FC = () => {
             <div className="space-y-1">
               {[
                 { name: "Discharge_Summary_Apr2026.pdf", size: "2.4 MB", date: "14 Apr 2026", type: "pdf" },
-                { name: "Blood_Test_Report.jpg",          size: "1.1 MB", date: "12 Apr 2026", type: "img" },
-                { name: "Prescription_March.docx",        size: "420 KB", date: "28 Mar 2026", type: "doc" },
+                { name: "Blood_Test_Report.jpg", size: "1.1 MB", date: "12 Apr 2026", type: "img" },
+                { name: "Prescription_March.docx", size: "420 KB", date: "28 Mar 2026", type: "doc" },
               ].map(file => (
                 <div key={file.name} className="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-primary-50 transition-colors group cursor-pointer">
                   {/* Thumbnail / icon */}
@@ -1575,7 +1608,7 @@ const ComponentsPreview: React.FC = () => {
                 <defs>
                   {BAR_DATA.map((_, i) => (
                     <linearGradient key={i} id={`barGrad${i}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor="#2B7FE0" />
+                      <stop offset="0%" stopColor="#2B7FE0" />
                       <stop offset="100%" stopColor="#60A5FA" />
                     </linearGradient>
                   ))}

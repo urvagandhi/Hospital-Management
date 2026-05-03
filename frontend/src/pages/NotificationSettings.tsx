@@ -82,7 +82,7 @@ const GROUPS: Group[] = [
   {
     id: "news",
     title: "News & Updates",
-    description: "Information to help you get the most out of HospitALL.",
+    description: "Information to help you get the most out of MediVault.",
     tone: "neutral",
     icon: (
       <svg
@@ -124,15 +124,13 @@ const Toggle: React.FC<{
     aria-label={label}
     disabled={disabled}
     onClick={onChange}
-    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
-      checked ? "bg-gradient-primary shadow-primary" : "bg-neutral-200"
-    }`}
+    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${checked ? "bg-gradient-primary shadow-primary" : "bg-neutral-200"
+      }`}
   >
     <span
       aria-hidden="true"
-      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-1 ring-black/5 transition duration-200 ease-in-out absolute top-0.5 ${
-        checked ? "translate-x-[22px]" : "translate-x-0.5"
-      }`}
+      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-1 ring-black/5 transition duration-200 ease-in-out absolute top-0.5 ${checked ? "translate-x-[22px]" : "translate-x-0.5"
+        }`}
     />
   </button>
 );
@@ -228,11 +226,10 @@ const NotificationSettings: React.FC = () => {
           </div>
           {/* Saved flash */}
           <div
-            className={`self-start sm:self-end transition-all duration-200 ${
-              savedFlash
+            className={`self-start sm:self-end transition-all duration-200 ${savedFlash
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 -translate-y-1 pointer-events-none"
-            }`}
+              }`}
           >
             {savedFlash && (
               <div className="inline-flex items-center gap-2 text-sm font-medium text-success bg-success/10 border border-success/20 rounded-full px-3 py-1.5">
@@ -275,11 +272,10 @@ const NotificationSettings: React.FC = () => {
               <div className="p-6 border-b border-neutral-100">
                 <div className="flex items-start gap-3">
                   <span
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset ${
-                      group.tone === "primary"
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset ${group.tone === "primary"
                         ? "bg-primary-50 text-primary-600 ring-primary-600/15"
                         : "bg-neutral-100 text-neutral-600 ring-neutral-300/40"
-                    }`}
+                      }`}
                   >
                     {group.icon}
                   </span>

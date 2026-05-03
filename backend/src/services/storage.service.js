@@ -58,14 +58,14 @@ function slugifyFolder(name) {
 }
 
 // Builds the full Cloudinary public_id for a patient document.
-// Pattern: HospitALL/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{YYYYMMDD}_{4hash}
+// Pattern: MediVault/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{YYYYMMDD}_{4hash}
 // Both hospitalId and patientMongoId are opaque MongoDB ObjectIds — no PHI in the path.
 function buildCloudinaryPublicId(hospitalId, patientMongoId, folderName) {
   const folderSlug = slugifyFolder(folderName);
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
   const hash = Math.random().toString(36).slice(2, 6);                       // 4-char suffix
   const docId = `${dateStr}_${hash}`;
-  return `HospitALL/h_${hospitalId}/p_${patientMongoId}/${folderSlug}/${docId}`;
+  return `MediVault/h_${hospitalId}/p_${patientMongoId}/${folderSlug}/${docId}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -88,7 +88,7 @@ const imageStorage = new CloudinaryStorage({
 });
 
 // Patient document uploads — structured public_id built from request context.
-// Path: HospitALL/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{YYYYMMDD}_{hash}
+// Path: MediVault/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{YYYYMMDD}_{hash}
 const documentStorage = new CloudinaryStorage({
   cloudinary: cloudinaryModule,
   params: (req, _file, cb) => {

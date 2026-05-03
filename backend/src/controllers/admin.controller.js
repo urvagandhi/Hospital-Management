@@ -10,7 +10,7 @@
 
 import AuditLog from '../models/AuditLog.js';
 import Patient from '../models/Patient.js';
-import { cloudinary, listCloudinaryResources, deleteFile } from '../services/storage.service.js';
+import { deleteFile, listCloudinaryResources } from '../services/storage.service.js';
 import getClientIp from '../utils/clientIp.js';
 
 // Prefixes to scan — all resource types that have ever been used.
@@ -18,10 +18,12 @@ import getClientIp from '../utils/clientIp.js';
 const SCAN_PREFIXES = [
   { prefix: 'hospital/documents', resourceType: 'raw' },
   { prefix: 'hospital/documents', resourceType: 'image' },
-  { prefix: 'hospital/uploads',   resourceType: 'raw' },
-  { prefix: 'hospital/uploads',   resourceType: 'image' },
-  { prefix: 'HospitALL',          resourceType: 'raw' },
-  { prefix: 'HospitALL',          resourceType: 'image' },
+  { prefix: 'hospital/uploads', resourceType: 'raw' },
+  { prefix: 'hospital/uploads', resourceType: 'image' },
+  { prefix: 'MediVault', resourceType: 'raw' },
+  { prefix: 'MediVault', resourceType: 'image' },
+  { prefix: 'HospitALL', resourceType: 'raw' },
+  { prefix: 'HospitALL', resourceType: 'image' },
 ];
 
 /**

@@ -13,12 +13,12 @@ import * as patientService from "../services/patient.service.js";
 import * as pdfService from "../services/pdf.service.js";
 import { setUploadIdempotentResponse } from "../services/redis.service.js";
 import {
-    buildSignedUrl,
-    buildThumbnailUrl,
-    cloudinary,
-    deleteFile as cloudinaryDeleteFile,
-    generateSignedUploadParams,
-    SIGNED_UPLOADS_ENABLED,
+  buildSignedUrl,
+  buildThumbnailUrl,
+  cloudinary,
+  deleteFile as cloudinaryDeleteFile,
+  generateSignedUploadParams,
+  SIGNED_UPLOADS_ENABLED,
 } from "../services/storage.service.js";
 import * as zipService from "../services/zip.service.js";
 import getClientIp from "../utils/clientIp.js";
@@ -447,8 +447,11 @@ export const confirmDirectUpload = async (req, res) => {
       });
     }
 
-    const expectedPrefix = `HospitALL/h_${hospitalId}/p_${patientId}/`;
-    if (!publicId.startsWith(expectedPrefix)) {
+    const expectedPrefixes = [
+      `MediVault/h_${hospitalId}/p_${patientId}/`,
+      `HospitALL/h_${hospitalId}/p_${patientId}/`,
+    ];
+    if (!expectedPrefixes.some((prefix) => publicId.startsWith(prefix))) {
       return res.status(400).json({
         success: false,
         message: "publicId does not belong to this patient",

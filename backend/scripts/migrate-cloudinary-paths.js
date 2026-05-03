@@ -2,7 +2,7 @@
  * One-time migration: move existing Cloudinary files from flat structure
  *   hospital/documents/{randomId}
  * to the organized structure
- *   HospitALL/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{YYYYMMDD}_{hash}
+ *   MediVault/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{YYYYMMDD}_{hash}
  *
  * Uses Cloudinary rename API — no bytes are re-uploaded.
  * Updates cloudinaryPublicId + fileUrl in MongoDB atomically per file.
@@ -28,7 +28,7 @@ function buildNewPublicId(hospitalId, patientMongoId, folderName, fileId) {
   const dateStr = d.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
   // use last 4 chars of the file's own _id as the hash — globally unique, stable
   const hash = String(fileId).slice(-4);
-  return `HospitALL/h_${hospitalId}/p_${patientMongoId}/${folderSlug}/${dateStr}_${hash}`;
+  return `MediVault/h_${hospitalId}/p_${patientMongoId}/${folderSlug}/${dateStr}_${hash}`;
 }
 
 async function run() {
