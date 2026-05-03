@@ -15901,12 +15901,7 @@
       "contributor": null,
       "description": "Bundled React asset PNG logo for MediVault. Glyph: a teal/blue rounded shield containing a stylized medical folder with a white medical cross, layered with document/clipboard icons (one bearing a heart), a gear/settings cog, and a stethoscope curve. Palette: deep navy/teal blues (#0E2E4A / #154E6E), mid teal (#2C8FA8), light cyan/mint highlights (#A8DDE5), with white cross and document accents.",
       "glyph": "shield + folder + medical cross + clipboard with heart + gear + stethoscope",
-      "palette": [
-        "deep navy",
-        "teal",
-        "cyan",
-        "white"
-      ],
+      "palette": ["deep navy", "teal", "cyan", "white"],
       "community": 48,
       "norm_label": "medivault logo (frontend/src/assets/logo.png)",
       "id": "logo_frontendassetpng"
@@ -16497,7 +16492,7 @@
       "id": "claude_graphify_artifacts"
     },
     {
-      "label": "Root README \u2014 Hospital Management System overview",
+      "label": "Root README \u2014 MediVault overview",
       "file_type": "document",
       "source_file": "README.md",
       "source_location": null,
@@ -16506,7 +16501,7 @@
       "author": null,
       "contributor": null,
       "community": 3,
-      "norm_label": "root readme \u2014 hospital management system overview",
+      "norm_label": "root readme \u2014 MediVault overview",
       "id": "readme_root_overview"
     },
     {
@@ -16627,7 +16622,7 @@
       "id": "readme_documentation_index"
     },
     {
-      "label": "Backend README \u2014 Hospital Management API",
+      "label": "Backend README \u2014 MediVault API",
       "file_type": "document",
       "source_file": "backend/README.md",
       "source_location": null,
@@ -16636,7 +16631,7 @@
       "author": null,
       "contributor": null,
       "community": 3,
-      "norm_label": "backend readme \u2014 hospital management api",
+      "norm_label": "backend readme \u2014 MediVault api",
       "id": "backend_readme"
     },
     {
@@ -16848,7 +16843,7 @@
       "id": "backend_operator_scripts"
     },
     {
-      "label": "Frontend README \u2014 Hospital Management Web App",
+      "label": "Frontend README \u2014 MediVault Web App",
       "file_type": "document",
       "source_file": "frontend/README.md",
       "source_location": null,
@@ -16857,7 +16852,7 @@
       "author": null,
       "contributor": null,
       "community": 3,
-      "norm_label": "frontend readme \u2014 hospital management web app",
+      "norm_label": "frontend readme \u2014 MediVault web app",
       "id": "frontend_readme"
     },
     {

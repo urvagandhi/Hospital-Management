@@ -1,82 +1,41 @@
-# syntax=docker/dockerfile:1.7
-# ─────────────────────────────────────────────────────────────────────────────
-# Hospital Management — Compression Sidecar (FastAPI + GhostScript + pikepdf)
-# Production image. Pinned Python, system GhostScript, non-root user, tini for
-# clean PID 1 signal handling.
-#
-# Build:  docker build -t hms-compression:local compression-service/
-# Run:    docker run --rm -p 8000:8000 \
-#           --env-file compression-service/.env hms-compression:local
-# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.11-slim
 
-ARG PYTHON_VERSION=3.12.7-slim-bookworm
+# Prevent Python from writing .pyc files and enable unbuffered logging
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONOPTIMIZE=1
 
-FROM python:${PYTHON_VERSION} AS runtime
+# System deps for Ghostscript + PDF processing
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ghostscript \
+        poppler-utils \
+        libjpeg-dev \
+        zlib1g-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
 
 WORKDIR /app
 
-# Python runtime hygiene
-#   - PYTHONDONTWRITEBYTECODE: no .pyc clutter outside of compileall
-#   - PYTHONUNBUFFERED:        flush stdout/stderr immediately (clean docker logs)
-#   - PIP_*:                   silent, deterministic, no cached wheels in image
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_PREFER_BINARY=1 \
-    PORT=8000
-
-# ── System packages ──────────────────────────────────────────────────────────
-#   ghostscript     PDF compression pipeline (tier ladder)
-#   poppler-utils   pdftotext / pdftoppm — inspection helpers
-#   fonts-dejavu    safe fallback fonts for any text rendering (cover pages)
-#   tini            proper PID 1 (forwards SIGTERM, reaps zombies)
-#   ca-certificates HTTPS to Cloudinary / Mongo
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-        ghostscript \
-        poppler-utils \
-        fonts-dejavu-core \
-        tini \
-        ca-certificates \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
-# ── Python deps ──────────────────────────────────────────────────────────────
-# Copy requirements first so this layer only invalidates when deps change
+# Copy requirements first to leverage Docker layer caching
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ── Application code ─────────────────────────────────────────────────────────
+# Copy application code
 COPY app/ ./app/
 
-# Pre-compile bytecode so first request is faster (no JIT compile of every module)
-RUN python -m compileall -q app/
+# Pre-compile Python bytecode for faster startup
+RUN python -m compileall app/
 
-# ── Non-root user + writable scratch dir ─────────────────────────────────────
-RUN groupadd -r appuser \
- && useradd  -r -g appuser -d /app -s /sbin/nologin appuser \
- && mkdir -p /app/tmp/jobs \
- && chown -R appuser:appuser /app
-
-ENV JOB_TMP_DIR=/app/tmp/jobs
+# Ensure /tmp/jobs is writable for job temp files
+RUN mkdir -p /tmp/jobs && chown -R appuser:appuser /app /tmp/jobs
 
 USER appuser
 
 EXPOSE 8000
 
-# Liveness probe — sidecar exposes /api/health on port 8000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD python -c "import urllib.request,sys; \
-                 sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status==200 else 1)" \
-       || exit 1
-
-# OCI metadata
-LABEL org.opencontainers.image.title="hms-compression" \
-      org.opencontainers.image.description="Hospital Management — PDF compression sidecar (FastAPI + GhostScript + pikepdf)" \
-      org.opencontainers.image.source="https://github.com/<owner>/Hospital-Management" \
-      org.opencontainers.image.licenses="Proprietary"
-
-# tini = PID 1; uvicorn handles its own signals correctly downstream
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log"]
+# Use shell form with exec to respect $PORT while maintaining fast startup and signal handling
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log
