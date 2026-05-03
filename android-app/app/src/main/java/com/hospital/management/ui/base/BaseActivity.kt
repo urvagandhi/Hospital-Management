@@ -249,7 +249,18 @@ open class BaseActivity : AppCompatActivity() {
         }
 
         // Soft keyboard up automatically
-        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+        dialog.window?.let { window ->
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+            
+            // Premium background blur for Android 12+ (API 31+)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                window.setBackgroundBlurRadius(30)
+            }
+            
+            // Deep dim for extra focus
+            window.setDimAmount(0.6f)
+        }
+        
         dialog.show()
     }
 
