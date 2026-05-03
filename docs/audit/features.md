@@ -1,4 +1,4 @@
-# Hospital Management — End-to-End Feature Map (Refreshed)
+# MediVault — End-to-End Feature Map (Refreshed)
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21

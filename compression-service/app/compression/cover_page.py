@@ -5,7 +5,7 @@ Produces an A4 (210×297mm) page with:
 - Decorative divider with accent dot
 - Patient name card with blue left accent stripe
 - Document list with alternating row shading
-- Footer with "Hospital Management System" / "Confidential Medical Records"
+- Footer with "MediVault" / "Confidential Medical Records"
 
 Uses fpdf2 for page rendering, returns a pikepdf-compatible PDF path.
 """
@@ -20,16 +20,16 @@ from app.schemas import FileInfo
 logger = logging.getLogger(__name__)
 
 # ── Colors (matching Node's rgb values) ──────────────────────────
-_HEADER_BG = (25, 50, 100)       # #193265 dark navy
-_ACCENT = (61, 130, 245)         # #3D82F5 bright blue
-_PAGE_BG = (248, 251, 255)       # #F8FBFF
-_BORDER = (220, 228, 239)        # #DCE4EF
-_CARD_SHADOW = (206, 215, 226)   # ~#CED7E2
-_DARK = (28, 40, 62)             # #1C283E
-_MUTED = (144, 154, 168)         # #909AA8
+_HEADER_BG = (25, 50, 100)  # #193265 dark navy
+_ACCENT = (61, 130, 245)  # #3D82F5 bright blue
+_PAGE_BG = (248, 251, 255)  # #F8FBFF
+_BORDER = (220, 228, 239)  # #DCE4EF
+_CARD_SHADOW = (206, 215, 226)  # ~#CED7E2
+_DARK = (28, 40, 62)  # #1C283E
+_MUTED = (144, 154, 168)  # #909AA8
 _WHITE = (255, 255, 255)
-_BLUE_LIGHT = (181, 210, 252)    # #B5D2FC
-_ROW_ALT = (246, 248, 252)       # light blue tint for alternating rows
+_BLUE_LIGHT = (181, 210, 252)  # #B5D2FC
+_ROW_ALT = (246, 248, 252)  # light blue tint for alternating rows
 
 # A4 in mm (fpdf2 uses mm by default)
 _W = 210.0
@@ -212,7 +212,7 @@ def generate_cover_page(
     pdf.set_font("Helvetica", "", 7.5)
     pdf.set_text_color(*_MUTED)
     pdf.set_xy(40 * _PT, footer_y + 5 * _PT)
-    pdf.cell(0, 7.5 * _PT, "Hospital Management System")
+    pdf.cell(0, 7.5 * _PT, "MediVault")
 
     pdf.set_xy(_W - 55, footer_y + 5 * _PT)
     pdf.cell(0, 7.5 * _PT, "Confidential Medical Records")

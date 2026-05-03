@@ -12,7 +12,7 @@ const statusBadge: Record<string, string> = {
 };
 
 const ActivityLog: React.FC = () => {
-  useDocumentTitle("Activity Log — Hospital Management");
+  useDocumentTitle("Activity Log — MediVault");
   const [items, setItems] = useState<AuditLogEntry[]>([]);
   const [actions, setActions] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -169,9 +169,8 @@ const ActivityLog: React.FC = () => {
                   </div>
                   <div className="md:col-span-2">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-md ring-1 ring-inset ${
-                        statusBadge[it.status] || ""
-                      }`}
+                      className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-md ring-1 ring-inset ${statusBadge[it.status] || ""
+                        }`}
                     >
                       {it.status}
                     </span>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hospital Management - Android Fast Build (Linux/macOS)
+# MediVault - Android Fast Build (Linux/macOS)
 # Builds a debug APK as fast as possible using Gradle optimizations.
 
 set -euo pipefail

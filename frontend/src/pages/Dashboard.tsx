@@ -129,7 +129,7 @@ const Dashboard: React.FC = () => {
 
   const activeFilterCount = countActiveFilters(filters);
 
-  useDocumentTitle("Dashboard - Hospital Management");
+  useDocumentTitle("Dashboard - MediVault");
 
   // Close filter popover on outside click / Escape.
   useEffect(() => {
@@ -558,11 +558,10 @@ const Dashboard: React.FC = () => {
               onClick={filterOpen ? () => setFilterOpen(false) : openFilter}
               aria-expanded={filterOpen}
               aria-haspopup="dialog"
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-card transition-colors border ${
-                activeFilterCount > 0
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-card transition-colors border ${activeFilterCount > 0
                   ? "bg-primary-50 text-primary-700 border-primary-200 hover:bg-primary-100"
                   : "bg-surface-white text-neutral-700 border-neutral-200 hover:bg-neutral-50"
-              }`}
+                }`}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -613,11 +612,10 @@ const Dashboard: React.FC = () => {
                                 preset: opt.value,
                               }))
                             }
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                              selected
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${selected
                                 ? "bg-primary-600 text-white border-primary-600 shadow-primary"
                                 : "bg-surface-white text-neutral-700 border-neutral-200 hover:border-primary-200 hover:bg-primary-50"
-                            }`}
+                              }`}
                           >
                             {opt.label}
                           </button>
@@ -683,11 +681,10 @@ const Dashboard: React.FC = () => {
                                 remarks: opt.value,
                               }))
                             }
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                              selected
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${selected
                                 ? "bg-primary-600 text-white border-primary-600 shadow-primary"
                                 : "bg-surface-white text-neutral-700 border-neutral-200 hover:border-primary-200 hover:bg-primary-50"
-                            }`}
+                              }`}
                           >
                             {opt.label}
                           </button>

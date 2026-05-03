@@ -45,7 +45,7 @@ const Profile: React.FC = () => {
   const networkStatus = useNetworkStatus();
   const isOnline = networkStatus === "online";
   useScrollToHash();
-  useDocumentTitle("Profile — Hospital Management");
+  useDocumentTitle("Profile — MediVault");
 
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [loading, setLoading] = useState(true);
@@ -399,11 +399,10 @@ const Profile: React.FC = () => {
 
                 <div className="bg-surface-bg border border-neutral-200 rounded-xl p-6 flex flex-col items-center justify-center text-center">
                   <div
-                    className={`w-28 h-28 rounded-full overflow-hidden shadow-card mb-4 transition-all ${
-                      logoFile
+                    className={`w-28 h-28 rounded-full overflow-hidden shadow-card mb-4 transition-all ${logoFile
                         ? "ring-4 ring-primary-300 ring-offset-2 ring-offset-surface-bg"
                         : "ring-4 ring-white"
-                    }`}
+                      }`}
                   >
                     {logoSrc ? (
                       <img
@@ -729,194 +728,194 @@ const Profile: React.FC = () => {
             aria-modal="true"
             aria-labelledby="contact-modal-title"
           >
-          <div
-            className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm"
-            onClick={() => !modalLoading && closeContactModal()}
-          />
-          <div className="flex min-h-full items-end justify-center p-4 sm:items-center sm:p-0">
-            <div className="relative w-full sm:max-w-md bg-surface-white rounded-2xl shadow-modal ring-1 ring-neutral-200 overflow-hidden animate-scale-in">
-              <div className="px-6 pt-6 pb-2 flex items-start justify-between gap-4">
-                <div>
-                  <h3
-                    id="contact-modal-title"
-                    className="font-heading text-lg font-bold text-neutral-900"
-                  >
-                    Change{" "}
-                    {contactModal.field === "email" ? "Email" : "Phone Number"}
-                  </h3>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    Current:{" "}
-                    <span className="font-medium text-neutral-700">
-                      {hospital?.[contactModal.field]}
-                    </span>
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => !modalLoading && closeContactModal()}
-                  aria-label="Close"
-                  className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors shrink-0"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-5 h-5"
-                    aria-hidden="true"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="px-6 py-4 space-y-4">
-                {modalError && (
-                  <ErrorMessage
-                    message={modalError}
-                    type="error"
-                    onClose={() => setModalError(null)}
-                  />
-                )}
-
-                {contactModal.step === "enter" && (
-                  <>
-                    <label className="block">
-                      <span className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1.5">
-                        New {contactModal.field}
+            <div
+              className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm"
+              onClick={() => !modalLoading && closeContactModal()}
+            />
+            <div className="flex min-h-full items-end justify-center p-4 sm:items-center sm:p-0">
+              <div className="relative w-full sm:max-w-md bg-surface-white rounded-2xl shadow-modal ring-1 ring-neutral-200 overflow-hidden animate-scale-in">
+                <div className="px-6 pt-6 pb-2 flex items-start justify-between gap-4">
+                  <div>
+                    <h3
+                      id="contact-modal-title"
+                      className="font-heading text-lg font-bold text-neutral-900"
+                    >
+                      Change{" "}
+                      {contactModal.field === "email" ? "Email" : "Phone Number"}
+                    </h3>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      Current:{" "}
+                      <span className="font-medium text-neutral-700">
+                        {hospital?.[contactModal.field]}
                       </span>
-                      <input
-                        type={
-                          contactModal.field === "email" ? "email" : "tel"
-                        }
-                        inputMode={
-                          contactModal.field === "phone" ? "numeric" : "email"
-                        }
-                        value={contactModal.newValue}
-                        onChange={(e) => {
-                          const v =
-                            contactModal.field === "phone"
-                              ? e.target.value.replace(/\D/g, "").slice(0, 10)
-                              : e.target.value;
-                          setContactModal((m) => ({ ...m, newValue: v }));
-                        }}
-                        placeholder={
-                          contactModal.field === "email"
-                            ? "name@example.com"
-                            : "9876543210 (10 digits, no +91)"
-                        }
-                        maxLength={
-                          contactModal.field === "email" ? 254 : 10
-                        }
-                        pattern={
-                          contactModal.field === "phone"
-                            ? "[0-9]{10}"
-                            : undefined
-                        }
-                        autoFocus
-                        required
-                        className={inputBase}
-                      />
-                      {contactModal.field === "phone" && (
-                        <span className="mt-1 block text-[11px] text-neutral-500">
-                          Digits only — country code (+91) is added automatically.
-                        </span>
-                      )}
-                    </label>
-                    <p className="text-xs text-neutral-500">
-                      {contactModal.field === "email"
-                        ? "We'll email a verification code to the new address to confirm it."
-                        : "We'll email a verification code to your current email (SMS to the new number is coming soon)."}
                     </p>
-                  </>
-                )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => !modalLoading && closeContactModal()}
+                    aria-label="Close"
+                    className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors shrink-0"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-5 h-5"
+                      aria-hidden="true"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
 
-                {contactModal.step === "otp" && (
-                  <>
-                    {otpMessage && (
-                      <div className="rounded-xl border border-primary-100 bg-primary-50 text-primary-700 text-sm px-4 py-3">
-                        {otpMessage}
-                      </div>
-                    )}
-                    <OtpInput
-                      length={6}
-                      value={contactModal.otp}
-                      onChange={(v) =>
-                        setContactModal((m) => ({ ...m, otp: v }))
-                      }
-                      disabled={modalLoading}
+                <div className="px-6 py-4 space-y-4">
+                  {modalError && (
+                    <ErrorMessage
+                      message={modalError}
+                      type="error"
+                      onClose={() => setModalError(null)}
                     />
-                    <div className="flex items-center justify-center pt-1">
-                      <button
-                        type="button"
-                        onClick={handleResendContactOtp}
-                        disabled={resending || resendCooldown > 0 || modalLoading}
-                        className="inline-flex items-center gap-2 text-sm font-medium text-neutral-500 hover:text-primary-700 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className={`w-4 h-4 ${resending ? "animate-spin" : ""}`}
-                          aria-hidden="true"
-                        >
-                          <polyline points="23 4 23 10 17 10" />
-                          <polyline points="1 20 1 14 7 14" />
-                          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                        </svg>
-                        {resending
-                          ? "Sending…"
-                          : resendCooldown > 0
-                            ? `Resend in ${formatCooldown(resendCooldown)}`
-                            : "Resend code"}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+                  )}
 
-              <div className="px-6 py-4 bg-neutral-50 border-t border-neutral-200 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => !modalLoading && closeContactModal()}
-                  disabled={modalLoading}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold text-neutral-700 bg-surface-white border border-neutral-200 hover:bg-neutral-100 disabled:opacity-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                {contactModal.step === "enter" ? (
+                  {contactModal.step === "enter" && (
+                    <>
+                      <label className="block">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-1.5">
+                          New {contactModal.field}
+                        </span>
+                        <input
+                          type={
+                            contactModal.field === "email" ? "email" : "tel"
+                          }
+                          inputMode={
+                            contactModal.field === "phone" ? "numeric" : "email"
+                          }
+                          value={contactModal.newValue}
+                          onChange={(e) => {
+                            const v =
+                              contactModal.field === "phone"
+                                ? e.target.value.replace(/\D/g, "").slice(0, 10)
+                                : e.target.value;
+                            setContactModal((m) => ({ ...m, newValue: v }));
+                          }}
+                          placeholder={
+                            contactModal.field === "email"
+                              ? "name@example.com"
+                              : "9876543210 (10 digits, no +91)"
+                          }
+                          maxLength={
+                            contactModal.field === "email" ? 254 : 10
+                          }
+                          pattern={
+                            contactModal.field === "phone"
+                              ? "[0-9]{10}"
+                              : undefined
+                          }
+                          autoFocus
+                          required
+                          className={inputBase}
+                        />
+                        {contactModal.field === "phone" && (
+                          <span className="mt-1 block text-[11px] text-neutral-500">
+                            Digits only — country code (+91) is added automatically.
+                          </span>
+                        )}
+                      </label>
+                      <p className="text-xs text-neutral-500">
+                        {contactModal.field === "email"
+                          ? "We'll email a verification code to the new address to confirm it."
+                          : "We'll email a verification code to your current email (SMS to the new number is coming soon)."}
+                      </p>
+                    </>
+                  )}
+
+                  {contactModal.step === "otp" && (
+                    <>
+                      {otpMessage && (
+                        <div className="rounded-xl border border-primary-100 bg-primary-50 text-primary-700 text-sm px-4 py-3">
+                          {otpMessage}
+                        </div>
+                      )}
+                      <OtpInput
+                        length={6}
+                        value={contactModal.otp}
+                        onChange={(v) =>
+                          setContactModal((m) => ({ ...m, otp: v }))
+                        }
+                        disabled={modalLoading}
+                      />
+                      <div className="flex items-center justify-center pt-1">
+                        <button
+                          type="button"
+                          onClick={handleResendContactOtp}
+                          disabled={resending || resendCooldown > 0 || modalLoading}
+                          className="inline-flex items-center gap-2 text-sm font-medium text-neutral-500 hover:text-primary-700 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={`w-4 h-4 ${resending ? "animate-spin" : ""}`}
+                            aria-hidden="true"
+                          >
+                            <polyline points="23 4 23 10 17 10" />
+                            <polyline points="1 20 1 14 7 14" />
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                          </svg>
+                          {resending
+                            ? "Sending…"
+                            : resendCooldown > 0
+                              ? `Resend in ${formatCooldown(resendCooldown)}`
+                              : "Resend code"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="px-6 py-4 bg-neutral-50 border-t border-neutral-200 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                   <button
                     type="button"
-                    onClick={sendContactOtp}
+                    onClick={() => !modalLoading && closeContactModal()}
                     disabled={modalLoading}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-primary shadow-primary hover:shadow-card-hover disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                    className="px-4 py-2 rounded-xl text-sm font-semibold text-neutral-700 bg-surface-white border border-neutral-200 hover:bg-neutral-100 disabled:opacity-50 transition-colors"
                   >
-                    {modalLoading && <Spinner variant="heartbeat" size="sm" />}
-                    {modalLoading ? "Sending…" : "Send Code"}
+                    Cancel
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={verifyContactOtp}
-                    disabled={modalLoading || contactModal.otp.length !== 6}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-primary shadow-primary hover:shadow-card-hover disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-                  >
-                    {modalLoading && <Spinner variant="heartbeat" size="sm" />}
-                    {modalLoading ? "Verifying…" : "Verify & Save"}
-                  </button>
-                )}
+                  {contactModal.step === "enter" ? (
+                    <button
+                      type="button"
+                      onClick={sendContactOtp}
+                      disabled={modalLoading}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-primary shadow-primary hover:shadow-card-hover disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                    >
+                      {modalLoading && <Spinner variant="heartbeat" size="sm" />}
+                      {modalLoading ? "Sending…" : "Send Code"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={verifyContactOtp}
+                      disabled={modalLoading || contactModal.otp.length !== 6}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-primary shadow-primary hover:shadow-card-hover disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                    >
+                      {modalLoading && <Spinner variant="heartbeat" size="sm" />}
+                      {modalLoading ? "Verifying…" : "Verify & Save"}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };

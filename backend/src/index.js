@@ -11,7 +11,6 @@ import connectDB from "./config/db.js";
 import config from "./config/env.js";
 import scheduleAutoDelete from "./jobs/autoDelete.job.js";
 import scheduleIdleSweep from "./jobs/idleSweep.job.js";
-import getClientIp from "./utils/clientIp.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { generalLimiter } from "./middleware/rateLimiter.js";
 import adminRoutes from "./routes/admin.routes.js";
@@ -21,6 +20,7 @@ import authRoutes from "./routes/auth.routes.js";
 import exportRoutes from "./routes/export.routes.js";
 import hospitalsRoutes from "./routes/hospitals.routes.js";
 import patientRoutes from "./routes/patient.routes.js";
+import getClientIp from "./utils/clientIp.js";
 import logger, { httpLogger } from "./utils/logger.js";
 
 const app = express();
@@ -201,7 +201,7 @@ const startServer = async () => {
       if (config.NODE_ENV !== "production") {
         process.stdout.write(`
 ╔════════════════════════════════════════╗
-║   Hospital Management API              ║
+║   MediVault API                        ║
 ║   ✓ Server running on port ${String(config.PORT).padEnd(12)}║
 ║   ✓ Environment: ${String(config.NODE_ENV).padEnd(22)}║
 ║   ✓ DB: MongoDB Connected              ║
@@ -215,7 +215,7 @@ const startServer = async () => {
           port: config.PORT,
           env: config.NODE_ENV,
         },
-        `Hospital Management API listening on port ${config.PORT}`,
+        `MediVault API listening on port ${config.PORT}`,
       );
     });
   } catch (error) {

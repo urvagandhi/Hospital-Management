@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import api from "../services/api";
-import { persistentLogger } from "../utils/persistentLogger";
+import { useNavigate, useParams } from "react-router-dom";
 import DocumentViewer from "../components/DocumentViewer";
 import Spinner from "../components/Spinner";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import api from "../services/api";
 import { buildThumbnailUrl, isImageMime } from "../utils/cloudinary";
 import { getFolderColor, getFolderIcon } from "../utils/folderVisuals";
+import { persistentLogger } from "../utils/persistentLogger";
 
 interface File {
   fileName: string;
@@ -45,8 +45,8 @@ const FolderView: React.FC = () => {
   const navigate = useNavigate();
   useDocumentTitle(
     folderName
-      ? `${decodeURIComponent(folderName)} — Hospital Management`
-      : "Folder — Hospital Management",
+      ? `${decodeURIComponent(folderName)} — MediVault`
+      : "Folder — MediVault",
   );
   const [folder, setFolder] = useState<Folder | null>(null);
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
@@ -104,7 +104,7 @@ const FolderView: React.FC = () => {
     try {
       const response = await api.get<{ success: boolean; data: Folder }>(`/patients/${patientId}/files/${folderName}`);
       setFolder(response.data.data);
-    } catch (_) {}
+    } catch (_) { }
     finally { setSyncing(false); }
   };
 
@@ -207,12 +207,12 @@ const FolderView: React.FC = () => {
   const totalSize = folder.files.reduce((sum, f) => sum + f.size, 0);
   const lastModified = folder.files.length
     ? folder.files.reduce(
-        (latest, f) =>
-          new Date(f.uploadedAt).getTime() > new Date(latest).getTime()
-            ? f.uploadedAt
-            : latest,
-        folder.files[0].uploadedAt,
-      )
+      (latest, f) =>
+        new Date(f.uploadedAt).getTime() > new Date(latest).getTime()
+          ? f.uploadedAt
+          : latest,
+      folder.files[0].uploadedAt,
+    )
     : null;
   const folderIconPath = getFolderIcon(folder.name);
   const folderColor = folderIndex >= 0 ? getFolderColor(folderIndex) : null;
@@ -583,9 +583,8 @@ const FolderView: React.FC = () => {
           {folder.files.length === 0 ? (
             <div className="py-16 text-center">
               <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  folderColor ? `${folderColor.bg} ${folderColor.icon}` : "bg-primary-50 text-primary-500"
-                }`}
+                className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${folderColor ? `${folderColor.bg} ${folderColor.icon}` : "bg-primary-50 text-primary-500"
+                  }`}
               >
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={folderIconPath} />

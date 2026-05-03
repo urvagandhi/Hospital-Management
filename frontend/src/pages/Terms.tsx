@@ -17,7 +17,7 @@ const sections = [
     title: "Acceptance of Terms",
     content: (
       <p className="text-sm text-gray-600">
-        By registering for and using the Hospital Management System (the "Service"),
+        By registering for and using MediVault (the "Service"),
         you ("Hospital", "you") agree to be bound by these Terms &amp; Conditions and
         our Privacy Policy. If you do not agree, do not use the Service.
       </p>
@@ -128,7 +128,7 @@ const sections = [
 ];
 
 const Terms: React.FC = () => {
-  useDocumentTitle("Terms of Service — Hospital Management");
+  useDocumentTitle("Terms of Service — MediVault");
   const navigate = useNavigate();
   const location = useLocation();
 

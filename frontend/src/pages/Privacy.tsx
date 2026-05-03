@@ -132,7 +132,7 @@ const sections = [
 ];
 
 const Privacy: React.FC = () => {
-  useDocumentTitle("Privacy Policy — Hospital Management");
+  useDocumentTitle("Privacy Policy — MediVault");
   const navigate = useNavigate();
   const location = useLocation();
 

@@ -18,7 +18,7 @@ import api from "../services/api";
 import { getEmailError } from "../utils/validator";
 
 export const HospitalRegistration: React.FC = () => {
-  useDocumentTitle("Register Hospital — Hospital Management");
+  useDocumentTitle("Register Hospital — MediVault");
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -154,10 +154,9 @@ export const HospitalRegistration: React.FC = () => {
   const inputBase =
     "w-full px-4 py-2.5 bg-surface-white border rounded-xl text-sm text-neutral-900 placeholder:text-neutral-400 transition-all focus:outline-none focus:ring-4";
   const inputClass = (hasError: boolean) =>
-    `${inputBase} ${
-      hasError
-        ? "border-danger focus:border-danger focus:ring-danger/10"
-        : "border-neutral-200 focus:border-primary-400 focus:ring-primary-100"
+    `${inputBase} ${hasError
+      ? "border-danger focus:border-danger focus:ring-danger/10"
+      : "border-neutral-200 focus:border-primary-400 focus:ring-primary-100"
     }`;
 
   // ── Step 1 ───────────────────────────────────────────────────────────────
@@ -694,9 +693,8 @@ export const HospitalRegistration: React.FC = () => {
                 <div className="flex gap-2 mt-5 ml-[52px]">
                   <div className="h-1 flex-1 rounded-full bg-white" />
                   <div
-                    className={`h-1 flex-1 rounded-full transition-colors duration-500 ${
-                      step === 2 ? "bg-white" : "bg-white/30"
-                    }`}
+                    className={`h-1 flex-1 rounded-full transition-colors duration-500 ${step === 2 ? "bg-white" : "bg-white/30"
+                      }`}
                   />
                 </div>
               </div>

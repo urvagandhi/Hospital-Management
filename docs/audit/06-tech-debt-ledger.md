@@ -1,4 +1,4 @@
-# Tech Debt Ledger — Hospital Management System
+# Tech Debt Ledger — MediVault
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
@@ -10,14 +10,14 @@ All findings from `00-drift.md`, `01-dead-code.md`, and `04-enhancements.md` con
 
 ## Summary
 
-| Tier | Items | Shipped | Open | Total effort |
-|---|---|---|---|---|
-| 🔥 This Week | 5 | 4 (TD-001 / TD-002 / TD-004 / TD-005) | 1 (TD-003) | ~1 day remaining |
-| 📅 This Quarter | 9 | 8 (TD-007 / TD-008 / TD-009 / TD-010 / TD-011 / TD-012 / TD-013 / TD-014) | 1 (TD-006) | ~1 week remaining |
-| 🧹 Backlog Polish | 14 | 11 (TD-015 / TD-016 / TD-017 / TD-018 / TD-019 / TD-021 / TD-022 / TD-023 / TD-024 / TD-025 / TD-027) | 2 (TD-020 / TD-026) | opportunistic |
-| 🌍 Cross-cutting | 1 | 1 (TD-030) | 0 | done |
-| 🛡️ XSS hardening | 1 | 1 (TD-029) | 0 | done |
-| 🤔 Discuss First | 5 | 2 (TD-D3 → shipped as TD-029; TD-D4 → option b shipped 2026-04-25) | 3 (TD-D1 / TD-D2 / TD-D5) | architecture decisions |
+| Tier              | Items | Shipped                                                                                               | Open                      | Total effort           |
+| ----------------- | ----- | ----------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------- |
+| 🔥 This Week      | 5     | 4 (TD-001 / TD-002 / TD-004 / TD-005)                                                                 | 1 (TD-003)                | ~1 day remaining       |
+| 📅 This Quarter   | 9     | 8 (TD-007 / TD-008 / TD-009 / TD-010 / TD-011 / TD-012 / TD-013 / TD-014)                             | 1 (TD-006)                | ~1 week remaining      |
+| 🧹 Backlog Polish | 14    | 11 (TD-015 / TD-016 / TD-017 / TD-018 / TD-019 / TD-021 / TD-022 / TD-023 / TD-024 / TD-025 / TD-027) | 2 (TD-020 / TD-026)       | opportunistic          |
+| 🌍 Cross-cutting  | 1     | 1 (TD-030)                                                                                            | 0                         | done                   |
+| 🛡️ XSS hardening  | 1     | 1 (TD-029)                                                                                            | 0                         | done                   |
+| 🤔 Discuss First  | 5     | 2 (TD-D3 → shipped as TD-029; TD-D4 → option b shipped 2026-04-25)                                    | 3 (TD-D1 / TD-D2 / TD-D5) | architecture decisions |
 
 **Remaining priorities, in order of blast radius:**
 
@@ -137,7 +137,7 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
 - **Shipped in:**
   - [backend/src/services/token.service.js](../../backend/src/services/token.service.js) — `refreshAccessToken` now generates a fresh refresh token on every call, persists it on the session, and returns the new value alongside `hospitalId` for the controller. Added `handlePossibleRefreshReuse(hospitalId)` which, on a JWT-valid but DB-missing token, revokes all active sessions (`revokedReason: "REFRESH_TOKEN_REUSE"`) + fires `notifySessionRevoked` + `sendSessionRevokedEmail`. Guards the benign post-logout-retry case by checking whether ANY other sessions are still active (if zero, the reuse handler exits — no blast radius).
   - [backend/src/controllers/auth.controller.js](../../backend/src/controllers/auth.controller.js) — `refreshToken` uses `tokens.hospitalId` instead of re-querying by the old token (which wouldn't match after rotation) and overwrites the httpOnly `refreshToken` cookie with the new value so the next refresh presents the rotated token.
-  - [backend/src/__tests__/refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js) — Jest unit test (in-process mocks; no live DB required). Covers rotation happy-path, reuse detection (active-session guard), post-logout benign case, and malformed-JWT short-circuit.
+  - [backend/src/**tests**/refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js) — Jest unit test (in-process mocks; no live DB required). Covers rotation happy-path, reuse detection (active-session guard), post-logout benign case, and malformed-JWT short-circuit.
 - **Acceptance:** Two consecutive refreshes each issue different refresh tokens ✓. Replaying an old refresh token raises `"Invalid or expired refresh token"` (401) and revokes all other active sessions + emails the hospital ✓.
 
 ### TD-004 · Medium · S — `.env.example` hygiene — ✅ SHIPPED 2026-04-21
@@ -201,13 +201,13 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
 - **Source:** `00-drift.md` §7.3
 - **Blast radius:** UX — without `useDocumentTitle`, a previous page's title leaks into the next page after navigation (the hook restores the prior title on unmount; direct `document.title =` does not).
 - **Shipped in:**
-  - [frontend/src/pages/Dashboard.tsx](../../frontend/src/pages/Dashboard.tsx) → `useDocumentTitle("Dashboard - Hospital Management")`
-  - [frontend/src/pages/Login.tsx](../../frontend/src/pages/Login.tsx) → `useDocumentTitle("Login - Hospital Management")`
-  - [frontend/src/pages/Password.tsx](../../frontend/src/pages/Password.tsx) → `useDocumentTitle("Change Password — Hospital Management")`
-  - [frontend/src/pages/Profile.tsx](../../frontend/src/pages/Profile.tsx) → `useDocumentTitle("Profile — Hospital Management")` (placed alongside the existing `useScrollToHash()` call)
-  - [frontend/src/pages/Sessions.tsx](../../frontend/src/pages/Sessions.tsx) → `useDocumentTitle("Security & Sessions — Hospital Management")`
-  - [frontend/src/pages/VerifyAuthCode.tsx](../../frontend/src/pages/VerifyAuthCode.tsx) → `useDocumentTitle("Enter Auth Code — Hospital Management")`
-  - [frontend/src/pages/ForgotPassword.tsx](../../frontend/src/pages/ForgotPassword.tsx) → `useDocumentTitle("Forgot Password — Hospital Management")` (its own `useEffect` form was already setting the same string; migrated in place)
+  - [frontend/src/pages/Dashboard.tsx](../../frontend/src/pages/Dashboard.tsx) → `useDocumentTitle("Dashboard - MediVault")`
+  - [frontend/src/pages/Login.tsx](../../frontend/src/pages/Login.tsx) → `useDocumentTitle("Login - MediVault")`
+  - [frontend/src/pages/Password.tsx](../../frontend/src/pages/Password.tsx) → `useDocumentTitle("Change Password — MediVault")`
+  - [frontend/src/pages/Profile.tsx](../../frontend/src/pages/Profile.tsx) → `useDocumentTitle("Profile — MediVault")` (placed alongside the existing `useScrollToHash()` call)
+  - [frontend/src/pages/Sessions.tsx](../../frontend/src/pages/Sessions.tsx) → `useDocumentTitle("Security & Sessions — MediVault")`
+  - [frontend/src/pages/VerifyAuthCode.tsx](../../frontend/src/pages/VerifyAuthCode.tsx) → `useDocumentTitle("Enter Auth Code — MediVault")`
+  - [frontend/src/pages/ForgotPassword.tsx](../../frontend/src/pages/ForgotPassword.tsx) → `useDocumentTitle("Forgot Password — MediVault")` (its own `useEffect` form was already setting the same string; migrated in place)
   - In every file only the `document.title = ...` line was removed; other effects, imports, and behaviour were preserved.
 - **Acceptance:** `grep -rn "document\.title" frontend/src/pages/` → empty ✓. `npx tsc --noEmit` clean ✓.
 
@@ -235,7 +235,7 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
 - **Source:** `01-dead-code.md` §B
 - **Shipped in:** Removed both entries from [backend/package.json](../../backend/package.json); `npm uninstall @getbrevo/brevo axios` run by the user — `node_modules/@getbrevo` + `node_modules/axios` confirmed absent. Mail continues via `nodemailer` + Brevo SMTP; outbound HTTP uses native `fetch`.
 
-### TD-013 · Medium · M — Remove dead `AuditLog.action` enum members (TOTP_*, RECOVERY_*) — ✅ SHIPPED 2026-04-21
+### TD-013 · Medium · M — Remove dead `AuditLog.action` enum members (TOTP*\*, RECOVERY*\*) — ✅ SHIPPED 2026-04-21
 
 - **Source:** `00-drift.md` §3.4
 - **Shipped in:** [backend/src/models/AuditLog.js](../../backend/src/models/AuditLog.js) — pruned 10 dead values (`TOTP_SETUP_INITIATED`, `TOTP_SETUP_COMPLETED`, `TOTP_VERIFIED`, `TOTP_DISABLED`, `TOTP_ENABLED`, `TOTP_LOGIN_ATTEMPT`, `TOTP_ROTATION_INITIATED`, `TOTP_ROTATION_COMPLETED`, `RECOVERY_LOGIN_ATTEMPT`, `RECOVERY_LOGIN_SUCCESS`). Pre-prune grep confirmed no live code path emitted them (only `middleware/auth.js:109` comment mentions TOTP for historical context). Live enum regrouped by concern for readability.
@@ -573,12 +573,12 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
 
 ## Android summary (added 2026-04-24)
 
-| Tier | Items | Shipped | Open | Effort |
-|---|---|---|---|---|
-| 🔥 This Week (Android) | 4 | 4 (TD-A01 / TD-A02 / TD-A03 / TD-A04) | 0 | done |
-| 📅 This Quarter (Android) | 11 | 1 (TD-A05) | 10 (TD-A06..TD-A08, TD-A10, TD-A12, TD-A14, TD-A16..TD-A18, TD-A20) | ~3-4 weeks remaining |
-| 🧹 Backlog Polish (Android) | 2 | 0 | 2 (TD-A09, TD-A15) | ~1 hour |
-| 🤔 Discuss First (Android) | 3 | 0 | 3 (TD-A11, TD-A13, TD-A19) | architecture decisions |
+| Tier                        | Items | Shipped                               | Open                                                                | Effort                 |
+| --------------------------- | ----- | ------------------------------------- | ------------------------------------------------------------------- | ---------------------- |
+| 🔥 This Week (Android)      | 4     | 4 (TD-A01 / TD-A02 / TD-A03 / TD-A04) | 0                                                                   | done                   |
+| 📅 This Quarter (Android)   | 11    | 1 (TD-A05)                            | 10 (TD-A06..TD-A08, TD-A10, TD-A12, TD-A14, TD-A16..TD-A18, TD-A20) | ~3-4 weeks remaining   |
+| 🧹 Backlog Polish (Android) | 2     | 0                                     | 2 (TD-A09, TD-A15)                                                  | ~1 hour                |
+| 🤔 Discuss First (Android)  | 3     | 0                                     | 3 (TD-A11, TD-A13, TD-A19)                                          | architecture decisions |
 
 **Most urgent Android items ordered by blast radius:**
 

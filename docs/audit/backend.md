@@ -1,4 +1,4 @@
-# Hospital Management Backend — Comprehensive Audit Report (Refreshed)
+# MediVault Backend — Comprehensive Audit Report (Refreshed)
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
@@ -9,24 +9,24 @@
 
 ## 0. Changes Since Previous Audit (2026-04-20)
 
-| Area               | Change                                                                                                                                     | Pointer                            |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
-| Endpoint counts    | Total **64** (was 59 pre-TD-030; previous prior audit said 54). Auth 24, patients 20 (16+4), hospitals 12, export 1, audits 2, admin 2, version 1, health 2. TD-030 dropped 7 dead routes (`/api/notifications/*` × 3, `/api/export/sample-cover`, `/api/export/archive`, `/api/patients/.../stream`, `/api/auth/login/resend-auth-code`).                                              | `00-drift.md` §2                   |
-| Hospital endpoints | `POST /api/hospitals/me/change-contact/resend` previously not listed                                                                       | §4 hospitals table                 |
-| Session model      | `location` embedded sub-doc (city, region, country, countryCode, isPrivate, displayName) added for GeoIP display — absent from prior audit | §3 Session                         |
-| AuditLog model     | 🛠️ ~~`TOTP_*` + `RECOVERY_*` enum values are dead~~ — RESOLVED 2026-04-21 (TD-013, commit `e1a02fd`); 10 dead enum members removed.                                                                      | §3 AuditLog + `01-dead-code.md` §G |
-| Services           | `r2.service.js` still has **zero callers** — entire file is dead; `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner` are unused deps. TD-003 still open as of 2026-04-26.          | `01-dead-code.md` §D               |
-| Services           | `token.service.js:cleanupExpiredSessions` was orphaned — ✅ deleted 2026-04-25. (`mail.service.js:sendLogoutConfirmationEmail` was a prior false positive; still in use at [auth.controller.js:1265](../../backend/src/controllers/auth.controller.js#L1265).) | `01-dead-code.md` §D               |
-| Env vars           | 🛠️ ~~`.env.example` missing 9 referenced vars; contains 13 dead vars~~ — RESOLVED 2026-04-21 (TD-004). Diff against code is now zero.                                            | `00-drift.md` §5                   |
-| Env vars           | 🛠️ ~~`.env.example` sets `REFRESH_TOKEN_EXPIRY=7d`~~ — RESOLVED 2026-04-21 (TD-004): pinned to `365d`.                                                                    | `00-drift.md` §9                   |
-| Audit coverage     | 🛠️ ~~8 mutation endpoints do not audit-log~~ — RESOLVED 2026-04-21 (TD-001, commit `a118b0a`); every mutation handler emits `logAudit()`.                                                              | `00-drift.md` §10                  |
-| Security           | 🛠️ ~~Refresh token is NOT rotated~~ — RESOLVED 2026-04-21 (TD-002, commit `9f993db`); rotation + reuse detection shipped. JWT verify pinned to HS256 (TD-023, `09fae23`). bcryptjs 2.4 → 3.0 (TD-022, `effaea1`).                                                                                | `04-enhancements.md` §5.1 SEC-004  |
-| Unused deps        | 🛠️ ~~`@getbrevo/brevo`, `axios` have zero imports~~ — RESOLVED 2026-04-21 (TD-012, commit `91217cb`); both removed.                                                                             | `01-dead-code.md` §B               |
-| Sessions / IP      | NEW 2026-04-25: server-side idle sweep (`jobs/idleSweep.job.js`, 60-min cutoff, web-only — mobile exempt per `61fa6ad`). Cloudflare-aware `utils/clientIp.js` honours `CF-Connecting-IP` → `True-Client-IP` → `XFF[0]` → `req.ip`. Session model gained `lastSeenIp` field (re-set on IP change in `middleware/auth.js`).                                            | `d554a4a` / `7377d76` / `61fa6ad`  |
-| Storage / patients | NEW 2026-04-25: `GET /api/patients` accepts `?cursor` keyset paging (TD-025, `d69f0be`); falls back to `?skip` for legacy clients.                                                                                | `04-enhancements.md` PERF-002      |
-| Compression / prod | NEW 2026-04-25: backend refuses to boot when `NODE_ENV=production` AND `USE_COMPRESSION_SERVICE !== "true"` (TD-D4, commit `173db5a`).                                                                              | `06-tech-debt-ledger.md` TD-D4     |
-| Logging            | 🛠️ NEW 2026-04-21: pino + pino-http + redaction + request-id shipped (TD-007, `efa5d92`); 0 `console.*` left in `backend/src/`.                                                                                | `04-enhancements.md` OBS-004       |
-| Health probes      | 🛠️ NEW 2026-04-21: `/api/health/deep` probes DB + Redis + Cloudinary + Brevo + FCM + sidecar with per-dep 3 s timeout (TD-008, `efa5d92`).                                                                          | `04-enhancements.md` OBS-001       |
+| Area               | Change                                                                                                                                                                                                                                                                                                                                     | Pointer                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
+| Endpoint counts    | Total **64** (was 59 pre-TD-030; previous prior audit said 54). Auth 24, patients 20 (16+4), hospitals 12, export 1, audits 2, admin 2, version 1, health 2. TD-030 dropped 7 dead routes (`/api/notifications/*` × 3, `/api/export/sample-cover`, `/api/export/archive`, `/api/patients/.../stream`, `/api/auth/login/resend-auth-code`). | `00-drift.md` §2                   |
+| Hospital endpoints | `POST /api/hospitals/me/change-contact/resend` previously not listed                                                                                                                                                                                                                                                                       | §4 hospitals table                 |
+| Session model      | `location` embedded sub-doc (city, region, country, countryCode, isPrivate, displayName) added for GeoIP display — absent from prior audit                                                                                                                                                                                                 | §3 Session                         |
+| AuditLog model     | 🛠️ ~~`TOTP_*` + `RECOVERY_*` enum values are dead~~ — RESOLVED 2026-04-21 (TD-013, commit `e1a02fd`); 10 dead enum members removed.                                                                                                                                                                                                        | §3 AuditLog + `01-dead-code.md` §G |
+| Services           | `r2.service.js` still has **zero callers** — entire file is dead; `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner` are unused deps. TD-003 still open as of 2026-04-26.                                                                                                                                                               | `01-dead-code.md` §D               |
+| Services           | `token.service.js:cleanupExpiredSessions` was orphaned — ✅ deleted 2026-04-25. (`mail.service.js:sendLogoutConfirmationEmail` was a prior false positive; still in use at [auth.controller.js:1265](../../backend/src/controllers/auth.controller.js#L1265).)                                                                             | `01-dead-code.md` §D               |
+| Env vars           | 🛠️ ~~`.env.example` missing 9 referenced vars; contains 13 dead vars~~ — RESOLVED 2026-04-21 (TD-004). Diff against code is now zero.                                                                                                                                                                                                      | `00-drift.md` §5                   |
+| Env vars           | 🛠️ ~~`.env.example` sets `REFRESH_TOKEN_EXPIRY=7d`~~ — RESOLVED 2026-04-21 (TD-004): pinned to `365d`.                                                                                                                                                                                                                                     | `00-drift.md` §9                   |
+| Audit coverage     | 🛠️ ~~8 mutation endpoints do not audit-log~~ — RESOLVED 2026-04-21 (TD-001, commit `a118b0a`); every mutation handler emits `logAudit()`.                                                                                                                                                                                                  | `00-drift.md` §10                  |
+| Security           | 🛠️ ~~Refresh token is NOT rotated~~ — RESOLVED 2026-04-21 (TD-002, commit `9f993db`); rotation + reuse detection shipped. JWT verify pinned to HS256 (TD-023, `09fae23`). bcryptjs 2.4 → 3.0 (TD-022, `effaea1`).                                                                                                                          | `04-enhancements.md` §5.1 SEC-004  |
+| Unused deps        | 🛠️ ~~`@getbrevo/brevo`, `axios` have zero imports~~ — RESOLVED 2026-04-21 (TD-012, commit `91217cb`); both removed.                                                                                                                                                                                                                        | `01-dead-code.md` §B               |
+| Sessions / IP      | NEW 2026-04-25: server-side idle sweep (`jobs/idleSweep.job.js`, 60-min cutoff, web-only — mobile exempt per `61fa6ad`). Cloudflare-aware `utils/clientIp.js` honours `CF-Connecting-IP` → `True-Client-IP` → `XFF[0]` → `req.ip`. Session model gained `lastSeenIp` field (re-set on IP change in `middleware/auth.js`).                  | `d554a4a` / `7377d76` / `61fa6ad`  |
+| Storage / patients | NEW 2026-04-25: `GET /api/patients` accepts `?cursor` keyset paging (TD-025, `d69f0be`); falls back to `?skip` for legacy clients.                                                                                                                                                                                                         | `04-enhancements.md` PERF-002      |
+| Compression / prod | NEW 2026-04-25: backend refuses to boot when `NODE_ENV=production` AND `USE_COMPRESSION_SERVICE !== "true"` (TD-D4, commit `173db5a`).                                                                                                                                                                                                     | `06-tech-debt-ledger.md` TD-D4     |
+| Logging            | 🛠️ NEW 2026-04-21: pino + pino-http + redaction + request-id shipped (TD-007, `efa5d92`); 0 `console.*` left in `backend/src/`.                                                                                                                                                                                                            | `04-enhancements.md` OBS-004       |
+| Health probes      | 🛠️ NEW 2026-04-21: `/api/health/deep` probes DB + Redis + Cloudinary + Brevo + FCM + sidecar with per-dep 3 s timeout (TD-008, `efa5d92`).                                                                                                                                                                                                 | `04-enhancements.md` OBS-001       |
 
 ---
 
@@ -231,11 +231,11 @@ Identical to prior audit: two-step (password → Auth Code), rate-limited (5/15m
 
 ### Token types
 
-| Token        | Payload                            | Secret               | TTL                                                                             | Storage (client)                              |
-| ------------ | ---------------------------------- | -------------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
-| accessToken  | `{ id, sessionId, type:"access" }` | JWT_SECRET           | 24h                                                                             | **module-scoped memory in `services/api.ts`** (web, TD-029, 2026-04-25) / Keystore (mobile)      |
-| refreshToken | `{ id, type:"refresh" }`           | REFRESH_TOKEN_SECRET | 365d (`.env.example` pinned to 365d post-TD-004)                                | httpOnly cookie (web) / TokenManager (mobile) |
-| tempToken    | `{ id, type:"temp", purpose }`     | JWT_SECRET           | 10m AUTH_CODE / 15m PASSWORD_RESET                                              | sessionStorage (web — short-lived, mid-flow)  |
+| Token        | Payload                            | Secret               | TTL                                              | Storage (client)                                                                            |
+| ------------ | ---------------------------------- | -------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| accessToken  | `{ id, sessionId, type:"access" }` | JWT_SECRET           | 24h                                              | **module-scoped memory in `services/api.ts`** (web, TD-029, 2026-04-25) / Keystore (mobile) |
+| refreshToken | `{ id, type:"refresh" }`           | REFRESH_TOKEN_SECRET | 365d (`.env.example` pinned to 365d post-TD-004) | httpOnly cookie (web) / TokenManager (mobile)                                               |
+| tempToken    | `{ id, type:"temp", purpose }`     | JWT_SECRET           | 10m AUTH_CODE / 15m PASSWORD_RESET               | sessionStorage (web — short-lived, mid-flow)                                                |
 
 🛠️ **Refresh IS now rotated** as of TD-002 (2026-04-21). [token.service.js `refreshAccessToken`](../../backend/src/services/token.service.js) issues a fresh refresh token on every call, persists it on the session doc, and returns `hospitalId` so [auth.controller.js `refreshToken`](../../backend/src/controllers/auth.controller.js) can overwrite the httpOnly cookie. Reuse detection: presenting a rotated-out token that still decodes calls `handlePossibleRefreshReuse` → revokes every active session for the hospital (`revokedReason: "REFRESH_TOKEN_REUSE"`) + sends a security email. Guarded against post-logout false positives by requiring at least one other active session before escalating. Unit coverage in [refreshToken.rotation.test.js](../../backend/src/__tests__/refreshToken.rotation.test.js).
 
@@ -363,18 +363,18 @@ Endpoints: `GET /api/health`, `POST /api/folder-download`, `POST /api/patient-do
 
 Verified 2026-04-26 against `backend/src/routes/*.js` + `backend/src/index.js`.
 
-| Group         | Count                      |
-| ------------- | -------------------------- |
-| auth          | 24                         |
-| patients      | 20 (16 primary + 4 legacy) |
-| hospitals     | 12                         |
-| export        | 1                          |
-| audit         | 2                          |
-| admin         | 2                          |
-| version       | 1                          |
-| ~~notifications~~ | 0 (TD-030 removed mount)  |
-| health        | 2                          |
-| **Total**     | **64**                     |
+| Group             | Count                      |
+| ----------------- | -------------------------- |
+| auth              | 24                         |
+| patients          | 20 (16 primary + 4 legacy) |
+| hospitals         | 12                         |
+| export            | 1                          |
+| audit             | 2                          |
+| admin             | 2                          |
+| version           | 1                          |
+| ~~notifications~~ | 0 (TD-030 removed mount)   |
+| health            | 2                          |
+| **Total**         | **64**                     |
 
 ---
 

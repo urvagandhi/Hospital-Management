@@ -1,4 +1,4 @@
-# Hospital Management System — Comprehensive Re-Audit & Enhancement Prompt
+# MediVault — Comprehensive Re-Audit & Enhancement Prompt
 
 > Paste this entire prompt into a fresh Claude session opened **at the repo root** (the folder containing `backend/`, `frontend/`, `compression-service/`, `android-app/`, and `CLAUDE.md`). The android-app folder is **out of scope** for this audit — only mention it where backend/frontend interact with it.
 
@@ -10,7 +10,7 @@ You are a **senior staff engineer** doing a forensic re-audit of a multi-tenant 
 
 Your job is **not** to trust those documents. Your job is to:
 
-1. **Verify** every claim in them against the actual code on disk *right now*.
+1. **Verify** every claim in them against the actual code on disk _right now_.
 2. **Discover** what they missed, what's been added since, and what's quietly rotted.
 3. **Enhance** them into a documentation set that a new senior engineer joining the team could read in one sitting and understand the system completely — including the non-obvious failure modes, the deliberate quirks, and the things you only learn by getting paged at 2 AM.
 
@@ -26,6 +26,7 @@ Your job is **not** to trust those documents. Your job is to:
 ## 1. Scope
 
 **In scope:**
+
 - `backend/` (Node.js/Express/Mongoose API)
 - `frontend/` (React/TS/Vite/Tailwind web app)
 - `compression-service/` (Python/FastAPI sidecar) — to the extent it's invoked by backend
@@ -34,6 +35,7 @@ Your job is **not** to trust those documents. Your job is to:
 - The existing `docs/audit/*.md` and `CLAUDE.md` (as baseline to verify and supersede)
 
 **Out of scope (mention only at integration boundaries):**
+
 - `android-app/`
 - The contents of `doc/` (legacy SRS PDFs)
 
@@ -63,11 +65,13 @@ After Phase 0, give the user a **one-paragraph status report** confirming you've
 **Goal:** For every factual claim in the existing audit docs, verify it against current code. Build a delta list.
 
 **Method:**
+
 - Pick claims from the existing docs in this order: tech stack versions → routes/endpoints → data models → middleware chains → services → env vars → conventions section.
 - For each claim, find the corresponding code and compare.
-- Treat the existing docs as a *hypothesis*, not a source of truth.
+- Treat the existing docs as a _hypothesis_, not a source of truth.
 
 **Things to specifically check:**
+
 - Are all routes listed in `frontend.md` still in `frontend/src/routes/AppRoutes.tsx`? Any new ones? Any removed?
 - Are all endpoints in `backend.md` still in `backend/src/routes/*.routes.js`? Any new files? Any new endpoints? Any removed?
 - Do model schemas match what `backend.md` describes? Any new fields? Removed fields? Changed types or defaults?
@@ -90,6 +94,7 @@ End the file with a "**Summary of Drift**" section: top 10 most significant drif
 **Categories to scan:**
 
 **Frontend:**
+
 - **Unused npm dependencies** — for every entry in `frontend/package.json` `dependencies` and `devDependencies`, grep the codebase for actual import. CLAUDE.md flags `recharts` and `lucide-react` as dead — verify and find others.
 - **Unused exports** — exported functions/components/types that nothing imports. Use `rg "export (default |const |function |class )" -t ts -t tsx` and cross-check against `import` statements.
 - **Unused files** — files with zero inbound imports (excluding entry points and route components routed in `AppRoutes.tsx`).
@@ -99,6 +104,7 @@ End the file with a "**Summary of Drift**" section: top 10 most significant drif
 - **Unused CSS classes / Tailwind config keys** — design tokens defined in `tailwind.config.js` but never referenced.
 
 **Backend:**
+
 - **Unused services/utils** — files in `services/`, `utils/`, `middleware/` with no inbound `import`/`require`.
 - **Unused middleware** — exported middleware functions never wired into a router.
 - **Dead endpoints** — endpoints defined in `routes/` that **no client uses**. Check by grepping the frontend (`rg "/api/..." frontend/src/`) and noting endpoints with zero hits. (Mobile may use them — flag those as `MOBILE_ONLY?` rather than dead.)
@@ -107,6 +113,7 @@ End the file with a "**Summary of Drift**" section: top 10 most significant drif
 - **Legacy duplicate routes** — `backend.md` mentions legacy patient download routes (`/download/pdf` without `/download/` prefix). Verify both exist; flag as redundant.
 
 **Compression service:**
+
 - Unused Python imports.
 - Endpoints defined but never called by backend.
 
@@ -122,11 +129,13 @@ End with a "**Quick Wins**" section listing items where confidence is HIGH and i
 **Goal:** Inventory every block of commented-out code and classify intent. **The user has explicitly told us some commented code is intentional** — never recommend deletion without classifying.
 
 **Method:**
+
 - Grep for commented blocks: `rg "^\s*//" -t ts -t tsx -t js`, `rg "^\s*#" -t py`, plus multi-line `/* */` blocks.
 - For each block, capture: file, line range, ~3-line preview, surrounding context (function/component name).
 - Cross-reference `CLAUDE.md` known-intentional list — currently the **PatientDetails Edit-Patient button + modal** in `frontend/src/pages/PatientDetails.tsx` is intentionally commented out (four marked blocks: state, handlers, button, modal). Find these and label them `INTENTIONAL_FEATURE_HOLD`.
 
 **Classification taxonomy (use exactly these labels):**
+
 - `INTENTIONAL_FEATURE_HOLD` — feature is built but disabled by design, documented somewhere. **Keep.**
 - `DEPRECATED` — old implementation kept while new one stabilizes. **Schedule deletion after N stable days.**
 - `DEBUG_LEFTOVER` — `console.log`, test stubs, throwaway. **Safe to delete.**
@@ -137,6 +146,7 @@ End with a "**Quick Wins**" section listing items where confidence is HIGH and i
 `Path:Lines` | `Preview` | `Surrounding Context` | `Classification` | `Reasoning` | `Recommended Action`
 
 End with two sections:
+
 - **"Intentional commented code — for the README"** — a clean list ready to paste into CLAUDE.md so future audits know not to touch them.
 - **"Needs your decision"** — the `UNKNOWN` items, formatted as a checklist the user can answer in one pass.
 
@@ -180,7 +190,9 @@ For every finding use this format:
 **Subsections to produce (each is its own H2 in the deliverable):**
 
 #### 5.1 Security Audit (mapped to OWASP Top 10 2021)
+
 For each OWASP category (A01 Broken Access Control through A10 SSRF), document either: (a) findings with evidence, or (b) "no findings — controls in place at `path:line`". Specifically check:
+
 - Token storage (CLAUDE.md flags `sessionStorage` XSS risk — verify)
 - Mass assignment in PATCH endpoints
 - IDOR on `/api/patients/:id`, `/api/hospitals/:id`
@@ -194,6 +206,7 @@ For each OWASP category (A01 Broken Access Control through A10 SSRF), document e
 - Error responses leaking stack traces or internal IDs in production
 
 #### 5.2 Performance & Scaling Hotspots
+
 - N+1 query candidates (Mongoose `.populate()` in loops, unnecessary round trips)
 - Missing or redundant indexes (compare schema indexes to actual query shapes in controllers)
 - Synchronous `bcrypt.compareSync` in hot paths
@@ -203,6 +216,7 @@ For each OWASP category (A01 Broken Access Control through A10 SSRF), document e
 - Compression sidecar: timeout headroom, cache hit ratio observability gap
 
 #### 5.3 Type Safety & Code Quality (Frontend)
+
 - Count and locate every `: any` and `as any` in `frontend/src/`
 - Files using `// @ts-ignore` or `// @ts-expect-error`
 - API response types not matching backend shape (sample 5 endpoints, compare)
@@ -210,26 +224,30 @@ For each OWASP category (A01 Broken Access Control through A10 SSRF), document e
 - Functions with cyclomatic complexity > 10 (estimate via nesting depth)
 
 #### 5.4 Error Handling & Observability
+
 - Endpoints without try/catch wrapping
 - Promise chains without `.catch`
 - `console.log` left in production code paths
 - Frontend ErrorBoundary coverage (only top-level per CLAUDE.md — confirm)
 - Logging completeness: do failures include enough context to debug from a log file alone?
-- Audit log gaps — actions in the codebase that *should* be audit-logged but aren't
+- Audit log gaps — actions in the codebase that _should_ be audit-logged but aren't
 - Health check completeness (`/api/health/deep` — does it actually probe Brevo, FCM, Cloudinary, sidecar?)
 
 #### 5.5 Test Coverage Map
+
 - For each controller/service, does a test exist? Build a coverage matrix.
 - For each frontend page, is there any test? (Likely none — confirm.)
 - List the top 10 critical untested paths (auth flows, payment-equivalent operations like force-delete, compression integration).
 
 #### 5.6 API Contract Drift (Frontend ↔ Backend)
+
 - For every backend endpoint, find the frontend service function that calls it.
 - Compare expected request shape (controller validators) vs sent shape (frontend service).
 - Compare expected response shape (frontend's typing) vs actual return (controller).
 - Flag mismatches as `CONTRACT_DRIFT` with severity.
 
 #### 5.7 Concurrency & Race Conditions
+
 - `Hospital.patientIdCounter` — is the increment atomic? (`$inc` vs read-modify-write)
 - Session creation under conflict — what if two devices register simultaneously?
 - Token refresh — verify the mutex/subscriber-queue logic in `services/api.ts` actually prevents duplicate refreshes.
@@ -237,19 +255,24 @@ For each OWASP category (A01 Broken Access Control through A10 SSRF), document e
 - Cron job idempotency (what if it runs twice on the same day?)
 
 #### 5.8 Failure Mode Catalog
+
 For each external dependency (Mongo, Redis, Cloudinary, Brevo, FCM, R2, Compression Sidecar), document:
+
 - What happens to the user experience if it goes down?
 - Is there a fallback?
 - How long until users notice?
 - Is there alerting?
 
 #### 5.9 Onboarding Friction (Novel Angle)
+
 The "if a new senior engineer joined Monday" reading order:
+
 - File-by-file: which 15 files should they read first, in what order, and why?
 - The 5 most surprising behaviors a new dev would absolutely miss without being told.
 - The 3 "here be dragons" zones where naive changes cause production incidents.
 
 #### 5.10 Scaling Cliffs (Novel Angle)
+
 For each of {10x users, 100x patients per hospital, 10x file uploads/sec, 10x concurrent downloads}, where does the system break first? Be specific: which collection's index? which Cloudinary quota? which sidecar timeout?
 
 **Deliverable:** `docs/audit/04-enhancements.md` — each subsection 5.1–5.10 as its own H2.
@@ -261,11 +284,13 @@ For each of {10x users, 100x patients per hospital, 10x file uploads/sec, 10x co
 **Goal:** Replace the existing stale audit docs with current, comprehensive versions.
 
 Generate fresh versions of:
+
 - `docs/audit/frontend.md` — full frontend audit, current as of today, incorporating drift findings.
 - `docs/audit/backend.md` — full backend audit, current as of today.
 - `docs/audit/features.md` — end-to-end feature map, current as of today.
 
 For each refreshed doc:
+
 - Use the same section structure as the existing one (so diffs are reviewable).
 - Add a **"Changes since previous audit"** section at the top listing the deltas.
 - Add a **"Verified at commit"** line with the current git HEAD short SHA (run `git rev-parse --short HEAD`).
@@ -284,6 +309,7 @@ For each item:
 **ID** | **Title** | **Source Phase/Section** | **Severity** | **Effort** (XS=<1h / S=<1d / M=1-3d / L=1w / XL=>1w) | **Blast Radius** (which features/users affected) | **Migration Plan** (concrete steps) | **Acceptance Criteria** (how do we know it's done) | **Dependencies** (other items that must finish first)
 
 Group the ledger into:
+
 - **🔥 Do This Week** — Critical security or production-impact items.
 - **📅 Do This Quarter** — High-severity items, planned work.
 - **🧹 Backlog Polish** — Medium/Low items, opportunistic cleanup.
@@ -298,6 +324,7 @@ Group the ledger into:
 **Goal:** Make the audit set browsable.
 
 Create `docs/audit/README.md` with:
+
 - One-paragraph project summary.
 - Table of contents linking every audit file in order.
 - "Read this if…" quick-links (e.g., "Read this if you're onboarding → 04-enhancements.md §5.9; Read this if you're handling a production incident → 04-enhancements.md §5.8 + 03-architecture-diagrams.md").
@@ -347,6 +374,7 @@ When finished, the user should have these files under `docs/audit/`:
 - [ ] `features.md` — Phase 6 refresh
 
 End your final message with:
+
 1. A one-screen summary of the most important findings (top 5 critical items).
 2. The list of `UNKNOWN`-classified items needing user decisions.
 3. A confirmation that all 11 files are written and parseable.
@@ -359,7 +387,7 @@ To be explicit about the bar: a normal codebase audit produces a tech-debt list 
 
 - Mermaid diagrams for every non-trivial flow, derived from code (not docs).
 - A failure mode catalog mapping each external dependency to user-visible symptoms.
-- A scaling-cliff analysis identifying the *first* thing that breaks at 10x load.
+- A scaling-cliff analysis identifying the _first_ thing that breaks at 10x load.
 - An onboarding map ranking files by "read order for new hires."
 - A "surprise index" — quirks that violate the principle of least astonishment.
 - API contract drift detection comparing frontend expectations to backend reality.
@@ -371,4 +399,4 @@ If a section feels generic or could apply to any Node/React app, **rewrite it wi
 
 ---
 
-*End of prompt. Begin with Phase 0.*
+_End of prompt. Begin with Phase 0._

@@ -66,7 +66,7 @@ export const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [resendIn, setResendIn] = useState(0);
 
-  useDocumentTitle("Forgot Password — Hospital Management");
+  useDocumentTitle("Forgot Password — MediVault");
 
   // Clear any stale reset token on mount to avoid mixing flows.
   useEffect(() => {

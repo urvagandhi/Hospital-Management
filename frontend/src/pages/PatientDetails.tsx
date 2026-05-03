@@ -39,7 +39,7 @@ interface SizeCheckFolder {
 const PatientDetails: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
-  useDocumentTitle("Patient Details — Hospital Management");
+  useDocumentTitle("Patient Details — MediVault");
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -677,8 +677,8 @@ const FolderDownloadBtn: React.FC<{
       onClick={handleClick}
       disabled={loading}
       className={`flex-1 text-xs px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 disabled:opacity-50 transition-colors font-medium ${isPdf
-          ? "bg-red-50 text-red-600 hover:bg-red-100"
-          : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+        ? "bg-red-50 text-red-600 hover:bg-red-100"
+        : "bg-blue-50 text-blue-600 hover:bg-blue-100"
         }`}
     >
       {loading ? (
