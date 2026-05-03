@@ -254,6 +254,7 @@ open class BaseActivity : AppCompatActivity() {
             
             // Premium background blur for Android 12+ (API 31+)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
                 window.setBackgroundBlurRadius(30)
             }
             
