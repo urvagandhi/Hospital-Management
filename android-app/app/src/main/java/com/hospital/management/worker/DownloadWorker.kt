@@ -366,7 +366,6 @@ class DownloadWorker(
                         val buffer = ByteArray(16 * 1024)
                         var bytesWritten = actualResumeOffset
 
-                        // Speed window
                         var windowStartMs = System.currentTimeMillis()
                         var windowStartBytes = bytesWritten
                         var currentSpeed = 0L
@@ -382,7 +381,9 @@ class DownloadWorker(
                             val windowElapsed = now - windowStartMs
                             if (windowElapsed >= SPEED_WINDOW_MS) {
                                 val delta = bytesWritten - windowStartBytes
-                                currentSpeed = (delta * 1000L / windowElapsed).coerceAtLeast(0)
+                                if (windowElapsed > 0) {
+                                    currentSpeed = (delta * 1000L / windowElapsed).coerceAtLeast(0)
+                                }
                                 windowStartMs = now
                                 windowStartBytes = bytesWritten
                             }

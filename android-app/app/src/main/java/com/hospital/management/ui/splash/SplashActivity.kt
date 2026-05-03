@@ -229,7 +229,7 @@ class SplashActivity : BaseActivity() {
             // If 401, check if it's just a 7-day re-verify gate. If so, let them 
             // through to the Dashboard where BaseActivity will show the dialog.
             if (response.code() == 401) {
-                val body = try { response.errorBody()?.peekBody(1024)?.string() ?: "" } catch (_: Exception) { "" }
+                val body = try { response.errorBody()?.string() ?: "" } catch (_: Exception) { "" }
                 if (body.contains("AUTH_CODE_REQUIRED") || body.contains("AUTH_CODE_STALE")) {
                     FileLogger.i("SplashActivity", "Session needs re-verify (7-day gate) — allowing through to Dashboard")
                     return true

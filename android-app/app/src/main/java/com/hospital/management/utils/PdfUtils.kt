@@ -263,7 +263,6 @@ object PdfUtils {
             val loadOptions = BitmapFactory.Options().apply {
                 inSampleSize = sampleSize
                 inPreferredConfig = Bitmap.Config.ARGB_8888
-                inDither = true
             }
 
             context.contentResolver.openInputStream(uri)?.use { input ->
@@ -314,7 +313,6 @@ object PdfUtils {
         stream.close()
         val options = BitmapFactory.Options().apply {
             inPreferredConfig = Bitmap.Config.RGB_565
-            inDither = true
         }
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: bitmap
     }
