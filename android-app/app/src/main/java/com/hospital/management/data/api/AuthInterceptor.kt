@@ -101,6 +101,7 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             ""
         }
 
+        // 1. Check for explicit session revocation reasons (Logout required)
         if (errorCode == "SESSION_CONFLICT"
             || body.contains("SESSION_CONFLICT") || body.contains("signed in on another device")) {
             FileLogger.w(TAG, "401 reason: SESSION_CONFLICT — broadcasting revoke")
@@ -121,16 +122,19 @@ class AuthInterceptor(private val context: Context) : Interceptor {
             return response
         }
 
+        // 2. Check for 7-day Auth Code re-verification gate (Dialog required, NOT logout)
         if (errorCode == "AUTH_CODE_REQUIRED"
             || body.contains("AUTH_CODE_REQUIRED") || body.contains("AUTH_CODE_STALE")) {
-            FileLogger.w(TAG, "401 reason: AUTH_CODE_REQUIRED/STALE — broadcasting reverify")
+            FileLogger.w(TAG, "401 reason: AUTH_CODE_REQUIRED/STALE — broadcasting reverify dialog")
             val intent = Intent(ACTION_AUTH_CODE_REQUIRED)
             intent.setPackage(context.packageName)
             context.sendBroadcast(intent)
+            // CRITICAL: Return the response immediately. Do NOT fall through to the
+            // token refresh logic below, as a refresh failure would trigger a logout.
             return response
         }
 
-        // Otherwise, assume access token expired → try to refresh once.
+        // 3. Otherwise, assume access token expired → try to refresh once.
         val refreshToken = prefs.getString("refresh_token", null)
         if (refreshToken.isNullOrEmpty()) {
             FileLogger.w(TAG, "401 but no refresh_token stored — cannot recover")
