@@ -322,7 +322,7 @@ const LogoPulse: React.FC = () => (
 // ---- Page ------------------------------------------------------------------
 
 const LoadingSpinners: React.FC = () => {
-  useDocumentTitle("Spinners — Hospital Management");
+  useDocumentTitle("Spinners — MediVault");
   const navigate = useNavigate();
   const location = useLocation();
 

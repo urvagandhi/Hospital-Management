@@ -3,7 +3,7 @@
     <string name="app_name">MediVault</string>
 
     <!-- Login Screen -->
-    <string name="login_title">Hospital Management System</string>
+    <string name="login_title">MediVault</string>
     <string name="phone_hint">Enter Phone Number</string>
     <string name="send_otp">Sign In</string>
     <string name="invalid_phone">Please enter a valid 10-digit phone number</string>

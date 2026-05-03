@@ -40,7 +40,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, state } = useAuth();
 
-  useDocumentTitle("Login - Hospital Management");
+  useDocumentTitle("Login - MediVault");
 
   const [formData, setFormData] = useState({ identifier: "", password: "" });
   const [errors, setErrors] = useState({ identifier: "", password: "" });
@@ -153,7 +153,7 @@ export const Login: React.FC = () => {
               className="h-9 w-9 rounded-lg object-cover shadow-card"
             />
             <h1 className="text-[26px] font-bold tracking-tight text-primary-600 font-heading leading-none">
-              Hospital Management
+              MediVault
             </h1>
           </div>
           <p className="text-neutral-500 text-sm font-medium leading-relaxed max-w-[320px] mt-1">
@@ -246,11 +246,10 @@ export const Login: React.FC = () => {
                 onChange={(e) => handleChange("identifier", e.target.value)}
                 aria-invalid={!!errors.identifier}
                 aria-describedby={errors.identifier ? "identifier-error" : undefined}
-                className={`w-full bg-white text-neutral-900 rounded-xl pl-12 pr-4 py-3.5 text-base shadow-card ring-1 transition-all duration-200 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:shadow-card-hover ${
-                  errors.identifier
+                className={`w-full bg-white text-neutral-900 rounded-xl pl-12 pr-4 py-3.5 text-base shadow-card ring-1 transition-all duration-200 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:shadow-card-hover ${errors.identifier
                     ? "ring-danger/40 focus:ring-danger"
                     : "ring-neutral-200 focus:ring-primary-500"
-                }`}
+                  }`}
               />
             </div>
             {errors.identifier ? (
@@ -318,11 +317,10 @@ export const Login: React.FC = () => {
                 onChange={(e) => handleChange("password", e.target.value)}
                 aria-invalid={!!errors.password}
                 aria-describedby={errors.password ? "password-error" : undefined}
-                className={`w-full bg-white text-neutral-900 rounded-xl pl-12 pr-12 py-3.5 text-base shadow-card ring-1 transition-all duration-200 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:shadow-card-hover ${
-                  errors.password
+                className={`w-full bg-white text-neutral-900 rounded-xl pl-12 pr-12 py-3.5 text-base shadow-card ring-1 transition-all duration-200 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:shadow-card-hover ${errors.password
                     ? "ring-danger/40 focus:ring-danger"
                     : "ring-neutral-200 focus:ring-primary-500"
-                }`}
+                  }`}
               />
               <button
                 type="button"

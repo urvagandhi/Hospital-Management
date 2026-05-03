@@ -1,4 +1,4 @@
-# Frontend — Hospital Management Web App
+# Frontend — MediVault Web App
 
 React 18 + TypeScript single-page application. Read-mostly admin/management console — file mutations live primarily in the [Android app](../android-app/README.md). Authenticates via the same two-step Auth Code flow as Android (no TOTP — see [CLAUDE.md §5](../CLAUDE.md)).
 
@@ -325,10 +325,10 @@ npm run dev   # Vite on http://localhost:5173
 
 ### Environment Variables
 
-| Variable        | Default                    | Description          |
-| --------------- | -------------------------- | -------------------- |
-| `VITE_API_URL`  | `/api`                     | Backend API base URL |
-| `VITE_APP_NAME` | Hospital Management System | App title            |
+| Variable        | Default   | Description          |
+| --------------- | --------- | -------------------- |
+| `VITE_API_URL`  | `/api`    | Backend API base URL |
+| `VITE_APP_NAME` | MediVault | App title            |
 
 ### Build
 

@@ -45,7 +45,7 @@ const inputClass = (hasError: boolean, danger = false) =>
   }`;
 
 export const HospitalsList: React.FC = () => {
-  useDocumentTitle("Hospitals — Hospital Management");
+  useDocumentTitle("Hospitals — MediVault");
   const navigate = useNavigate();
   const { state, updateHospital } = useAuth();
   const { hospital } = state;
@@ -753,8 +753,8 @@ export const HospitalsList: React.FC = () => {
                       </h3>
                       <span
                         className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full ${h.isActive
-                            ? "bg-success/10 text-success"
-                            : "bg-danger/10 text-danger"
+                          ? "bg-success/10 text-success"
+                          : "bg-danger/10 text-danger"
                           }`}
                       >
                         <span
@@ -863,8 +863,8 @@ export const HospitalsList: React.FC = () => {
                     {resendMessage?.id === h._id && (
                       <div
                         className={`mt-3 text-xs px-3 py-2 rounded-lg border ${resendMessage.ok
-                            ? "bg-success/10 text-success border-success/20"
-                            : "bg-danger/10 text-danger border-danger/20"
+                          ? "bg-success/10 text-success border-success/20"
+                          : "bg-danger/10 text-danger border-danger/20"
                           }`}
                       >
                         {resendMessage.text}
@@ -1525,8 +1525,8 @@ const StatCard: React.FC<{
     <div className="flex items-center gap-4">
       <div
         className={`shrink-0 flex items-center justify-center w-12 h-12 rounded-xl ring-1 ring-inset ${tone === "success"
-            ? "bg-success/10 text-success ring-success/20"
-            : "bg-primary-50 text-primary-600 ring-primary-600/15"
+          ? "bg-success/10 text-success ring-success/20"
+          : "bg-primary-50 text-primary-600 ring-primary-600/15"
           }`}
       >
         {icon}

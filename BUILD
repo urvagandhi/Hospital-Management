@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hospital Management System - Build Script
+# MediVault - Build Script
 # Builds backend, frontend, and (optionally) Android app
 
 set -euo pipefail

@@ -1,9 +1,10 @@
-# Commented Code Audit — Hospital Management System
+# Commented Code Audit — MediVault
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
 
 **Classification taxonomy:**
+
 - `INTENTIONAL_FEATURE_HOLD` — feature is built, disabled by design, documented somewhere. **Keep.**
 - `DEPRECATED` — old implementation kept next to the replacement. **Schedule deletion.**
 - `DEBUG_LEFTOVER` — `console.log` / `print` / throwaway. **Delete.**
@@ -16,12 +17,12 @@
 
 These are explicitly documented in CLAUDE.md §8 as intentional; they must not be removed without architecture discussion.
 
-| Path:Lines | Preview | Enclosing context | Reasoning |
-|---|---|---|---|
-| [PatientDetails.tsx:63-67](../../frontend/src/pages/PatientDetails.tsx#L63-L67) | `// const [editOpen, setEditOpen] = useState(false);`<br>`// const [editForm, setEditForm] = useState({ patientName: "", remarks: "" });`<br>`// const [editSaving, setEditSaving] = useState(false);` | `PatientDetails` component — Edit-Patient state block | Block #1 of the four intentional holds. Marked in CLAUDE.md §8: "the Edit-Patient button + modal are intentionally commented out … web stays read-only for patient mutations per §11." |
-| [PatientDetails.tsx:68-109](../../frontend/src/pages/PatientDetails.tsx#L68-L109) | `// const openEdit = () => { ... }`<br>`// const saveEdit = async (e: FormEvent) => { ... }` | `PatientDetails` component — Edit handlers | Block #2. Matching handlers for the disabled flow. |
-| [PatientDetails.tsx:385-406](../../frontend/src/pages/PatientDetails.tsx#L385-L406) | `{/* Edit Patient — mobile-only (CLAUDE.md §11). Uncomment to re-enable.`<br>`<button type="button" ... >` | `PatientDetails` render — Edit button JSX | Block #3. Explicit re-enable marker. |
-| [PatientDetails.tsx:569-636](../../frontend/src/pages/PatientDetails.tsx#L569-L636) | `{/* Edit Patient modal — mobile-only (CLAUDE.md §11). Uncomment to re-enable on web.`<br>`{editOpen && (<div ... />)} */}` | `PatientDetails` render — Edit modal JSX | Block #4. The modal itself. |
+| Path:Lines                                                                          | Preview                                                                                                                                                                                                | Enclosing context                                     | Reasoning                                                                                                                                                                              |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [PatientDetails.tsx:63-67](../../frontend/src/pages/PatientDetails.tsx#L63-L67)     | `// const [editOpen, setEditOpen] = useState(false);`<br>`// const [editForm, setEditForm] = useState({ patientName: "", remarks: "" });`<br>`// const [editSaving, setEditSaving] = useState(false);` | `PatientDetails` component — Edit-Patient state block | Block #1 of the four intentional holds. Marked in CLAUDE.md §8: "the Edit-Patient button + modal are intentionally commented out … web stays read-only for patient mutations per §11." |
+| [PatientDetails.tsx:68-109](../../frontend/src/pages/PatientDetails.tsx#L68-L109)   | `// const openEdit = () => { ... }`<br>`// const saveEdit = async (e: FormEvent) => { ... }`                                                                                                           | `PatientDetails` component — Edit handlers            | Block #2. Matching handlers for the disabled flow.                                                                                                                                     |
+| [PatientDetails.tsx:385-406](../../frontend/src/pages/PatientDetails.tsx#L385-L406) | `{/* Edit Patient — mobile-only (CLAUDE.md §11). Uncomment to re-enable.`<br>`<button type="button" ... >`                                                                                             | `PatientDetails` render — Edit button JSX             | Block #3. Explicit re-enable marker.                                                                                                                                                   |
+| [PatientDetails.tsx:569-636](../../frontend/src/pages/PatientDetails.tsx#L569-L636) | `{/* Edit Patient modal — mobile-only (CLAUDE.md §11). Uncomment to re-enable on web.`<br>`{editOpen && (<div ... />)} */}`                                                                            | `PatientDetails` render — Edit modal JSX              | Block #4. The modal itself.                                                                                                                                                            |
 
 **Intentional commented code — for the README/CLAUDE.md:**
 
@@ -31,10 +32,10 @@ These are explicitly documented in CLAUDE.md §8 as intentional; they must not b
 
 ## 2. `DEPRECATED` — Safe to Delete (Replacement in Place)
 
-| Path:Lines | Preview | Enclosing context | Reasoning |
-|---|---|---|---|
+| Path:Lines                                                                          | Preview                                                                                       | Enclosing context       | Reasoning                                                                                                              |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | [PatientDetails.tsx:271-277](../../frontend/src/pages/PatientDetails.tsx#L271-L277) | `// const patientInitials = patient.patientName`<br>`//   .split(" ")`<br>`//   .slice(0, 2)` | `PatientDetails` render | Orphaned avatar-initials computation. The render now uses the generic hospital-icon avatar (L312-317). Safe to delete. |
-| [Dashboard.tsx:334-349](../../frontend/src/pages/Dashboard.tsx#L334-L349) | `{/* <p className="text-sm text-neutral-500 flex items-center gap-2 mt-1"> ... */}` | Dashboard header | Old subtitle JSX replaced by simpler greeting (L331-333). Safe to delete. |
+| [Dashboard.tsx:334-349](../../frontend/src/pages/Dashboard.tsx#L334-L349)           | `{/* <p className="text-sm text-neutral-500 flex items-center gap-2 mt-1"> ... */}`           | Dashboard header        | Old subtitle JSX replaced by simpler greeting (L331-333). Safe to delete.                                              |
 
 ---
 
@@ -48,8 +49,8 @@ None found in `backend/src/`, `frontend/src/`, or `compression-service/app/`. No
 
 Aggregate of `TODO`, `FIXME`, `HACK`, `XXX`, `NOTE:` markers across all in-scope directories:
 
-| Path:Line | Comment | Type |
-|---|---|---|
+| Path:Line                                                    | Comment                                                                       | Type                             |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------- | -------------------------------- |
 | [utils/avatar.ts:24](../../frontend/src/utils/avatar.ts#L24) | `* NOTE: callers must render this WITHOUT a 'bg-gradient-to-br' prefix — the` | NOTE (documentation, not a task) |
 
 **Total active markers:** 1 NOTE, 0 TODOs, 0 FIXMEs, 0 HACKs. The codebase is remarkably clean of in-code task markers — work is tracked elsewhere (likely `memory/` files and CLAUDE.md).
@@ -76,13 +77,13 @@ For completeness — not subject to deletion/action. These are JSDoc / file-head
 
 ## 7. Summary
 
-| Classification | Count | Notes |
-|---|---|---|
+| Classification             | Count                                     | Notes                                                                                               |
+| -------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `INTENTIONAL_FEATURE_HOLD` | 4 blocks (frontend) + 1 (Android, see §8) | All in `PatientDetails.tsx` on the web; Android has `DownloadWorker.pollUntilReady` dormant branch. |
-| `DEPRECATED` | 2 blocks | Small; safe to delete on next `PatientDetails.tsx` / `Dashboard.tsx` touch. |
-| `DEBUG_LEFTOVER` | 0 | Clean. |
-| `TODO_PLACEHOLDER` | 0 | Clean. |
-| `UNKNOWN` | 0 | No decisions needed. |
+| `DEPRECATED`               | 2 blocks                                  | Small; safe to delete on next `PatientDetails.tsx` / `Dashboard.tsx` touch.                         |
+| `DEBUG_LEFTOVER`           | 0                                         | Clean.                                                                                              |
+| `TODO_PLACEHOLDER`         | 0                                         | Clean.                                                                                              |
+| `UNKNOWN`                  | 0                                         | No decisions needed.                                                                                |
 
 **No user decisions required.** The codebase is well-curated; the only commented code is either explicitly intentional or trivially stale (replaced inline).
 
@@ -101,13 +102,13 @@ Added 2026-04-24. Systematic scan of `android-app/app/src/main/java` for comment
 
 ### 8.2 Findings
 
-| Classification | Count | Notes |
-|---|---|---|
-| `INTENTIONAL_FEATURE_HOLD` | 1 (see §8.3) | `DownloadWorker.pollUntilReady` — not strictly *commented*, but the entire polling branch is unreachable today and deliberately preserved for Phase 3C. |
-| `DEPRECATED` | 0 | — |
-| `DEBUG_LEFTOVER` | 0 | No leftover `Log.d` / `println` in comments. |
-| `TODO_PLACEHOLDER` | 0 | **Zero** `TODO` / `FIXME` / `HACK` / `XXX` markers across 77 Kotlin files. |
-| `UNKNOWN` | 0 | — |
+| Classification             | Count        | Notes                                                                                                                                                   |
+| -------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INTENTIONAL_FEATURE_HOLD` | 1 (see §8.3) | `DownloadWorker.pollUntilReady` — not strictly _commented_, but the entire polling branch is unreachable today and deliberately preserved for Phase 3C. |
+| `DEPRECATED`               | 0            | —                                                                                                                                                       |
+| `DEBUG_LEFTOVER`           | 0            | No leftover `Log.d` / `println` in comments.                                                                                                            |
+| `TODO_PLACEHOLDER`         | 0            | **Zero** `TODO` / `FIXME` / `HACK` / `XXX` markers across 77 Kotlin files.                                                                              |
+| `UNKNOWN`                  | 0            | —                                                                                                                                                       |
 
 Everything else matched by the regex is KDoc (`/** … */`), section-banner comments (`// ─── … ───`), or inline rationale comments (`/* best-effort */`, `/* ignore */`) — all prose, not disabled code.
 

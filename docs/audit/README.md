@@ -1,4 +1,4 @@
-# Hospital Management System — Audit Index
+# MediVault — Audit Index
 
 **Verified at commit:** `1b3bf22` (branch `feat/redesign-and-platform-upgrades`, 2026-04-24) · backend/frontend/sidecar sections retained from `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21 (backend/frontend/sidecar) + 2026-04-24 (Android)
@@ -6,28 +6,28 @@
 
 ## Status strip (what's landed since the audit)
 
-| ID | Title | Status |
-|---|---|---|
-| TD-002 | Refresh-token rotation + reuse detection | ✅ Shipped |
-| TD-004 | `.env.example` hygiene | ✅ Shipped |
-| TD-005 | `/api/hospitals` pagination + server search | ✅ Shipped |
-| TD-010 | Delete dead frontend code | ✅ Shipped |
-| TD-012 | Remove unused backend deps (`@getbrevo/brevo`, `axios`) | ✅ Shipped |
-| TD-013 | Prune dead `AuditLog` enum members | ✅ Shipped |
-| TD-001 | Audit logging on 8 mutation endpoints | ⏳ Open |
-| TD-003 | Delete `r2.service.js` + AWS SDK deps | ⏳ Open |
-| TD-006…TD-027 | Quarter + backlog items | ⏳ Open (see `06-tech-debt-ledger.md`) |
+| ID            | Title                                                   | Status                                 |
+| ------------- | ------------------------------------------------------- | -------------------------------------- |
+| TD-002        | Refresh-token rotation + reuse detection                | ✅ Shipped                             |
+| TD-004        | `.env.example` hygiene                                  | ✅ Shipped                             |
+| TD-005        | `/api/hospitals` pagination + server search             | ✅ Shipped                             |
+| TD-010        | Delete dead frontend code                               | ✅ Shipped                             |
+| TD-012        | Remove unused backend deps (`@getbrevo/brevo`, `axios`) | ✅ Shipped                             |
+| TD-013        | Prune dead `AuditLog` enum members                      | ✅ Shipped                             |
+| TD-001        | Audit logging on 8 mutation endpoints                   | ⏳ Open                                |
+| TD-003        | Delete `r2.service.js` + AWS SDK deps                   | ⏳ Open                                |
+| TD-006…TD-027 | Quarter + backlog items                                 | ⏳ Open (see `06-tech-debt-ledger.md`) |
 
 Multi-tenant hospital records system. Node/Express backend + React/Vite web + Kotlin Android app + Python FastAPI compression sidecar. Primary mutation surface is mobile; web is read-mostly admin. This audit set was generated as a forensic re-audit: every factual claim is verified against code on disk, with `path:line` citations throughout. The audit scope originally covered `backend/`, `frontend/`, and `compression-service/` (2026-04-21); **`android-app/` was added 2026-04-24** via [`android.md`](android.md) + Android sections in every numbered ledger (`01-dead-code §J`, `02-commented-code §8`, `03-architecture-diagrams §18-§30`, `04-enhancements §6`, `06-tech-debt-ledger TD-A01..TD-A20`, `00-drift §12`).
 
 ## Audit Metadata
 
-| Field | Value |
-|---|---|
-| Commit verified | `defa74a` (2026-04-17) |
-| Audit date | 2026-04-21 |
-| Files analysed | 125 source files (`.js`, `.ts`, `.tsx`, `.py`) |
-| Approximate LOC | Backend ~15k · Frontend ~12k · Sidecar ~2k |
+| Field               | Value                                                           |
+| ------------------- | --------------------------------------------------------------- |
+| Commit verified     | `defa74a` (2026-04-17)                                          |
+| Audit date          | 2026-04-21                                                      |
+| Files analysed      | 125 source files (`.js`, `.ts`, `.tsx`, `.py`)                  |
+| Approximate LOC     | Backend ~15k · Frontend ~12k · Sidecar ~2k                      |
 | Previous audit date | 2026-04-20 (superseded by the refreshed docs in this directory) |
 
 ## Table of Contents
@@ -47,21 +47,21 @@ Multi-tenant hospital records system. Node/Express backend + React/Vite web + Ko
 
 ## Read This If…
 
-| You are… | Start here |
-|---|---|
-| **Onboarding** a new senior engineer | [`04-enhancements.md`](04-enhancements.md) §5.9 "Onboarding Friction" — gives the 15-file read order + the 5 surprising behaviours + the 3 "here be dragons" zones |
-| **Handling a production incident** | [`04-enhancements.md`](04-enhancements.md) §5.8 "Failure Mode Catalog" + [`03-architecture-diagrams.md`](03-architecture-diagrams.md) §1 (system context) and §9-11 (compression / download / auto-delete) |
-| **Planning a security sprint** | [`04-enhancements.md`](04-enhancements.md) §5.1 (OWASP table) + [`06-tech-debt-ledger.md`](06-tech-debt-ledger.md) 🔥 section — start with SEC-004 (refresh rotation) and SEC-020 (audit logging gaps) |
-| **Pruning dead code** | [`01-dead-code.md`](01-dead-code.md) — "Quick Wins" section at the bottom; ~1 hour of work |
-| **Mapping out a scale-up plan** | [`04-enhancements.md`](04-enhancements.md) §5.2 Perf + §5.10 Scaling Cliffs |
-| **Building on top of the API** | [`backend.md`](backend.md) §4 (corrected endpoint tables) + [`features.md`](features.md) (user-facing flows) |
-| **Working on the web redesign next iteration** | [`frontend.md`](frontend.md) §9 (architectural rule compliance) + [`02-commented-code.md`](02-commented-code.md) (intentional holds not to touch) |
-| **Investigating the compression sidecar** | [`03-architecture-diagrams.md`](03-architecture-diagrams.md) §9 (pipeline) + [`backend.md`](backend.md) §9 (sidecar section) + `06-tech-debt-ledger.md` TD-014/TD-015 |
-| **Onboarding to Android** | [`android.md`](android.md) §10 "Read this first" — 12-file read order. Then [`android.md`](android.md) §9 "Notable quirks" + [`03-architecture-diagrams.md`](03-architecture-diagrams.md) §§18-30 |
-| **Cutting a Play Store release** | [`android.md`](android.md) §1.1 red flags + [`06-tech-debt-ledger.md`](06-tech-debt-ledger.md) `TD-A01..TD-A03` (critical pre-upload blockers) + [`04-enhancements.md`](04-enhancements.md) §6.8 Play Store compliance checklist |
-| **Debugging a release-only Android crash** | [`android.md`](android.md) §9 quirk 1 (R8 rules load-bearing) + [`04-enhancements.md`](04-enhancements.md) AND-O01 (no crash reporter yet) + `FileLogger` pull via `adb pull /sdcard/Android/data/com.hospital.management/files/logs/` |
-| **Android API contract drift vs backend** | [`android.md`](android.md) §4.3 + [`00-drift.md`](00-drift.md) §12 |
-| **Wanting the "what changed since last audit" delta** | [`00-drift.md`](00-drift.md) §11 "Summary of Drift — Top 10" + §12 (Android) |
+| You are…                                              | Start here                                                                                                                                                                                                                             |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Onboarding** a new senior engineer                  | [`04-enhancements.md`](04-enhancements.md) §5.9 "Onboarding Friction" — gives the 15-file read order + the 5 surprising behaviours + the 3 "here be dragons" zones                                                                     |
+| **Handling a production incident**                    | [`04-enhancements.md`](04-enhancements.md) §5.8 "Failure Mode Catalog" + [`03-architecture-diagrams.md`](03-architecture-diagrams.md) §1 (system context) and §9-11 (compression / download / auto-delete)                             |
+| **Planning a security sprint**                        | [`04-enhancements.md`](04-enhancements.md) §5.1 (OWASP table) + [`06-tech-debt-ledger.md`](06-tech-debt-ledger.md) 🔥 section — start with SEC-004 (refresh rotation) and SEC-020 (audit logging gaps)                                 |
+| **Pruning dead code**                                 | [`01-dead-code.md`](01-dead-code.md) — "Quick Wins" section at the bottom; ~1 hour of work                                                                                                                                             |
+| **Mapping out a scale-up plan**                       | [`04-enhancements.md`](04-enhancements.md) §5.2 Perf + §5.10 Scaling Cliffs                                                                                                                                                            |
+| **Building on top of the API**                        | [`backend.md`](backend.md) §4 (corrected endpoint tables) + [`features.md`](features.md) (user-facing flows)                                                                                                                           |
+| **Working on the web redesign next iteration**        | [`frontend.md`](frontend.md) §9 (architectural rule compliance) + [`02-commented-code.md`](02-commented-code.md) (intentional holds not to touch)                                                                                      |
+| **Investigating the compression sidecar**             | [`03-architecture-diagrams.md`](03-architecture-diagrams.md) §9 (pipeline) + [`backend.md`](backend.md) §9 (sidecar section) + `06-tech-debt-ledger.md` TD-014/TD-015                                                                  |
+| **Onboarding to Android**                             | [`android.md`](android.md) §10 "Read this first" — 12-file read order. Then [`android.md`](android.md) §9 "Notable quirks" + [`03-architecture-diagrams.md`](03-architecture-diagrams.md) §§18-30                                      |
+| **Cutting a Play Store release**                      | [`android.md`](android.md) §1.1 red flags + [`06-tech-debt-ledger.md`](06-tech-debt-ledger.md) `TD-A01..TD-A03` (critical pre-upload blockers) + [`04-enhancements.md`](04-enhancements.md) §6.8 Play Store compliance checklist       |
+| **Debugging a release-only Android crash**            | [`android.md`](android.md) §9 quirk 1 (R8 rules load-bearing) + [`04-enhancements.md`](04-enhancements.md) AND-O01 (no crash reporter yet) + `FileLogger` pull via `adb pull /sdcard/Android/data/com.hospital.management/files/logs/` |
+| **Android API contract drift vs backend**             | [`android.md`](android.md) §4.3 + [`00-drift.md`](00-drift.md) §12                                                                                                                                                                     |
+| **Wanting the "what changed since last audit" delta** | [`00-drift.md`](00-drift.md) §11 "Summary of Drift — Top 10" + §12 (Android)                                                                                                                                                           |
 
 ## Top 5 Critical Findings — updated status
 
