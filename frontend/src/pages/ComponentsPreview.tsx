@@ -312,7 +312,7 @@ const FOLDERS = [
 // ─────────────────────────────────────────────
 
 const ComponentsPreview: React.FC = () => {
-  useDocumentTitle("Components — Hospital Management");
+  useDocumentTitle("Components — MediVault");
   // — demo state —
   const [pwVisible,   setPwVisible]   = useState(false);
   const [searchVal,   setSearchVal]   = useState("");

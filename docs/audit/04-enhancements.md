@@ -1,4 +1,4 @@
-# Enhancements — Hospital Management System
+# Enhancements — MediVault
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21

@@ -1,4 +1,4 @@
-# Backend — Hospital Management API
+# Backend — MediVault API
 
 Node.js + Express REST API. MongoDB (Mongoose 7) for persistence; Upstash Redis (with in-memory fallback) for ephemeral OTP/registration state; Cloudinary for file storage; Brevo (prod) / Mailtrap (dev) for email; Firebase Admin for FCM push; a Python compression sidecar for PDF merging.
 

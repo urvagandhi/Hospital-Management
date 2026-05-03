@@ -1,7 +1,7 @@
 {
   "name": "hospital-management-backend",
   "version": "1.0.0",
-  "description": "Hospital Management System Backend - Login & OTP Verification",
+  "description": "MediVault Backend - Login & OTP Verification",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
@@ -15,7 +15,12 @@
     "dev": "nodemon",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
-  "keywords": ["hospital", "management", "authentication", "otp"],
+  "keywords": [
+    "hospital",
+    "management",
+    "authentication",
+    "otp"
+  ],
   "author": "Hospital Team",
   "license": "MIT",
   "overrides": {

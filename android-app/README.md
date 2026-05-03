@@ -1,4 +1,4 @@
-# Android App — Hospital Management
+# Android App — MediVault
 
 Native Kotlin Android application — the **primary user surface** for file capture, upload, and offline cache. Built with MVVM + Repository + UseCases (no DI framework), Retrofit, Room v4, WorkManager. Authenticates via the same two-step Auth Code flow as the web app — TOTP was removed from the system; the immutable 6-digit Auth Code is the only second factor (see [../CLAUDE.md §5](../CLAUDE.md)). Biometric is the only path that bypasses the Auth Code step.
 

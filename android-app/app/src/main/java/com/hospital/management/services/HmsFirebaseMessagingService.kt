@@ -144,7 +144,7 @@ class HmsFirebaseMessagingService : FirebaseMessagingService() {
             notificationManager.createNotificationChannel(channel)
         }
 
-        val title = message.notification?.title ?: message.data["title"] ?: "Hospital Management"
+        val title = message.notification?.title ?: message.data["title"] ?: "MediVault"
         val body = message.notification?.body ?: message.data["body"] ?: ""
         val type = message.data["type"]
 

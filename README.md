@@ -1,4 +1,4 @@
-# Hospital Management System
+# MediVault
 
 A multi-tenant hospital records system. Each hospital gets one login and stores patient files (PDFs and images) grouped into per-patient folders. The primary user surface is a **native Android app** (file capture, upload, offline cache); the **React web app** is a read-mostly admin/management console; a **Python compression sidecar** merges and shrinks PDFs for download.
 

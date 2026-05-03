@@ -1,7 +1,7 @@
 {
   "name": "hospital-management-frontend",
   "version": "1.0.0",
-  "description": "Hospital Management System Frontend - Login & OTP Verification",
+  "description": "MediVault Frontend - Login & OTP Verification",
   "private": true,
   "type": "module",
   "scripts": {

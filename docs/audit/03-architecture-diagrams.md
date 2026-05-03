@@ -1,4 +1,4 @@
-# Architecture Diagrams — Hospital Management System
+# Architecture Diagrams — MediVault
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21

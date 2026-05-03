@@ -10,7 +10,7 @@ const getApiUrl = () => {
 };
 
 export const API_URL = getApiUrl();
-export const APP_NAME = import.meta.env.VITE_APP_NAME || "Hospital Management";
+export const APP_NAME = import.meta.env.VITE_APP_NAME || "MediVault";
 export const OTP_LENGTH = 6;
 export const OTP_EXPIRY_SECONDS = 300; // 5 minutes
 export const RESEND_TIMER_SECONDS = 30;

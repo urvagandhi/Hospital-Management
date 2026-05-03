@@ -199,7 +199,7 @@ const Sessions: React.FC = () => {
   const [bulkRevoking, setBulkRevoking] = useState(false);
   const [confirmBulkOpen, setConfirmBulkOpen] = useState(false);
 
-  useDocumentTitle("Security & Sessions — Hospital Management");
+  useDocumentTitle("Security & Sessions — MediVault");
 
   useEffect(() => {
     if (!state.isAuthenticated && !state.loading) navigate("/login");
@@ -380,11 +380,10 @@ const Sessions: React.FC = () => {
                   return (
                     <div
                       key={i}
-                      className={`aspect-[3/4] rounded-xl flex items-center justify-center text-2xl font-mono font-bold border-2 bg-surface-white text-neutral-900 transition-all duration-200 ${
-                        filled
+                      className={`aspect-[3/4] rounded-xl flex items-center justify-center text-2xl font-mono font-bold border-2 bg-surface-white text-neutral-900 transition-all duration-200 ${filled
                           ? "border-primary-500 ring-2 ring-primary-100"
                           : "border-neutral-200 text-neutral-400"
-                      }`}
+                        }`}
                     >
                       {ch || "•"}
                     </div>
@@ -519,11 +518,10 @@ const Sessions: React.FC = () => {
                         )}
                         <div className="flex items-start sm:items-center gap-4 min-w-0">
                           <div
-                            className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                              isCurrent
+                            className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${isCurrent
                                 ? "bg-primary-50 text-primary-600 ring-1 ring-inset ring-primary-600/15"
                                 : "bg-neutral-100 text-neutral-500"
-                            }`}
+                              }`}
                           >
                             <DeviceIcon kind={kind} />
                           </div>

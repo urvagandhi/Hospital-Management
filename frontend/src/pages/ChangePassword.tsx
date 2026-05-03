@@ -23,7 +23,7 @@ interface ChangePasswordResponse {
 
 const ChangePassword: React.FC = () => {
   const navigate = useNavigate();
-  useDocumentTitle("Set New Password — Hospital Management");
+  useDocumentTitle("Set New Password — MediVault");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);

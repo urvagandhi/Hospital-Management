@@ -12,10 +12,10 @@
  * Run:  node src/seed.js
  */
 
-import mongoose from "mongoose";
 import dotenv from "dotenv";
-import path from "path";
 import fs from "fs";
+import mongoose from "mongoose";
+import path from "path";
 
 // Load env
 const devEnvPath = path.resolve(process.cwd(), ".env.development");
@@ -24,8 +24,6 @@ else dotenv.config();
 
 import Hospital from "./models/Hospital.js";
 import Patient from "./models/Patient.js";
-import Session from "./models/Session.js";
-import AuditLog from "./models/AuditLog.js";
 import { hashPassword } from "./utils/hash.js";
 import logger from "./utils/logger.js";
 
@@ -143,7 +141,7 @@ function generatePatients(hospitalId, count, initials) {
 // ─── Main ───
 
 async function seed() {
-  logger.info({ event: "seed_started" }, "=== Hospital Management — Seed Script ===");
+  logger.info({ event: "seed_started" }, "=== MediVault — Seed Script ===");
   logger.info(
     { event: "seed_mode", mode: "non_destructive" },
     "[Seed] Non-destructive mode: existing hospitals/patients are left untouched."
@@ -261,7 +259,7 @@ async function seed() {
     logger.info(
       { event: "seed_login_hints" },
       "  Login as admin:    admin@citymedical.com   | +919876543210\n" +
-        "  Login as hospital: admin@sunrisehealth.in   | +919876543211"
+      "  Login as hospital: admin@sunrisehealth.in   | +919876543211"
     );
 
   } catch (error) {

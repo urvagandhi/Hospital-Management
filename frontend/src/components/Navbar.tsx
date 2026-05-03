@@ -2,7 +2,7 @@
  * Navbar — top chrome for MainLayout pages.
  *
  * Layout (3 zones):
- *   LEFT   : app logo + "Hospital Management" wordmark · vertical divider ·
+ *   LEFT   : app logo + "MediVault" wordmark · vertical divider ·
  *            hospital chip (logo/initial + name + online dot)
  *   CENTER : nav links (Dashboard always, Hospitals admin-only)
  *   RIGHT  : settings gear (opens account dropdown) · avatar

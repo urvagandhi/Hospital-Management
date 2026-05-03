@@ -90,9 +90,8 @@ const PasswordField: React.FC<{
           placeholder={placeholder}
           autoFocus={autoFocus}
           autoComplete={id === "current" ? "current-password" : "new-password"}
-          className={`w-full bg-white border-2 border-neutral-200 rounded-lg px-4 py-3 pr-11 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-primary-400 focus:ring-4 focus:ring-primary-100 transition-all ${
-            mono ? "font-mono tracking-wide" : ""
-          }`}
+          className={`w-full bg-white border-2 border-neutral-200 rounded-lg px-4 py-3 pr-11 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-primary-400 focus:ring-4 focus:ring-primary-100 transition-all ${mono ? "font-mono tracking-wide" : ""
+            }`}
         />
         <button
           type="button"
@@ -149,7 +148,7 @@ const Password: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useDocumentTitle("Change Password — Hospital Management");
+  useDocumentTitle("Change Password — MediVault");
 
   useEffect(() => {
     if (!state.isAuthenticated && !state.loading) navigate("/login");
@@ -415,9 +414,8 @@ const Password: React.FC = () => {
                   {ruleState.map((r) => (
                     <li
                       key={r.key}
-                      className={`flex items-center gap-2 transition-colors ${
-                        r.ok ? "text-success" : "text-neutral-500"
-                      }`}
+                      className={`flex items-center gap-2 transition-colors ${r.ok ? "text-success" : "text-neutral-500"
+                        }`}
                     >
                       {r.ok ? (
                         <svg

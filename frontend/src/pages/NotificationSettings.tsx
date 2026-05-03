@@ -143,7 +143,7 @@ const NotificationSettings: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useAuth();
 
-  useDocumentTitle("Notifications — Hospital Management");
+  useDocumentTitle("Notifications — MediVault");
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);

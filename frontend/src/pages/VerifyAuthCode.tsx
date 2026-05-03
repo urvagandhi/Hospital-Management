@@ -30,7 +30,7 @@ export const VerifyAuthCode: React.FC = () => {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  useDocumentTitle("Enter Auth Code — Hospital Management");
+  useDocumentTitle("Enter Auth Code — MediVault");
 
   // Redirect if no tempToken — user arrived without completing step 1
   useEffect(() => {
@@ -308,12 +308,10 @@ export const VerifyAuthCode: React.FC = () => {
                   w-full h-14 sm:h-16 rounded-xl text-center text-2xl font-heading font-semibold
                   border-2 transition-all duration-150 outline-none
                   disabled:opacity-60 disabled:cursor-not-allowed
-                  ${
-                    filled || isActive
-                      ? `bg-primary-50 border-primary-500 text-primary-700 ${
-                          isActive ? "ring-2 ring-primary-100" : ""
-                        }`
-                      : "bg-surface-white border-neutral-200 text-neutral-900 hover:border-primary-300"
+                  ${filled || isActive
+                    ? `bg-primary-50 border-primary-500 text-primary-700 ${isActive ? "ring-2 ring-primary-100" : ""
+                    }`
+                    : "bg-surface-white border-neutral-200 text-neutral-900 hover:border-primary-300"
                   }
                 `}
               />

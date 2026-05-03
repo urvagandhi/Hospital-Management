@@ -1,4 +1,4 @@
-# CLAUDE.md — Hospital Management System
+# CLAUDE.md — MediVault
 
 Condensed context for future Claude sessions. For deep detail see:
 - [Audit index](docs/audit/README.md) — start here
