@@ -168,6 +168,16 @@ router.post(
 );
 
 /**
+ * POST /api/patients/:patientId/files/:folderName/sign-spaces
+ * Direct-to-DO Spaces: generate presigned PutObject URL (lightweight JSON, no file).
+ * Only available if DO Spaces is configured.
+ */
+router.post(
+  "/:patientId/files/:folderName/sign-spaces",
+  patientController.signUploadForSpaces,
+);
+
+/**
  * POST /api/patients/:patientId/files/:folderName/confirm
  * Direct-to-Cloudinary: persist metadata after the client uploaded to Cloudinary.
  */

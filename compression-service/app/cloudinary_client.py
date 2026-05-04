@@ -17,19 +17,61 @@ from app.schemas import SourcePdf
 
 logger = logging.getLogger(__name__)
 
-# Configure Cloudinary SDK once at module level
-cloudinary.config(
-    cloud_name=config.CLOUDINARY_CLOUD_NAME,
-    api_key=config.CLOUDINARY_API_KEY,
-    api_secret=config.CLOUDINARY_API_SECRET,
-    secure=True,
+CLOUDINARY_CONFIGURED = all(
+    [
+        config.CLOUDINARY_CLOUD_NAME,
+        config.CLOUDINARY_API_KEY,
+        config.CLOUDINARY_API_SECRET,
+    ]
 )
+DO_CONFIGURED = all(
+    [
+        config.DO_SPACES_ENDPOINT,
+        config.DO_SPACES_ACCESS_KEY_ID,
+        config.DO_SPACES_SECRET_ACCESS_KEY,
+        config.DO_SPACES_BUCKET,
+    ]
+)
+
+if CLOUDINARY_CONFIGURED:
+    cloudinary.config(
+        cloud_name=config.CLOUDINARY_CLOUD_NAME,
+        api_key=config.CLOUDINARY_API_KEY,
+        api_secret=config.CLOUDINARY_API_SECRET,
+        secure=True,
+    )
+
+# Reusable S3 client for DO Spaces when configured
+s3_client = None
+if DO_CONFIGURED:
+    try:
+        s3_client = boto3.client(
+            "s3",
+            endpoint_url=config.DO_SPACES_ENDPOINT,
+            aws_access_key_id=config.DO_SPACES_ACCESS_KEY_ID,
+            aws_secret_access_key=config.DO_SPACES_SECRET_ACCESS_KEY,
+            region_name=getattr(config, "DO_SPACES_REGION", None) or "sfo3",
+            config=BotoConfig(signature_version="s3v4"),
+        )
+    except Exception:
+        s3_client = None
 
 _CACHE_PREFIX = "MyMediVault_compressed"
 
 
 def _merged_url(public_id: str) -> str:
     """Plain public URL for a merged PDF — same as source documents (raw/upload)."""
+    # Prefer DO Spaces when it's configured and either explicitly opted-in
+    # or Cloudinary is not configured (DO-only deployments).
+    prefer_do = DO_CONFIGURED and (
+        config.USE_DIGITALOCEAN_AS_PRIMARY or not CLOUDINARY_CONFIGURED
+    )
+    if prefer_do and s3_client:
+        # Construct Spaces public URL using endpoint + bucket + key
+        # If endpoint already includes bucket host, fall back to endpoint/bucket/key form.
+        endpoint = config.DO_SPACES_ENDPOINT.rstrip("/")
+        return f"{endpoint}/{config.DO_SPACES_BUCKET}/{public_id}"
+
     return f"https://res.cloudinary.com/{config.CLOUDINARY_CLOUD_NAME}/raw/upload/{public_id}"
 
 
@@ -37,7 +79,7 @@ def _source_delivery_url(
     public_id: str,
     resource_type: str = "image",
     access_mode: str = "signed",
-    storage_provider: str = "cloudinary"
+    storage_provider: str = "cloudinary",
 ) -> str:
     """Build a delivery URL for fetching a source PDF.
 
@@ -45,25 +87,34 @@ def _source_delivery_url(
     Signed/authenticated files use expires_at + sign_url.
     DigitalOcean uses boto3 S3 presigned URLs.
     """
-    if storage_provider == "digitalocean" or getattr(config, "USE_DIGITALOCEAN_AS_PRIMARY", False):
+    # Route by file's storage_provider; the global flag is only a default for
+    # files that don't carry one. Cloudinary fallback is for files that lived
+    # there before DO was added.
+    use_do = storage_provider == "digitalocean"
+    if use_do and not DO_CONFIGURED:
+        raise SourceFetchError(public_id, "DigitalOcean Spaces not configured")
+
+    if use_do:
         try:
             s3 = boto3.client(
                 "s3",
                 endpoint_url=config.DO_SPACES_ENDPOINT,
                 aws_access_key_id=config.DO_SPACES_ACCESS_KEY_ID,
                 aws_secret_access_key=config.DO_SPACES_SECRET_ACCESS_KEY,
-                region_name=getattr(config, "DO_SPACES_REGION", "sfo3"),
-                config=BotoConfig(signature_version="s3v4")
+                region_name=config.DO_SPACES_REGION or "sfo3",
+                config=BotoConfig(signature_version="s3v4"),
             )
             return s3.generate_presigned_url(
                 ClientMethod="get_object",
                 Params={"Bucket": config.DO_SPACES_BUCKET, "Key": public_id},
-                ExpiresIn=300
+                ExpiresIn=300,
             )
         except Exception as e:
             logger.error(f"DO Presigned URL failed for {public_id}: {e}")
-            if storage_provider == "digitalocean":
-                raise e
+            raise SourceFetchError(public_id, str(e)) from e
+
+    if not CLOUDINARY_CONFIGURED:
+        raise SourceFetchError(public_id, "Cloudinary not configured")
 
     if access_mode == "public":
         url, _ = cloudinary.utils.cloudinary_url(
@@ -89,6 +140,18 @@ def _source_delivery_url(
 async def check_cache(content_hash: str, http_client: httpx.AsyncClient) -> str | None:
     """Check if a cached merged PDF exists via HEAD request."""
     public_id = f"{_CACHE_PREFIX}/{content_hash}.pdf"
+    # If Spaces is preferred (or Cloudinary absent) probe DO first using head_object
+    prefer_do = DO_CONFIGURED and (
+        config.USE_DIGITALOCEAN_AS_PRIMARY or not CLOUDINARY_CONFIGURED
+    )
+    if prefer_do and s3_client:
+        try:
+            s3_client.head_object(Bucket=config.DO_SPACES_BUCKET, Key=public_id)
+            return public_id
+        except Exception:
+            pass
+
+    # Fallback: probe Cloudinary public URL via HEAD
     probe_url = _merged_url(public_id)
 
     try:
@@ -115,6 +178,24 @@ async def fetch_merged_size(content_hash: str) -> Optional[int]:
     of our ladder produced the file, only our service does.
     """
     public_id = f"{_CACHE_PREFIX}/{content_hash}.pdf"
+
+    # If DO is configured and preferred (or Cloudinary absent) try head_object
+    prefer_do = DO_CONFIGURED and (
+        config.USE_DIGITALOCEAN_AS_PRIMARY or not CLOUDINARY_CONFIGURED
+    )
+    if prefer_do and s3_client:
+        try:
+            resp = s3_client.head_object(Bucket=config.DO_SPACES_BUCKET, Key=public_id)
+            size = resp.get("ContentLength")
+            return int(size) if size is not None else None
+        except Exception:
+            logger.warning(
+                "DO head_object fallback failed",
+                extra={
+                    "event": "do_head_object_error",
+                    "metrics": {"public_id": public_id},
+                },
+            )
 
     def _blocking() -> Optional[int]:
         try:
@@ -230,6 +311,32 @@ def upload_merged(
         },
     )
 
+    # If DO is configured and either explicitly chosen or Cloudinary is absent,
+    # upload the merged PDF to Spaces as a public object for direct delivery.
+    prefer_do = DO_CONFIGURED and (
+        config.USE_DIGITALOCEAN_AS_PRIMARY or not CLOUDINARY_CONFIGURED
+    )
+    if prefer_do and s3_client:
+        try:
+            s3_client.upload_file(
+                Filename=str(local_path),
+                Bucket=config.DO_SPACES_BUCKET,
+                Key=public_id,
+                ExtraArgs={
+                    "ACL": "public-read",
+                    "ContentType": "application/pdf",
+                },
+            )
+            logger.info(
+                "Upload complete (DO Spaces)",
+                extra={"job_id": job_id, "event": "upload_done"},
+            )
+            endpoint = config.DO_SPACES_ENDPOINT.rstrip("/")
+            return f"{endpoint}/{config.DO_SPACES_BUCKET}/{public_id}"
+        except Exception as e:
+            logger.error("DO upload failed", exc_info=e)
+
+    # Fallback to Cloudinary upload
     result = cloudinary.uploader.upload(
         str(local_path),
         public_id=public_id,
@@ -239,7 +346,7 @@ def upload_merged(
     )
 
     logger.info(
-        "Upload complete",
+        "Upload complete (Cloudinary)",
         extra={"job_id": job_id, "event": "upload_done"},
     )
 

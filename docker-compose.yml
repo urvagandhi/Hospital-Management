@@ -11,6 +11,13 @@ services:
       - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      # DigitalOcean Spaces (pass through if used)
+      - DO_SPACES_ENDPOINT=${DO_SPACES_ENDPOINT}
+      - DO_SPACES_ACCESS_KEY_ID=${DO_SPACES_ACCESS_KEY_ID}
+      - DO_SPACES_SECRET_ACCESS_KEY=${DO_SPACES_SECRET_ACCESS_KEY}
+      - DO_SPACES_BUCKET=${DO_SPACES_BUCKET}
+      - DO_SPACES_REGION=${DO_SPACES_REGION}
+      - USE_DIGITALOCEAN_AS_PRIMARY=${USE_DIGITALOCEAN_AS_PRIMARY}
       - MONGO_URI=mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@host.docker.internal:27017/hospital-management?authSource=admin
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -62,7 +69,6 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
@@ -76,7 +82,7 @@ services:
           "--no-verbose",
           "--tries=1",
           "--spider",
-          "http://localhost:80/",
+          "http://localhost:80/healthz",
         ]
       interval: 15s
       timeout: 5s

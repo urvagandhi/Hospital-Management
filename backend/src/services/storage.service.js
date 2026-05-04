@@ -1,33 +1,42 @@
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import cloudinaryModule from 'cloudinary';
 import multer from 'multer';
 import CloudinaryStorage from 'multer-storage-cloudinary';
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const cloudinary = cloudinaryModule.v2;
 
 // ---------------------------------------------------------------------------
-// Cloudinary configuration
+// Cloudinary configuration (gated for missing credentials)
 // ---------------------------------------------------------------------------
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // DigitalOcean Spaces (S3) configuration
 // ---------------------------------------------------------------------------
-const s3Client = new S3Client({
-  endpoint: process.env.DO_SPACES_ENDPOINT,
-  region: process.env.DO_SPACES_REGION || "us-east-1",
-  credentials: {
-    accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID,
-    secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY,
-  },
-});
+const USE_DIGITALOCEAN_AS_PRIMARY = String(process.env.USE_DIGITALOCEAN_AS_PRIMARY || 'false').toLowerCase() === 'true';
+const DO_SPACES_CONFIGURED = !!(process.env.DO_SPACES_ENDPOINT && process.env.DO_SPACES_ACCESS_KEY_ID && process.env.DO_SPACES_SECRET_ACCESS_KEY);
 
-const DO_BUCKET = process.env.DO_SPACES_BUCKET || "datastorage101291";
+let s3Client = null;
+let DO_BUCKET = null;
+
+if (DO_SPACES_CONFIGURED) {
+  s3Client = new S3Client({
+    endpoint: process.env.DO_SPACES_ENDPOINT,
+    region: process.env.DO_SPACES_REGION || "us-east-1",
+    credentials: {
+      accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID,
+      secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY,
+    },
+  });
+  DO_BUCKET = process.env.DO_SPACES_BUCKET || "spacesmymedivault";
+}
 
 // ---------------------------------------------------------------------------
 // Allowed MIME types
@@ -133,16 +142,76 @@ const documentStorage = new CloudinaryStorage({
 });
 
 // ---------------------------------------------------------------------------
-// Multer middleware
+// Multer middleware (route to primary provider or Cloudinary fallback)
 // ---------------------------------------------------------------------------
+
+// If DO is primary and configured, use memory storage + post-upload handler;
+// otherwise use Cloudinary storage if available.
+const getImageStorage = () => {
+  if (USE_DIGITALOCEAN_AS_PRIMARY && DO_SPACES_CONFIGURED) {
+    // Memory storage; controller will handle DO upload
+    return multer.memoryStorage();
+  }
+  // Fallback to Cloudinary if configured
+  if (process.env.CLOUDINARY_CLOUD_NAME) {
+    return new CloudinaryStorage({
+      cloudinary: cloudinaryModule,
+      params: {
+        folder: 'hospital/images',
+        resource_type: 'image',
+        type: 'upload',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+      },
+    });
+  }
+  // Fallback to memory if nothing else
+  return multer.memoryStorage();
+};
+
+const getDocumentStorage = () => {
+  if (USE_DIGITALOCEAN_AS_PRIMARY && DO_SPACES_CONFIGURED) {
+    // Memory storage; controller will handle DO upload
+    return multer.memoryStorage();
+  }
+  // Fallback to Cloudinary if configured
+  if (process.env.CLOUDINARY_CLOUD_NAME) {
+    return new CloudinaryStorage({
+      cloudinary: cloudinaryModule,
+      params: (req, _file, cb) => {
+        const hospitalId = req.hospital?.id?.toString();
+        const patientMongoId = req.params?.patientId;
+        const folderName = req.params?.folderName || 'others';
+
+        if (!hospitalId || !patientMongoId) {
+          return cb(new Error('Missing hospitalId or patientId for Cloudinary path'));
+        }
+
+        const publicId = buildCloudinaryPublicId(hospitalId, patientMongoId, folderName);
+        const assetFolder = publicId.substring(0, publicId.lastIndexOf('/'));
+        const displayName = publicId.substring(publicId.lastIndexOf('/') + 1);
+        cb(null, {
+          resource_type: 'raw',
+          type: 'upload',
+          allowed_formats: ['pdf'],
+          public_id: publicId,
+          asset_folder: assetFolder,
+          display_name: displayName,
+        });
+      },
+    });
+  }
+  // Fallback to memory if nothing else
+  return multer.memoryStorage();
+};
+
 const uploadImage = multer({
-  storage: imageStorage,
+  storage: getImageStorage(),
   fileFilter: imageFileFilter,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
 });
 
 const uploadDocument = multer({
-  storage: documentStorage,
+  storage: getDocumentStorage(),
   fileFilter: documentFileFilter,
   limits: { fileSize: 30 * 1024 * 1024 }, // 30 MB
 });
@@ -163,10 +232,72 @@ async function deleteFile(publicId, resourceType = "image") {
 }
 
 // ---------------------------------------------------------------------------
-// uploadBuffer — programmatic upload (e.g. PDF export buffer → Cloudinary)
-// Returns { success, url, publicId } or { success, error }
+// deleteFromSpaces — remove an object from DigitalOcean Spaces
+// ---------------------------------------------------------------------------
+async function deleteFromSpaces(key) {
+  if (!DO_SPACES_CONFIGURED || !s3Client) {
+    return { success: false, error: 'DO Spaces not configured' };
+  }
+  try {
+    const command = new DeleteObjectCommand({
+      Bucket: DO_BUCKET,
+      Key: key,
+    });
+    const result = await s3Client.send(command);
+    return { success: true, result };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message || 'Failed to delete file from DO Spaces',
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// uploadToSpaces — upload buffer to DigitalOcean Spaces
+// Returns { success, url, key } or { success, error }
+// ---------------------------------------------------------------------------
+async function uploadToSpaces(buffer, key, mimeType = 'application/octet-stream') {
+  if (!DO_SPACES_CONFIGURED || !s3Client) {
+    return { success: false, error: 'DO Spaces not configured' };
+  }
+  try {
+    const command = new PutObjectCommand({
+      Bucket: DO_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: mimeType,
+      ACL: 'private', // Files are private by default; access via signed URLs
+    });
+    await s3Client.send(command);
+    const url = `${process.env.DO_SPACES_ENDPOINT}/${DO_BUCKET}/${key}`;
+    return { success: true, url, key };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message || 'Failed to upload to DO Spaces',
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// uploadBuffer — programmatic upload (e.g. PDF export buffer → Cloudinary or DO)
+// Returns { success, url, key/publicId } or { success, error }
 // ---------------------------------------------------------------------------
 async function uploadBuffer(buffer, options = {}) {
+  const storageProvider = options.storageProvider || (USE_DIGITALOCEAN_AS_PRIMARY ? 'digitalocean' : 'cloudinary');
+
+  // PRIORITY 1: Try DigitalOcean if configured and requested
+  if (storageProvider === 'digitalocean' && DO_SPACES_CONFIGURED) {
+    const key = options.key || `hospital/uploads/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return uploadToSpaces(buffer, key, options.mimeType || 'application/octet-stream');
+  }
+
+  // PRIORITY 2: Fallback to Cloudinary
+  if (!process.env.CLOUDINARY_CLOUD_NAME) {
+    return { success: false, error: 'No storage provider configured' };
+  }
+
   try {
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -195,7 +326,7 @@ async function uploadBuffer(buffer, options = {}) {
   } catch (error) {
     return {
       success: false,
-      error: error.message || 'Failed to upload buffer to Cloudinary',
+      error: error.message || 'Failed to upload buffer',
     };
   }
 }
@@ -222,53 +353,59 @@ function buildThumbnailUrl({ publicId, resourceType = 'image', accessMode = 'pub
 }
 
 // ---------------------------------------------------------------------------
-// B5: buildSignedUrl — time-limited delivery URL for a private asset.
-//     TTL default: 5 minutes. Caller passes resource_type + public_id.
+// buildSignedUrl — time-limited delivery URL for a private asset (NOW ASYNC).
+//     TTL default: 5 minutes. Routes based on storageProvider field, not global env flag.
+//     CRITICAL: This function MUST be awaited by all callers.
 // ---------------------------------------------------------------------------
-function buildSignedUrl({ 
-  publicId, 
-  resourceType = 'image', 
-  ttlSeconds = 300, 
-  attachment = false, 
+async function buildSignedUrl({
+  publicId,
+  resourceType = 'image',
+  ttlSeconds = 300,
+  attachment = false,
   fileName = null,
-  storageProvider = 'cloudinary' 
+  storageProvider = 'cloudinary'
 }) {
   if (!publicId) return null;
 
-  // PRIORITY 1: Check if we should use DigitalOcean (or if it's explicitly requested)
-  if (storageProvider === 'digitalocean' || process.env.USE_DIGITALOCEAN_AS_PRIMARY === 'true') {
+  // PRIORITY 1: Route based on FILE's storage provider (not env flag)
+  if (storageProvider === 'digitalocean' && DO_SPACES_CONFIGURED) {
     try {
       const command = new GetObjectCommand({
         Bucket: DO_BUCKET,
         Key: publicId,
-        ResponseContentDisposition: attachment 
-          ? `attachment; filename="${fileName || 'file'}"` 
+        ResponseContentDisposition: attachment
+          ? `attachment; filename="${fileName || 'file'}"`
           : 'inline',
       });
-      // getSignedUrl returns a promise, so this function should ideally be async.
-      // But for backward compatibility with current sync usage, we might need a wrapper.
-      // For now, I'll mark it as potentially needing an await in the controller.
-      return getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
+      return await getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
     } catch (err) {
       console.error("DO Signed URL Error:", err);
-      // If DO fails, we can fallback to Cloudinary if requested
-      if (storageProvider === 'digitalocean') return null;
+      return null;
     }
   }
 
-  // PRIORITY 2: Fallback to Cloudinary
-  const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
-  const options = {
-    resource_type: resourceType,
-    type: 'authenticated',
-    sign_url: true,
-    secure: true,
-    expires_at: expiresAt,
-  };
-  if (attachment) {
-    options.flags = fileName ? `attachment:${encodeURIComponent(fileName)}` : 'attachment';
+  // PRIORITY 2: Fallback to Cloudinary for file's marked as cloudinary
+  if (!process.env.CLOUDINARY_CLOUD_NAME) {
+    return null; // No provider available
   }
-  return cloudinary.url(publicId, options);
+
+  try {
+    const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+    const options = {
+      resource_type: resourceType,
+      type: 'authenticated',
+      sign_url: true,
+      secure: true,
+      expires_at: expiresAt,
+    };
+    if (attachment) {
+      options.flags = fileName ? `attachment:${encodeURIComponent(fileName)}` : 'attachment';
+    }
+    return cloudinary.url(publicId, options);
+  } catch (err) {
+    console.error("Cloudinary Signed URL Error:", err);
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -301,16 +438,18 @@ async function listCloudinaryResources(prefix, resourceType = 'raw') {
 // these params, bypassing the Express/Render proxy entirely.
 // ---------------------------------------------------------------------------
 function generateSignedUploadParams(hospitalId, patientMongoId, folderName, originalFileName) {
+  if (!process.env.CLOUDINARY_CLOUD_NAME) {
+    return null;
+  }
   const publicId = buildCloudinaryPublicId(hospitalId, patientMongoId, folderName);
   const timestamp = Math.floor(Date.now() / 1000);
-  const uploadType = SIGNED_UPLOADS_ENABLED ? 'authenticated' : 'upload';
 
   // Parameters that Cloudinary uses in signature generation.
   // The order and set of keys MUST match what the client sends.
   const paramsToSign = {
     public_id: publicId,
     timestamp,
-    type: uploadType,
+    type: 'upload',
   };
 
   // cloudinary.utils.api_sign_request signs the params with the api_secret.
@@ -322,16 +461,65 @@ function generateSignedUploadParams(hospitalId, patientMongoId, folderName, orig
     signature,
     timestamp,
     publicId,
-    type: uploadType,
+    type: 'upload',
     uploadUrl: `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload`,
   };
+}
+
+// ---------------------------------------------------------------------------
+// generateSignedUploadParamsForSpaces — creates a presigned PutObject URL for
+// direct-to-DO uploads from the mobile client. The client PUTs the file
+// straight to the presigned URL, bypassing the Express/Render proxy.
+// Returns { success, presignedUrl, key, expires } or { success: false, error }
+// ---------------------------------------------------------------------------
+async function generateSignedUploadParamsForSpaces(hospitalId, patientMongoId, folderName, fileName) {
+  if (!DO_SPACES_CONFIGURED || !s3Client) {
+    return { success: false, error: 'DO Spaces not configured' };
+  }
+
+  const folderSlug = slugifyFolder(folderName);
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+  const hash = Math.random().toString(36).slice(2, 6); // 4-char suffix
+  const key = `MyMediVault/h_${hospitalId}/p_${patientMongoId}/${folderSlug}/${dateStr}_${hash}`;
+
+  try {
+    const command = new PutObjectCommand({
+      Bucket: DO_BUCKET,
+      Key: key,
+      ContentType: 'application/octet-stream',
+      ACL: 'private',
+    });
+    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 }); // 15 min
+    return {
+      success: true,
+      presignedUrl,
+      key,
+      endpoint: process.env.DO_SPACES_ENDPOINT,
+      bucket: DO_BUCKET,
+      expires: 900,
+    };
+  } catch (error) {
+    return { success: false, error: error.message || 'Failed to generate presigned URL' };
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 export {
-  buildCloudinaryPublicId, buildSignedUrl, buildThumbnailUrl, cloudinary, deleteFile, generateSignedUploadParams, listCloudinaryResources, SIGNED_UPLOADS_ENABLED,
-  slugifyFolder, uploadBuffer, uploadDocument, uploadImage
+  buildCloudinaryPublicId,
+  buildSignedUrl,
+  buildThumbnailUrl,
+  cloudinary,
+  deleteFile,
+  deleteFromSpaces, DO_SPACES_CONFIGURED, generateSignedUploadParams,
+  generateSignedUploadParamsForSpaces,
+  listCloudinaryResources,
+  slugifyFolder,
+  uploadBuffer,
+  uploadDocument,
+  uploadImage,
+  uploadToSpaces,
+  USE_DIGITALOCEAN_AS_PRIMARY
 };
 

@@ -17,8 +17,12 @@ import {
   buildThumbnailUrl,
   cloudinary,
   deleteFile as cloudinaryDeleteFile,
+  deleteFromSpaces,
+  DO_SPACES_CONFIGURED,
   generateSignedUploadParams,
-  SIGNED_UPLOADS_ENABLED,
+  generateSignedUploadParamsForSpaces,
+  uploadToSpaces,
+  USE_DIGITALOCEAN_AS_PRIMARY,
 } from "../services/storage.service.js";
 import * as zipService from "../services/zip.service.js";
 import getClientIp from "../utils/clientIp.js";
@@ -308,28 +312,63 @@ export const uploadFile = async (req, res) => {
       });
     }
 
-    // multer-storage-cloudinary merges Cloudinary's response into req.file.
-    // Depending on the library version the URL lives in .secure_url or .path,
-    // and the public ID in .public_id or .filename.
-    const cloudinaryUrl = file.secure_url || file.path;
-    const cloudinaryPublicId = file.public_id || file.filename;
     const isImage = (file.mimetype || "").startsWith("image/");
     const resourceType = isImage ? "image" : "raw";
-    const accessMode = SIGNED_UPLOADS_ENABLED ? "signed" : "public";
-    const thumbnailUrl = isImage
-      ? buildThumbnailUrl({ publicId: cloudinaryPublicId, resourceType, accessMode })
-      : null;
+    let fileUrl, filePublicId, storageProvider, thumbnailUrl;
 
-    req.log.info({ event: "file_uploaded_cloudinary", cloudinaryUrl }, "[Patient Controller] File uploaded to Cloudinary");
+    // ─────────────────────────────────────────────────────────────────────
+    // PRIORITY 1: Upload to DigitalOcean if primary and configured
+    // ─────────────────────────────────────────────────────────────────────
+    if (USE_DIGITALOCEAN_AS_PRIMARY && DO_SPACES_CONFIGURED) {
+      const patientMongoId = req.params?.patientId || String(patientId);
+      const folderSlug = (folderName || 'others')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .trim()
+        .replace(/\s+/g, '_');
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const hash = Math.random().toString(36).slice(2, 6);
+      const key = `MyMediVault/h_${hospitalId}/p_${patientMongoId}/${folderSlug}/${dateStr}_${hash}`;
 
-    // Update patient record — store the Cloudinary URL directly
+      const uploadResult = await uploadToSpaces(file.buffer, key, file.mimetype);
+      if (!uploadResult.success) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload to DigitalOcean Spaces: " + uploadResult.error,
+        });
+      }
+
+      fileUrl = uploadResult.url;
+      filePublicId = uploadResult.key;
+      storageProvider = "digitalocean";
+      // DO Spaces doesn't support server-side transformations. Use the
+      // uploaded image URL as a pragmatic thumbnail until we generate
+      // resized thumbs server-side.
+      thumbnailUrl = isImage ? uploadResult.url : null;
+      req.log.info({ event: "file_uploaded_do", fileUrl }, "[Patient Controller] File uploaded to DigitalOcean Spaces");
+    }
+    // ─────────────────────────────────────────────────────────────────────
+    // PRIORITY 2: Fallback to Cloudinary (multer-storage-cloudinary already uploaded)
+    // ─────────────────────────────────────────────────────────────────────
+    else {
+      fileUrl = file.secure_url || file.path;
+      filePublicId = file.public_id || file.filename;
+      storageProvider = "cloudinary";
+      thumbnailUrl = isImage
+        ? buildThumbnailUrl({ publicId: filePublicId, resourceType, accessMode: "public" })
+        : null;
+      req.log.info({ event: "file_uploaded_cloudinary", fileUrl }, "[Patient Controller] File uploaded to Cloudinary");
+    }
+
+    // Add file to patient record with storageProvider stamped
     const patient = await patientService.addFileToFolder(hospitalId, patientId, folderName, {
       fileName: file.originalname,
-      fileUrl: cloudinaryUrl,
-      cloudinaryPublicId: cloudinaryPublicId,
+      fileUrl,
+      cloudinaryPublicId: filePublicId,
+      storageProvider,
       thumbnailUrl,
       resourceType,
-      accessMode,
+      accessMode: "signed",
       size: file.size || file.bytes,
       mimeType: file.mimetype,
     });
@@ -348,13 +387,11 @@ export const uploadFile = async (req, res) => {
       fileName: file.originalname,
       size: file.size || file.bytes,
       mimeType: file.mimetype,
-      accessMode,
+      storageProvider,
       resourceType,
     });
 
-    // Cache the response against the client's Idempotency-Key so an offline-sync
-    // retry for the *same* logical upload returns the original result instead of
-    // creating a duplicate file entry on the patient record.
+    // Idempotency caching
     const idemKey = req.header("Idempotency-Key");
     if (idemKey) {
       setUploadIdempotentResponse(hospitalId, idemKey, { status: 200, body: responseBody })
@@ -422,6 +459,71 @@ export const signUpload = async (req, res) => {
 };
 
 /**
+ * POST /api/patients/:patientId/files/:folderName/sign-spaces
+ * Generate presigned PutObject URL for direct-to-DO uploads.
+ * Only available if DO Spaces is configured.
+ *
+ * Response: { success, presignedUrl, key, endpoint, bucket, expires }
+ */
+export const signUploadForSpaces = async (req, res) => {
+  try {
+    if (!DO_SPACES_CONFIGURED) {
+      return res.status(400).json({
+        success: false,
+        message: "DigitalOcean Spaces is not configured",
+      });
+    }
+
+    const { patientId, folderName } = req.params;
+    const hospitalId = req.hospital?.id;
+    const { fileName } = req.body;
+
+    req.log.info(
+      { event: "sign_spaces_upload_attempt", patientId, folderName, fileName },
+      "[Patient Controller] Generating DO Spaces presigned URL"
+    );
+
+    if (!/^[a-zA-Z0-9_\-\.\s,()\/]+$/.test(folderName)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid folder name.",
+      });
+    }
+
+    const patient = await patientService.getPatientById(hospitalId, patientId);
+    if (!patient) {
+      return res.status(404).json({ success: false, message: "Patient not found" });
+    }
+
+    const result = await generateSignedUploadParamsForSpaces(hospitalId, patientId, folderName, fileName);
+    if (!result.success) {
+      return res.status(500).json({ success: false, message: result.error });
+    }
+
+    req.log.info(
+      { event: "sign_spaces_upload_success", key: result.key },
+      "[Patient Controller] DO Spaces presigned URL generated"
+    );
+
+    return res.status(200).json({
+      success: true,
+      presignedUrl: result.presignedUrl,
+      key: result.key,
+      endpoint: result.endpoint,
+      bucket: result.bucket,
+      expires: result.expires,
+    });
+  } catch (error) {
+    req.log.error({ event: "sign_spaces_upload_error", err: error }, "[Patient Controller] Sign Spaces error");
+    const isNotFound = error.message?.includes("not found");
+    return res.status(isNotFound ? 404 : 500).json({
+      success: false,
+      message: isNotFound ? error.message : "Failed to generate presigned URL",
+    });
+  }
+};
+
+/**
  * POST /api/patients/:patientId/files/:folderName/confirm
  * After the client uploads directly to Cloudinary, it calls this endpoint
  * with the Cloudinary response so we can persist the file metadata on the
@@ -465,7 +567,7 @@ export const confirmDirectUpload = async (req, res) => {
       });
     }
 
-    const accessMode = SIGNED_UPLOADS_ENABLED ? "signed" : "public";
+    const accessMode = config.SIGNED_UPLOADS_ENABLED ? "signed" : "public";
     const cloudinaryType = accessMode === "signed" ? "authenticated" : "upload";
 
     let cloudinaryAsset;
@@ -610,15 +712,29 @@ export const deleteFile = async (req, res) => {
 
     const { patient, deletedFile } = await patientService.deleteFileFromFolder(hospitalId, patientId, folderName, fileId);
 
-    // Best effort remote cleanup; don't fail the API if Cloudinary cleanup fails.
+    // Best effort remote cleanup; don't fail the API if storage cleanup fails.
     if (deletedFile?.cloudinaryPublicId) {
-      const resourceType = deletedFile.resourceType || "image";
-      const remoteDeleteResult = await cloudinaryDeleteFile(deletedFile.cloudinaryPublicId, resourceType);
-      if (!remoteDeleteResult.success) {
-        req.log.warn(
-          { event: "cloudinary_cleanup_failed", cleanup_error: remoteDeleteResult.error },
-          "[Patient Controller] Cloudinary cleanup failed",
-        );
+      let remoteDeleteResult;
+      const fileKey = deletedFile.cloudinaryPublicId;
+
+      // Route deletion based on file's storage provider
+      if (deletedFile.storageProvider === "digitalocean") {
+        remoteDeleteResult = await deleteFromSpaces(fileKey);
+        if (!remoteDeleteResult.success) {
+          req.log.warn(
+            { event: "do_spaces_cleanup_failed", cleanup_error: remoteDeleteResult.error },
+            "[Patient Controller] DO Spaces cleanup failed",
+          );
+        }
+      } else {
+        const resourceType = deletedFile.resourceType || "image";
+        remoteDeleteResult = await cloudinaryDeleteFile(fileKey, resourceType);
+        if (!remoteDeleteResult.success) {
+          req.log.warn(
+            { event: "cloudinary_cleanup_failed", cleanup_error: remoteDeleteResult.error },
+            "[Patient Controller] Cloudinary cleanup failed",
+          );
+        }
       }
     }
 
@@ -676,13 +792,22 @@ export const getFileSignedUrl = async (req, res) => {
       });
     }
 
-    const signed = buildSignedUrl({
+    // CRITICAL: buildSignedUrl is now async and routes based on file.storageProvider
+    const signed = await buildSignedUrl({
       publicId: file.cloudinaryPublicId,
       resourceType: file.resourceType || "image",
       ttlSeconds: 300,
       attachment: download,
       fileName: download ? file.fileName : null,
+      storageProvider: file.storageProvider || "cloudinary",
     });
+
+    if (!signed) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to generate signed URL",
+      });
+    }
 
     logAudit(hospitalId, "PATIENT_VIEW", req, { patientId, folderName, fileId, signed: true });
 
@@ -1080,10 +1205,11 @@ export const downloadFileCompressed = async (req, res) => {
       // Fallback: proxy the raw file from Cloudinary (same as /stream)
       let fetchUrl = file.fileUrl;
       if (file.accessMode === "signed" && file.cloudinaryPublicId) {
-        fetchUrl = buildSignedUrl({
+        fetchUrl = await buildSignedUrl({
           publicId: file.cloudinaryPublicId,
           resourceType: file.resourceType || "raw",
           ttlSeconds: 120,
+          storageProvider: file.storageProvider || "cloudinary",
         });
       }
       const upstream = await fetch(fetchUrl);

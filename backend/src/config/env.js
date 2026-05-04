@@ -78,6 +78,15 @@ const config = {
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  SIGNED_UPLOADS_ENABLED: String(process.env.SIGNED_UPLOADS_ENABLED || 'false').toLowerCase() === 'true',
+
+  // DigitalOcean Spaces (S3)
+  DO_SPACES_ENDPOINT: process.env.DO_SPACES_ENDPOINT,
+  DO_SPACES_REGION: process.env.DO_SPACES_REGION || 'us-east-1',
+  DO_SPACES_ACCESS_KEY_ID: process.env.DO_SPACES_ACCESS_KEY_ID,
+  DO_SPACES_SECRET_ACCESS_KEY: process.env.DO_SPACES_SECRET_ACCESS_KEY,
+  DO_SPACES_BUCKET: process.env.DO_SPACES_BUCKET || 'spacesmymedivault',
+  USE_DIGITALOCEAN_AS_PRIMARY: String(process.env.USE_DIGITALOCEAN_AS_PRIMARY || 'false').toLowerCase() === 'true',
 
   // Upstash Redis
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
@@ -116,10 +125,17 @@ if (config.NODE_ENV === "production") {
   if (!config.MONGODB_URI) {
     throw new Error("MONGODB_URI must be set in production");
   }
-  if (!config.CLOUDINARY_CLOUD_NAME && !config.R2_ACCESS_KEY_ID) {
-    bootstrapLog("warn", "[env] WARNING: Neither Cloudinary nor R2 storage configured for production", {
-      event: "env_storage_missing",
-    });
+
+  // Check storage configuration
+  const hasCloudinary = config.CLOUDINARY_CLOUD_NAME && config.CLOUDINARY_API_KEY && config.CLOUDINARY_API_SECRET;
+  const hasDO = config.DO_SPACES_ENDPOINT && config.DO_SPACES_ACCESS_KEY_ID && config.DO_SPACES_SECRET_ACCESS_KEY;
+
+  if (!hasCloudinary && !hasDO) {
+    throw new Error("STORAGE ALERT: Neither Cloudinary nor DigitalOcean Spaces configured. At least one storage provider is required in production.");
+  }
+
+  if (config.USE_DIGITALOCEAN_AS_PRIMARY && !hasDO) {
+    throw new Error("USE_DIGITALOCEAN_AS_PRIMARY=true but DO Spaces credentials are missing (DO_SPACES_ENDPOINT, DO_SPACES_ACCESS_KEY_ID, DO_SPACES_SECRET_ACCESS_KEY)");
   }
   // TD-D4 (2026-04-25): the compression sidecar is mandatory in prod. Without
   // it, big-patient PDF/ZIP exports fall back to in-process pdf-lib merge,
