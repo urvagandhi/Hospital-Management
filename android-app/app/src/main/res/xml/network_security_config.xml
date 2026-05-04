@@ -13,6 +13,7 @@
          trust (enforced by base-config above) is sufficient here. -->
     <domain-config>
         <domain includeSubdomains="true">hospital-management-8lbf.onrender.com</domain>
+        <domain includeSubdomains="true">mymedivault.in</domain>
     </domain-config>
 
     <!-- Allow localhost cleartext for development only -->
