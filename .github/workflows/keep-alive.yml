@@ -2,8 +2,8 @@ name: Keep Server Alive
 
 on:
   schedule:
-    - cron: '*/7 * * * *'   # every 7 minutes
-  workflow_dispatch:          # allow manual trigger
+    - cron: "*/7 * * * *" # every 7 minutes
+  workflow_dispatch: # allow manual trigger
 
 jobs:
   ping-health:
@@ -42,7 +42,7 @@ jobs:
             -o /tmp/login_resp.json \
             https://hospital-management-8lbf.onrender.com/api/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"admin@citymedical.com","password":"Test@1234"}'
+            -d '{"email":"urvagandhi24@gmail.com","password":"Test@1234"}'
 
           # Log only non-sensitive fields (skip the huge logoUrl)
           echo "success=$(jq -r '.success' /tmp/login_resp.json)"
