@@ -140,6 +140,8 @@ const redis = {
   },
 };
 
+export { redis };
+
 export function isUsingInMemoryStore() {
   return usingInMemoryFallback;
 }
@@ -539,13 +541,14 @@ export async function claimUploadIdempotencyKey(hospitalId, key, ttlSeconds = 86
   const k = uploadIdemKey(hospitalId, key);
   const placeholder = JSON.stringify({ pending: true });
   try {
-    if (usingInMemory || !upstash) {
+    if (usingInMemoryFallback) {
       if (memGet(k)) return false;
       memSet(k, placeholder, { ex: ttlSeconds });
       return true;
     }
-    const res = await upstash.set(k, placeholder, { ex: ttlSeconds, nx: true });
-    return res === "OK";
+    // Using nx: true ensures only the first request sets the key
+    const res = await redis.set(k, placeholder, { ex: ttlSeconds, nx: true });
+    return res === "OK" || res === 1;
   } catch (err) {
     logger.error({ event: "redis_claim_upload_idempotency_failed", err }, "[redis.service] claimUploadIdempotencyKey error");
     return true; // fail-open: better a duplicate than a blocked user
@@ -577,9 +580,9 @@ export async function pingRedis() {
     await redis.set("health:ping", token, { ex: 10 });
     const got = await redis.get("health:ping");
     const ok = got === token;
-    return { ok, backend: usingInMemory ? "memory" : "upstash" };
+    return { ok, backend: mode };
   } catch (err) {
     logger.error({ event: "redis_ping_failed", err }, "[redis.service] pingRedis error");
-    return { ok: false, backend: usingInMemory ? "memory" : "upstash", error: err.message };
+    return { ok: false, backend: mode, error: err.message };
   }
 }
