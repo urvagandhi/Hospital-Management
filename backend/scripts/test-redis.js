@@ -23,6 +23,7 @@ console.log("Redis connectivity + OTP helper test");
 console.log("─".repeat(60));
 console.log("UPSTASH_REDIS_REST_URL set:", !!process.env.UPSTASH_REDIS_REST_URL);
 console.log("UPSTASH_REDIS_REST_TOKEN set:", !!process.env.UPSTASH_REDIS_REST_TOKEN);
+console.log("REDIS_URL set:", !!process.env.REDIS_URL);
 console.log("Test email:", testEmail);
 console.log();
 
@@ -111,7 +112,7 @@ async function run() {
   // Cleanup
   await deletePartialRegistration(testEmail);
   console.log("─".repeat(60));
-  console.log("🎉 All Redis helpers work correctly. Upstash is live.");
+  console.log("🎉 All Redis helpers work correctly.");
   console.log("─".repeat(60));
   process.exit(0);
 }

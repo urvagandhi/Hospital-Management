@@ -16,18 +16,13 @@
 
 import "dotenv/config";
 import mongoose from "mongoose";
-import { Redis } from "@upstash/redis";
 import Hospital from "../src/models/Hospital.js";
+import { redis } from "../src/services/redis.service.js";
 
 const API = "http://localhost:5000/api/auth";
 const TEST_EMAIL = `selfreg-test-${Date.now()}@example.com`;
 const TEST_PHONE = "9123456789";              // will be normalized to +919123456789
 const TEST_PASSWORD = "TestPass@123";          // passes strength: 8+ / upper / lower / digit / special
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
 
 // ─── Pretty-printing helpers ───────────────────────────────────────────────
 const line = (c = "─") => console.log(c.repeat(72));
