@@ -5,46 +5,102 @@
 - **Port:** `22`
 - **User:** `root`
 - **Domain:** `mymedivault.in`
-- **SSH Key Path:** `/home/urva/.ssh/id_ed25519` (Private) / `/home/urva/.ssh/id_ed25519.pub` (Public)
+- **OS:** Rocky Linux 9
 
-## Commands to Deploy
-To deploy the application to your DigitalOcean droplet, you can use the following steps:
+## Migration: Moving MongoDB to Host (Rocky Linux 9)
 
-1. **SSH into the server:**
-   ```bash
-   ssh root@168.144.124.208
-   ```
+Since we are moving MongoDB out of Docker to save resources and persist data natively, follow these steps on your server.
 
-2. **Clone the repository (if not already there):**
-   ```bash
-   git clone <your-repo-url>
-   cd Hospital-Management
-   ```
+### 1. Create Swap Space (Mandatory for 1GB Droplet)
+If you haven't already:
+```bash
+sudo dd if=/dev/zero of=/swapfile bs=1024 count=2097152
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
 
-3. **Copy the .env file:**
-   (You will need to manually copy the contents of the `.env` I created to the server)
+### 2. Install MongoDB 7.0 Community Edition
+```bash
+# Add MongoDB Repository
+sudo tee /etc/yum.repos.d/mongodb-org-7.0.repo <<EOF
+[mongodb-org-7.0]
+name=MongoDB Repository
+baseurl=https://repo.mongodb.org/yum/redhat/9/mongodb-org/7.0/x86_64/
+gpgcheck=1
+enabled=1
+gpgkey=https://www.mongodb.org/static/pgp/server-7.0.asc
+EOF
 
-4. **Run Docker Compose:**
-   ```bash
-   docker-compose up -d --build
-   ```
+# Install MongoDB
+sudo dnf install -y mongodb-org
 
-## Post-Deployment Checklist
-- [ ] Add Cloudinary API keys to `.env`
-- [ ] Add Brevo API keys to `.env`
-- [ ] Add Firebase project details to `.env`
-- [ ] Configure DNS for `mymedivault.in` to point to `168.144.124.208`
-- [ ] Ensure Port 80 and 443 are open on the firewall
+# Start and Enable Service
+sudo systemctl enable --now mongod
+```
 
-> [!WARNING]
-> Your droplet has 1GB of RAM. This is very tight for running MongoDB, Redis, and three application services. 
-> It is **strongly recommended** to create a swap file (e.g., 2GB) on the droplet to prevent out-of-memory (OOM) errors.
-> 
-> **To create a swap file on Ubuntu/Debian:**
-> ```bash
-> sudo fallocate -l 2G /swapfile
-> sudo chmod 600 /swapfile
-> sudo mkswap /swapfile
-> sudo swapon /swapfile
-> echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-> ```
+### 3. Configure Database and Users
+Run `mongosh` to enter the MongoDB shell:
+```javascript
+// Create Admin User
+use admin
+db.createUser({
+  user: "admin",
+  pwd: "YourSecureAdminPassword",
+  roles: [ { role: "userAdminAnyDatabase", db: "admin" }, "readWriteAnyDatabase" ]
+})
+
+// Create Application Database and User
+use hospital-management
+db.createUser({
+  user: "medivault_user",
+  pwd: "YourSecureAppPassword",
+  roles: [ { role: "readWrite", db: "hospital-management" } ]
+})
+exit
+```
+
+### 4. Enable Authentication and Network Binding
+Edit the config file:
+```bash
+sudo vi /etc/mongod.conf
+```
+Change `bindIp: 127.0.0.1` to `bindIp: 0.0.0.0` (or `127.0.0.1,172.17.0.1` if you know your docker gateway IP).
+Add the security section:
+```yaml
+security:
+  authorization: enabled
+```
+Restart MongoDB:
+```bash
+sudo systemctl restart mongod
+```
+
+### 5. Secure with Firewall (Rocky Linux 9)
+```bash
+# Allow Docker bridge to access MongoDB port
+sudo firewall-cmd --permanent --new-zone=docker-access
+sudo firewall-cmd --permanent --zone=docker-access --add-source=172.17.0.0/16
+sudo firewall-cmd --permanent --zone=docker-access --add-port=27017/tcp
+sudo firewall-cmd --reload
+```
+
+### 6. Update Application Environment
+Update your `.env` file on the server:
+```env
+# MongoDB Connection String (Points to Host machine from Container)
+MONGODB_URI=mongodb://medivault_user:YourSecureAppPassword@host.docker.internal:27017/hospital-management?authSource=hospital-management
+```
+
+### 7. Deploy Updated Stack
+```bash
+docker compose down
+# Ensure you have pulled the latest docker-compose.yml changes
+docker compose up -d --build
+```
+
+## Verification Commands
+- **Check MongoDB Status:** `sudo systemctl status mongod`
+- **Test Backend Connection:** `docker compose logs backend`
+- **Verify API Health:** `curl http://localhost/api/health` (via Nginx) or `curl http://localhost:5000/api/health`
