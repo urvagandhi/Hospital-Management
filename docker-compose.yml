@@ -11,8 +11,7 @@ services:
       MONGO_INITDB_DATABASE: hospital-management
     volumes:
       - mongo_data:/data/db
-    ports:
-      - "27017:27017"
+
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -27,8 +26,7 @@ services:
     command: redis-server --requirepass ${REDIS_PASSWORD:-changeme}
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
+
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
       interval: 10s
