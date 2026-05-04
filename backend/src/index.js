@@ -9,7 +9,7 @@ import express from "express";
 import helmet from "helmet";
 import connectDB from "./config/db.js";
 import config from "./config/env.js";
-import scheduleAutoDelete from "./jobs/autoDelete.job.js";
+// import scheduleAutoDelete from "./jobs/autoDelete.job.js";
 import scheduleIdleSweep from "./jobs/idleSweep.job.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { generalLimiter } from "./middleware/rateLimiter.js";
@@ -188,7 +188,7 @@ const startServer = async () => {
     await connectDB();
 
     // Schedule auto-delete cron job
-    scheduleAutoDelete();
+    // scheduleAutoDelete();
 
     // Schedule idle-session sweep — retires sessions idle > 15 min so closing
     // a tab without explicit logout doesn't leave ghost rows in the list.
