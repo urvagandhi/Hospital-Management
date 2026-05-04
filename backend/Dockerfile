@@ -10,6 +10,7 @@ RUN npm ci --omit=dev
 
 # Copy application source
 COPY src/ ./src/
+COPY scripts/ ./scripts/
 
 # Non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
