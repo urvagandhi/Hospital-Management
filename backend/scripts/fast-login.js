@@ -25,19 +25,28 @@ async function fastLogin() {
 
   // 2. Peek into Host Redis to get the code
   console.log("🔍 Peeking into Local Redis for the auth code...");
-  // The key pattern is 'auth_challenge:{email}' as per your backend logic
-  const redisKey = `auth_challenge:${email}`;
+  // The backend uses 'otp:{email}' as the key
+  const redisKey = `otp:${email.toLowerCase().trim()}`;
   
   // Wait a small moment for Redis to be updated
   await new Promise(resolve => setTimeout(resolve, 500));
   
-  const authCode = await redis.get(redisKey);
+  const rawData = await redis.get(redisKey);
+  let authCode = "136960"; // Use your fixed code as default
 
-  if (!authCode) {
-    console.error("❌ Could not find auth code in Redis. Check if key is correct or backend is using Native mode.");
-    return;
+  if (rawData) {
+    try {
+      const parsed = JSON.parse(rawData);
+      // The stored format is { hash: "...", attempts: 0 }
+      // We can't get the plain text OTP from the hash, 
+      // so we will rely on your fixed code 136960.
+      console.log("🎯 Found OTP record in Redis (Hashed).");
+    } catch (e) {
+      console.log("🎯 Found raw OTP in Redis.");
+    }
+  } else {
+    console.log("⚠️ No OTP found in Redis, using your fixed code: 136960");
   }
-  console.log(`🎯 Found Auth Code in Redis: ${authCode}`);
 
   // 3. Verify with the code
   console.log("📡 Sending verification request...");
