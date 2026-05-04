@@ -4,7 +4,7 @@
  * Modes:
  *  1) real hospital logo  → show hospital logo image
  *  2) hospital name only  → initials avatar (matches app-wide fallback)
- *  3) no identity         → app brand logo (MediVault platform logo)
+ *  3) no identity         → app brand logo (MyMediVault platform logo)
  */
 
 import React from "react";
@@ -58,10 +58,10 @@ export const LogoHeader: React.FC<LogoHeaderProps> = ({ logoUrl, hospitalName, s
           <>
             {/* Platform / app brand logo */}
             <div className="w-20 h-20 rounded-2xl border-2 border-primary-100 bg-white flex items-center justify-center overflow-hidden mb-4 mx-auto shadow-sm">
-              <img src={appLogo} alt="MediVault" className="w-full h-full object-contain p-1" />
+              <img src={appLogo} alt="MyMediVault" className="w-full h-full object-contain p-1" />
             </div>
             <h1 className="font-heading font-bold text-[26px] text-neutral-900 leading-tight mb-1">
-              MediVault
+              MyMediVault
             </h1>
           </>
         )}

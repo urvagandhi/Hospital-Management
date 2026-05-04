@@ -82,7 +82,7 @@ const GROUPS: Group[] = [
   {
     id: "news",
     title: "News & Updates",
-    description: "Information to help you get the most out of MediVault.",
+    description: "Information to help you get the most out of MyMediVault.",
     tone: "neutral",
     icon: (
       <svg
@@ -141,7 +141,7 @@ const NotificationSettings: React.FC = () => {
   const navigate = useNavigate();
   const { state } = useAuth();
 
-  useDocumentTitle("Notifications — MediVault");
+  useDocumentTitle("Notifications — MyMediVault");
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);

@@ -4,7 +4,7 @@
 - **IP Address:** `168.144.124.208`
 - **Port:** `22`
 - **User:** `root`
-- **Domain:** `mymedivault.in`
+- **Domain:** `myMyMediVault.in`
 - **OS:** Rocky Linux 9
 
 ## Migration: Moving MongoDB to Host (Rocky Linux 9)
@@ -54,7 +54,7 @@ db.createUser({
 // Create Application Database and User
 use hospital-management
 db.createUser({
-  user: "medivault_user",
+  user: "MyMediVault_user",
   pwd: "YourSecureAppPassword",
   roles: [ { role: "readWrite", db: "hospital-management" } ]
 })
@@ -90,7 +90,7 @@ sudo firewall-cmd --reload
 Update your `.env` file on the server:
 ```env
 # MongoDB Connection String (Points to Host machine from Container)
-MONGODB_URI=mongodb://medivault_user:YourSecureAppPassword@host.docker.internal:27017/hospital-management?authSource=hospital-management
+MONGODB_URI=mongodb://MyMediVault_user:YourSecureAppPassword@host.docker.internal:27017/hospital-management?authSource=hospital-management
 ```
 
 ### 7. Deploy Updated Stack

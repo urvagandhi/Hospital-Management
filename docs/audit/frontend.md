@@ -1,4 +1,4 @@
-# MediVault — Frontend Audit (Refreshed)
+# MyMediVault — Frontend Audit (Refreshed)
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
@@ -122,7 +122,7 @@ Forms: Login, HospitalRegistration (2-step), Profile (non-sensitive + OTP contac
 
 `MainLayout` provides `min-h-screen bg-gray-50` + fixed Navbar + `pt-16` for navbar offset. Pages inside **must** use `min-h-[calc(100vh-4rem)]`, not `min-h-screen`.
 
-Navbar 3-column: LEFT (logo + MediVault wordmark → /dashboard), CENTER (Dashboard + admin Hospitals), RIGHT (hospital chip with online dot, settings gear → Account/Security/Sign-out menu, avatar). No bell. No search. Admin nav hidden below md breakpoint (known gap).
+Navbar 3-column: LEFT (logo + MyMediVault wordmark → /dashboard), CENTER (Dashboard + admin Hospitals), RIGHT (hospital chip with online dot, settings gear → Account/Security/Sign-out menu, avatar). No bell. No search. Admin nav hidden below md breakpoint (known gap).
 
 Standalone pages (Login, VerifyAuthCode, ChangePassword, ForgotPassword, Privacy, Terms, LandingPage, HospitalRegistration, NotFound) live outside MainLayout. Their Back button must use `navigate(-1)` with `location.key !== "default"` fallback to `/` (not `navigate("/")` directly).
 

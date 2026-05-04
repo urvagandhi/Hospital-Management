@@ -1,4 +1,4 @@
-# Frontend — MediVault Web App
+# Frontend — MyMediVault Web App
 
 React 18 + TypeScript single-page application. Read-mostly admin/management console — file mutations live primarily in the [Android app](../android-app/README.md). Authenticates via the same two-step Auth Code flow as Android (no TOTP — see [CLAUDE.md §5](../CLAUDE.md)).
 
@@ -94,7 +94,7 @@ graph TD
     ML --> NAV["Navbar — fixed top, z-50"]
     ML --> OUTLET["Page Content<br/>min-h-[calc(100vh-4rem)]"]
 
-    NAV --> BRAND["Logo + MediVault wordmark<br/>→ /dashboard"]
+    NAV --> BRAND["Logo + MyMediVault wordmark<br/>→ /dashboard"]
     NAV --> LINKS["Dashboard<br/>+ Hospitals admin-gated"]
     NAV --> CHIP["Hospital chip + green/red online dot"]
     NAV --> GEAR["Settings menu<br/>Headless-UI Menu"]
@@ -328,7 +328,7 @@ npm run dev   # Vite on http://localhost:5173
 | Variable        | Default   | Description          |
 | --------------- | --------- | -------------------- |
 | `VITE_API_URL`  | `/api`    | Backend API base URL |
-| `VITE_APP_NAME` | MediVault | App title            |
+| `VITE_APP_NAME` | MyMediVault | App title            |
 
 ### Build
 
@@ -343,7 +343,7 @@ npm run lint        # ESLint check
 ```bash
 docker build \
   --build-arg VITE_API_URL=/api \
-  --build-arg VITE_APP_NAME="MediVault" \
+  --build-arg VITE_APP_NAME="MyMediVault" \
   -t hospital-frontend .
 ```
 

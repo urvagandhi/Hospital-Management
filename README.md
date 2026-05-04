@@ -1,4 +1,4 @@
-# MediVault
+# MyMediVault
 
 A multi-tenant hospital records system. Each hospital gets one login and stores patient files (PDFs and images) grouped into per-patient folders. The primary user surface is a **native Android app** (file capture, upload, offline cache); the **React web app** is a read-mostly admin/management console; a **Python compression sidecar** merges and shrinks PDFs for download.
 
@@ -269,7 +269,7 @@ Open `android-app/` in Android Studio, configure your upload keystore (see [andr
 
 ## File Pipeline & Downloads
 
-- Android uploads files via multipart → backend → Cloudinary at public*id `MediVault/h*{hospitalId}/p*{patientId}/{folder_slug}/{date}*{hash}`. Files are either `public`or`signed` (5-min TTL). 120×120 thumbnails for images.
+- Android uploads files via multipart → backend → Cloudinary at public*id `MyMediVault/h*{hospitalId}/p*{patientId}/{folder_slug}/{date}*{hash}`. Files are either `public`or`signed` (5-min TTL). 120×120 thumbnails for images.
 - Downloads come in three modes: per-file, per-folder, per-patient. PDF (merged) and ZIP (per-folder) are gated by a size pre-check (soft 10 MB / hard 100 MB).
 - The compression sidecar handles PDF merging + size reduction. The backend calls it with `X-Internal-Secret`; the sidecar fetches inputs from Cloudinary, runs a tier ladder (digital / scanned / aggressive), uploads the result, and caches by SHA256 of inputs. **Mandatory in prod (TD-D4)** — the in-process pdf-lib fallback OOMs at scale.
 - A nightly cron (00:00 UTC) hard-deletes patients older than 90 days and cascades the Cloudinary delete. There is no soft-delete or trash UI.
@@ -743,16 +743,16 @@ More involved than Mongo: every file URL in the database has to be rewritten **a
 
 ```bash
 cloudinary admin usage
-cloudinary admin resources --prefix=MediVault/ --max-results=500 > cloudinary-inventory.json
+cloudinary admin resources --prefix=MyMediVault/ --max-results=500 > cloudinary-inventory.json
 ```
 
 Tells you whether you're moving 5 GB or 50 GB and shapes the plan.
 
 **B2. Copy every file Cloudinary → Spaces.** A one-shot Node script (~80 lines, uses `cloudinary` + `@aws-sdk/client-s3`) that:
 
-1. Iterates `cloudinary.api.resources({ prefix: "MediVault/" })` paginated.
+1. Iterates `cloudinary.api.resources({ prefix: "MyMediVault/" })` paginated.
 2. For each resource: download `secure_url`.
-3. Upload to Spaces under the **same key path** (e.g. `MediVault/h_<hospitalId>/p_<patientId>/<folder>/<filename>`).
+3. Upload to Spaces under the **same key path** (e.g. `MyMediVault/h_<hospitalId>/p_<patientId>/<folder>/<filename>`).
 4. Append `{cloudinary_public_id, spaces_key, spaces_url}` to a JSONL log used by B3.
 
 Make it re-runnable: skip resources whose Spaces key already exists (`HeadObjectCommand`). Run with `--limit=20 --dry-run` first to verify the key shape, then for real. Figure ~1 hour per 10,000 files on a decent connection.

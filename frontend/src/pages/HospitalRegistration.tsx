@@ -18,7 +18,7 @@ import api from "../services/api";
 import { getEmailError } from "../utils/validator";
 
 export const HospitalRegistration: React.FC = () => {
-  useDocumentTitle("Register Hospital — MediVault");
+  useDocumentTitle("Register Hospital — MyMediVault");
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2>(1);

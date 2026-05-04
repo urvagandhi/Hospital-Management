@@ -1,4 +1,4 @@
-# Backend — MediVault API
+# Backend — MyMediVault API
 
 Node.js + Express REST API. MongoDB (Mongoose 7) for persistence; Redis (native TCP in production, Upstash REST in development, with in-memory fallback) for ephemeral OTP/registration state; Cloudinary for file storage; Brevo (prod) / Mailtrap (dev) for email; Firebase Admin for FCM push; a Python compression sidecar for PDF merging.
 
@@ -236,7 +236,7 @@ flowchart TD
 | `DELETE` | `/:id`                                  | Delete patient + cascade Cloudinary delete                                                                         |
 | `POST`   | `/:id/folders`                          | Create folder                                                                                                      |
 | `GET`    | `/:id/folders/:folder/files`            | List files                                                                                                         |
-| `POST`   | `/:id/folders/:folder/files`            | Upload file (multipart, Cloudinary public*id `MediVault/h*{hospitalId}/p*{patientId}/{folder_slug}/{date}*{hash}`) |
+| `POST`   | `/:id/folders/:folder/files`            | Upload file (multipart, Cloudinary public*id `MyMediVault/h*{hospitalId}/p*{patientId}/{folder_slug}/{date}*{hash}`) |
 | `PATCH`  | `/:id/folders/:folder/files/:fileId`    | Rename file                                                                                                        |
 | `DELETE` | `/:id/folders/:folder/files/:fileId`    | Delete file                                                                                                        |
 | `GET`    | `/:id/files/:folder/:fileId/signed-url` | 5-min signed URL                                                                                                   |

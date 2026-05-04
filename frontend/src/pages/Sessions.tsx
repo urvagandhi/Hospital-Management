@@ -199,7 +199,7 @@ const Sessions: React.FC = () => {
   const [bulkRevoking, setBulkRevoking] = useState(false);
   const [confirmBulkOpen, setConfirmBulkOpen] = useState(false);
 
-  useDocumentTitle("Security & Sessions — MediVault");
+  useDocumentTitle("Security & Sessions — MyMediVault");
 
   useEffect(() => {
     if (!state.isAuthenticated && !state.loading) navigate("/login");

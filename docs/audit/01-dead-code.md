@@ -1,4 +1,4 @@
-# Dead Code Inventory — MediVault
+# Dead Code Inventory — MyMediVault
 
 **Verified at commit:** `61fa6ad` (2026-04-26, branch `main`)
 **Audit date:** 2026-04-21

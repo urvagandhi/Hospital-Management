@@ -1,4 +1,4 @@
-# Commented Code Audit — MediVault
+# Commented Code Audit — MyMediVault
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21

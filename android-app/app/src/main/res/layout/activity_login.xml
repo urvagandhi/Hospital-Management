@@ -59,7 +59,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/inter_bold"
                         android:letterSpacing="-0.02"
-                        android:text="Medi"
+                        android:text="MyMedi"
                         android:textColor="@color/color_on_surface"
                         android:textSize="26sp"
                         android:textStyle="bold" />

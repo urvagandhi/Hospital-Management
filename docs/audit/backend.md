@@ -1,4 +1,4 @@
-# MediVault Backend — Comprehensive Audit Report (Refreshed)
+# MyMediVault Backend — Comprehensive Audit Report (Refreshed)
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21

@@ -148,7 +148,7 @@ const Password: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useDocumentTitle("Change Password — MediVault");
+  useDocumentTitle("Change Password — MyMediVault");
 
   useEffect(() => {
     if (!state.isAuthenticated && !state.loading) navigate("/login");

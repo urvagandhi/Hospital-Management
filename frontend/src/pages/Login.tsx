@@ -40,7 +40,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, state } = useAuth();
 
-  useDocumentTitle("Login - MediVault");
+  useDocumentTitle("Login - MyMediVault");
 
   const [formData, setFormData] = useState({ identifier: "", password: "" });
   const [errors, setErrors] = useState({ identifier: "", password: "" });
@@ -153,7 +153,7 @@ export const Login: React.FC = () => {
               className="h-9 w-9 rounded-lg object-cover shadow-card"
             />
             <h1 className="text-[26px] font-bold tracking-tight text-primary-600 font-heading leading-none">
-              MediVault
+              MyMediVault
             </h1>
           </div>
           <p className="text-neutral-500 text-sm font-medium leading-relaxed max-w-[320px] mt-1">

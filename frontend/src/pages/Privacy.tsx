@@ -132,7 +132,7 @@ const sections = [
 ];
 
 const Privacy: React.FC = () => {
-  useDocumentTitle("Privacy Policy — MediVault");
+  useDocumentTitle("Privacy Policy — MyMediVault");
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -149,8 +149,8 @@ const Privacy: React.FC = () => {
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src={appLogo} alt="MediVault logo" className="h-7 w-7 rounded-md object-cover" />
-            <span className="text-sm font-semibold text-gray-900">MediVault</span>
+            <img src={appLogo} alt="MyMediVault logo" className="h-7 w-7 rounded-md object-cover" />
+            <span className="text-sm font-semibold text-gray-900">MyMediVault</span>
           </div>
           <button
             onClick={handleBack}
@@ -182,7 +182,7 @@ const Privacy: React.FC = () => {
             </span>
           </div>
           <p className="text-sm text-gray-600 max-w-xl">
-            This policy explains what data we collect, how we use it, and your rights as a user of the MediVault platform.
+            This policy explains what data we collect, how we use it, and your rights as a user of the MyMediVault platform.
           </p>
         </div>
       </header>
@@ -209,7 +209,7 @@ const Privacy: React.FC = () => {
       <footer className="border-t border-gray-200 bg-gray-50 py-6">
         <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-gray-500">
-            &copy; {new Date().getFullYear()} MediVault. All rights reserved.
+            &copy; {new Date().getFullYear()} MyMediVault. All rights reserved.
           </p>
           <button
             onClick={() => navigate("/")}

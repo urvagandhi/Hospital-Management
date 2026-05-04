@@ -1,4 +1,4 @@
-# MediVault — Audit Index
+# MyMediVault — Audit Index
 
 **Verified at commit:** `1b3bf22` (branch `feat/redesign-and-platform-upgrades`, 2026-04-24) · backend/frontend/sidecar sections retained from `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21 (backend/frontend/sidecar) + 2026-04-24 (Android)

@@ -171,7 +171,7 @@ async function createSectionPage(title, subtitle, _details = [], files = []) {
   // ─── Footer ───────────────────────────────────────────────────
   page.drawRectangle({ x: 0, y: 0, width: 612, height: 32, color: pageBg });
   page.drawRectangle({ x: 0, y: 32, width: 612, height: 1, color: border });
-  page.drawText("MediVault", { x: 40, y: 12, size: 7.5, font: regular, color: muted });
+  page.drawText("MyMediVault", { x: 40, y: 12, size: 7.5, font: regular, color: muted });
   page.drawText("Confidential Medical Records", { x: 415, y: 12, size: 7.5, font: regular, color: muted });
 
   return doc;

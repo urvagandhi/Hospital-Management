@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MediVault - Android Fast Build (Linux/macOS)
+# MyMediVault - Android Fast Build (Linux/macOS)
 # Builds a debug APK as fast as possible using Gradle optimizations.
 
 set -euo pipefail
@@ -58,28 +58,28 @@ case "$MODE" in
         echo "-- Fast debug build --"
         ./gradlew assembleDebug "${GRADLE_OPTS[@]}"
         SRC_PATH="app/build/outputs/apk/debug/app-debug.apk"
-        APK_PATH="app/build/outputs/apk/debug/MediVault_${TIMESTAMP}.apk"
+        APK_PATH="app/build/outputs/apk/debug/MyMediVault_${TIMESTAMP}.apk"
         ;;
     release)
         echo ""
         echo "-- Release build --"
         ./gradlew assembleRelease "${GRADLE_OPTS[@]}"
         SRC_PATH="app/build/outputs/apk/release/app-release.apk"
-        APK_PATH="app/build/outputs/apk/release/MediVault_${TIMESTAMP}.apk"
+        APK_PATH="app/build/outputs/apk/release/MyMediVault_${TIMESTAMP}.apk"
         ;;
     clean)
         echo ""
         echo "-- Clean + debug build --"
         ./gradlew clean assembleDebug "${GRADLE_OPTS[@]}"
         SRC_PATH="app/build/outputs/apk/debug/app-debug.apk"
-        APK_PATH="app/build/outputs/apk/debug/MediVault_${TIMESTAMP}.apk"
+        APK_PATH="app/build/outputs/apk/debug/MyMediVault_${TIMESTAMP}.apk"
         ;;
     bundle)
         echo ""
         echo "-- App bundle (AAB) build --"
         ./gradlew bundleRelease "${GRADLE_OPTS[@]}"
         SRC_PATH="app/build/outputs/bundle/release/app-release.aab"
-        APK_PATH="app/build/outputs/bundle/release/MediVault_${TIMESTAMP}.aab"
+        APK_PATH="app/build/outputs/bundle/release/MyMediVault_${TIMESTAMP}.aab"
         ;;
     *)
         echo "Usage: ./build-apk.sh [debug|release|clean|bundle]"

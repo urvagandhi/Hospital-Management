@@ -5,7 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 const LandingPage: React.FC = () => {
-  useDocumentTitle("MediVault — Hospital Records Management");
+  useDocumentTitle("MyMediVault — Hospital Records Management");
   const navigate = useNavigate();
   const { state } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -73,10 +73,10 @@ const LandingPage: React.FC = () => {
           {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100">
-              <img src={appLogo} alt="MediVault" className="w-full h-full object-contain" />
+              <img src={appLogo} alt="MyMediVault" className="w-full h-full object-contain" />
             </div>
             <span className="text-[17px] font-bold tracking-tight text-gray-900">
-              MediVault
+              MyMediVault
             </span>
           </div>
 
@@ -128,7 +128,7 @@ const LandingPage: React.FC = () => {
               </h1>
 
               <p className="text-lg text-gray-500 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
-                MediVault brings patient records, secure file storage, and smart exports into one clean platform — built for the way healthcare teams actually work.
+                MyMediVault brings patient records, secure file storage, and smart exports into one clean platform — built for the way healthcare teams actually work.
               </p>
 
               <div className="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start mb-10">
@@ -174,7 +174,7 @@ const LandingPage: React.FC = () => {
                   <div className="flex-1 mx-4">
                     <div className="bg-white rounded-md px-3 h-5 flex items-center gap-1.5 border border-gray-200 max-w-xs mx-auto">
                       <svg className="w-2.5 h-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" /></svg>
-                      <span className="text-[9px] text-gray-400">medivault.app/dashboard</span>
+                      <span className="text-[9px] text-gray-400">MyMediVault.app/dashboard</span>
                     </div>
                   </div>
                 </div>
@@ -185,7 +185,7 @@ const LandingPage: React.FC = () => {
                   <div className="h-11 bg-white border-b border-gray-100 flex items-center justify-between px-4 flex-shrink-0">
                     <div className="flex items-center gap-3">
                       <div className="w-6 h-6 rounded-full overflow-hidden border border-gray-200">
-                        <img src={appLogo} alt="MediVault" className="w-full h-full object-contain" />
+                        <img src={appLogo} alt="MyMediVault" className="w-full h-full object-contain" />
                       </div>
                       <span className="text-[10px] font-bold text-gray-800">XX Hospital</span>
                       <span className="text-[9px] font-semibold text-blue-600 border-b border-blue-600 pb-0.5 leading-tight">Dashboard</span>
@@ -437,7 +437,7 @@ const LandingPage: React.FC = () => {
                 Manage patients<br />from your pocket
               </h2>
               <p className="text-gray-500 text-sm leading-relaxed mb-8">
-                The MediVault mobile app gives your team full access to patient records on the go — add new admissions, search by name or ID, and view complete histories from any device.
+                The MyMediVault mobile app gives your team full access to patient records on the go — add new admissions, search by name or ID, and view complete histories from any device.
               </p>
               <div className="space-y-4">
                 {[
@@ -495,9 +495,9 @@ const LandingPage: React.FC = () => {
             <div className="max-w-xs">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-lg overflow-hidden bg-white">
-                  <img src={appLogo} alt="MediVault" className="w-full h-full object-contain" />
+                  <img src={appLogo} alt="MyMediVault" className="w-full h-full object-contain" />
                 </div>
-                <span className="text-white font-bold text-base">MediVault</span>
+                <span className="text-white font-bold text-base">MyMediVault</span>
               </div>
               <p className="text-sm text-gray-500 leading-relaxed">
                 A digital hospital management platform built for security, simplicity, and scale.
@@ -524,7 +524,7 @@ const LandingPage: React.FC = () => {
           </div>
 
           <div className="border-t border-gray-800 pt-6 text-xs text-gray-600 text-center">
-            &copy; {new Date().getFullYear()} MediVault. All rights reserved.
+            &copy; {new Date().getFullYear()} MyMediVault. All rights reserved.
           </div>
         </div>
       </footer>

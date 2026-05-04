@@ -1,4 +1,4 @@
-# MediVault — End-to-End Feature Map (Refreshed)
+# MyMediVault — End-to-End Feature Map (Refreshed)
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
@@ -154,7 +154,7 @@ Legend: `admin` (super-user), `hospital` (regular user), `both` (any authenticat
 
 - Web shows the list (read-only); mutations are mobile-only.
 - `GET /files/:folderName`, `POST /files/:folderName` (multipart + `Idempotency-Key`), `PATCH /.../:fileId/rename`, `DELETE /.../:fileId`.
-- Cloudinary public*id: `MediVault/h*{hospitalId}/p*{patientMongoId}/{folder_slug}/{YYYYMMDD}*{hash}`.
+- Cloudinary public*id: `MyMediVault/h*{hospitalId}/p*{patientMongoId}/{folder_slug}/{YYYYMMDD}*{hash}`.
 - 🛠️ All four mutation paths emit audits (TD-001): `FILE_UPLOADED`, `FILE_RENAMED`, `PATIENT_FILE_DELETE`. The `AuditLog.action` enum picked up the previously-rejected values in the same wave.
 
 ### C7. View / stream / signed-URL file

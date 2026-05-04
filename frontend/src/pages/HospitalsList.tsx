@@ -45,7 +45,7 @@ const inputClass = (hasError: boolean, danger = false) =>
   }`;
 
 export const HospitalsList: React.FC = () => {
-  useDocumentTitle("Hospitals — MediVault");
+  useDocumentTitle("Hospitals — MyMediVault");
   const navigate = useNavigate();
   const { state, updateHospital } = useAuth();
   const { hospital } = state;

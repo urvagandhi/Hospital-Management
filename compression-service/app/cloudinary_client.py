@@ -23,7 +23,7 @@ cloudinary.config(
     secure=True,
 )
 
-_CACHE_PREFIX = "MediVault_compressed"
+_CACHE_PREFIX = "MyMediVault_compressed"
 
 
 def _merged_url(public_id: str) -> str:
@@ -187,7 +187,7 @@ def upload_merged(
     content_hash: str,
     job_id: str,
 ) -> str:
-    """Upload merged PDF to Cloudinary under MediVault_merged/{hash}.
+    """Upload merged PDF to Cloudinary under MyMediVault_merged/{hash}.
 
     Uses type=upload + resource_type=raw — public delivery via plain URL.
     Returns the secure delivery URL.

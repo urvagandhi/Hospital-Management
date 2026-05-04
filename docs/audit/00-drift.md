@@ -1,4 +1,4 @@
-# Drift Detection — MediVault
+# Drift Detection — MyMediVault
 
 **Verified at commit:** `defa74a` (2026-04-17); refreshed against `61fa6ad` (2026-04-26)
 **Audit date:** 2026-04-21

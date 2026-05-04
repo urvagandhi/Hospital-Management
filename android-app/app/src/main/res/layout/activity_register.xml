@@ -37,7 +37,7 @@
                     android:layout_gravity="center_horizontal"
                     android:layout_marginBottom="@dimen/space_lg"
                     android:src="@drawable/ic_platform_logo"
-                    android:contentDescription="MediVault" />
+                    android:contentDescription="MyMediVault" />
 
                 <TextView
                     android:layout_width="wrap_content"

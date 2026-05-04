@@ -410,12 +410,12 @@ Nodes (11): Phase 0 — Reconnaissance, Phase 1 — Drift Detection (00-drift.md
 ### Community 46 - "Community 46"
 
 Cohesion: 0.24
-Nodes (11): Android Drawable Resource, MediVault Brand, Clipboard With Heart Glyph, Folder With Documents Glyph, Gear / Settings Glyph, Android Platform Logo (ic_platform_logo.png), Medical Cross Glyph (Plus Symbol), Shield Outline Shape (+3 more)
+Nodes (11): Android Drawable Resource, MyMediVault Brand, Clipboard With Heart Glyph, Folder With Documents Glyph, Gear / Settings Glyph, Android Platform Logo (ic_platform_logo.png), Medical Cross Glyph (Plus Symbol), Shield Outline Shape (+3 more)
 
 ### Community 47 - "Community 47"
 
 Cohesion: 0.2
-Nodes (11): Flat Vector Illustrative Icon Style, Folder + Document Stack (patient records grouping), MediVault Frontend Logo Asset (Logo.jpeg), MediVault Logo (frontend/src/assets/logo.png), MediVault Frontend Public Favicon/Logo, Gear + Heart-Clipboard Icons (system management + patient chart), White Medical Cross on Folder (healthcare motif), Navy / Mid-Blue / Teal Palette (+3 more)
+Nodes (11): Flat Vector Illustrative Icon Style, Folder + Document Stack (patient records grouping), MyMediVault Frontend Logo Asset (Logo.jpeg), MyMediVault Logo (frontend/src/assets/logo.png), MyMediVault Frontend Public Favicon/Logo, Gear + Heart-Clipboard Icons (system management + patient chart), White Medical Cross on Folder (healthcare motif), Navy / Mid-Blue / Teal Palette (+3 more)
 
 ### Community 48 - "Community 48"
 

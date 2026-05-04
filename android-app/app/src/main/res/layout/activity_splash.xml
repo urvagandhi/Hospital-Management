@@ -44,7 +44,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Medi"
+            android:text="MyMedi"
             android:textColor="@android:color/white"
             android:textSize="32sp"
             android:fontFamily="@font/inter_bold"

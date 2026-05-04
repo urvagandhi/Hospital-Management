@@ -5,7 +5,7 @@ Produces an A4 (210×297mm) page with:
 - Decorative divider with accent dot
 - Patient name card with blue left accent stripe
 - Document list with alternating row shading
-- Footer with "MediVault" / "Confidential Medical Records"
+- Footer with "MyMediVault" / "Confidential Medical Records"
 
 Uses fpdf2 for page rendering, returns a pikepdf-compatible PDF path.
 """
@@ -212,7 +212,7 @@ def generate_cover_page(
     pdf.set_font("Helvetica", "", 7.5)
     pdf.set_text_color(*_MUTED)
     pdf.set_xy(40 * _PT, footer_y + 5 * _PT)
-    pdf.cell(0, 7.5 * _PT, "MediVault")
+    pdf.cell(0, 7.5 * _PT, "MyMediVault")
 
     pdf.set_xy(_W - 55, footer_y + 5 * _PT)
     pdf.cell(0, 7.5 * _PT, "Confidential Medical Records")

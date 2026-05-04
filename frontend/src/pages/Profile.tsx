@@ -45,7 +45,7 @@ const Profile: React.FC = () => {
   const networkStatus = useNetworkStatus();
   const isOnline = networkStatus === "online";
   useScrollToHash();
-  useDocumentTitle("Profile — MediVault");
+  useDocumentTitle("Profile — MyMediVault");
 
   const [hospital, setHospital] = useState<Hospital | null>(null);
   const [loading, setLoading] = useState(true);

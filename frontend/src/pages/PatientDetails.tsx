@@ -39,7 +39,7 @@ interface SizeCheckFolder {
 const PatientDetails: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
-  useDocumentTitle("Patient Details — MediVault");
+  useDocumentTitle("Patient Details — MyMediVault");
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
 

@@ -43,7 +43,7 @@ const auditLogSchema = new mongoose.Schema(
         "CONTACT_CHANGE_RESEND",
         "CONTACT_CHANGED",
         "CONTACT_CHANGE_FAILED",
-        // Registration / admin MediVault
+        // Registration / admin MyMediVault
         "HOSPITAL_REGISTRATION",
         "HOSPITAL_REGISTRATION_VERIFIED",
         "HOSPITAL_UPDATED",

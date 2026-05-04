@@ -1,4 +1,4 @@
-# MediVault Compression Service
+# MyMediVault Compression Service
 
 FastAPI service that merges and compresses medical PDFs on demand. Called exclusively by the Node backend via shared secret header (`X-Internal-Secret`).
 
@@ -25,8 +25,8 @@ Canonical project context: [../CLAUDE.md](../CLAUDE.md). Backend client: [../bac
 
 ```bash
 cd compression-service
-docker build -t medivault-compression .
-docker run -p 8000:8000 --env-file .env medivault-compression
+docker build -t MyMediVault-compression .
+docker run -p 8000:8000 --env-file .env MyMediVault-compression
 ```
 
 ## Endpoints

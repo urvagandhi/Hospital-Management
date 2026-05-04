@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MediVault - Build Script
+# MyMediVault - Build Script
 # Builds backend, frontend, and (optionally) Android app
 
 set -euo pipefail

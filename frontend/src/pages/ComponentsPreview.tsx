@@ -345,7 +345,7 @@ const FOLDERS = [
 // ─────────────────────────────────────────────
 
 const ComponentsPreview: React.FC = () => {
-  useDocumentTitle("Components — MediVault");
+  useDocumentTitle("Components — MyMediVault");
   // — demo state —
   const [pwVisible, setPwVisible] = useState(false);
   const [searchVal, setSearchVal] = useState("");
@@ -446,7 +446,7 @@ const ComponentsPreview: React.FC = () => {
         <div className="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl overflow-hidden bg-white border border-neutral-100 flex items-center justify-center">
-              <img src={appLogo} alt="MediVault" className="w-full h-full object-contain" />
+              <img src={appLogo} alt="MyMediVault" className="w-full h-full object-contain" />
             </div>
             <div>
               <p className="font-heading font-bold text-[15px] text-neutral-900 leading-none">HMS Design System</p>
@@ -997,7 +997,7 @@ const ComponentsPreview: React.FC = () => {
                 {/* Logo */}
                 <div className="px-4 mb-4 flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg overflow-hidden bg-white border border-neutral-100 flex items-center justify-center flex-shrink-0">
-                    <img src={appLogo} alt="MediVault" className="w-full h-full object-contain" />
+                    <img src={appLogo} alt="MyMediVault" className="w-full h-full object-contain" />
                   </div>
                   <div>
                     <p className="text-[13px] font-heading font-bold text-neutral-900 leading-none">HMS</p>
@@ -1038,7 +1038,7 @@ const ComponentsPreview: React.FC = () => {
               {/* Collapsed */}
               <div className="w-[72px] bg-white border border-neutral-100 rounded-xl shadow-card flex flex-col items-center py-3">
                 <div className="w-9 h-9 mb-4 rounded-lg overflow-hidden bg-white border border-neutral-100 flex items-center justify-center">
-                  <img src={appLogo} alt="MediVault" className="w-full h-full object-contain" />
+                  <img src={appLogo} alt="MyMediVault" className="w-full h-full object-contain" />
                 </div>
                 {NAV_ITEMS.map(item => {
                   const Icon = item.icon;

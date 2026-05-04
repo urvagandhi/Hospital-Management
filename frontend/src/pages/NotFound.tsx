@@ -24,7 +24,7 @@ const hasStoredSession = (): boolean => {
 };
 
 const NotFound: React.FC = () => {
-  useDocumentTitle("Page Not Found — MediVault");
+  useDocumentTitle("Page Not Found — MyMediVault");
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
@@ -66,7 +66,7 @@ const NotFound: React.FC = () => {
               className="h-8 w-8 rounded-lg object-cover"
             />
             <span className="font-heading font-semibold text-lg tracking-tight text-neutral-900">
-              MediVault
+              MyMediVault
             </span>
           </Link>
         </div>
@@ -208,7 +208,7 @@ const NotFound: React.FC = () => {
       <footer className="bg-surface-sidebar border-t border-neutral-200 w-full py-8 px-6 md:px-8 mt-auto">
         <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-medium tracking-wide">
           <div className="text-neutral-500">
-            © {new Date().getFullYear()} MediVault. All rights
+            © {new Date().getFullYear()} MyMediVault. All rights
             reserved.
           </div>
           <nav

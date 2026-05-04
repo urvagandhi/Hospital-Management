@@ -30,7 +30,7 @@ export const VerifyAuthCode: React.FC = () => {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  useDocumentTitle("Enter Auth Code — MediVault");
+  useDocumentTitle("Enter Auth Code — MyMediVault");
 
   // Redirect if no tempToken — user arrived without completing step 1
   useEffect(() => {

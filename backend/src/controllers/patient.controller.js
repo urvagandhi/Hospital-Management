@@ -448,7 +448,7 @@ export const confirmDirectUpload = async (req, res) => {
     }
 
     const expectedPrefixes = [
-      `MediVault/h_${hospitalId}/p_${patientId}/`,
+      `MyMediVault/h_${hospitalId}/p_${patientId}/`,
     ];
     if (!expectedPrefixes.some((prefix) => publicId.startsWith(prefix))) {
       return res.status(400).json({

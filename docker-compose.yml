@@ -1,7 +1,4 @@
-
 services:
-
-
   # ── Compression Service (Python) ──
   compression-service:
     build:
@@ -62,7 +59,7 @@ services:
       args:
         # VITE_* vars are baked in at build time
         VITE_API_URL: /api
-        VITE_APP_NAME: ${VITE_APP_NAME:-MediVault}
+        VITE_APP_NAME: ${VITE_APP_NAME:-MyMediVault}
     restart: unless-stopped
     ports:
       - "80:80"
@@ -82,4 +79,3 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
-

@@ -45,8 +45,8 @@ const FolderView: React.FC = () => {
   const navigate = useNavigate();
   useDocumentTitle(
     folderName
-      ? `${decodeURIComponent(folderName)} — MediVault`
-      : "Folder — MediVault",
+      ? `${decodeURIComponent(folderName)} — MyMediVault`
+      : "Folder — MyMediVault",
   );
   const [folder, setFolder] = useState<Folder | null>(null);
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);

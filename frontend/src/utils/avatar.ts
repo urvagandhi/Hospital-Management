@@ -19,7 +19,7 @@ export const getInitials = (name: string | null | undefined, max = 2): string =>
  * Single-hue brand gradient used for every avatar fallback across the app
  * (Navbar, LogoHeader, Profile). Previously this returned a per-name hashed
  * gradient; switched to one consistent `bg-gradient-primary` class so every
- * avatar reads as "MediVault". Signature preserved so callers don't change.
+ * avatar reads as "MyMediVault". Signature preserved so callers don't change.
  *
  * NOTE: callers must render this WITHOUT a `bg-gradient-to-br` prefix — the
  * class itself already describes the full gradient.

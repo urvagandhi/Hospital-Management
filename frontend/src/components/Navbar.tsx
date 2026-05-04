@@ -2,7 +2,7 @@
  * Navbar — top chrome for MainLayout pages.
  *
  * Layout (3 zones):
- *   LEFT   : app logo + "MediVault" wordmark · vertical divider ·
+ *   LEFT   : app logo + "MyMediVault" wordmark · vertical divider ·
  *            hospital chip (logo/initial + name + online dot)
  *   CENTER : nav links (Dashboard always, Hospitals admin-only)
  *   RIGHT  : settings gear (opens account dropdown) · avatar
@@ -105,11 +105,11 @@ export const Navbar: React.FC = () => {
             >
               <img
                 src={appLogo}
-                alt="MediVault"
+                alt="MyMediVault"
                 className="h-8 w-8 rounded-lg object-cover shadow-card"
               />
               <span className="hidden sm:inline font-heading text-base lg:text-lg font-bold tracking-tight bg-gradient-primary bg-clip-text text-transparent">
-                MediVault
+                MyMediVault
               </span>
             </Link>
           </div>

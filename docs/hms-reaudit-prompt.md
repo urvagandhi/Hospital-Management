@@ -1,4 +1,4 @@
-# MediVault — Comprehensive Re-Audit & Enhancement Prompt
+# MyMediVault — Comprehensive Re-Audit & Enhancement Prompt
 
 > Paste this entire prompt into a fresh Claude session opened **at the repo root** (the folder containing `backend/`, `frontend/`, `compression-service/`, `android-app/`, and `CLAUDE.md`). The android-app folder is **out of scope** for this audit — only mention it where backend/frontend interact with it.
 

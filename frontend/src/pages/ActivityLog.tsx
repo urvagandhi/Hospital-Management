@@ -12,7 +12,7 @@ const statusBadge: Record<string, string> = {
 };
 
 const ActivityLog: React.FC = () => {
-  useDocumentTitle("Activity Log — MediVault");
+  useDocumentTitle("Activity Log — MyMediVault");
   const [items, setItems] = useState<AuditLogEntry[]>([]);
   const [actions, setActions] = useState<string[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);

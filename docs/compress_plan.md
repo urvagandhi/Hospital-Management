@@ -1,4 +1,4 @@
-# MediVault Compression Service — Upgrade Plan
+# MyMediVault Compression Service — Upgrade Plan
 
 ## iLovePDF-Level Pipeline Implementation
 

@@ -141,7 +141,7 @@ function generatePatients(hospitalId, count, initials) {
 // ─── Main ───
 
 async function seed() {
-  logger.info({ event: "seed_started" }, "=== MediVault — Seed Script ===");
+  logger.info({ event: "seed_started" }, "=== MyMediVault — Seed Script ===");
   logger.info(
     { event: "seed_mode", mode: "non_destructive" },
     "[Seed] Non-destructive mode: existing hospitals/patients are left untouched."

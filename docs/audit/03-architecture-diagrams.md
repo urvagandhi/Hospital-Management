@@ -1,4 +1,4 @@
-# Architecture Diagrams — MediVault
+# Architecture Diagrams — MyMediVault
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
@@ -361,7 +361,7 @@ sequenceDiagram
   API->>IG: verify key not seen (Redis)
   IG-->>API: ok OR replay → 200 cached response
   API->>MU: parse body
-  MU->>CL: upload stream (public_id=MediVault/h_X/p_Y/slug/YYYYMMDD_hash)
+  MU->>CL: upload stream (public_id=MyMediVault/h_X/p_Y/slug/YYYYMMDD_hash)
   CL-->>MU: fileUrl + publicId + thumbnailUrl
   MU-->>API: req.file
   API->>PT: findOneAndUpdate { _id, hospitalId } $push folders.$.files
@@ -574,7 +574,7 @@ flowchart TB
   Auth --> Router["BrowserRouter"]
   Router --> ML["MainLayout (protected)"]
   ML --> NB["Navbar fixed z-50"]
-  NB --> LC["LeftCluster: Logo + MediVault wordmark → /dashboard"]
+  NB --> LC["LeftCluster: Logo + MyMediVault wordmark → /dashboard"]
   NB --> CN["CenterNav: Dashboard (always), Hospitals (admin-gated)"]
   NB --> RC["RightCluster"]
   RC --> Chip["HospitalChip + online dot → HospitalProfileModal"]

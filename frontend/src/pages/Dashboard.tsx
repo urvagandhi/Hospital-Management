@@ -129,7 +129,7 @@ const Dashboard: React.FC = () => {
 
   const activeFilterCount = countActiveFilters(filters);
 
-  useDocumentTitle("Dashboard - MediVault");
+  useDocumentTitle("Dashboard - MyMediVault");
 
   // Close filter popover on outside click / Escape.
   useEffect(() => {

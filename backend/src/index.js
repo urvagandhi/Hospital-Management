@@ -201,7 +201,7 @@ const startServer = async () => {
       if (config.NODE_ENV !== "production") {
         process.stdout.write(`
 ╔════════════════════════════════════════╗
-║   MediVault API                        ║
+║   MyMediVault API                        ║
 ║   ✓ Server running on port ${String(config.PORT).padEnd(12)}║
 ║   ✓ Environment: ${String(config.NODE_ENV).padEnd(22)}║
 ║   ✓ DB: MongoDB Connected              ║
@@ -215,7 +215,7 @@ const startServer = async () => {
           port: config.PORT,
           env: config.NODE_ENV,
         },
-        `MediVault API listening on port ${config.PORT}`,
+        `MyMediVault API listening on port ${config.PORT}`,
       );
     });
   } catch (error) {

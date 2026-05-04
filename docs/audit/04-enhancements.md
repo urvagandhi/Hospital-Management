@@ -1,4 +1,4 @@
-# Enhancements — MediVault
+# Enhancements — MyMediVault
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
@@ -245,7 +245,7 @@ Sample comparisons (5 endpoints):
 ### Three "here be dragons" zones
 
 1. **`Patient.folders[].files[]` embedded document** — any mutation must use `$push`/`$pull` with the positional operator; direct replacement loses concurrent writes.
-2. **Cloudinary `public_id` path structure** `MediVault/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{date_hash}` — slugs are irreversible; if a folder name changes the file path does NOT, leaving orphan mismatches.
+2. **Cloudinary `public_id` path structure** `MyMediVault/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{date_hash}` — slugs are irreversible; if a folder name changes the file path does NOT, leaving orphan mismatches.
 3. **Session conflict eviction** — on a 3rd mobile login, the oldest session is revoked AND an email is sent. Bugs here cascade into user confusion about "who logged me out?".
 
 ---

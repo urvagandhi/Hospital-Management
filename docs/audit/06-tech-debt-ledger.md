@@ -1,4 +1,4 @@
-# Tech Debt Ledger — MediVault
+# Tech Debt Ledger — MyMediVault
 
 **Verified at commit:** `defa74a` (2026-04-17)
 **Audit date:** 2026-04-21
@@ -201,13 +201,13 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
 - **Source:** `00-drift.md` §7.3
 - **Blast radius:** UX — without `useDocumentTitle`, a previous page's title leaks into the next page after navigation (the hook restores the prior title on unmount; direct `document.title =` does not).
 - **Shipped in:**
-  - [frontend/src/pages/Dashboard.tsx](../../frontend/src/pages/Dashboard.tsx) → `useDocumentTitle("Dashboard - MediVault")`
-  - [frontend/src/pages/Login.tsx](../../frontend/src/pages/Login.tsx) → `useDocumentTitle("Login - MediVault")`
-  - [frontend/src/pages/Password.tsx](../../frontend/src/pages/Password.tsx) → `useDocumentTitle("Change Password — MediVault")`
-  - [frontend/src/pages/Profile.tsx](../../frontend/src/pages/Profile.tsx) → `useDocumentTitle("Profile — MediVault")` (placed alongside the existing `useScrollToHash()` call)
-  - [frontend/src/pages/Sessions.tsx](../../frontend/src/pages/Sessions.tsx) → `useDocumentTitle("Security & Sessions — MediVault")`
-  - [frontend/src/pages/VerifyAuthCode.tsx](../../frontend/src/pages/VerifyAuthCode.tsx) → `useDocumentTitle("Enter Auth Code — MediVault")`
-  - [frontend/src/pages/ForgotPassword.tsx](../../frontend/src/pages/ForgotPassword.tsx) → `useDocumentTitle("Forgot Password — MediVault")` (its own `useEffect` form was already setting the same string; migrated in place)
+  - [frontend/src/pages/Dashboard.tsx](../../frontend/src/pages/Dashboard.tsx) → `useDocumentTitle("Dashboard - MyMediVault")`
+  - [frontend/src/pages/Login.tsx](../../frontend/src/pages/Login.tsx) → `useDocumentTitle("Login - MyMediVault")`
+  - [frontend/src/pages/Password.tsx](../../frontend/src/pages/Password.tsx) → `useDocumentTitle("Change Password — MyMediVault")`
+  - [frontend/src/pages/Profile.tsx](../../frontend/src/pages/Profile.tsx) → `useDocumentTitle("Profile — MyMediVault")` (placed alongside the existing `useScrollToHash()` call)
+  - [frontend/src/pages/Sessions.tsx](../../frontend/src/pages/Sessions.tsx) → `useDocumentTitle("Security & Sessions — MyMediVault")`
+  - [frontend/src/pages/VerifyAuthCode.tsx](../../frontend/src/pages/VerifyAuthCode.tsx) → `useDocumentTitle("Enter Auth Code — MyMediVault")`
+  - [frontend/src/pages/ForgotPassword.tsx](../../frontend/src/pages/ForgotPassword.tsx) → `useDocumentTitle("Forgot Password — MyMediVault")` (its own `useEffect` form was already setting the same string; migrated in place)
   - In every file only the `document.title = ...` line was removed; other effects, imports, and behaviour were preserved.
 - **Acceptance:** `grep -rn "document\.title" frontend/src/pages/` → empty ✓. `npx tsc --noEmit` clean ✓.
 
