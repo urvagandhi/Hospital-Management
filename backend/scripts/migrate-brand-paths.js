@@ -75,9 +75,23 @@ async function run() {
         const newPublicId = oldPublicId.replace('HospitALL', 'MediVault');
 
         console.log(`   Renaming Logo: ${oldPublicId} → ${newPublicId}`);
-        const result = await cloudinary.uploader.rename(oldPublicId, newPublicId, { resource_type: 'image' });
         
-        hospital.logoUrl = result.secure_url;
+        let result;
+        try {
+          result = await cloudinary.uploader.rename(oldPublicId, newPublicId, { resource_type: 'image' });
+        } catch (renameErr) {
+          if (renameErr.message.includes("Resource not found")) {
+            console.log(`     ⚠️  Logo already moved in Cloudinary. Updating DB record only.`);
+            hospital.logoUrl = hospital.logoUrl.replace('HospitALL', 'MediVault');
+          } else {
+            throw renameErr;
+          }
+        }
+
+        if (result) {
+          hospital.logoUrl = result.secure_url;
+        }
+
         await hospital.save();
         migratedHospitals++;
       } catch (err) {
@@ -102,12 +116,29 @@ async function run() {
               const newPublicId = oldPublicId.replace('HospitALL', 'MediVault');
               console.log(`   Moving File: ${oldPublicId} → ${newPublicId}`);
               
-              const result = await cloudinary.uploader.rename(oldPublicId, newPublicId, { 
-                resource_type: file.resourceType || 'raw' 
-              });
+              let result;
+              try {
+                result = await cloudinary.uploader.rename(oldPublicId, newPublicId, { 
+                  resource_type: file.resourceType || 'raw' 
+                });
+              } catch (renameErr) {
+                // If it's already moved, Cloudinary will say "Resource not found"
+                if (renameErr.message.includes("Resource not found")) {
+                  console.log(`     ⚠️  Already moved in Cloudinary. Updating DB record only.`);
+                  // We need to construct the new URL manually since we didn't get a result object
+                  const oldUrl = file.fileUrl;
+                  file.fileUrl = oldUrl.replace('HospitALL', 'MediVault');
+                  file.cloudinaryPublicId = newPublicId;
+                } else {
+                  throw renameErr;
+                }
+              }
 
-              file.cloudinaryPublicId = result.public_id;
-              file.fileUrl = result.secure_url;
+              if (result) {
+                file.cloudinaryPublicId = result.public_id;
+                file.fileUrl = result.secure_url;
+              }
+
               patientDirty = true;
               migratedFiles++;
             } catch (err) {
