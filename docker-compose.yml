@@ -34,6 +34,8 @@ services:
       COMPRESSION_SERVICE_URL: http://compression-service:8000
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    ports:
+      - "5000:5000"
     depends_on:
       compression-service:
         condition: service_started
@@ -50,7 +52,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 90s
+      start_period: 120s
 
   # ── Frontend (React/Vite → Nginx) ──
   frontend:
