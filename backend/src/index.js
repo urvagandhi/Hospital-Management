@@ -39,6 +39,18 @@ function inferHealthCheckSource(userAgent = "") {
   return "unknown";
 }
 
+function normalizeOrigin(value) {
+  if (!value) return null;
+
+  const trimmed = String(value).trim().replace(/\/$/, "");
+
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed;
+  }
+}
+
 // ============ TRUST PROXY (Required for Render/Heroku/Cloudflare) ============
 // Must be a SPECIFIC number of hops — not `true`. `true` tells Express to
 // trust every proxy in the chain, which express-rate-limit rejects because
@@ -75,26 +87,29 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const allowedOrigins = [
-        ...config.FRONTEND_URL.split(",").map((u) => u.trim()),
+        ...config.FRONTEND_URL.split(",").map((u) => normalizeOrigin(u)).filter(Boolean),
+        "https://mymedivault.in",
+        "https://www.mymedivault.in",
         ...(config.NODE_ENV !== "production"
           ? ["http://localhost:3000", "http://localhost:5173"]
           : []),
-      ];
+      ].map((u) => normalizeOrigin(u)).filter(Boolean);
+      const normalizedOrigin = normalizeOrigin(origin);
 
       // Allow requests with no origin (mobile apps, server-to-server)
       // These are still protected by JWT authentication
-      if (!origin) return callback(null, true);
+      if (!normalizedOrigin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes(normalizedOrigin)) {
         callback(null, true);
       } else {
-        logger.warn({ event: "cors_blocked", origin }, "Blocked by CORS");
+        logger.warn({ event: "cors_blocked", origin: normalizedOrigin }, "Blocked by CORS");
         callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Client-Type", "X-Request-Id"],
     optionsSuccessStatus: 200,
   }),
 );
