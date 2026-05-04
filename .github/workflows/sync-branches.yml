@@ -1,0 +1,36 @@
+name: Sync Branches
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync main to development and local
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Merge main into development and local
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Sync development
+          echo "Merging main -> development"
+          git checkout development || git checkout -b development origin/development || git checkout -b development
+          git merge origin/main --no-edit
+          git push origin development
+
+          # Sync local
+          echo "Merging main -> local"
+          git checkout local || git checkout -b local origin/local || git checkout -b local
+          git merge origin/main --no-edit
+          git push origin local
