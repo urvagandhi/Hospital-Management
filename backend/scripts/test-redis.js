@@ -5,29 +5,43 @@
  * Run:  node scripts/test-redis.js
  */
 
-import "dotenv/config";
-import {
-  setOTP,
-  verifyOTP,
-  setPartialRegistration,
-  getPartialRegistration,
-  deletePartialRegistration,
-  setLastOTPSent,
-  getLastOTPSent,
-} from "../src/services/redis.service.js";
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import dotenv from 'dotenv';
 
-const testEmail = `redis-test-${Date.now()}@example.com`;
-
-console.log("─".repeat(60));
-console.log("Redis connectivity + OTP helper test");
-console.log("─".repeat(60));
-console.log("UPSTASH_REDIS_REST_URL set:", !!process.env.UPSTASH_REDIS_REST_URL);
-console.log("UPSTASH_REDIS_REST_TOKEN set:", !!process.env.UPSTASH_REDIS_REST_TOKEN);
-console.log("REDIS_URL set:", !!process.env.REDIS_URL);
-console.log("Test email:", testEmail);
-console.log();
+// 1. LOAD ENV IMMEDIATELY
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const possiblePaths = [
+  path.resolve(__dirname, '../.env'),    // backend/.env
+  path.resolve(__dirname, '../../.env')  // root/.env
+];
+let envPath = possiblePaths.find(p => fs.existsSync(p));
+if (envPath) dotenv.config({ path: envPath });
 
 async function run() {
+  // 2. DYNAMICALLY IMPORT SERVICES
+  const {
+    setOTP,
+    verifyOTP,
+    setPartialRegistration,
+    getPartialRegistration,
+    deletePartialRegistration,
+    setLastOTPSent,
+    getLastOTPSent,
+  } = await import("../src/services/redis.service.js");
+
+  const testEmail = `redis-test-${Date.now()}@example.com`;
+
+  console.log("─".repeat(60));
+  console.log("Redis connectivity + OTP helper test");
+  console.log("─".repeat(60));
+  console.log("UPSTASH_REDIS_REST_URL set:", !!process.env.UPSTASH_REDIS_REST_URL);
+  console.log("UPSTASH_REDIS_REST_TOKEN set:", !!process.env.UPSTASH_REDIS_REST_TOKEN);
+  console.log("REDIS_URL set:", !!process.env.REDIS_URL);
+  console.log("Test email:", testEmail);
+  console.log();
+
   // 1. Partial registration round-trip
   console.log("[1] Storing partial registration...");
   await setPartialRegistration(testEmail, { hospitalName: "Test Hosp", phone: "+919999999999" }, 60);

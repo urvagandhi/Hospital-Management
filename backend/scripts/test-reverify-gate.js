@@ -1,28 +1,43 @@
+/**
+ * Test script to force a session to require re-verification.
+ */
 
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import dotenv from 'dotenv';
 
-// Load environment variables
+// 1. LOAD ENV IMMEDIATELY
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '../.env') });
-
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/hospital-management';
+const possiblePaths = [
+  path.resolve(__dirname, '../.env'),    // backend/.env
+  path.resolve(__dirname, '../../.env')  // root/.env
+];
+let envPath = possiblePaths.find(p => fs.existsSync(p));
+if (envPath) dotenv.config({ path: envPath });
 
 async function triggerReverifyGate() {
+  const { default: mongoose } = await import('mongoose');
+
+  const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+
   try {
     console.log('Connecting to MongoDB...');
+    if (!MONGODB_URI) {
+      console.error("❌ ERROR: MONGODB_URI not found in env");
+      process.exit(1);
+    }
     await mongoose.connect(MONGODB_URI);
     console.log('Connected successfully.');
 
-    // Define minimal schemas
-    const Hospital = mongoose.model('Hospital', new mongoose.Schema({ email: String }));
-    const Session = mongoose.model('Session', new mongoose.Schema({
+    // Define minimal schemas (Mongoose requires these to interact with collections)
+    const Hospital = mongoose.models.Hospital || mongoose.model('Hospital', new mongoose.Schema({ email: String }));
+    const Session = mongoose.models.Session || mongoose.model('Session', new mongoose.Schema({
       authCodeVerifiedAt: Date,
       hospitalId: mongoose.Schema.Types.ObjectId,
       isActive: Boolean,
-      platform: String
+      platform: String,
+      lastAccessedAt: Date
     }));
 
     const TARGET_EMAIL = 'admin@citymedical.com';
@@ -64,4 +79,4 @@ async function triggerReverifyGate() {
   }
 }
 
-triggerReverifyGate();
+triggerReverifyGate().catch(console.error);

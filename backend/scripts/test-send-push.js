@@ -1,67 +1,61 @@
 /**
  * Real FCM Push Test
- *
- * Sends an ACTUAL push notification via Firebase Cloud Messaging.
- * Requires FIREBASE_* env vars to be set.
- *
- * Usage:
- *   # Send to a specific device token (copy from Android app logs)
- *   node scripts/send-test-push.js --token=<fcm-token>
- *
- *   # Send to a hospital by _id (uses stored fcmToken.token)
- *   node scripts/send-test-push.js --hospital=<objectId>
- *
- *   # Send to a hospital by email
- *   node scripts/send-test-push.js --email=<email>
- *
- *   # List hospitals that have an FCM token stored (so you can pick one)
- *   node scripts/send-test-push.js --list
- *
- * Optional:
- *   --type=NEW_LOGIN|PASSWORD_CHANGED|DELETION_REQUEST|CUSTOM  (default CUSTOM)
- *   --title="Your title"
- *   --body="Your body"
  */
 
-import "dotenv/config";
-import mongoose from "mongoose";
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import dotenv from 'dotenv';
 
-function parseArgs(argv) {
-  const out = {};
-  for (const a of argv) {
-    if (!a.startsWith("--")) continue;
-    const [k, ...rest] = a.slice(2).split("=");
-    out[k] = rest.length ? rest.join("=") : true;
-  }
-  return out;
-}
-
-async function connectMongo() {
-  const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
-  if (!uri) {
-    console.error("✗ MONGODB_URI not set in .env");
-    process.exit(1);
-  }
-  await mongoose.connect(uri);
-}
-
-function assertFirebaseEnv() {
-  const missing = [];
-  for (const k of ["FIREBASE_PROJECT_ID", "FIREBASE_PRIVATE_KEY", "FIREBASE_CLIENT_EMAIL"]) {
-    if (!process.env[k]) missing.push(k);
-  }
-  if (missing.length) {
-    console.error(`✗ Missing Firebase env vars: ${missing.join(", ")}`);
-    console.error("  Set these in backend/.env to enable real FCM:");
-    console.error("    FIREBASE_PROJECT_ID=your-project-id");
-    console.error("    FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your-project.iam.gserviceaccount.com");
-    console.error('    FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"');
-    console.error("  Download creds from:  https://console.firebase.google.com → Project Settings → Service Accounts → Generate new private key");
-    process.exit(1);
-  }
+// 1. LOAD ENV IMMEDIATELY
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const possiblePaths = [
+  path.resolve(__dirname, '../.env'),    // backend/.env
+  path.resolve(__dirname, '../../.env')  // root/.env
+];
+let envPath = possiblePaths.find(p => fs.existsSync(p));
+if (envPath) {
+  dotenv.config({ path: envPath });
 }
 
 async function main() {
+  // 2. DYNAMICALLY IMPORT SERVICES
+  const { default: mongoose } = await import("mongoose");
+
+  function parseArgs(argv) {
+    const out = {};
+    for (const a of argv) {
+      if (!a.startsWith("--")) continue;
+      const [k, ...rest] = a.slice(2).split("=");
+      out[k] = rest.length ? rest.join("=") : true;
+    }
+    return out;
+  }
+
+  async function connectMongo() {
+    const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    if (!uri) {
+      console.error("✗ MONGODB_URI not set in .env");
+      process.exit(1);
+    }
+    await mongoose.connect(uri);
+  }
+
+  function assertFirebaseEnv() {
+    const missing = [];
+    for (const k of ["FIREBASE_PROJECT_ID", "FIREBASE_PRIVATE_KEY", "FIREBASE_CLIENT_EMAIL"]) {
+      if (!process.env[k]) missing.push(k);
+    }
+    if (missing.length) {
+      console.error(`✗ Missing Firebase env vars: ${missing.join(", ")}`);
+      console.error("  Set these in backend/.env to enable real FCM:");
+      console.error("    FIREBASE_PROJECT_ID=your-project-id");
+      console.error("    FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your-project.iam.gserviceaccount.com");
+      console.error('    FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n"');
+      process.exit(1);
+    }
+  }
+
   const args = parseArgs(process.argv.slice(2));
 
   if (!args.token && !args.hospital && !args.email && !args.list) {
@@ -74,7 +68,6 @@ async function main() {
 
   assertFirebaseEnv();
 
-  // Import only after env check (Firebase initializes at import time)
   const push = await import("../src/services/push.service.js");
   const Hospital = (await import("../src/models/Hospital.js")).default;
 
@@ -97,7 +90,6 @@ async function main() {
       return;
     }
 
-    // Resolve device token
     let token = args.token;
     let hospitalLabel = "anonymous token";
     if (!token && args.hospital) {

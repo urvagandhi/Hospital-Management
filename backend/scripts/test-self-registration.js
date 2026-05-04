@@ -14,10 +14,19 @@
  * Requires the backend to be running on http://localhost:5000
  */
 
-import "dotenv/config";
-import mongoose from "mongoose";
-import Hospital from "../src/models/Hospital.js";
-import { redis } from "../src/services/redis.service.js";
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import dotenv from 'dotenv';
+
+// 1. LOAD ENV IMMEDIATELY (Minimal change for local/server compatibility)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const possiblePaths = [
+  path.resolve(__dirname, '../.env'),    // backend/.env
+  path.resolve(__dirname, '../../.env')  // root/.env
+];
+let envPath = possiblePaths.find(p => fs.existsSync(p));
+if (envPath) dotenv.config({ path: envPath });
 
 const API = "http://localhost:5000/api/auth";
 const TEST_EMAIL = `selfreg-test-${Date.now()}@example.com`;
@@ -46,22 +55,27 @@ async function postJson(path, body) {
   return { status: res.status, body: json };
 }
 
-async function peekRedis(label, keys) {
-  console.log(`\n    🔍 ${label}`);
-  for (const key of keys) {
-    const val = await redis.get(key);
-    const ttl = await redis.ttl(key);
-    if (val === null) {
-      console.log(`       ${key}  ⟶  (not present)`);
-    } else {
-      const preview = typeof val === "string" ? val : JSON.stringify(val);
-      const shown = preview.length > 80 ? preview.slice(0, 77) + "..." : preview;
-      console.log(`       ${key}  ⟶  ${shown}   [ttl=${ttl}s]`);
+async function run() {
+  // 2. DYNAMICALLY IMPORT INTERNAL SERVICES (Minimal change for ES Modules)
+  const { default: mongoose } = await import("mongoose");
+  const Hospital = (await import("../src/models/Hospital.js")).default;
+  const { redis } = await import("../src/services/redis.service.js");
+
+  async function peekRedis(label, keys) {
+    console.log(`\n    🔍 ${label}`);
+    for (const key of keys) {
+      const val = await redis.get(key);
+      const ttl = await redis.ttl(key);
+      if (val === null) {
+        console.log(`       ${key}  ⟶  (not present)`);
+      } else {
+        const preview = typeof val === "string" ? val : JSON.stringify(val);
+        const shown = preview.length > 80 ? preview.slice(0, 77) + "..." : preview;
+        console.log(`       ${key}  ⟶  ${shown}   [ttl=${ttl}s]`);
+      }
     }
   }
-}
 
-async function run() {
   console.log();
   line("═");
   console.log("  Self-Registration E2E Test");
@@ -69,7 +83,9 @@ async function run() {
   console.log(`  Phone: ${TEST_PHONE} → normalized +91${TEST_PHONE}`);
   line("═");
 
-  await mongoose.connect(process.env.MONGODB_URI);
+  const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+  await mongoose.connect(MONGODB_URI);
+  
   // Cleanup any pre-existing test record (paranoia)
   await Hospital.deleteOne({ email: TEST_EMAIL });
 

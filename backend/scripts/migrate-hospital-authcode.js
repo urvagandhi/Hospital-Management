@@ -1,44 +1,38 @@
 /**
  * Migration: Update Hospital documents for the new auth-code flow.
- *
- * This script does 4 things, each idempotent and safe to run multiple times:
- *
- *  1. Drops the legacy `username_1` unique index (so `null`-valued legacy
- *     records don't block new registrations).
- *
- *  2. Removes the deprecated `username` field from every hospital
- *     document (the field no longer exists in the Mongoose schema so
- *     it would otherwise linger as orphaned data).
- *
- *  3. Renames the legacy `patientCounter` field to `patientIdCounter`
- *     (only on documents that still have the old name).
- *
- *  4. Assigns `authCode` to every hospital that either:
- *       - doesn't have one yet, OR
- *       - has one that doesn't match the new 6-digit numeric format
- *         (e.g. a prior migration generated "H7K2M9"-style alphanumeric codes).
- *     Regenerated codes are 6-digit numeric, leading zeros preserved (e.g. "041326").
- *
- * Does NOT touch any patient/folder/file data.
- *
- * Usage:  node scripts/migrate-hospital-authcode.js
  */
 
-import "dotenv/config";
-import mongoose from "mongoose";
-import Hospital from "../src/models/Hospital.js";
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import dotenv from 'dotenv';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  console.error("MONGODB_URI not set in environment");
-  process.exit(1);
+// 1. LOAD ENV IMMEDIATELY
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const possiblePaths = [
+  path.resolve(__dirname, '../.env'),    // backend/.env
+  path.resolve(__dirname, '../../.env')  // root/.env
+];
+let envPath = possiblePaths.find(p => fs.existsSync(p));
+if (envPath) {
+  dotenv.config({ path: envPath });
 }
 
-// Matches the new authCode format: exactly 6 digits (leading zeros allowed)
-const NUMERIC_AUTH_CODE_RE = /^\d{6}$/;
-
 async function migrate() {
+  // 2. DYNAMICALLY IMPORT SERVICES
+  const { default: mongoose } = await import("mongoose");
+  const { default: Hospital } = await import("../src/models/Hospital.js");
+
+  const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+  if (!MONGODB_URI) {
+    console.error("MONGODB_URI not set in environment");
+    process.exit(1);
+  }
+
+  // Matches the new authCode format: exactly 6 digits (leading zeros allowed)
+  const NUMERIC_AUTH_CODE_RE = /^\d{6}$/;
+
   await mongoose.connect(MONGODB_URI);
   console.log("Connected to MongoDB\n");
 
@@ -73,8 +67,6 @@ async function migrate() {
   console.log(`[3/4] Renamed patientCounter → patientIdCounter on ${renameRes.modifiedCount} hospital(s)`);
 
   // ── Step 4: Assign/regenerate authCode where missing or in old format ───
-  // Load all hospitals (we need to inspect authCode format, which we can't
-  // express efficiently as a Mongo query for "not a 6-digit string").
   const hospitals = await Hospital.find({}).select("_id hospitalName authCode");
 
   const needsNewCode = hospitals.filter((h) => {
@@ -92,7 +84,6 @@ async function migrate() {
     console.log(`       ${h.hospitalName.padEnd(30)}  ${oldCode.padEnd(8)} → ${newCode}`);
   }
 
-  // Also report hospitals that already had a valid numeric code (for visibility)
   const alreadyNumeric = hospitals.length - needsNewCode.length;
   if (alreadyNumeric > 0) {
     console.log(`       ${alreadyNumeric} hospital(s) already had valid 6-digit authCode — unchanged`);

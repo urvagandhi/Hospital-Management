@@ -1,36 +1,39 @@
 /**
  * Migration: Add patientId to existing patients
- *
- * This script:
- * 1. Finds all patients without a patientId field
- * 2. Groups them by hospitalId
- * 3. Derives hospital initials from hospital name
- * 4. Assigns sequential patientId values (e.g. SH-001, SH-002)
- * 5. Updates Hospital.patientIdCounter to reflect the highest assigned number
- *
- * Safe to run multiple times — skips patients that already have a patientId.
- * Does NOT delete any data, documents, or folders.
- *
- * Usage: node scripts/migrate-patient-ids.js
  */
 
-import "dotenv/config";
-import mongoose from "mongoose";
-import Patient from "../src/models/Patient.js";
-import Hospital from "../src/models/Hospital.js";
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import dotenv from 'dotenv';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  console.error("MONGODB_URI not set in environment");
-  process.exit(1);
+// 1. LOAD ENV IMMEDIATELY
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const possiblePaths = [
+  path.resolve(__dirname, '../.env'),    // backend/.env
+  path.resolve(__dirname, '../../.env')  // root/.env
+];
+let envPath = possiblePaths.find(p => fs.existsSync(p));
+if (envPath) {
+  dotenv.config({ path: envPath });
 }
 
 async function migrate() {
+  // 2. DYNAMICALLY IMPORT SERVICES
+  const { default: mongoose } = await import("mongoose");
+  const { default: Patient } = await import("../src/models/Patient.js");
+  const { default: Hospital } = await import("../src/models/Hospital.js");
+
+  const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+  if (!MONGODB_URI) {
+    console.error("MONGODB_URI not set in environment");
+    process.exit(1);
+  }
+
   await mongoose.connect(MONGODB_URI);
   console.log("Connected to MongoDB");
 
-  // Find patients missing patientId
   const patientsWithoutId = await Patient.find({
     $or: [{ patientId: { $exists: false } }, { patientId: null }, { patientId: "" }],
   })
@@ -45,7 +48,6 @@ async function migrate() {
     return;
   }
 
-  // Group by hospitalId
   const grouped = {};
   for (const p of patientsWithoutId) {
     const hid = p.hospitalId.toString();
@@ -75,7 +77,6 @@ async function migrate() {
       console.log(`  ${patient._id} → ${patientId} (${patient.patientName})`);
     }
 
-    // Update hospital counter
     await Hospital.updateOne({ _id: hospitalId }, { $set: { patientIdCounter: counter } });
     console.log(`  Updated ${hospital.hospitalName} patientIdCounter to ${counter}`);
   }

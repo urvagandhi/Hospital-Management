@@ -3,6 +3,19 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from 'url';
+import fsSync from 'fs';
+import dotenv from 'dotenv';
+
+// 1. LOAD ENV IMMEDIATELY (Minimal change for local/server compatibility)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const possiblePaths = [
+  path.resolve(__dirname, '../.env'),    // backend/.env
+  path.resolve(__dirname, '../../.env')  // root/.env
+];
+let envPath = possiblePaths.find(p => fsSync.existsSync(p));
+if (envPath) dotenv.config({ path: envPath });
 
 const DEFAULT_BASE_URL = "http://localhost:5000/api";
 const DEFAULT_PATIENT_SEARCH = "Urva";

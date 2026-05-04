@@ -1,22 +1,33 @@
 /**
  * One-off cleanup: hard-delete hospitals previously soft-deleted
- * (deletionStatus === "deleted") so they stop appearing in the dashboard.
- *
- * Audit logs reference the hospital ObjectId and are NOT touched.
- *
- * Usage:  node scripts/purge-soft-deleted-hospitals.js
  */
 
-import "dotenv/config";
-import mongoose from "mongoose";
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import dotenv from 'dotenv';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-  console.error("MONGODB_URI not set in .env");
-  process.exit(1);
+// 1. LOAD ENV IMMEDIATELY
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const possiblePaths = [
+  path.resolve(__dirname, '../.env'),    // backend/.env
+  path.resolve(__dirname, '../../.env')  // root/.env
+];
+let envPath = possiblePaths.find(p => fs.existsSync(p));
+if (envPath) {
+  dotenv.config({ path: envPath });
 }
 
 const run = async () => {
+  // 2. DYNAMICALLY IMPORT SERVICES
+  const { default: mongoose } = await import("mongoose");
+
+  const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+  if (!MONGODB_URI) {
+    console.error("MONGODB_URI not set in .env");
+    process.exit(1);
+  }
+
   await mongoose.connect(MONGODB_URI);
   const Hospital = mongoose.connection.collection("hospitals");
 

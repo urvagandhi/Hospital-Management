@@ -1,23 +1,52 @@
 /**
  * MediVault Brand Migration Script
- * 
- * 1. Renames Cloudinary folders/files ONLY from 'HospitALL' to 'MediVault'.
- * 2. Updates MongoDB records (Hospital logos and Patient documents) with new URLs and Public IDs.
- * 
- * Run: docker compose exec backend node scripts/migrate-brand-paths.js
  */
 
-import mongoose from 'mongoose';
-import Hospital from '../src/models/Hospital.js';
-import Patient from '../src/models/Patient.js';
-import { cloudinary } from '../src/services/storage.service.js';
-import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
-const MONGO_URI = process.env.MONGODB_URI;
+import fs from 'fs';
 
-async function migrateBrand() {
+// 1. LOAD ENV IMMEDIATELY
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const possiblePaths = [
+  path.resolve(__dirname, '../.env'),    // backend/.env
+  path.resolve(__dirname, '../../.env')  // root/.env
+];
+
+let envPath = possiblePaths.find(p => fs.existsSync(p));
+
+if (!envPath) {
+  console.error(`❌ ERROR: .env file not found in: \n   - ${possiblePaths[0]}\n   - ${possiblePaths[1]}`);
+  process.exit(1);
+}
+
+console.log(`✅ Loading environment from: ${envPath}`);
+dotenv.config({ path: envPath });
+
+async function run() {
+  // 2. DYNAMICALLY IMPORT EVERYTHING ELSE
+  // This ensures process.env is populated BEFORE storage.service.js runs
+  const { default: mongoose } = await import('mongoose');
+  const { default: Hospital } = await import('../src/models/Hospital.js');
+  const { default: Patient } = await import('../src/models/Patient.js');
+  const { cloudinary } = await import('../src/services/storage.service.js');
+
+  const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+
   console.log("🚀 Starting Brand Migration: HospitALL → MediVault");
   
+  if (!MONGO_URI) {
+    console.error("❌ ERROR: MONGODB_URI not found in .env");
+    process.exit(1);
+  }
+  
+  if (!process.env.CLOUDINARY_API_KEY) {
+    console.error("❌ ERROR: Cloudinary API Key not found. Check your .env file at:", envPath);
+    process.exit(1);
+  }
+
   try {
     await mongoose.connect(MONGO_URI);
     console.log("✅ MongoDB Connected");
@@ -27,7 +56,7 @@ async function migrateBrand() {
     let skipped = 0;
     let errors = 0;
 
-    // --- 1. Migrate Hospital Logos (Only if they contain HospitALL) ---
+    // --- 1. Migrate Hospital Logos ---
     console.log("\n🏥 Migrating Hospital Logos...");
     const hospitals = await Hospital.find({ logoUrl: /HospitALL/ });
 
@@ -58,7 +87,7 @@ async function migrateBrand() {
       }
     }
 
-    // --- 2. Migrate Patient Documents (Only if they start with HospitALL) ---
+    // --- 2. Migrate Patient Documents ---
     console.log("\n📄 Migrating Patient Documents...");
     const patients = await Patient.find({
       "folders.files.cloudinaryPublicId": { $regex: /^HospitALL/ }
@@ -111,4 +140,4 @@ async function migrateBrand() {
   }
 }
 
-migrateBrand().catch(console.error);
+run().catch(console.error);

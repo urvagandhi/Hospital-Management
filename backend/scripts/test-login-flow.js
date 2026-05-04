@@ -8,10 +8,19 @@
  * Usage:  node scripts/test-login-flow.js
  */
 
-import "dotenv/config";
-import mongoose from "mongoose";
-import Hospital from "../src/models/Hospital.js";
-import { hashPassword } from "../src/utils/hash.js";
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import dotenv from 'dotenv';
+
+// 1. LOAD ENV IMMEDIATELY (Minimal change for local/server compatibility)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const possiblePaths = [
+  path.resolve(__dirname, '../.env'),    // backend/.env
+  path.resolve(__dirname, '../../.env')  // root/.env
+];
+let envPath = possiblePaths.find(p => fs.existsSync(p));
+if (envPath) dotenv.config({ path: envPath });
 
 const API = "http://localhost:5000/api/auth";
 const TEST_EMAIL = `login-test-${Date.now()}@example.com`;
@@ -33,7 +42,13 @@ async function postJson(path, body, headers = {}) {
 }
 
 async function run() {
-  await mongoose.connect(process.env.MONGODB_URI);
+  // 2. DYNAMICALLY IMPORT INTERNAL SERVICES (Minimal change for ES Modules)
+  const { default: mongoose } = await import("mongoose");
+  const Hospital = (await import("../src/models/Hospital.js")).default;
+  const { hashPassword } = await import("../src/utils/hash.js");
+
+  const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+  await mongoose.connect(MONGODB_URI);
 
   // ── Create a fresh test hospital directly (bypass OTP) ────────────────
   const passwordHash = await hashPassword(TEST_PASSWORD);
