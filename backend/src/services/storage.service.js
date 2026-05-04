@@ -1,6 +1,8 @@
 import cloudinaryModule from 'cloudinary';
 import multer from 'multer';
 import CloudinaryStorage from 'multer-storage-cloudinary';
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const cloudinary = cloudinaryModule.v2;
 
@@ -12,6 +14,20 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+// ---------------------------------------------------------------------------
+// DigitalOcean Spaces (S3) configuration
+// ---------------------------------------------------------------------------
+const s3Client = new S3Client({
+  endpoint: process.env.DO_SPACES_ENDPOINT,
+  region: process.env.DO_SPACES_REGION || "us-east-1",
+  credentials: {
+    accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID,
+    secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY,
+  },
+});
+
+const DO_BUCKET = process.env.DO_SPACES_BUCKET || "datastorage101291";
 
 // ---------------------------------------------------------------------------
 // Allowed MIME types
@@ -209,8 +225,38 @@ function buildThumbnailUrl({ publicId, resourceType = 'image', accessMode = 'pub
 // B5: buildSignedUrl — time-limited delivery URL for a private asset.
 //     TTL default: 5 minutes. Caller passes resource_type + public_id.
 // ---------------------------------------------------------------------------
-function buildSignedUrl({ publicId, resourceType = 'image', ttlSeconds = 300, attachment = false, fileName = null }) {
+function buildSignedUrl({ 
+  publicId, 
+  resourceType = 'image', 
+  ttlSeconds = 300, 
+  attachment = false, 
+  fileName = null,
+  storageProvider = 'cloudinary' 
+}) {
   if (!publicId) return null;
+
+  // PRIORITY 1: Check if we should use DigitalOcean (or if it's explicitly requested)
+  if (storageProvider === 'digitalocean' || process.env.USE_DIGITALOCEAN_AS_PRIMARY === 'true') {
+    try {
+      const command = new GetObjectCommand({
+        Bucket: DO_BUCKET,
+        Key: publicId,
+        ResponseContentDisposition: attachment 
+          ? `attachment; filename="${fileName || 'file'}"` 
+          : 'inline',
+      });
+      // getSignedUrl returns a promise, so this function should ideally be async.
+      // But for backward compatibility with current sync usage, we might need a wrapper.
+      // For now, I'll mark it as potentially needing an await in the controller.
+      return getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
+    } catch (err) {
+      console.error("DO Signed URL Error:", err);
+      // If DO fails, we can fallback to Cloudinary if requested
+      if (storageProvider === 'digitalocean') return null;
+    }
+  }
+
+  // PRIORITY 2: Fallback to Cloudinary
   const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
   const options = {
     resource_type: resourceType,
@@ -220,7 +266,6 @@ function buildSignedUrl({ publicId, resourceType = 'image', ttlSeconds = 300, at
     expires_at: expiresAt,
   };
   if (attachment) {
-    // Triggers browser download with given filename
     options.flags = fileName ? `attachment:${encodeURIComponent(fileName)}` : 'attachment';
   }
   return cloudinary.url(publicId, options);

@@ -26,6 +26,11 @@ const fileSchema = new mongoose.Schema({
   cloudinaryPublicId: {
     type: String,
   },
+  storageProvider: {
+    type: String,
+    enum: ["cloudinary", "digitalocean"],
+    default: "cloudinary",
+  },
   // B4: 120x120 thumbnail URL (images only; null for PDFs)
   thumbnailUrl: {
     type: String,
@@ -110,7 +115,7 @@ patientSchema.methods.toJSON = function () {
   if (obj.folders) {
     obj.folders = obj.folders.map((folder) => ({
       ...folder,
-      files: (folder.files || []).map(({ cloudinaryPublicId, resourceType, accessMode, ...file }) => file),
+      files: (folder.files || []).map(({ cloudinaryPublicId, storageProvider, resourceType, accessMode, ...file }) => file),
     }));
   }
   return obj;
