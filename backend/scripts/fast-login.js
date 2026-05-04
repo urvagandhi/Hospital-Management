@@ -1,65 +1,50 @@
 import "dotenv/config";
-import { redis } from "../src/services/redis.service.js";
 
 const API_URL = "http://localhost:5000/api/auth";
 const email = "urvagandhi24@gmail.com";
 const password = "Test@1234";
+const authCode = "136960"; // Your fixed authCode from DB
 
 async function fastLogin() {
   console.log("🚀 Starting Fast Login for:", email);
 
-  // 1. Trigger Login
-  console.log("📡 Sending login request...");
+  // 1. Step 1: Login to get Temp Token
+  console.log("📡 Sending login request (Step 1)...");
   const loginRes = await fetch(`${API_URL}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
 
+  const loginData = await loginRes.json();
+
   if (!loginRes.ok) {
-    const error = await loginRes.json();
-    console.error("❌ Login Failed:", error);
+    console.error("❌ Login Step 1 Failed:", loginData);
     return;
   }
-  console.log("✅ Login step successful (Code sent).");
 
-  // 2. Peek into Host Redis to get the code
-  console.log("🔍 Peeking into Local Redis for the auth code...");
-  // The backend uses 'otp:{email}' as the key
-  const redisKey = `otp:${email.toLowerCase().trim()}`;
-  
-  // Wait a small moment for Redis to be updated
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const rawData = await redis.get(redisKey);
-  let authCode = "136960"; // Use your fixed code as default
-
-  if (rawData) {
-    try {
-      const parsed = JSON.parse(rawData);
-      // The stored format is { hash: "...", attempts: 0 }
-      // We can't get the plain text OTP from the hash, 
-      // so we will rely on your fixed code 136960.
-      console.log("🎯 Found OTP record in Redis (Hashed).");
-    } catch (e) {
-      console.log("🎯 Found raw OTP in Redis.");
-    }
-  } else {
-    console.log("⚠️ No OTP found in Redis, using your fixed code: 136960");
+  const tempToken = loginData.data?.tempToken;
+  if (!tempToken) {
+    console.error("❌ No tempToken received. Check if account requires Auth Code.");
+    return;
   }
+  console.log("✅ Step 1 Success. Received Temp Token.");
 
-  // 3. Verify with the code
-  console.log("📡 Sending verification request...");
-  const verifyRes = await fetch(`${API_URL}/verify`, {
+  // 2. Step 2: Verify Auth Code using the Temp Token
+  console.log(`📡 Sending verification request (Step 2) with code: ${authCode}...`);
+  const verifyRes = await fetch(`${API_URL}/login/verify-auth-code`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, authCode }),
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${tempToken}`
+    },
+    body: JSON.stringify({ authCode }),
   });
 
   const result = await verifyRes.json();
 
   if (!verifyRes.ok) {
-    console.error("❌ Verification Failed:", result);
+    console.error("❌ Step 2 Verification Failed:", result);
     return;
   }
 
@@ -68,7 +53,7 @@ async function fastLogin() {
   console.log("═".repeat(50));
   console.log("Hospital:", result.data.hospital.hospitalName);
   console.log("\nYour JWT Token:");
-  console.log(result.data.token);
+  console.log(result.data.accessToken);
   console.log("═".repeat(50) + "\n");
 }
 

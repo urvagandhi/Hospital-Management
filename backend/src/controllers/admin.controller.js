@@ -16,12 +16,12 @@ import getClientIp from '../utils/clientIp.js';
 // Prefixes to scan — all resource types that have ever been used.
 // Cloudinary keeps raw and image in separate buckets; both must be checked.
 const SCAN_PREFIXES = [
+  { prefix: 'MediVault', resourceType: 'raw' },
+  { prefix: 'MediVault', resourceType: 'image' },
   { prefix: 'hospital/documents', resourceType: 'raw' },
   { prefix: 'hospital/documents', resourceType: 'image' },
   { prefix: 'hospital/uploads', resourceType: 'raw' },
   { prefix: 'hospital/uploads', resourceType: 'image' },
-  { prefix: 'MediVault', resourceType: 'raw' },
-  { prefix: 'MediVault', resourceType: 'image' },
   { prefix: 'HospitALL', resourceType: 'raw' },
   { prefix: 'HospitALL', resourceType: 'image' },
 ];
