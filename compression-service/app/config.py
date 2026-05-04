@@ -12,6 +12,10 @@ class Config:
     CLOUDINARY_CLOUD_NAME: str
     CLOUDINARY_API_KEY: str
     CLOUDINARY_API_SECRET: str
+    DO_SPACES_ENDPOINT: str
+    DO_SPACES_ACCESS_KEY_ID: str
+    DO_SPACES_SECRET_ACCESS_KEY: str
+    DO_SPACES_BUCKET: str
     MONGO_URI: str
     JOB_TMP_DIR: str
 
@@ -23,13 +27,23 @@ class Config:
             "CLOUDINARY_API_SECRET",
             "MONGO_URI",
         ]
+        # DO variables are optional for now to allow partial setup
+        optional_do = [
+            "DO_SPACES_ENDPOINT",
+            "DO_SPACES_ACCESS_KEY_ID",
+            "DO_SPACES_SECRET_ACCESS_KEY",
+            "DO_SPACES_BUCKET",
+        ]
+        
         missing = [k for k in required if not os.environ.get(k)]
         if missing:
             raise RuntimeError(
                 f"Missing required environment variables: {', '.join(missing)}"
             )
-        for k in required:
-            setattr(self, k, os.environ[k])
+        
+        all_keys = required + optional_do
+        for k in all_keys:
+            setattr(self, k, os.environ.get(k))
 
         # Ensure URI always has a DB name — same behavior as Mongoose in the Node backend
         self.MONGO_URI = self._ensure_db_name(self.MONGO_URI)

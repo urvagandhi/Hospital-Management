@@ -10,6 +10,7 @@ class SourcePdf(BaseModel):
     uploaded_at: str  # ISO datetime string, passed by Node backend from Mongo
     resource_type: str = "image"  # "image" or "raw" — matches Cloudinary resource_type
     access_mode: str = "signed"  # "public" or "signed" — determines URL generation
+    storage_provider: str = "cloudinary"  # "cloudinary" or "digitalocean"
 
 
 # ── Requests ──

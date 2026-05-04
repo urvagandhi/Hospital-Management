@@ -9,6 +9,8 @@ import cloudinary.api
 import cloudinary.uploader
 import cloudinary.utils
 import httpx
+import boto3
+from botocore.config import Config as BotoConfig
 
 from app.config import config
 from app.schemas import SourcePdf
@@ -35,12 +37,34 @@ def _source_delivery_url(
     public_id: str,
     resource_type: str = "image",
     access_mode: str = "signed",
+    storage_provider: str = "cloudinary"
 ) -> str:
     """Build a delivery URL for fetching a source PDF.
 
     Public files use a plain Cloudinary URL.
     Signed/authenticated files use expires_at + sign_url.
+    DigitalOcean uses boto3 S3 presigned URLs.
     """
+    if storage_provider == "digitalocean" or getattr(config, "USE_DIGITALOCEAN_AS_PRIMARY", False):
+        try:
+            s3 = boto3.client(
+                "s3",
+                endpoint_url=config.DO_SPACES_ENDPOINT,
+                aws_access_key_id=config.DO_SPACES_ACCESS_KEY_ID,
+                aws_secret_access_key=config.DO_SPACES_SECRET_ACCESS_KEY,
+                region_name=getattr(config, "DO_SPACES_REGION", "sfo3"),
+                config=BotoConfig(signature_version="s3v4")
+            )
+            return s3.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": config.DO_SPACES_BUCKET, "Key": public_id},
+                ExpiresIn=300
+            )
+        except Exception as e:
+            logger.error(f"DO Presigned URL failed for {public_id}: {e}")
+            if storage_provider == "digitalocean":
+                raise e
+
     if access_mode == "public":
         url, _ = cloudinary.utils.cloudinary_url(
             public_id,
@@ -148,7 +172,7 @@ async def fetch_source_pdfs(
     async def _fetch_one(src: SourcePdf, index: int) -> Path:
         async with semaphore:
             url = _source_delivery_url(
-                src.public_id, src.resource_type, src.access_mode
+                src.public_id, src.resource_type, src.access_mode, src.storage_provider
             )
             dest = job_dir / f"source_{index}.pdf"
 
