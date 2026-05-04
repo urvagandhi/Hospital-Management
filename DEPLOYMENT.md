@@ -104,3 +104,50 @@ docker compose up -d --build
 - **Check MongoDB Status:** `sudo systemctl status mongod`
 - **Test Backend Connection:** `docker compose logs backend`
 - **Verify API Health:** `curl http://localhost/api/health` (via Nginx) or `curl http://localhost:5000/api/health`
+
+## Migration: Moving Redis to Host (Rocky Linux 9)
+
+To save even more RAM and eliminate 3rd party dependencies (Upstash), move Redis to the host.
+
+### 1. Install Redis
+```bash
+sudo dnf install -y redis
+sudo systemctl enable --now redis
+```
+
+### 2. Configure Redis (Security & Network)
+Edit the config:
+```bash
+sudo vi /etc/redis/redis.conf
+```
+*   **Bind**: Change `bind 127.0.0.1` to `bind 0.0.0.0`
+*   **Protected Mode**: Ensure `protected-mode no` (since we use firewall).
+*   **Password**: Find `requirepass` and set your password:
+    ```text
+    requirepass YourSecureRedisPassword
+    ```
+Restart Redis:
+```bash
+sudo systemctl restart redis
+```
+
+### 3. Secure with Firewall
+```bash
+# Allow Docker bridge to access Redis port
+sudo firewall-cmd --permanent --zone=docker-access --add-port=6379/tcp
+sudo firewall-cmd --reload
+```
+
+### 4. Update Application Environment
+Update your `.env` on the server:
+```env
+# Redis URL (Points to Host machine)
+REDIS_URL=redis://:YourSecureRedisPassword@host.docker.internal:6379
+```
+
+### 5. Deploy Updated Stack
+```bash
+git pull
+docker compose down
+docker compose up -d --build
+```

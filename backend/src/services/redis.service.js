@@ -1,33 +1,26 @@
-import { Redis } from "@upstash/redis";
+import { Redis as UpstashRedis } from "@upstash/redis";
+import IORedis from "ioredis";
 import crypto from "crypto";
 import logger from "../utils/logger.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Redis client with in-memory fallback
 //
-// SRS §2.1 requires "Redis with in-memory fallback" so dev environments and
-// outages don't take down auth flows. We expose a minimal compatible surface
-// (get / set / del / ttl) that every helper in this file uses.
-//
 // Strategy:
-//   • If Upstash env vars are set AND the first write succeeds → use Upstash.
-//   • Otherwise, or after a catastrophic failure, transparently switch to an
-//     in-memory Map-based store with real TTL semantics.
+//   1. If Upstash Creds exist → Use Upstash (REST) - Best for Development.
+//   2. Else if REDIS_URL exists → Use IORedis (TCP) - Best for Production Host.
+//   3. Otherwise → Fallback to In-Memory Map.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const memStore = new Map();   // key -> { value: string, expiresAt: number|null }
-const memTimers = new Map();  // key -> setTimeout handle (for cleanup)
+const memStore = new Map();
+const memTimers = new Map();
 
 function memSet(key, value, { ex } = {}) {
   const expiresAt = ex ? Date.now() + ex * 1000 : null;
   memStore.set(key, { value: String(value), expiresAt });
-
   if (memTimers.has(key)) clearTimeout(memTimers.get(key));
   if (ex) {
-    const h = setTimeout(() => {
-      memStore.delete(key);
-      memTimers.delete(key);
-    }, ex * 1000);
+    const h = setTimeout(() => { memStore.delete(key); memTimers.delete(key); }, ex * 1000);
     if (h.unref) h.unref();
     memTimers.set(key, h);
   }
@@ -57,115 +50,98 @@ function memDel(key) {
 
 function memTtl(key) {
   const rec = memStore.get(key);
-  if (!rec) return -2;               // key does not exist
-  if (!rec.expiresAt) return -1;     // no expiry
+  if (!rec) return -2;
+  if (!rec.expiresAt) return -1;
   const remaining = Math.ceil((rec.expiresAt - Date.now()) / 1000);
   return remaining > 0 ? remaining : -2;
 }
 
-// ── Select backend at module load ───────────────────────────────────────────
-const isProduction = process.env.NODE_ENV === "production";
-const hasUpstashCreds = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
-let usingInMemory = !hasUpstashCreds;
-const upstash = hasUpstashCreds
-  ? new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-  })
-  : null;
+// ── Initialization ──────────────────────────────────────────────────────────
+const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redisUrl = process.env.REDIS_URL;
 
-if (!hasUpstashCreds) {
-  if (isProduction) {
-    logger.fatal(
-      { event: "redis_missing_credentials_production" },
-      "[redis.service] Upstash credentials are required in production; refusing to start with in-memory fallback",
-    );
-    throw new Error(
-      "[redis.service] Missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN in production",
-    );
-  }
+let mode = "memory"; // "upstash" | "native" | "memory"
+let upstashClient = null;
+let nativeClient = null;
 
-  logger.warn(
-    { event: "redis_fallback_memory", reason: "missing_credentials" },
-    "[redis.service] ⚠️  Upstash credentials missing — using in-memory fallback (dev-only, non-persistent)",
-  );
+if (upstashUrl && upstashToken) {
+  mode = "upstash";
+  upstashClient = new UpstashRedis({ url: upstashUrl, token: upstashToken });
+  logger.info({ event: "redis_init", mode: "upstash" }, "[redis.service] Using Upstash Redis (REST)");
+} else if (redisUrl) {
+  mode = "native";
+  nativeClient = new IORedis(redisUrl, {
+    maxRetriesPerRequest: 1,
+    connectTimeout: 5000,
+  });
+  nativeClient.on("error", (err) => {
+    logger.error({ event: "redis_error", err }, `[redis.service] Native Redis error: ${err.message}`);
+  });
+  logger.info({ event: "redis_init", mode: "native" }, "[redis.service] Using Native Redis (TCP)");
+} else {
+  logger.warn({ event: "redis_init", mode: "memory" }, "[redis.service] No Redis credentials found — using in-memory fallback");
 }
 
-/**
- * Unified backend. Each method tries Upstash first (if configured) and falls
- * back to the in-memory store on any error. Once Upstash fails we latch
- * `usingInMemory = true` so subsequent calls don't keep paying the DNS /
- * connect timeout.
- */
+let usingInMemoryFallback = (mode === "memory");
+
 const redis = {
   async get(key) {
-    if (usingInMemory || !upstash) return memGet(key);
+    if (usingInMemoryFallback) return memGet(key);
     try {
-      return await upstash.get(key);
+      if (mode === "upstash") return await upstashClient.get(key);
+      if (mode === "native") return await nativeClient.get(key);
     } catch (err) {
-      if (!usingInMemory) {
-        logger.warn(
-          { event: "redis_fallback_memory", reason: "upstash_unreachable", err },
-          `[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`,
-        );
-        usingInMemory = true;
-      }
+      logger.warn({ event: "redis_fallback", err }, "[redis.service] Backend failed, using in-memory");
+      usingInMemoryFallback = true;
       return memGet(key);
     }
+    return memGet(key);
   },
 
-  async set(key, value, opts) {
-    if (usingInMemory || !upstash) return memSet(key, value, opts);
+  async set(key, value, opts = {}) {
+    if (usingInMemoryFallback) return memSet(key, value, opts);
     try {
-      return await upstash.set(key, value, opts);
-    } catch (err) {
-      if (!usingInMemory) {
-        logger.warn(
-          { event: "redis_fallback_memory", reason: "upstash_unreachable", err },
-          `[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`,
-        );
-        usingInMemory = true;
+      if (mode === "upstash") return await upstashClient.set(key, value, opts);
+      if (mode === "native") {
+        const { ex } = opts;
+        if (ex) return await nativeClient.set(key, value, "EX", ex);
+        return await nativeClient.set(key, value);
       }
+    } catch (err) {
+      usingInMemoryFallback = true;
       return memSet(key, value, opts);
     }
+    return memSet(key, value, opts);
   },
 
   async del(key) {
-    if (usingInMemory || !upstash) return memDel(key);
+    if (usingInMemoryFallback) return memDel(key);
     try {
-      return await upstash.del(key);
+      if (mode === "upstash") return await upstashClient.del(key);
+      if (mode === "native") return await nativeClient.del(key);
     } catch (err) {
-      if (!usingInMemory) {
-        logger.warn(
-          { event: "redis_fallback_memory", reason: "upstash_unreachable", err },
-          `[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`,
-        );
-        usingInMemory = true;
-      }
+      usingInMemoryFallback = true;
       return memDel(key);
     }
+    return memDel(key);
   },
 
   async ttl(key) {
-    if (usingInMemory || !upstash) return memTtl(key);
+    if (usingInMemoryFallback) return memTtl(key);
     try {
-      return await upstash.ttl(key);
+      if (mode === "upstash") return await upstashClient.ttl(key);
+      if (mode === "native") return await nativeClient.ttl(key);
     } catch (err) {
-      if (!usingInMemory) {
-        logger.warn(
-          { event: "redis_fallback_memory", reason: "upstash_unreachable", err },
-          `[redis.service] ⚠️  Upstash unreachable (${err.message}) — falling back to in-memory for this process`,
-        );
-        usingInMemory = true;
-      }
+      usingInMemoryFallback = true;
       return memTtl(key);
     }
+    return memTtl(key);
   },
 };
 
-/** Whether the process is currently using the in-memory fallback. */
 export function isUsingInMemoryStore() {
-  return usingInMemory;
+  return usingInMemoryFallback;
 }
 
 function normalizeIdentifier(identifier) {

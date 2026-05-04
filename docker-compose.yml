@@ -2,18 +2,6 @@ version: "3.8"
 
 services:
 
-  # ── Redis ──
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme}
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # ── Compression Service (Python) ──
   compression-service:
@@ -43,15 +31,13 @@ services:
       NODE_ENV: production
       PORT: 5000
       MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@host.docker.internal:27017/hospital-management?authSource=admin
-      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@host.docker.internal:6379
       COMPRESSION_SERVICE_URL: http://compression-service:8000
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "5000:5000"
     depends_on:
-      redis:
-        condition: service_healthy
       compression-service:
         condition: service_started
     healthcheck:
@@ -99,4 +85,4 @@ services:
       retries: 3
 
 volumes:
-  redis_data:
+  # redis_data:
