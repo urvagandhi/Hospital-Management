@@ -1,4 +1,3 @@
-version: "3.8"
 
 services:
 
@@ -35,8 +34,6 @@ services:
       COMPRESSION_SERVICE_URL: http://compression-service:8000
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    ports:
-      - "5000:5000"
     depends_on:
       compression-service:
         condition: service_started

@@ -103,7 +103,7 @@ docker compose up -d --build
 ## Verification Commands
 - **Check MongoDB Status:** `sudo systemctl status mongod`
 - **Test Backend Connection:** `docker compose logs backend`
-- **Verify API Health:** `curl http://localhost/api/health` (via Nginx) or `curl http://localhost:5000/api/health`
+- **Verify API Health:** `curl http://localhost/api/health` (via Nginx)
 
 ## Migration: Moving Redis to Host (Rocky Linux 9)
 
