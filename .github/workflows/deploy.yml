@@ -54,9 +54,9 @@ jobs:
               fi
             done
 
-            # Final direct API check
+            # Final direct API check (follows redirect to HTTPS and ignores SSL errors for localhost)
             echo "Direct API health check:"
-            curl -f http://localhost/api/health
+            curl -kL -f http://localhost/api/health
 
             echo "Container status:"
             docker ps
