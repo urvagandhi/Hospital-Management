@@ -9,7 +9,7 @@ python-multipart==0.0.20
 fpdf2==2.8.3
 prometheus-client==0.21.0
 Pillow==10.3.0
-img2pdf==0.5.1
+img2pdf==0.6.3
 pdfminer.six==20231228
 psutil==5.9.8
 boto3==1.34.14
