@@ -5,6 +5,7 @@
  */
 
 import archiver from "archiver";
+import { buildSignedUrl } from "./storage.service.js";
 import logger from "../utils/logger.js";
 
 /**
@@ -56,7 +57,15 @@ export const generatePatientZip = async (patient, res, selectedFolders = null) =
   for (const folder of foldersToInclude) {
     const folderPrefix = safeName(folder.name);
     for (const file of folder.files) {
-      const buffer = await fetchFileBuffer(file.fileUrl);
+      // Use signed URL for fetching to handle private assets on Cloudinary or DigitalOcean
+      const signedUrl = await buildSignedUrl({
+        publicId: file.cloudinaryPublicId,
+        resourceType: file.resourceType || "raw",
+        storageProvider: file.storageProvider || 'cloudinary',
+        accessMode: file.accessMode || 'signed'
+      });
+      
+      const buffer = await fetchFileBuffer(signedUrl || file.fileUrl);
       if (buffer) {
         archive.append(buffer, { name: `${folderPrefix}/${safeName(file.fileName)}` });
       }
@@ -87,7 +96,14 @@ export const generateFolderZip = async (patient, folderName, res) => {
   archive.pipe(res);
 
   for (const file of folder.files) {
-    const buffer = await fetchFileBuffer(file.fileUrl);
+    const signedUrl = await buildSignedUrl({
+      publicId: file.cloudinaryPublicId,
+      resourceType: file.resourceType || "raw",
+      storageProvider: file.storageProvider || 'cloudinary',
+      accessMode: file.accessMode || 'signed'
+    });
+
+    const buffer = await fetchFileBuffer(signedUrl || file.fileUrl);
     if (buffer) {
       archive.append(buffer, { name: safeName(file.fileName) });
     }
