@@ -117,24 +117,33 @@ async function run() {
               console.log(`   Moving File: ${oldPublicId} → ${newPublicId}`);
               
               let result;
+              let alreadyMoved = false;
               try {
                 result = await cloudinary.uploader.rename(oldPublicId, newPublicId, { 
                   resource_type: file.resourceType || 'raw' 
                 });
               } catch (renameErr) {
-                // If it's already moved, Cloudinary will say "Resource not found"
-                if (renameErr.message.includes("Resource not found")) {
-                  console.log(`     ⚠️  Already moved in Cloudinary. Updating DB record only.`);
-                  // We need to construct the new URL manually since we didn't get a result object
-                  const oldUrl = file.fileUrl;
-                  file.fileUrl = oldUrl.replace('HospitALL', 'MediVault');
-                  file.cloudinaryPublicId = newPublicId;
+                // Cloudinary says "Resource not found" when the file was already renamed
+                const isNotFound = 
+                  renameErr?.http_code === 404 ||
+                  renameErr?.message?.includes('not found') ||
+                  renameErr?.message?.includes('Not Found');
+                if (isNotFound) {
+                  alreadyMoved = true;
                 } else {
                   throw renameErr;
                 }
               }
 
-              if (result) {
+              if (alreadyMoved) {
+                // File already at MediVault path — just fix the DB record
+                console.log(`     ⚠️  Already in MediVault. Updating DB record only.`);
+                file.cloudinaryPublicId = newPublicId;
+                // Safely replace the URL — handle null/undefined fileUrl
+                if (file.fileUrl) {
+                  file.fileUrl = file.fileUrl.replace('HospitALL', 'MediVault');
+                }
+              } else if (result) {
                 file.cloudinaryPublicId = result.public_id;
                 file.fileUrl = result.secure_url;
               }
