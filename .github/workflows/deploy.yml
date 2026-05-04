@@ -1,0 +1,27 @@
+name: Auto Deploy to Droplet
+
+on:
+  push:
+    branches:
+      - main # This tells GitHub to run this script ONLY when code is pushed to the 'main' branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log into Droplet and Deploy
+        # This is a pre-built action that safely SSHes into a server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # 1. Go to the project folder on the droplet
+            cd /root/Hospital-Management
+            
+            # 2. Pull the latest code from GitHub
+            git pull origin main
+            
+            # 3. Tell Docker to rebuild and restart the containers in the background
+            docker-compose up -d --build

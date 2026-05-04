@@ -35,6 +35,17 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Compression Service ──
+  compression-service:
+    build:
+      context: ./compression-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+
   # ── Backend (Node/Express API) ──
   backend:
     build:
@@ -48,6 +59,7 @@ services:
       PORT: 5000
       MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@mongo:27017/hospital-management?authSource=admin
       REDIS_URL: redis://:${REDIS_PASSWORD:-changeme}@redis:6379
+      COMPRESSION_SERVICE_URL: http://compression-service:8000
     ports:
       - "5000:5000"
     depends_on:
@@ -55,6 +67,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      compression-service:
+        condition: service_started
     healthcheck:
       test:
         [
