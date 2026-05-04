@@ -8,7 +8,7 @@ Canonical project context: [../CLAUDE.md](../CLAUDE.md). Backend client: [../bac
 
 ## Deployment
 
-**Target:** Render (free tier, Singapore region, Docker runtime, 512 MB RAM)
+**Target:** DigitalOcean droplet under Docker Compose (production), with local MongoDB on the host and the backend as the only caller
 
 ### Required Environment Variables
 
@@ -19,7 +19,7 @@ Canonical project context: [../CLAUDE.md](../CLAUDE.md). Backend client: [../bac
 | `CLOUDINARY_API_KEY`    | Cloudinary API key                                                                                     |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret                                                                                  |
 | `MONGO_URI`             | MongoDB connection string (must include default database)                                              |
-| `PORT`                  | Set automatically by Render                                                                            |
+| `PORT`                  | Set automatically by the deployment environment                                                        |
 
 ### Docker Build
 

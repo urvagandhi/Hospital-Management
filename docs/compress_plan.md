@@ -7,7 +7,7 @@
 ## CONTEXT & CONSTRAINTS
 
 - **Service:** Python FastAPI sidecar (`compression-service/`)
-- **Runtime:** Render free tier, Docker, 512MB RAM, Singapore region
+- **Runtime:** DigitalOcean droplet under Docker Compose for production; local Docker for development
 - **Source PDFs:** Always ML Kit JPEG-in-PDF (clean structure, no garbage)
 - **Medical floor:** 150 DPI minimum, color preserved unless tier forces gray
 - **Existing:** 5 fixed tiers using Ghostscript presets + pikepdf digital fast-path
@@ -239,7 +239,7 @@ for tier in 0 to 4:
     5. Check size of compressed.pdf
        → If <= target, return compressed.pdf
     6. Clean up temp files from this tier before next iteration
-       (RAM management — critical on 512MB Render)
+      (RAM management — critical on low-memory deployments)
 
 If no tier hits target: return tier 4 result (best effort)
 ```
@@ -254,7 +254,7 @@ If no tier hits target: return tier 4 result (best effort)
 
 - Before each tier, check available system memory using `psutil`
 - If available RAM < 150MB, skip to the next tier immediately and log a warning
-- This prevents OOM on Render's 512MB limit
+- This prevents OOM on low-memory deployments
 
 **Temp directory management:**
 

@@ -18,8 +18,8 @@ graph TB
     subgraph "Backend Services"
         API[Express.js API<br/>Node 20]
         SIDECAR[Compression Sidecar<br/>FastAPI + pikepdf + GhostScript]
-        MONGO[(MongoDB 7)]
-        REDIS[(Upstash Redis<br/>+ in-memory fallback)]
+      MONGO[(MongoDB 7<br/>local in prod · Atlas in dev)]
+      REDIS[(Redis<br/>native TCP in prod · Upstash in dev · in-memory fallback)]
     end
 
     subgraph "External"
@@ -339,16 +339,16 @@ R2 / S3 keys (`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, …) remain in `.env.example` a
 
 ## Tech Stack
 
-| Component  | Technology                                                                                                                                                                  |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backend    | Node 20 · Express · Mongoose 7 · JWT · bcryptjs · Multer · Cloudinary · Brevo · Firebase Admin · Upstash Redis · pdfkit · pdf-lib · archiver · node-cron · pino + pino-http |
-| Frontend   | React 18 · TypeScript 5 · Vite · Tailwind CSS 3 · React Router 6 · Axios · Headless UI · React Context                                                                      |
-| Android    | Kotlin · Retrofit · Room v4 · WorkManager · BiometricPrompt · FCM · ML Kit Document Scanner                                                                                 |
-| Sidecar    | Python 3.12 · FastAPI · pikepdf · pypdfium2 · fpdf2 · GhostScript · Motor (async Mongo)                                                                                     |
-| Storage    | Cloudinary (primary) · R2 / S3 (legacy fallback, dead code)                                                                                                                 |
-| Database   | MongoDB 7                                                                                                                                                                   |
-| Cache / KV | Upstash Redis (REST), with in-memory `Map` fallback                                                                                                                         |
-| Deployment | Docker Compose (dev), Render (prod)                                                                                                                                         |
+| Component  | Technology                                                                                                                                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend    | Node 20 · Express · Mongoose 7 · JWT · bcryptjs · Multer · Cloudinary · Brevo · Firebase Admin · Redis (native TCP in prod; Upstash REST in dev) · pdfkit · pdf-lib · archiver · node-cron · pino + pino-http |
+| Frontend   | React 18 · TypeScript 5 · Vite · Tailwind CSS 3 · React Router 6 · Axios · Headless UI · React Context                                                                                                        |
+| Android    | Kotlin · Retrofit · Room v4 · WorkManager · BiometricPrompt · FCM · ML Kit Document Scanner                                                                                                                   |
+| Sidecar    | Python 3.12 · FastAPI · pikepdf · pypdfium2 · fpdf2 · GhostScript · Motor (async Mongo)                                                                                                                       |
+| Storage    | Cloudinary (primary) · R2 / S3 (legacy fallback, dead code)                                                                                                                                                   |
+| Database   | MongoDB 7                                                                                                                                                                                                     |
+| Cache / KV | Redis (native TCP in prod; Upstash REST in dev), with in-memory `Map` fallback                                                                                                                                |
+| Deployment | Docker Compose for both dev and production; production runs on the DigitalOcean droplet with host-local MongoDB / Redis                                                                                       |
 
 ---
 
@@ -367,7 +367,7 @@ R2 / S3 keys (`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, …) remain in `.env.example` a
 
 ## Production Deployment — DigitalOcean + Rocky Linux
 
-This section is the **operator runbook** for deploying the current code (Cloudinary + Upstash Redis + external email/FCM still in place) onto a DigitalOcean droplet running Rocky Linux. Storage migration off Cloudinary and the move to local MongoDB / local Redis are **separate, later workstreams** — get the current build running first, then change one dependency at a time.
+This section is the **operator runbook** for deploying the current code onto a DigitalOcean droplet running Rocky Linux. Production now uses the droplet's local MongoDB and Redis services under Docker Compose; Atlas and Upstash remain development-friendly alternatives via environment variables when you want to test against hosted infrastructure.
 
 ### Target topology
 
@@ -391,18 +391,18 @@ Recommended droplet: **2 GB RAM / 2 vCPU / 50 GB SSD** (1 GB is too tight once M
 
 ### Step 0 — What to hand to the operator
 
-| Item                          | How to deliver                                                                                                                                                                    |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source code                   | **GitHub repo access** — add them as a read-only Collaborator OR generate a read-only **deploy key** scoped to this repo. Do **not** ship a zip; updates must be `git pull`-able. |
-| `backend/.env`                | Out-of-band (encrypted email / 1Password share). NEVER commit.                                                                                                                    |
-| `compression-service/.env`    | Same — out-of-band.                                                                                                                                                               |
-| Shared `INTERNAL_API_SECRET`  | Generate fresh (`openssl rand -hex 32`); same value in both `.env` files (`COMPRESSION_SERVICE_SECRET` on backend, `INTERNAL_API_SECRET` on sidecar).                             |
-| Cloudinary keys               | Out-of-band.                                                                                                                                                                      |
-| Brevo API key                 | Out-of-band.                                                                                                                                                                      |
-| Firebase service account JSON | Out-of-band; either set `FIREBASE_SERVICE_ACCOUNT_JSON` env or upload the JSON file and point `FIREBASE_SERVICE_ACCOUNT_PATH` at it.                                              |
-| Upstash Redis URL + token     | Out-of-band (until local Redis migration).                                                                                                                                        |
-| Domain name                   | e.g. `api.yourdomain.in`. Point an `A` record to the droplet IP **before** running certbot.                                                                                       |
-| Branch                        | `main`                                                                                                                                                                            |
+| Item                               | How to deliver                                                                                                                                                                    |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source code                        | **GitHub repo access** — add them as a read-only Collaborator OR generate a read-only **deploy key** scoped to this repo. Do **not** ship a zip; updates must be `git pull`-able. |
+| `backend/.env`                     | Out-of-band (encrypted email / 1Password share). NEVER commit.                                                                                                                    |
+| `compression-service/.env`         | Same — out-of-band.                                                                                                                                                               |
+| Shared `INTERNAL_API_SECRET`       | Generate fresh (`openssl rand -hex 32`); same value in both `.env` files (`COMPRESSION_SERVICE_SECRET` on backend, `INTERNAL_API_SECRET` on sidecar).                             |
+| Cloudinary keys                    | Out-of-band.                                                                                                                                                                      |
+| Brevo API key                      | Out-of-band.                                                                                                                                                                      |
+| Firebase service account JSON      | Out-of-band; either set `FIREBASE_SERVICE_ACCOUNT_JSON` env or upload the JSON file and point `FIREBASE_SERVICE_ACCOUNT_PATH` at it.                                              |
+| Redis password / connection string | Out-of-band (local Redis on the production droplet).                                                                                                                              |
+| Domain name                        | e.g. `api.yourdomain.in`. Point an `A` record to the droplet IP **before** running certbot.                                                                                       |
+| Branch                             | `main`                                                                                                                                                                            |
 
 ---
 
@@ -464,7 +464,7 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
 ### Step 2 — MongoDB hardening (still as `root`)
 
-> Skip this step on first deploy if you are still using Mongo Atlas. It only applies once you've decided to run Mongo locally.
+> This is part of the standard production setup. Use Atlas only when you intentionally want a hosted development database.
 
 ```bash
 mongosh <<'EOF'
@@ -518,17 +518,18 @@ sudo env PATH=$PATH pm2 startup systemd -u deploy --hp /home/deploy
 
 Backend `.env` deltas vs `.env.example` for this droplet:
 
-| Key                                 | Value                                                                            |
-| ----------------------------------- | -------------------------------------------------------------------------------- |
-| `NODE_ENV`                          | `production`                                                                     |
-| `PORT`                              | `5000`                                                                           |
-| `TRUST_PROXY_HOPS`                  | `1` (one hop = nginx; not `2` like Render+Cloudflare)                            |
-| `FRONTEND_URL`                      | `https://your-web-domain` (CORS allow-list)                                      |
-| `MONGODB_URI`                       | Atlas URI **or** `mongodb://hms_app:...@127.0.0.1:27017/...` once Step 2 is done |
-| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Keep Upstash for now; local-Redis migration is a separate workstream             |
-| `USE_COMPRESSION_SERVICE`           | `true` (mandatory in prod — `env.js` refuses to boot without it)                 |
-| `COMPRESSION_SERVICE_URL`           | `http://127.0.0.1:8000`                                                          |
-| `COMPRESSION_SERVICE_SECRET`        | Same value as sidecar's `INTERNAL_API_SECRET`                                    |
+| Key                                 | Value                                                                                                     |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                          | `production`                                                                                              |
+| `PORT`                              | `5000`                                                                                                    |
+| `TRUST_PROXY_HOPS`                  | `1` (one hop = nginx; not `2` like a cloud proxy stack)                                                   |
+| `FRONTEND_URL`                      | `https://your-web-domain` (CORS allow-list)                                                               |
+| `MONGODB_URI`                       | `mongodb://hms_app:...@127.0.0.1:27017/...` in production; Atlas URI remains a dev option                 |
+| `REDIS_URL`                         | `redis://:your-password@127.0.0.1:6379` in production; Upstash only when you explicitly want hosted Redis |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Dev-only hosted Redis option                                                                              |
+| `USE_COMPRESSION_SERVICE`           | `true` (mandatory in prod — `env.js` refuses to boot without it)                                          |
+| `COMPRESSION_SERVICE_URL`           | `http://127.0.0.1:8000`                                                                                   |
+| `COMPRESSION_SERVICE_SECRET`        | Same value as sidecar's `INTERNAL_API_SECRET`                                                             |
 
 ---
 
@@ -644,10 +645,8 @@ PM2 keeps the service up across the restart (zero-downtime is not guaranteed on 
 These are intentional next steps once the current build is verified live. Do **not** combine them with the initial deploy.
 
 1. **Move file storage from Cloudinary → DigitalOcean Spaces** (or local disk + nginx). Requires code change in `services/storage` + sidecar `cloudinary_client.py`.
-2. **Move Redis from Upstash → local Redis on the droplet.** Code already supports a non-Upstash Redis URL; needs an env-var swap + a small client-config tweak.
-3. **Move Mongo from Atlas → local Mongo on the droplet.** Step 2 above is the prep; cutover is a `mongodump` / `mongorestore` + `MONGODB_URI` swap.
-4. **Backups.** Add a nightly cron: `mongodump` → tar → upload to DO Spaces with 14-day retention. No backups currently exist.
-5. **Monitoring.** PM2 covers process health; add UptimeRobot (or similar) hitting `/api/health` every minute for external alerting.
+2. **Backups.** Add a nightly cron: `mongodump` → tar → upload to DO Spaces with 14-day retention. No backups currently exist.
+3. **Monitoring.** PM2 covers process health; add UptimeRobot (or similar) hitting `/api/health` every minute for external alerting.
 
 ---
 
@@ -657,7 +656,7 @@ This section covers moving **existing production data** off the current hosts on
 
 ### A) MongoDB — current host → droplet's local Mongo
 
-Same procedure regardless of source (Atlas / Render add-on / other): `mongodump` from old, `mongorestore` to new, then flip `MONGODB_URI`.
+Same procedure regardless of source (Atlas / another remote Mongo host / other): `mongodump` from old, `mongorestore` to new, then flip `MONGODB_URI`.
 
 **A1. Dump from the current Mongo** (laptop or droplet):
 
@@ -835,7 +834,7 @@ for await (const p of cursor) {
 
 Two scripts will be added to `backend/scripts/` when this migration is scheduled. They are **not in the repo yet** because they need three inputs first:
 
-1. **Where is the current Mongo hosted?** (Atlas / Render / other — affects the dump command and whether a built-in export is preferable.)
+1. **Where is the current Mongo hosted?** (Atlas / another remote host / other — affects the dump command and whether a built-in export is preferable.)
 2. **Roughly how many GB live in Cloudinary?** (Determines whether B2 is 30 minutes or 30 hours, and whether to rate-limit it.)
 3. **Are we moving Cloudinary at all in v1, or is "Mongo local now, Cloudinary later" acceptable?** Common pragmatic path: migrate Mongo on the deployment day, leave Cloudinary alone for 1–2 months, move files when there's a calm week.
 

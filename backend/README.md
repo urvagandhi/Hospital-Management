@@ -1,6 +1,6 @@
 # Backend — MediVault API
 
-Node.js + Express REST API. MongoDB (Mongoose 7) for persistence; Upstash Redis (with in-memory fallback) for ephemeral OTP/registration state; Cloudinary for file storage; Brevo (prod) / Mailtrap (dev) for email; Firebase Admin for FCM push; a Python compression sidecar for PDF merging.
+Node.js + Express REST API. MongoDB (Mongoose 7) for persistence; Redis (native TCP in production, Upstash REST in development, with in-memory fallback) for ephemeral OTP/registration state; Cloudinary for file storage; Brevo (prod) / Mailtrap (dev) for email; Firebase Admin for FCM push; a Python compression sidecar for PDF merging.
 
 The canonical project context is [CLAUDE.md](../CLAUDE.md). Full audit set: [docs/audit/](../docs/audit/). The 17 backend/web/sidecar architecture diagrams are in [docs/audit/03-architecture-diagrams.md](../docs/audit/03-architecture-diagrams.md).
 
@@ -36,14 +36,14 @@ graph TB
         PC --> PDFS[pdf.service<br/>pdfkit / pdf-lib fallback]
         PC --> ZIPS[zip.service<br/>archiver]
         AC --> PUSH[push.service<br/>Firebase Admin FCM]
-        AC --> REDIS[redis.service<br/>Upstash + in-memory fallback]
+        AC --> REDIS[redis.service<br/>native Redis prod · Upstash dev]
     end
 
     subgraph Data
         TS --> MONGO[(MongoDB)]
         STORAGE --> CLOUDINARY[(Cloudinary)]
         COMP --> SIDECAR[Compression Sidecar<br/>FastAPI]
-        REDIS --> UPSTASH[(Upstash Redis)]
+        REDIS --> REDISDB[(Redis<br/>native TCP prod · Upstash dev)]
         MAIL --> BREVO[Brevo / Mailtrap]
         PUSH --> FCM[Firebase FCM]
     end
@@ -188,7 +188,7 @@ flowchart TD
 
 **Server-side idle revoke (2026-04-25):** [src/jobs/idleSweep.job.js](src/jobs/idleSweep.job.js) runs every 5 min and revokes any **web** session with `lastSeenAt` older than **60 min** (`revokedReason: "IDLE_TIMEOUT"` + `SESSION_IDLE_REVOKED` audit). Mobile sessions are **exempt** (`isMobile: false` filter — commit `61fa6ad`) because Android already heartbeats every 60 s and the foreground re-validate path drives logouts on the client. Threshold was 15 min initially but was too aggressive for hospital workflow — clinicians reading PDFs / filling long forms make no API calls and look "idle". Web has no heartbeat, so anything under ~30 min logs out passive readers mid-task. **Don't reduce IDLE_MS below 30 min without re-evaluating the heartbeat strategy.**
 
-**Real client IP behind Cloudflare (2026-04-25):** [src/utils/clientIp.js](src/utils/clientIp.js) reads `CF-Connecting-IP` first, then `True-Client-IP`, then `X-Forwarded-For[0]`, then `req.ip`. Render sits behind Cloudflare which strips the original client IP at the TCP layer; without this helper geoip resolves to the Cloudflare PoP. **Every controller capturing an IP for audit/session/email must call `getClientIp(req)`, never `req.ip` directly.** Auth middleware re-runs geoip when `lastSeenIp` changes (mobile devices roaming WiFi/cellular); `lastSeenIp` is rendered alongside `ipAddress` in the Sessions list so users can spot cross-network reuse.
+**Real client IP behind Cloudflare (2026-04-25):** [src/utils/clientIp.js](src/utils/clientIp.js) reads `CF-Connecting-IP` first, then `True-Client-IP`, then `X-Forwarded-For[0]`, then `req.ip`. When the production host is behind Cloudflare, that proxy strips the original client IP at the TCP layer; without this helper geoip resolves to the Cloudflare PoP. **Every controller capturing an IP for audit/session/email must call `getClientIp(req)`, never `req.ip` directly.** Auth middleware re-runs geoip when `lastSeenIp` changes (mobile devices roaming WiFi/cellular); `lastSeenIp` is rendered alongside `ipAddress` in the Sessions list so users can spot cross-network reuse.
 
 ---
 

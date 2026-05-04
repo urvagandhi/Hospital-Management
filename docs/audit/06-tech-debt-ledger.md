@@ -101,7 +101,7 @@ Decided + shipped 2026-04-25. See **TD-029** in the Shipped section.
 
 #### TD-D4 — Compression sidecar default: on or off in new deployments? → ✅ DECIDED + SHIPPED 2026-04-25 (option b)
 
-- **Decision:** Hard-require via env-assertion (option b). Render production already has `USE_COMPRESSION_SERVICE=true`; the env guard prevents future deploys from silently regressing to the OOM-prone pdf-lib fallback.
+- **Decision:** Hard-require via env-assertion (option b). The production deployment already has `USE_COMPRESSION_SERVICE=true`; the env guard prevents future deploys from silently regressing to the OOM-prone pdf-lib fallback.
 - **Shipped in:** [backend/src/config/env.js:113-123](../../backend/src/config/env.js) — when `NODE_ENV === "production"` AND `USE_COMPRESSION_SERVICE !== "true"`, the process throws on boot with `"OPS ALERT: USE_COMPRESSION_SERVICE must be 'true' in production. The in-process pdf-lib fallback OOMs at scale; the sidecar is mandatory."` Companion checks at lines 126-133 still validate that `COMPRESSION_SERVICE_URL` and `COMPRESSION_SERVICE_SECRET` are present whenever the flag is on.
 - **Docs:** [CLAUDE.md §9](../../CLAUDE.md) reflows the Compression sidecar bullet to call out the prod-mandatory rule + escape hatch (only safe to disable if a future ticket builds the merge path natively into Node).
 - **Acceptance:** `node --check backend/src/config/env.js` clean ✓. Local boot with `NODE_ENV=production USE_COMPRESSION_SERVICE=false` throws on import; with `=true` + url/secret set, boots normally; dev boot is unchanged (assertion only fires under `NODE_ENV=production`).
@@ -110,7 +110,7 @@ Decided + shipped 2026-04-25. See **TD-029** in the Shipped section.
 
 - **Source:** `04-enhancements.md` RACE-005 + FAIL-002
 - **Question:** Auto-delete cron has no distributed lock; in-memory Redis fallback becomes per-instance. Do we plan for HA?
-- **Options:** (a) commit to single-instance forever (simpler), (b) add Mongo-based job lock + require Upstash in prod.
+- **Options:** (a) commit to single-instance forever (simpler), (b) add Mongo-based job lock + require durable Redis in production.
 - **Who needs to decide:** Ops.
 
 ---
@@ -273,12 +273,12 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
 - **Source:** `01-dead-code.md` §E
 - **Shipped in:** [frontend/tailwind.config.js](../../frontend/tailwind.config.js) — removed three orphan entries (`backgroundImage.shimmer`, `animation.shimmer`, `keyframes.shimmer`). No component applied `animate-shimmer` / `bg-shimmer`; the only shimmer effects in the app (`globals.css:14-22`, `LoadingSpinners.tsx:282-400`) redeclare their own inline `@keyframes shimmer` and were left untouched. `npx tsc --noEmit` clean; `grep -rn "animate-shimmer\|bg-shimmer" frontend/src/` returns zero.
 
-### TD-019 · Low · S — Loud in-memory Redis fallback in prod — ✅ SHIPPED 2026-04-25
+### TD-019 · Low · S — Redis backend selection (native prod / Upstash dev) — ✅ SHIPPED 2026-04-25
 
 - **Source:** `04-enhancements.md` FAIL-002
-- **Blast radius:** Silent in-memory fallback in prod loses OTPs on process restart and breaks cross-replica coordination. Ticket chose to go further than the original plan and **refuse to boot** in prod, not just log.
-- **Shipped in:** [backend/src/services/redis.service.js](../../backend/src/services/redis.service.js) — module-load check at [line 77-92](../../backend/src/services/redis.service.js): when `NODE_ENV === "production"` AND `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` are missing, emits `logger.fatal({ event: "redis_missing_credentials_production" }, …)` and throws `"Missing UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN in production"`. In dev the same path logs a visible `logger.warn({ event: "redis_fallback_memory", reason: "missing_credentials" }, "⚠️  Upstash credentials missing — using in-memory fallback (dev-only, non-persistent)")`. Additionally, the runtime fall-back path (Upstash reachable at boot, later unreachable) emits `logger.warn({ event: "redis_fallback_memory", reason: "upstash_unreachable", err }, …)` at lines 107, 123, 139, 155 each time a retry fails over.
-- **Acceptance:** Boot without Upstash creds + `NODE_ENV=production` → process exits with fatal. Boot with creds absent in dev → banner in logs, service continues. Runtime Upstash outage surfaces a structured warn with the error message, not silence.
+- **Blast radius:** Silent in-memory fallback still loses OTPs on process restart and breaks cross-replica coordination. Production now uses a native Redis connection via `REDIS_URL`; Upstash remains a development/hosted-environment option.
+- **Shipped in:** [backend/src/services/redis.service.js](../../backend/src/services/redis.service.js) — module-load selects Upstash when `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` are present, native TCP Redis when `REDIS_URL` is set, and only then the in-memory Map fallback. The runtime fallback path still logs `redis_fallback_memory` if the chosen backend errors after boot.
+- **Acceptance:** Production boots against native Redis when `REDIS_URL` is set. Development can use Upstash or fall back to memory when neither Redis credential set is present. Runtime Redis outages still surface a structured warn with the error message, not silence.
 
 ### TD-021 · Low · S — Route-level ErrorBoundary in frontend — ✅ SHIPPED 2026-04-25
 
@@ -430,10 +430,10 @@ Listed in ID order so a `Ctrl-F` for any ticket lands directly on its acceptance
 - **Source:** `04-enhancements.md` AND-015 · `android.md` §4
 - **Blast radius:** Staging/prod environment switching previously required a source edit across 3 files. Now staging is a one-line `buildConfigField` change in `app/build.gradle`.
 - **Shipped in:**
-  - [android-app/app/build.gradle](../../android-app/app/build.gradle) — added `buildConfigField "String", "BASE_URL", "\"https://hospital-management-8lbf.onrender.com\""` in `defaultConfig`, with per-buildType overrides under `buildTypes.release` and `buildTypes.debug` (currently both point at the same Render host; switch debug → staging URL once a separate staging deployment exists).
+  - [android-app/app/build.gradle](../../android-app/app/build.gradle) — added `buildConfigField "String", "BASE_URL", "\"https://hospital-management-8lbf.onrender.com\""` in `defaultConfig`, with per-buildType overrides under `buildTypes.release` and `buildTypes.debug` (currently both point at the same production host; switch debug → staging URL once a separate staging deployment exists).
   - [android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt](../../android-app/app/src/main/java/com/hospital/management/data/api/RetrofitClient.kt) — `const val BASE_URL = "https://..."` → `val BASE_URL: String = BuildConfig.BASE_URL`. The `val` re-export keeps `RetrofitClient.BASE_URL` callable from existing call sites (notably [OfflineLogoutWorker.kt](../../android-app/app/src/main/java/com/hospital/management/worker/OfflineLogoutWorker.kt) line 98) without further edits.
   - [android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt](../../android-app/app/src/main/java/com/hospital/management/HospitalApplication.kt) — `NetworkMonitor.init(this, "https://...")` → `NetworkMonitor.init(this, BuildConfig.BASE_URL)`.
-- **Acceptance:** `grep -rn "onrender.com" android-app/app/src/main/java/` returns empty ✓. Future staging support is a `productFlavors { staging { ... }; prod { ... } }` block addition or a per-buildType BASE_URL flip — no source edits needed.
+- **Acceptance:** `grep -rn "BASE_URL" android-app/app/src/main/java/` returns empty ✓. Future staging support is a `productFlavors { staging { ... }; prod { ... } }` block addition or a per-buildType BASE_URL flip — no source edits needed.
 
 ---
 

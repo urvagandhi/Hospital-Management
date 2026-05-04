@@ -9,7 +9,7 @@ Every diagram below is derived from the actual code, not from the prose audit do
 
 ## 1. System Context
 
-Shows the trust boundaries and which clients/services talk to which external dependency. The backend is the only service with direct Mongo/Redis access; the Python sidecar shares Mongo read/write for cache + audit tables.
+Shows the trust boundaries and which clients/services talk to which external dependency. In production, MongoDB and Redis are local services on the droplet; in development, the same connections can point at Atlas / Upstash via environment variables. The Python sidecar shares Mongo read/write for cache + audit tables.
 
 ```mermaid
 flowchart LR
@@ -18,7 +18,7 @@ flowchart LR
   Backend["Node backend<br/>Express + Mongoose"]
   Sidecar["Python sidecar<br/>FastAPI"]
   Mongo[("MongoDB<br/>hospital-management DB")]
-  Redis[("Upstash Redis<br/>OTP + biometric nonces")]
+  Redis[("Redis<br/>native TCP prod · Upstash dev")]
   Cloud["Cloudinary<br/>file storage + signed URLs"]
   Brevo["Brevo REST<br/>prod email"]
   Mailtrap["Mailtrap SMTP<br/>dev email"]
@@ -28,7 +28,7 @@ flowchart LR
   Web -- "HTTPS JSON<br/>(httpOnly refresh cookie)" --> Backend
   Mobile -- "HTTPS JSON<br/>Bearer access token" --> Backend
   Backend -- "Mongoose driver" --> Mongo
-  Backend -- "REST (@upstash/redis)" --> Redis
+  Backend -- "native TCP / Upstash REST" --> Redis
   Backend -- "SDK upload/delete" --> Cloud
   Backend -- "REST API" --> Brevo
   Backend -- "SMTP dev only" --> Mailtrap
@@ -270,7 +270,7 @@ sequenceDiagram
   participant API as Backend /api/auth
   participant H as Hospital model
   participant S as Session model
-  participant R as Redis/Upstash
+  participant R as Redis (native prod / Upstash dev)
   participant E as Brevo/Mailtrap
   participant A as AuditLog
 

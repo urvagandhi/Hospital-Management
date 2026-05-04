@@ -41,7 +41,7 @@ Identical to [backend/package.json](../../backend/package.json). Key deps:
 | Runtime        | Node.js (ES Modules, `"type": "module"`)                                            |                                        |
 | Framework      | Express `^4.18.2`                                                                   | HTTP                                   |
 | ODM            | Mongoose `^7.5.0`                                                                   | MongoDB                                |
-| Redis          | `@upstash/redis ^1.37.0`                                                            | OTP / rate counters / biometric nonces |
+| Redis          | `ioredis` (prod), `@upstash/redis ^1.37.0` (dev)                                    | OTP / rate counters / biometric nonces |
 | JWT            | `jsonwebtoken ^9.0.2`                                                               |                                        |
 | bcrypt         | `bcryptjs ^3.0.3` (TD-022, 2026-04-25)                                              | cost=10                                |
 | Upload         | `multer ^2.0.2` + `multer-storage-cloudinary ^2.2.1`                                |                                        |
@@ -272,7 +272,7 @@ Single-device enforcement, 7-day Auth Code re-verify, biometric login — as doc
 
 ### OTP flows
 
-Registration / forgot-password / contact-change. 6-digit, 10-min TTL (env `OTP_EXPIRY_MINUTES`), default 3 attempts (env `MAX_OTP_ATTEMPTS` — defaults to `3` in `config/env.js:50`; `.env.example` ships `5` for ergonomic dev). Stored in Redis with hash; **production refuses to boot without Upstash credentials** (TD-019, commit `a1bd66e` — `redis.service.js:77-92`). Dev still falls back to an in-memory Map. The `/login/resend-auth-code` endpoint was removed in TD-030 (2026-04-25).
+Registration / forgot-password / contact-change. 6-digit, 10-min TTL (env `OTP_EXPIRY_MINUTES`), default 3 attempts (env `MAX_OTP_ATTEMPTS` — defaults to `3` in `config/env.js:50`; `.env.example` ships `5` for ergonomic dev). Stored in Redis with hash; production uses native Redis via `REDIS_URL`, development can switch to Upstash via `UPSTASH_REDIS_REST_URL/TOKEN`, and the in-memory Map remains the last-resort fallback. The `/login/resend-auth-code` endpoint was removed in TD-030 (2026-04-25).
 
 ---
 
@@ -302,7 +302,7 @@ Backend calls `POST {COMPRESSION_SERVICE_URL}/api/folder-download` or `/api/pati
 
 ## 7. External Integrations — same as prior audit
 
-Cloudinary, Brevo, Mailtrap, Firebase FCM, Upstash Redis (**prod refuses in-memory fallback** post-TD-019), Compression Sidecar (**prod-mandatory** post-TD-D4), GeoIP (**two-provider chain post-TD-027**: keyed `ipinfo.io` if `IPINFO_TOKEN` set → keyless `ip-api.com` fallback), R2/S3 (**configured but unused — dead code**, TD-003 still open).
+Cloudinary, Brevo, Mailtrap, Firebase FCM, Redis (native in prod; Upstash in dev; in-memory fallback as last resort), Compression Sidecar (**prod-mandatory** post-TD-D4), GeoIP (**two-provider chain post-TD-027**: keyed `ipinfo.io` if `IPINFO_TOKEN` set → keyless `ip-api.com` fallback), R2/S3 (**configured but unused — dead code**, TD-003 still open).
 
 ---
 
@@ -314,7 +314,7 @@ All 11 previously-missing vars are now in `.env.example`, and all 13 dead vars (
 
 ### Live vars (re-verified 2026-04-26 against `process.env.X` references in `backend/src/`)
 
-`NODE_ENV`, `PORT`, `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRY`, `REFRESH_TOKEN_SECRET`, `REFRESH_TOKEN_EXPIRY` (365d), `OTP_EXPIRY_MINUTES`, `OTP_LENGTH`, `MAX_OTP_ATTEMPTS`, `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`, `MAILTRAP_*` (4), `SMTP_*` (6 — legacy fallback, kept), `CLOUDINARY_*` (3), `SIGNED_UPLOADS_ENABLED`, `UPSTASH_REDIS_*` (2 — **mandatory in prod** post-TD-019), `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_SERVICE_ACCOUNT_PATH`, `USE_COMPRESSION_SERVICE` (**must be `true` in prod** per TD-D4), `COMPRESSION_SERVICE_URL`, `COMPRESSION_SERVICE_SECRET`, `TRUST_PROXY_HOPS` (default 2 — must be a specific integer, `true` is rejected by `express-rate-limit`), `IPINFO_TOKEN` (optional; activates the keyed primary geoip provider), `GEOIP_DEV_OVERRIDE_IP` (dev-only override for localhost lookups), `LOG_LEVEL`, `LOG_PRETTY`, `R2_*` (4 — currently unused; TD-003), `USE_LOCAL_STORAGE`, `LOCAL_STORAGE_PATH`, `FRONTEND_URL`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`.
+`NODE_ENV`, `PORT`, `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRY`, `REFRESH_TOKEN_SECRET`, `REFRESH_TOKEN_EXPIRY` (365d), `OTP_EXPIRY_MINUTES`, `OTP_LENGTH`, `MAX_OTP_ATTEMPTS`, `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`, `MAILTRAP_*` (4), `SMTP_*` (6 — legacy fallback, kept), `CLOUDINARY_*` (3), `SIGNED_UPLOADS_ENABLED`, `REDIS_URL` (prod native Redis), `UPSTASH_REDIS_*` (2 — dev/hosted Redis option), `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_SERVICE_ACCOUNT_PATH`, `USE_COMPRESSION_SERVICE` (**must be `true` in prod** per TD-D4), `COMPRESSION_SERVICE_URL`, `COMPRESSION_SERVICE_SECRET`, `TRUST_PROXY_HOPS` (default 2 — must be a specific integer, `true` is rejected by `express-rate-limit`), `IPINFO_TOKEN` (optional; activates the keyed primary geoip provider), `GEOIP_DEV_OVERRIDE_IP` (dev-only override for localhost lookups), `LOG_LEVEL`, `LOG_PRETTY`, `R2_*` (4 — currently unused; TD-003), `USE_LOCAL_STORAGE`, `LOCAL_STORAGE_PATH`, `FRONTEND_URL`, `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`.
 
 ### Compression sidecar
 
@@ -354,7 +354,7 @@ Endpoints: `GET /api/health`, `POST /api/folder-download`, `POST /api/patient-do
 16. Session `location` sub-document populated fire-and-forget during login. Failures are silently swallowed (fine by design).
 17. **`r2.service.js` is still a ~260-line dead file with two heavy deps.** TD-003 — open as of 2026-04-26.
 18. **NEW (2026-04-25):** Idle-sweep job (`jobs/idleSweep.job.js`) revokes web sessions idle >60 min. Mobile is exempt — don't reduce the threshold below 30 min without a heartbeat strategy.
-19. **NEW (2026-04-25):** Always call `getClientIp(req)` (not `req.ip`) for any IP captured for audit/session/email. Render is behind Cloudflare; raw `req.ip` resolves to a Cloudflare PoP.
+19. **NEW (2026-04-25):** Always call `getClientIp(req)` (not `req.ip`) for any IP captured for audit/session/email. When the production host is behind Cloudflare, raw `req.ip` resolves to a Cloudflare PoP.
 20. **NEW (2026-04-21):** All `console.*` migrated to pino (TD-007); use `req.log.*` inside handlers, module-level `logger` elsewhere. `backend/scripts/` intentionally still uses raw `console.*`.
 
 ---
