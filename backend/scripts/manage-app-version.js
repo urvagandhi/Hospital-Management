@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import dotenv from 'dotenv';
 
-// 1. LOAD ENV IMMEDIATELY
+// 1. LOAD ENV IF PRESENT
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const possiblePaths = [
   path.resolve(__dirname, '../.env'),    // backend/.env

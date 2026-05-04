@@ -19,14 +19,16 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import dotenv from 'dotenv';
 
-// 1. LOAD ENV IMMEDIATELY (Minimal change for local/server compatibility)
+// 1. LOAD ENV IF PRESENT
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const possiblePaths = [
   path.resolve(__dirname, '../.env'),    // backend/.env
   path.resolve(__dirname, '../../.env')  // root/.env
 ];
 let envPath = possiblePaths.find(p => fs.existsSync(p));
-if (envPath) dotenv.config({ path: envPath });
+if (envPath) {
+  dotenv.config({ path: envPath });
+}
 
 const API = "http://localhost:5000/api/auth";
 const TEST_EMAIL = `selfreg-test-${Date.now()}@example.com`;

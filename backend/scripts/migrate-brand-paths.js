@@ -8,7 +8,7 @@ import dotenv from 'dotenv';
 
 import fs from 'fs';
 
-// 1. LOAD ENV IMMEDIATELY
+// 1. LOAD ENV IF PRESENT
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const possiblePaths = [
   path.resolve(__dirname, '../.env'),    // backend/.env
@@ -17,13 +17,12 @@ const possiblePaths = [
 
 let envPath = possiblePaths.find(p => fs.existsSync(p));
 
-if (!envPath) {
-  console.error(`❌ ERROR: .env file not found in: \n   - ${possiblePaths[0]}\n   - ${possiblePaths[1]}`);
-  process.exit(1);
+if (envPath) {
+  console.log(`✅ Loading environment from: ${envPath}`);
+  dotenv.config({ path: envPath });
+} else {
+  console.log(`ℹ️ No .env file found, using system environment variables.`);
 }
-
-console.log(`✅ Loading environment from: ${envPath}`);
-dotenv.config({ path: envPath });
 
 async function run() {
   // 2. DYNAMICALLY IMPORT EVERYTHING ELSE

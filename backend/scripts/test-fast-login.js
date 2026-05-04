@@ -3,14 +3,16 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import dotenv from 'dotenv';
 
-// 1. LOAD ENV IMMEDIATELY
+// 1. LOAD ENV IF PRESENT
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const possiblePaths = [
-  path.resolve(__dirname, '../.env'),    // backend/.env
-  path.resolve(__dirname, '../../.env')  // root/.env
+  path.resolve(__dirname, '../.env'),
+  path.resolve(__dirname, '../../.env')
 ];
 let envPath = possiblePaths.find(p => fs.existsSync(p));
-if (envPath) dotenv.config({ path: envPath });
+if (envPath) {
+  dotenv.config({ path: envPath });
+}
 
 const API_URL = "http://localhost:5000/api/auth";
 const email = "urvagandhi24@gmail.com";
