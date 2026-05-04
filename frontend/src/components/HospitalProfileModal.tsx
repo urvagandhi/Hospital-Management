@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Hospital } from "../types/auth";
-
+import { isPlaceholderLogo } from "../utils/avatar";
 interface HospitalProfileModalProps {
   hospital: Hospital | null;
   isOpen: boolean;
@@ -82,7 +82,7 @@ export const HospitalProfileModal: React.FC<HospitalProfileModalProps> = ({
               even though its container overlaps the banner vertically. */}
           <div className="relative z-10 px-6 sm:px-8 pb-6 sm:pb-8 flex flex-col items-center -mt-20">
             <div className="w-28 h-28 rounded-full ring-[6px] ring-white shadow-modal overflow-hidden bg-primary-50 flex items-center justify-center">
-              {hospital.logoUrl ? (
+              {hospital.logoUrl && !isPlaceholderLogo(hospital.logoUrl) ? (
                 <img
                   src={hospital.logoUrl}
                   alt={hospital.hospitalName}

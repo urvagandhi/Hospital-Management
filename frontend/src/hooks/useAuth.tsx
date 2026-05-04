@@ -61,15 +61,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Try to refresh via httpOnly cookie.
         const response = await authService.refreshToken();
-        const hospital = JSON.parse(hospitalData);
+        
+        // Prefer the fresh hospital data from the API since localStorage might have stripped the large base64 logoUrl
+        const freshHospital = response.data?.hospital;
+        const hospital = freshHospital || JSON.parse(hospitalData);
 
-        if (response.data.accessToken) {
+        if (response.data?.accessToken) {
           authService.storeTokens(response.data.accessToken, response.data.refreshToken);
+        }
+
+        if (freshHospital) {
+          saveHospitalToStorage(freshHospital);
         }
 
         setState((prev) => ({
           ...prev,
-          accessToken: response.data.accessToken,
+          accessToken: response.data?.accessToken || null,
           hospital,
           isAuthenticated: true,
           loading: false,

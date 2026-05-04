@@ -257,6 +257,7 @@ const Profile: React.FC = () => {
     try {
       const updated = await verifyContactChange(contactModal.otp);
       setHospital(updated);
+      updateHospital(updated);
       setSuccess(
         `${contactModal.field === "email" ? "Email" : "Phone number"} updated`,
       );

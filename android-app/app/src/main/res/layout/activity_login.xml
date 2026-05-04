@@ -59,7 +59,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/inter_bold"
                         android:letterSpacing="-0.02"
-                        android:text="Hospit"
+                        android:text="Medi"
                         android:textColor="@color/color_on_surface"
                         android:textSize="26sp"
                         android:textStyle="bold" />
@@ -69,7 +69,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/inter_bold"
                         android:letterSpacing="-0.02"
-                        android:text="All"
+                        android:text="Vault"
                         android:textColor="@color/brand_primary"
                         android:textSize="26sp"
                         android:textStyle="bold" />
