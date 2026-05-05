@@ -371,9 +371,21 @@ async function buildSignedUrl({
   // PRIORITY 1: Route based on FILE's storage provider (not env flag)
   if (storageProvider === 'digitalocean' && DO_SPACES_CONFIGURED) {
     try {
+      // If publicId is a full URL, extract the key after the bucket name
+      let key = publicId;
+      if (key.includes(DO_BUCKET)) {
+        key = key.split(`${DO_BUCKET}/`)[1];
+      } else if (key.startsWith('http')) {
+        // Fallback: take everything after the 4th slash (https://host/bucket/key)
+        const parts = key.split('/');
+        if (parts.length > 4) {
+          key = parts.slice(4).join('/');
+        }
+      }
+
       const command = new GetObjectCommand({
         Bucket: DO_BUCKET,
-        Key: publicId,
+        Key: key,
         ResponseContentDisposition: attachment
           ? `attachment; filename="${fileName || 'file'}"`
           : 'inline',
