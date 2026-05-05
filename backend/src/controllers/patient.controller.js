@@ -535,10 +535,10 @@ export const confirmDirectUpload = async (req, res) => {
   try {
     const { patientId, folderName } = req.params;
     const hospitalId = req.hospital?.id;
-    const { publicId, secureUrl, originalFileName, size, mimeType } = req.body;
+    const { publicId, secureUrl, originalFileName, size, mimeType, storageProvider = "cloudinary" } = req.body;
 
     req.log.info(
-      { event: "confirm_direct_upload", patientId, folderName, publicId, originalFileName, size },
+      { event: "confirm_direct_upload", patientId, folderName, publicId, originalFileName, size, storageProvider },
       "[Patient Controller] Confirming direct upload"
     );
 
@@ -567,49 +567,52 @@ export const confirmDirectUpload = async (req, res) => {
       });
     }
 
-    const accessMode = config.SIGNED_UPLOADS_ENABLED ? "signed" : "public";
-    const cloudinaryType = accessMode === "signed" ? "authenticated" : "upload";
+    let resolvedSecureUrl = secureUrl;
+    let resourceType = "raw";
+    let accessMode = config.SIGNED_UPLOADS_ENABLED ? "signed" : "public";
 
-    let cloudinaryAsset;
-    try {
-      cloudinaryAsset = await cloudinary.api.resource(publicId, {
-        resource_type: "raw",
-        type: cloudinaryType,
-      });
-    } catch (error) {
-      const isMissingAsset = error?.http_code === 404 || error?.message?.includes("Not Found");
-      if (isMissingAsset) {
-        return res.status(404).json({
-          success: false,
-          message: "Cloudinary asset not found",
+    // ─────────────────────────────────────────────────────────────────────
+    // Provider-specific verification
+    // ─────────────────────────────────────────────────────────────────────
+    if (storageProvider === "digitalocean") {
+      // For DO, we assume the client successfully PUT the file to the presigned URL.
+      // We'll trust the provided secureUrl for now. 
+      // accessMode is always 'signed' for DO in our current architecture.
+      accessMode = "signed"; 
+      req.log.debug({ event: "confirm_do_upload", publicId }, "[Patient Controller] DigitalOcean upload confirmed via client");
+    } else {
+      // Cloudinary-specific verification
+      const cloudinaryType = accessMode === "signed" ? "authenticated" : "upload";
+      try {
+        const cloudinaryAsset = await cloudinary.api.resource(publicId, {
+          resource_type: "raw",
+          type: cloudinaryType,
         });
+        resolvedSecureUrl = cloudinaryAsset?.secure_url || secureUrl;
+        if (cloudinaryAsset?.resource_type && cloudinaryAsset.resource_type !== "raw") {
+          return res.status(400).json({
+            success: false,
+            message: "Cloudinary asset must be a raw resource",
+          });
+        }
+      } catch (error) {
+        const isMissingAsset = error?.http_code === 404 || error?.message?.includes("Not Found");
+        if (isMissingAsset) {
+          return res.status(404).json({
+            success: false,
+            message: "Cloudinary asset not found",
+          });
+        }
+        throw error;
       }
-      throw error;
-    }
-
-    const resourceType = "raw";
-    const thumbnailUrl = null;
-    const resolvedSecureUrl = cloudinaryAsset?.secure_url;
-
-    if (!resolvedSecureUrl) {
-      return res.status(500).json({
-        success: false,
-        message: "Cloudinary secure URL unavailable",
-      });
-    }
-
-    if (cloudinaryAsset?.resource_type && cloudinaryAsset.resource_type !== "raw") {
-      return res.status(400).json({
-        success: false,
-        message: "Cloudinary asset must be a raw resource",
-      });
     }
 
     const patient = await patientService.addFileToFolder(hospitalId, patientId, folderName, {
       fileName: originalFileName || "document.pdf",
       fileUrl: resolvedSecureUrl,
       cloudinaryPublicId: publicId,
-      thumbnailUrl,
+      storageProvider,
+      thumbnailUrl: null,
       resourceType,
       accessMode,
       size: size || 0,
