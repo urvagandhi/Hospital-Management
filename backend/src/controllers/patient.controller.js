@@ -988,14 +988,25 @@ export const downloadAllPdf = async (req, res) => {
         };
       });
 
-      const result = await compressionService.compressPatient({
-        patientId: String(patient._id),
-        userId: String(hospitalId),
-        patientName: patient.patientName,
-        remarks: patient.remarks,
-        folderMap,
-        targetSizeMb: 20,
-      });
+      // Start a heartbeat timer to keep the connection alive while sidecar works.
+      // We send a space every 15s to reset proxy/browser timeouts.
+      const heartbeat = setInterval(() => {
+        if (!res.writableEnded) res.write(" ");
+      }, 15000);
+
+      let result;
+      try {
+        result = await compressionService.compressPatient({
+          patientId: String(patient._id),
+          userId: String(hospitalId),
+          patientName: patient.patientName,
+          remarks: patient.remarks,
+          folderMap,
+          targetSizeMb: 20,
+        });
+      } finally {
+        clearInterval(heartbeat);
+      }
 
       logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, {
         patientId, mode: "merged", compressed: true,
@@ -1065,17 +1076,27 @@ export const downloadFolderPdf = async (req, res) => {
     }));
 
     const start = Date.now();
-    const result = await compressionService.compressFolder({
-      folderId: String(folder._id),
-      userId: String(hospitalId),
-      patientId: String(patient._id),
-      patientName: patient.patientName,
-      remarks: patient.remarks,
-      displayName: folder.name,
-      filesInfo,
-      sourcePdfs,
-      targetSizeMb: 10,
-    });
+    // Start a heartbeat timer to keep the connection alive while sidecar works.
+    const heartbeat = setInterval(() => {
+      if (!res.writableEnded) res.write(" ");
+    }, 15000);
+
+    let result;
+    try {
+      result = await compressionService.compressFolder({
+        folderId: String(folder._id),
+        userId: String(hospitalId),
+        patientId: String(patient._id),
+        patientName: patient.patientName,
+        remarks: patient.remarks,
+        displayName: folder.name,
+        filesInfo,
+        sourcePdfs,
+        targetSizeMb: 10,
+      });
+    } finally {
+      clearInterval(heartbeat);
+    }
 
     logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, {
       patientId, folderName, compressed: true,
