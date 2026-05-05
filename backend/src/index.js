@@ -210,9 +210,8 @@ const startServer = async () => {
     scheduleIdleSweep();
 
     // Start Express server
-    app.listen(config.PORT, () => {
-      // Dev-only ASCII banner — purely a terminal UX flourish for humans.
-      // Structured log below is what tooling / aggregators read.
+    const server = app.listen(config.PORT, () => {
+      // ... same logs as before ...
       if (config.NODE_ENV !== "production") {
         process.stdout.write(`
 ╔════════════════════════════════════════╗
@@ -233,6 +232,11 @@ const startServer = async () => {
         `MyMediVault API listening on port ${config.PORT}`,
       );
     });
+
+    // Set server-wide timeout to 10 minutes (600,000ms) for large PDF merges
+    server.timeout = 600000;
+    server.headersTimeout = 600000;
+    server.keepAliveTimeout = 600000;
   } catch (error) {
     logger.fatal({ event: "server_start_failed", err: error }, "Failed to start server");
     process.exit(1);

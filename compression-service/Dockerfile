@@ -38,4 +38,5 @@ USER appuser
 EXPOSE 8000
 
 # Use shell form with exec to respect $PORT while maintaining fast startup and signal handling
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log
+# Added --timeout-keep-alive 600 to prevent premature closes during long compression jobs
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --no-access-log --timeout-keep-alive 600

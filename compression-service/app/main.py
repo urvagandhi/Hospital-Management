@@ -1,3 +1,4 @@
+import asyncio
 import hmac
 import logging
 import os
@@ -54,9 +55,18 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
 \u2551   \u2713 Cloudinary: {config.CLOUDINARY_CLOUD_NAME:<21s}\u2551
 \u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d
 """)
+    async def heartbeat():
+        """Periodic log pulse to confirm service is alive in logs."""
+        while True:
+            logger.info("Heartbeat: Compression service is active and healthy", extra={"event": "heartbeat_pulse"})
+            await asyncio.sleep(300) # Every 5 minutes
+
+    heartbeat_task = asyncio.create_task(heartbeat())
+    
     logger.info("Compression service started", extra={"event": "startup"})
     yield
-    # Shutdown: close Mongo + CPU pool
+    # Shutdown: close Mongo + CPU pool + stop heartbeat
+    heartbeat_task.cancel()
     client.close()
     shutdown_cpu_pool()
     logger.info("Compression service stopped", extra={"event": "shutdown"})

@@ -1190,7 +1190,6 @@ function handleCompressionError(error, res, context) {
 /**
  * GET /api/patients/:patientId/files/:folderName/:fileId/compressed
  * Compress a single file via the compression service and stream it back.
- * Falls back to the existing /stream endpoint behavior when flag is off.
  */
 export const downloadFileCompressed = async (req, res) => {
   try {
