@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 import Hospital from "../models/Hospital.js";
 import Patient from "../models/Patient.js";
 import logger from "../utils/logger.js";
-import { cloudinary } from "./storage.service.js";
+import { cloudinary, buildSignedUrl } from "./storage.service.js";
 
 function encodePatientsCursor(doc) {
   if (!doc?.createdAt || !doc?._id) return null;
@@ -36,6 +36,37 @@ function decodePatientsCursor(cursor) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Internal helper to sign URLs for a list of file documents.
+ * Returns a plain array of file objects with fileUrl updated to a signed URL if needed.
+ */
+async function signFileUrls(files) {
+  if (!files || !Array.isArray(files)) return [];
+  
+  return Promise.all(
+    files.map(async (file) => {
+      // Handle both Mongoose documents and plain objects
+      const fileObj = typeof file.toObject === 'function' ? file.toObject() : file;
+      
+      // If it's DigitalOcean or signed Cloudinary, generate a temporary access URL
+      if (fileObj.storageProvider === "digitalocean" || fileObj.accessMode === "signed") {
+        const signedUrl = await buildSignedUrl({
+          publicId: fileObj.storageProvider === "digitalocean" ? fileObj.fileUrl : fileObj.cloudinaryPublicId,
+          resourceType: fileObj.resourceType || "raw",
+          storageProvider: fileObj.storageProvider,
+          ttlSeconds: 3600, // 1 hour expiry for viewing
+          fileName: fileObj.fileName
+        });
+        
+        if (signedUrl) {
+          fileObj.fileUrl = signedUrl;
+        }
+      }
+      return fileObj;
+    })
+  );
 }
 
 /**
@@ -230,8 +261,19 @@ export const getPatientById = async (hospitalId, patientId) => {
       throw new Error("Patient not found");
     }
 
+    // Sign URLs for all files in all folders
+    const patientObj = patient.toObject();
+    if (patientObj.folders) {
+      patientObj.folders = await Promise.all(
+        patientObj.folders.map(async (folder) => {
+          folder.files = await signFileUrls(folder.files);
+          return folder;
+        })
+      );
+    }
+
     logger.info({ event: "patient_fetch_ok", patientMongoId: patient._id }, "[Patient Service] Patient found");
-    return patient;
+    return patientObj;
   } catch (error) {
     logger.error({ event: "patient_fetch_failed", err: error }, "[Patient Service] Fetch error");
     throw error;
@@ -387,11 +429,37 @@ export const getFolderFiles = async (hospitalId, patientId, folderName) => {
       throw new Error("Folder not found");
     }
 
-    logger.info(
-      { event: "folder_files_fetch_ok", folderName, count: folder.files.length },
-      `[Patient Service] Found ${folder.files.length} files`,
+    // Map files to include signed URLs where necessary
+    const filesWithSignedUrls = await Promise.all(
+      folder.files.map(async (file) => {
+        const fileObj = file.toObject();
+        
+        // If it's DigitalOcean or signed Cloudinary, generate a temporary access URL
+        if (fileObj.storageProvider === "digitalocean" || fileObj.accessMode === "signed") {
+          const signedUrl = await buildSignedUrl({
+            publicId: fileObj.storageProvider === "digitalocean" ? fileObj.fileUrl : fileObj.cloudinaryPublicId,
+            resourceType: fileObj.resourceType || "raw",
+            storageProvider: fileObj.storageProvider,
+            ttlSeconds: 3600, // 1 hour expiry for viewing
+            fileName: fileObj.fileName
+          });
+          
+          if (signedUrl) {
+            fileObj.fileUrl = signedUrl;
+          }
+        }
+        return fileObj;
+      })
     );
-    return folder;
+
+    const result = folder.toObject();
+    result.files = await signFileUrls(folder.files);
+
+    logger.info(
+      { event: "folder_files_fetch_ok", folderName, count: result.files.length },
+      `[Patient Service] Found ${result.files.length} files`,
+    );
+    return result;
   } catch (error) {
     logger.error({ event: "folder_files_fetch_failed", err: error }, "[Patient Service] Fetch files error");
     throw error;

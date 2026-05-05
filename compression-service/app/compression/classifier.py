@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 class PdfType(str, Enum):
     DIGITAL = "digital"
     SCANNED = "scanned"
+    MIXED = "mixed"  # Digital PDF that didn't meet target; needs adaptive compression
 
 _MIN_TEXT_CHARS = 50
 _MAX_SAMPLE_PAGES = 5

@@ -77,7 +77,8 @@ async def run_adaptive_compression_loop(
     - Includes RAM guard to prevent OOM on Render.
     """
     if pdf_type == PdfType.DIGITAL:
-        # This shouldn't happen if pipeline.py is correct, but safe fallback
+        # Pure digital should have been handled in pipeline.py.
+        # MIXED (digital that exceeded target) is allowed through.
         raise ValueError("Digital PDFs should use digital_path.py")
 
     with MemoryMonitor(job_id):

@@ -1,5 +1,7 @@
 package com.hospital.management.ui.upload
 
+import android.app.Activity
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -40,17 +42,19 @@ class UploadActivity : BaseActivity() {
 
     companion object {
         private const val TAG = "UploadActivity"
-        private const val MAX_SERVER_UPLOAD_BYTES = 20L * 1024L * 1024L
+        private val MAX_SERVER_UPLOAD_BYTES = com.hospital.management.BuildConfig.MAX_UPLOAD_SIZE_MB * 1024L * 1024L
     }
 
     private lateinit var binding: ActivityUploadBinding
     private lateinit var patientViewModel: PatientViewModel
     private lateinit var tokenManager: TokenManager
+    private lateinit var scannerLauncher: androidx.activity.result.ActivityResultLauncher<Intent>
 
     private val scannedPages = mutableListOf<Uri>()
     private var scannedPdfUri: Uri? = null
     private lateinit var pageAdapter: PageAdapter
     private var currentPageIndex = 0
+    private var replaceIndex = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,6 +62,7 @@ class UploadActivity : BaseActivity() {
         setContentView(binding.root)
 
         tokenManager = TokenManager(this)
+        setupScannerLauncher()
         setupViewModel()
         setupObservers()
         loadScannedPages()
@@ -91,6 +96,35 @@ class UploadActivity : BaseActivity() {
         if (sanitizedPatientName.isNotEmpty()) {
             binding.tilFileName.hint = "File name (optional)"
             binding.tilFileName.prefixText = "${sanitizedPatientName}_"
+        }
+    }
+
+    private fun setupScannerLauncher() {
+        scannerLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val data = result.data
+                val newPageUris = data?.getStringArrayExtra(ScannerActivity.EXTRA_SCANNED_PAGES)
+                val returnedReplaceIndex = data?.getIntExtra(ScannerActivity.EXTRA_REPLACE_INDEX, -1) ?: -1
+                
+                if (newPageUris != null && newPageUris.isNotEmpty()) {
+                    if (returnedReplaceIndex != -1 && returnedReplaceIndex < scannedPages.size) {
+                        // Replace mode: remove the old page and insert new one(s)
+                        scannedPages.removeAt(returnedReplaceIndex)
+                        scannedPages.addAll(returnedReplaceIndex, newPageUris.map { Uri.parse(it) })
+                        pageAdapter.notifyItemRangeChanged(returnedReplaceIndex, scannedPages.size - returnedReplaceIndex)
+                        currentPageIndex = returnedReplaceIndex
+                    } else {
+                        // Append mode
+                        val startIndex = scannedPages.size
+                        scannedPages.addAll(newPageUris.map { Uri.parse(it) })
+                        pageAdapter.notifyItemRangeInserted(startIndex, newPageUris.size)
+                        currentPageIndex = scannedPages.size - 1
+                    }
+                    updateMainPreview()
+                    updatePageCount()
+                    pageAdapter.setSelectedPosition(currentPageIndex)
+                }
+            }
         }
     }
 
@@ -147,6 +181,16 @@ class UploadActivity : BaseActivity() {
                 } else {
                     Toast.makeText(this, "Cannot delete the only page", Toast.LENGTH_SHORT).show()
                 }
+            },
+            onPageRetake = { index ->
+                val intent = Intent(this, ScannerActivity::class.java).apply {
+                    putExtra("PATIENT_ID", patientId)
+                    putExtra("FOLDER_NAME", folderName)
+                    putExtra("PATIENT_NAME", patientName)
+                    putExtra(ScannerActivity.EXTRA_APPEND_MODE, true)
+                    putExtra(ScannerActivity.EXTRA_REPLACE_INDEX, index)
+                }
+                scannerLauncher.launch(intent)
             }
         )
 
@@ -240,7 +284,17 @@ class UploadActivity : BaseActivity() {
         }
 
         binding.btnBack.setOnClickListener {
-            finish()
+            onBackPressedDispatcher.onBackPressed()
+        }
+
+        binding.btnAddPages.setOnClickListener {
+            val intent = Intent(this, ScannerActivity::class.java).apply {
+                putExtra("PATIENT_ID", patientId)
+                putExtra("FOLDER_NAME", folderName)
+                putExtra("PATIENT_NAME", patientName)
+                putExtra(ScannerActivity.EXTRA_APPEND_MODE, true)
+            }
+            scannerLauncher.launch(intent)
         }
     }
 
@@ -359,7 +413,7 @@ class UploadActivity : BaseActivity() {
                     com.hospital.management.data.local.SyncStatus.PENDING
                 }
 
-                val errorMessage = if (isTooLarge) "SIZE_EXCEEDED: File is $fileSizeMb MB (Max is 20 MB)" else null
+                val errorMessage = if (isTooLarge) "SIZE_EXCEEDED: File is $fileSizeMb MB (Max is ${com.hospital.management.BuildConfig.MAX_UPLOAD_SIZE_MB} MB)" else null
 
                 val document = com.hospital.management.data.local.OfflineDocument(
                     patientId = patientId,
@@ -384,7 +438,7 @@ class UploadActivity : BaseActivity() {
                     if (isTooLarge) {
                         Toast.makeText(
                             this@UploadActivity,
-                            "File is ${fileSizeMb}MB. Max upload is 20MB. Saved offline as Failed.",
+                            "File is ${fileSizeMb}MB. Max upload is ${com.hospital.management.BuildConfig.MAX_UPLOAD_SIZE_MB}MB. Saved offline as Failed.",
                             Toast.LENGTH_LONG
                         ).show()
                         finish()
@@ -518,7 +572,8 @@ class UploadActivity : BaseActivity() {
     inner class PageAdapter(
         private val pages: List<Uri>,
         private val onPageClick: (Int) -> Unit,
-        private val onPageDelete: (Int) -> Unit
+        private val onPageDelete: (Int) -> Unit,
+        private val onPageRetake: (Int) -> Unit
     ) : RecyclerView.Adapter<PageAdapter.PageViewHolder>() {
 
         private var selectedPosition = 0
@@ -546,6 +601,7 @@ class UploadActivity : BaseActivity() {
             private val ivThumbnail: ImageView = itemView.findViewById(R.id.ivThumbnail)
             private val tvPageNumber: TextView = itemView.findViewById(R.id.tvPageNumber)
             private val btnDelete: View = itemView.findViewById(R.id.btnDelete)
+            private val btnRetake: View = itemView.findViewById(R.id.btnRetake)
             private val cardView: View = itemView.findViewById(R.id.cardThumbnail)
 
             fun bind(uri: Uri, position: Int) {
@@ -559,6 +615,7 @@ class UploadActivity : BaseActivity() {
 
                 itemView.setOnClickListener { onPageClick(position) }
                 btnDelete.setOnClickListener { onPageDelete(position) }
+                btnRetake.setOnClickListener { onPageRetake(position) }
             }
         }
     }

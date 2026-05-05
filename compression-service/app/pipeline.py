@@ -77,20 +77,34 @@ class CompressionPipeline:
                     compress_digital_pdf_enhanced,
                     source_pdf, output_path, job_id
                 )
-                return CompressionResult(
-                    output_path=final_path,
-                    tier_used=0,
-                    output_size_bytes=final_path.stat().st_size
+                digital_size = final_path.stat().st_size
+                if digital_size <= target_size_bytes:
+                    return CompressionResult(
+                        output_path=final_path,
+                        tier_used=0,
+                        output_size_bytes=digital_size
+                    )
+                # Digital-only compression didn't hit the target — fall through
+                # to the adaptive loop which does image extraction + GS tiers.
+                logger.info(
+                    f"Digital compression insufficient "
+                    f"({digital_size / 1_048_576:.2f}MB > "
+                    f"{target_size_bytes / 1_048_576:.2f}MB target), "
+                    f"falling through to adaptive loop",
+                    extra={"job_id": job_id}
                 )
-            else:
-                # Scanned path uses the adaptive loop
-                return await run_adaptive_compression_loop(
-                    source_pdf,
-                    target_size_bytes,
-                    pdf_type,
-                    work_dir,
-                    job_id
-                )
+                # Use the digitally-compressed file as the input for adaptive loop
+                source_pdf = final_path
+                pdf_type = PdfType.MIXED
+
+            # Scanned / Mixed path uses the adaptive loop
+            return await run_adaptive_compression_loop(
+                source_pdf,
+                target_size_bytes,
+                pdf_type,
+                work_dir,
+                job_id
+            )
 
         except Exception as e:
             logger.error(f"Pipeline failed: {e}", exc_info=True, extra={"job_id": job_id})

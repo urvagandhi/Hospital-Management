@@ -1317,22 +1317,61 @@ class FolderDetailsActivity : BaseActivity() {
             return
         }
 
-        try {
-            val intent = if (isRemote) {
-                Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(Uri.parse(fileUrl), file.mimeType ?: "application/pdf")
-                }
-            } else {
+        if (!isRemote) {
+            // Local file - open directly with chooser
+            try {
                 val localFile = if (fileUrl.startsWith("file://")) File(Uri.parse(fileUrl).path ?: "") else File(fileUrl)
-                val uri = FileProvider.getUriForFile(this, "${packageName}.provider", localFile)
-                Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, getMimeType(file.name))
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                if (localFile.exists()) {
+                    val uri = FileProvider.getUriForFile(this, "${packageName}.provider", localFile)
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, getMimeType(file.name))
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(Intent.createChooser(intent, "Open with"))
+                } else {
+                    Toast.makeText(this, "File not found locally", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            // Remote file - download to cache first for reliability, then open with chooser
+            Toast.makeText(this, "Loading file...", Toast.LENGTH_SHORT).show()
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val url = java.net.URL(fileUrl)
+                    val connection = url.openConnection() as java.net.HttpURLConnection
+                    connection.connectTimeout = 15000
+                    connection.readTimeout = 15000
+                    connection.connect()
+
+                    val cacheDir = File(cacheDir, "viewed_files")
+                    if (!cacheDir.exists()) cacheDir.mkdirs()
+
+                    // Ensure filename is clean for filesystem
+                    val safeFileName = file.name.replace(Regex("[^a-zA-Z0-9.-]"), "_")
+                    val cachedFile = File(cacheDir, safeFileName)
+                    
+                    connection.inputStream.use { input ->
+                        cachedFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        val uri = FileProvider.getUriForFile(this@FolderDetailsActivity, "${packageName}.provider", cachedFile)
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, getMimeType(file.name))
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(Intent.createChooser(intent, "Open with"))
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@FolderDetailsActivity, "Failed to load file: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
-            startActivity(Intent.createChooser(intent, "Open with"))
-        } catch (e: Exception) {
-            Toast.makeText(this, "No app available to open this file", Toast.LENGTH_SHORT).show()
         }
     }
 

@@ -24,6 +24,8 @@ class ScannerActivity : BaseActivity() {
         private const val TAG = "DocumentScanner"
         const val EXTRA_SCANNED_PAGES = "scanned_pages"
         const val EXTRA_SCANNED_PDF_URI = "scanned_pdf_uri"
+        const val EXTRA_APPEND_MODE = "append_mode"
+        const val EXTRA_REPLACE_INDEX = "replace_index"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,21 +50,35 @@ class ScannerActivity : BaseActivity() {
                         // Get URIs of all scanned pages
                         val pageUris = pages.map { it.imageUri.toString() }.toTypedArray()
 
-                        // Navigate to upload activity with all pages
-                        val intent = Intent(this, UploadActivity::class.java).apply {
-                            putExtra(EXTRA_SCANNED_PAGES, pageUris)
-                            if (!scannedPdfUri.isNullOrBlank()) {
-                                putExtra(EXTRA_SCANNED_PDF_URI, scannedPdfUri)
+                        if (intent.getBooleanExtra(EXTRA_APPEND_MODE, false)) {
+                            // In append mode, return results to caller
+                            val resultIntent = Intent().apply {
+                                putExtra(EXTRA_SCANNED_PAGES, pageUris)
+                                val replaceIndex = intent.getIntExtra(EXTRA_REPLACE_INDEX, -1)
+                                putExtra(EXTRA_REPLACE_INDEX, replaceIndex)
+                                if (!scannedPdfUri.isNullOrBlank()) {
+                                    putExtra(EXTRA_SCANNED_PDF_URI, scannedPdfUri)
+                                }
                             }
-                            // Also pass first page for backward compatibility
-                            putExtra("imageUri", pageUris.firstOrNull())
-                            // Forward patient details
-                            putExtra("PATIENT_ID", getIntent().getStringExtra("PATIENT_ID"))
-                            putExtra("FOLDER_NAME", getIntent().getStringExtra("FOLDER_NAME"))
-                            putExtra("PATIENT_NAME", getIntent().getStringExtra("PATIENT_NAME"))
+                            setResult(Activity.RESULT_OK, resultIntent)
+                            finish()
+                        } else {
+                            // Normal mode, start UploadActivity
+                            val intent = Intent(this, UploadActivity::class.java).apply {
+                                putExtra(EXTRA_SCANNED_PAGES, pageUris)
+                                if (!scannedPdfUri.isNullOrBlank()) {
+                                    putExtra(EXTRA_SCANNED_PDF_URI, scannedPdfUri)
+                                }
+                                // Also pass first page for backward compatibility
+                                putExtra("imageUri", pageUris.firstOrNull())
+                                // Forward patient details
+                                putExtra("PATIENT_ID", getIntent().getStringExtra("PATIENT_ID"))
+                                putExtra("FOLDER_NAME", getIntent().getStringExtra("FOLDER_NAME"))
+                                putExtra("PATIENT_NAME", getIntent().getStringExtra("PATIENT_NAME"))
+                            }
+                            startActivity(intent)
+                            finish()
                         }
-                        startActivity(intent)
-                        finish()
                     } else {
                         Toast.makeText(this, "No pages scanned", Toast.LENGTH_SHORT).show()
                         finish()
@@ -78,8 +94,8 @@ class ScannerActivity : BaseActivity() {
                             putExtra("PATIENT_NAME", getIntent().getStringExtra("PATIENT_NAME"))
                         }
                         startActivity(intent)
-                    }
-                    finish()
+                        finish()
+                    } ?: finish()
                 }
             } else {
                 FileLogger.d(TAG, "Scanning cancelled or failed")
@@ -91,7 +107,7 @@ class ScannerActivity : BaseActivity() {
     private fun startDocumentScanner() {
         val builder = GmsDocumentScannerOptions.Builder()
             .setGalleryImportAllowed(true)       // Allow importing from gallery
-            .setPageLimit(30)                     // ML Kit hard ceiling - Allow up to 30 pages
+            .setPageLimit(com.hospital.management.BuildConfig.MAX_SCAN_PAGES)                     // ML Kit hard ceiling
             .setScannerMode(SCANNER_MODE_FULL)  // Auto edge-detect, perspective correct, shadow removal
         configureA4PageSize(builder)
         configureResultFormats(builder)

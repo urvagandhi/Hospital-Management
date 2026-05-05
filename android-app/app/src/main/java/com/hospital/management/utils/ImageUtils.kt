@@ -10,7 +10,7 @@ import java.io.ByteArrayOutputStream
 
 object ImageUtils {
 
-    private const val MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
+    private val MAX_FILE_SIZE = com.hospital.management.BuildConfig.MAX_UPLOAD_SIZE_MB * 1024 * 1024
     private const val MAX_DIMENSION = 2048
 
     fun compressImage(context: Context, imageUri: Uri): File? {

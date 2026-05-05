@@ -24,12 +24,22 @@ data class SignUploadResponse(
     val params: SignUploadParams? = null
 )
 
+data class SignSpacesUploadResponse(
+    val success: Boolean,
+    val presignedUrl: String? = null,
+    val key: String? = null,
+    val endpoint: String? = null,
+    val bucket: String? = null,
+    val expires: Long? = null
+)
+
 data class ConfirmDirectUploadRequest(
     val publicId: String,
     val secureUrl: String,
     val originalFileName: String,
     val size: Long,
-    val mimeType: String
+    val mimeType: String,
+    val storageProvider: String = "cloudinary"
 )
 
 data class DirectUploadConfirmResponse(

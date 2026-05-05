@@ -190,6 +190,13 @@ interface ApiService {
         @Path("folderName") folderName: String,
         @Body body: SignUploadRequest
     ): Response<SignUploadResponse>
+    
+    @POST("/api/patients/{patientId}/files/{folderName}/sign-spaces")
+    suspend fun getSignedSpacesUploadParams(
+        @Path("patientId") patientId: String,
+        @Path("folderName") folderName: String,
+        @Body body: SignUploadRequest
+    ): Response<SignSpacesUploadResponse>
 
     @POST("/api/patients/{patientId}/files/{folderName}/confirm")
     suspend fun confirmDirectUpload(

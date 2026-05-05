@@ -27,13 +27,25 @@ let s3Client = null;
 let DO_BUCKET = null;
 
 if (DO_SPACES_CONFIGURED) {
+  // B5: Robust region detection for DO Spaces. If endpoint is sfo3.digitaloceanspaces.com,
+  // the region must be sfo3 for v4 signatures to work correctly.
+  let detectedRegion = process.env.DO_SPACES_REGION || "us-east-1";
+  try {
+    const endpointUrl = new URL(process.env.DO_SPACES_ENDPOINT);
+    const hostParts = endpointUrl.hostname.split('.');
+    if (hostParts.length > 1 && hostParts[1] === 'digitaloceanspaces') {
+      detectedRegion = hostParts[0];
+    }
+  } catch (e) { /* fallback to default */ }
+
   s3Client = new S3Client({
     endpoint: process.env.DO_SPACES_ENDPOINT,
-    region: process.env.DO_SPACES_REGION || "us-east-1",
+    region: detectedRegion,
     credentials: {
       accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID,
       secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY,
     },
+    forcePathStyle: true, // Often more reliable with S3-compatible providers
   });
   DO_BUCKET = process.env.DO_SPACES_BUCKET || "spacesmymedivault";
 }
@@ -371,16 +383,23 @@ async function buildSignedUrl({
   // PRIORITY 1: Route based on FILE's storage provider (not env flag)
   if (storageProvider === 'digitalocean' && DO_SPACES_CONFIGURED) {
     try {
-      // If publicId is a full URL, extract the key after the bucket name
+      // Robust key extraction from full URL
       let key = publicId;
-      if (key.includes(DO_BUCKET)) {
-        key = key.split(`${DO_BUCKET}/`)[1];
-      } else if (key.startsWith('http')) {
-        // Fallback: take everything after the 4th slash (https://host/bucket/key)
-        const parts = key.split('/');
-        if (parts.length > 4) {
-          key = parts.slice(4).join('/');
+      try {
+        if (key.startsWith('http')) {
+          const urlObj = new URL(key);
+          const path = decodeURIComponent(urlObj.pathname).replace(/^\//, '');
+          
+          if (path.startsWith(`${DO_BUCKET}/`)) {
+            // Path-style: /bucket/key
+            key = path.substring(DO_BUCKET.length + 1);
+          } else {
+            // Virtual-hosted style: bucket.host/key or key is just the path
+            key = path;
+          }
         }
+      } catch (e) {
+        console.error("Key extraction error:", e);
       }
 
       const command = new GetObjectCommand({

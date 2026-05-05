@@ -280,10 +280,9 @@ class DownloadWorker(
             val parsedUrl = URL(downloadUrl)
             val conn = (parsedUrl.openConnection() as HttpURLConnection).apply {
                 // Bulk merges (PDF / ZIP) on the server can take a while —
-                // give POST a longer read timeout to match the inline path
-                // observers were used to. GET keeps the existing 60s.
-                connectTimeout = 15_000
-                readTimeout = if (isPost) 300_000 else 60_000
+                // give it a 10-minute timeout to match the backend/sidecar limits.
+                connectTimeout = 30_000
+                readTimeout = 600_000
                 if (isPost) {
                     requestMethod = "POST"
                     doOutput = true

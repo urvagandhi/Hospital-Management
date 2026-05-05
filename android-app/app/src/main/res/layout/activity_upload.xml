@@ -112,6 +112,18 @@
                 android:layout_height="wrap_content"
                 android:clipToPadding="false"
                 android:visibility="gone"
+                android:layout_marginBottom="@dimen/space_sm" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAddPages"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text="Add more pages"
+                app:icon="@drawable/ic_add"
+                app:iconTint="@color/brand_primary"
+                android:textColor="@color/brand_primary"
                 android:layout_marginBottom="@dimen/space_lg" />
 
             <!-- Filename Input -->

@@ -999,7 +999,7 @@ export const downloadAllPdf = async (req, res) => {
           patientName: patient.patientName,
           remarks: patient.remarks,
           folderMap,
-          targetSizeMb: 20,
+          targetSizeMb: 10,
         });
       } catch (error) {
         throw error;
@@ -1084,7 +1084,7 @@ export const downloadFolderPdf = async (req, res) => {
         displayName: folder.name,
         filesInfo,
         sourcePdfs,
-        targetSizeMb: 10,
+        targetSizeMb: 5,
       });
     } catch (error) {
       throw error;
@@ -1161,9 +1161,11 @@ function handleCompressionError(error, res, context) {
   }
 
   if (error instanceof compressionService.SizeFloorError) {
+    const isPatient = context === "Patient PDF";
+    const capMb = isPatient ? 10 : 5;
     const detail = error.ramConstrained
-      ? `Server is currently under heavy load (memory constrained) and cannot compress this ${error.minAchievableMb}MB record down to the 10MB target. Please try again later or download per-folder.`
-      : `Even at maximum compression, this record remains ${error.minAchievableMb}MB, which exceeds the 10MB target. Try downloading per-folder or deselecting some documents.`;
+      ? `Server is currently under heavy load (memory constrained) and cannot compress this ${error.minAchievableMb}MB record down to the ${capMb}MB target. Please try again later or download per-folder.`
+      : `Even at maximum compression, this record remains ${error.minAchievableMb}MB, which exceeds the ${capMb}MB target. Try downloading per-folder or deselecting some documents.`;
     
     return res.status(413).json({
       success: false,
@@ -1268,6 +1270,7 @@ export const downloadFileCompressed = async (req, res) => {
         access_mode: file.accessMode || "signed",
         storage_provider: file.storageProvider || "cloudinary",
       }],
+      targetSizeMb: 10,
     });
 
     logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, {

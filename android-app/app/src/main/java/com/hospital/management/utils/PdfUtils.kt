@@ -39,22 +39,19 @@ object PdfUtils {
 
     private val compressionProfiles = listOf(
         // Profile 0 (primary, spec): 200 DPI A4, quality 80.
-        // Generous 18 MB gate — should handle ~95% of real-world scans without falling through.
+        // Uses BuildConfig.MAX_UPLOAD_SIZE_MB as the limit.
         CompressionProfile(
             pageWidth = A4_WIDTH, pageHeight = A4_HEIGHT,
             maxSourceDimension = 2600, maxBitmapWidth = 1654,
-            jpegQuality = 80, maxOutputBytes = 18L * 1024 * 1024
+            jpegQuality = 80, maxOutputBytes = com.hospital.management.BuildConfig.MAX_UPLOAD_SIZE_MB * 1024L * 1024L - (1024 * 1024) // 1MB buffer
         ),
-        // Profile 1 (fallback): load source smaller, 12 MB gate.
-        // Fires for extreme high-res camera shots.
+        // Profile 1 (fallback): load source smaller.
         CompressionProfile(
             pageWidth = A4_WIDTH, pageHeight = A4_HEIGHT,
             maxSourceDimension = 2000, maxBitmapWidth = 1240,
-            jpegQuality = 80, maxOutputBytes = 12L * 1024 * 1024
+            jpegQuality = 80, maxOutputBytes = (com.hospital.management.BuildConfig.MAX_UPLOAD_SIZE_MB * 0.7).toLong() * 1024L * 1024L
         ),
         // Profile 2 (last resort): lower quality floor, no size gate.
-        // Accepts whatever it produces — if even this is too large, the pre-upload
-        // check in UploadActivity will catch it.
         CompressionProfile(
             pageWidth = A4_WIDTH, pageHeight = A4_HEIGHT,
             maxSourceDimension = 1600, maxBitmapWidth = 1040,

@@ -22,6 +22,9 @@ android {
         // can switch hosts without a source edit. Override per buildType
         // below. Reachable as `BuildConfig.BASE_URL` in Kotlin.
         buildConfigField "String", "BASE_URL", "\"https://hospital-management-8lbf.onrender.com\""
+        buildConfigField "String", "STORAGE_PROVIDER", "\"cloudinary\""
+        buildConfigField "int", "MAX_UPLOAD_SIZE_MB", "20"
+        buildConfigField "int", "MAX_SCAN_PAGES", "20"
     }
 
     // TD-A01 (2026-04-25): release signing reads from env vars (or
@@ -67,13 +70,18 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Production hits the live Render deployment.
-            buildConfigField "String", "BASE_URL", "\"https://hospital-management-8lbf.onrender.com\""
+            // Production hits the live host and uses DigitalOcean Spaces.
+            buildConfigField "String", "BASE_URL", "\"https://mymedivault.in\""
+            buildConfigField "String", "STORAGE_PROVIDER", "\"digitalocean\""
+            buildConfigField "int", "MAX_UPLOAD_SIZE_MB", "100"
+            buildConfigField "int", "MAX_SCAN_PAGES", "30"
         }
         debug {
-            // Debug builds default to the same host today; switch to a staging
-            // URL here once a separate staging deployment exists.
+            // Debug builds hit the Render staging environment and use Cloudinary.
             buildConfigField "String", "BASE_URL", "\"https://hospital-management-8lbf.onrender.com\""
+            buildConfigField "String", "STORAGE_PROVIDER", "\"cloudinary\""
+            buildConfigField "int", "MAX_UPLOAD_SIZE_MB", "10"
+            buildConfigField "int", "MAX_SCAN_PAGES", "20"
         }
     }
     compileOptions {
