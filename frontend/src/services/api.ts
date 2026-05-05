@@ -55,7 +55,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_URL,
-      timeout: 30000,
+      timeout: 600000, // 10 minutes to allow for large PDF compression
       withCredentials: true, // Enable cookies
       headers: {
         "Content-Type": "application/json",

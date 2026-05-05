@@ -24,14 +24,60 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(entry, default=str)
 
 
+class ConsoleFormatter(logging.Formatter):
+    """Colorful console formatter for development."""
+
+    grey = "\x1b[38;20m"
+    blue = "\x1b[34;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    cyan = "\x1b[36m"
+    green = "\x1b[32m"
+
+    FORMATS = {
+        logging.DEBUG: blue + "%(levelname)s" + reset + " (%(name)s): %(message)s",
+        logging.INFO: green + "%(levelname)s" + reset + ": %(message)s",
+        logging.WARNING: yellow + "%(levelname)s" + reset + ": %(message)s",
+        logging.ERROR: red + "%(levelname)s" + reset + ": %(message)s",
+        logging.CRITICAL: bold_red + "%(levelname)s" + reset + ": %(message)s",
+    }
+
+    def format(self, record):
+        # Add timestamp
+        time_str = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        log_fmt = self.FORMATS.get(record.levelno)
+        
+        # Format the message
+        message = record.getMessage()
+        
+        # If there's an 'event' in extra, highlight it
+        event = getattr(record, "event", None)
+        if event:
+            message = f"{self.cyan}[{event}]{self.reset} {message}"
+            
+        # Format the final string
+        formatter = logging.Formatter(f"{self.grey}{time_str}{reset} {log_fmt}")
+        return formatter.format(record).replace(record.getMessage(), message)
+
+
 def setup_logging() -> None:
+    is_prod = os.environ.get("ENV") == "production"
+    
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(JsonFormatter())
+    if is_prod:
+        handler.setFormatter(JsonFormatter())
+    else:
+        handler.setFormatter(ConsoleFormatter())
+
     root = logging.getLogger()
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(logging.INFO)
+    
     # Quiet noisy libs
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)

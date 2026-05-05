@@ -42,18 +42,26 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     print(f"[Database] \u2713 MongoDB connected successfully")
     print(f"[Database] Database: {db.name}")
 
-    # Warm the CPU process pool BEFORE accepting traffic \u2014 first
+    # Warm the CPU process pool BEFORE accepting traffic — first
     # spawn() takes ~300ms which we don't want on the critical path of
     # the first compression job.
     get_cpu_pool()
 
+    cyan = "\x1b[36m"
+    green = "\x1b[32m"
+    yellow = "\x1b[33m"
+    reset = "\x1b[0m"
+    bold = "\x1b[1m"
+
     print(f"""
-\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557
-        \u2551   MyMediVault Compression Service       \u2551
-\u2551   \u2713 Server running on port {port:<11s}\u2551
-\u2551   \u2713 DB: MongoDB Connected              \u2551
-\u2551   \u2713 Cloudinary: {config.CLOUDINARY_CLOUD_NAME:<21s}\u2551
-\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255d
+{cyan}╔════════════════════════════════════════════════════════════╗{reset}
+{cyan}║{reset}   {bold}MyMediVault Compression Service{reset}                    {cyan}║{reset}
+{cyan}╠════════════════════════════════════════════════════════════╣{reset}
+{cyan}║{reset}   {green}⚡${reset} ${bold}Server:${reset}      {green}Running on port {port}{reset}{" " * (17 - len(str(port)))}{cyan}║{reset}
+{cyan}║{reset}   {green}💾${reset} ${bold}Database:${reset}    {green}MongoDB Connected${reset}                          {cyan}║{reset}
+{cyan}║{reset}   {green}☁️${reset} ${bold}Cloudinary:${reset}  {yellow}{config.CLOUDINARY_CLOUD_NAME}{reset}{" " * (28 - len(config.CLOUDINARY_CLOUD_NAME))}{cyan}║{reset}
+{cyan}║{reset}   {green}🏗️${reset} ${bold}S3 Storage:${reset}  {green}DigitalOcean Spaces Active{reset}                 {cyan}║{reset}
+{cyan}╚════════════════════════════════════════════════════════════╝{reset}
 """)
     async def heartbeat():
         """Periodic log pulse to confirm service is alive in logs."""
