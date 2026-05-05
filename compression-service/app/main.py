@@ -57,10 +57,10 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
 {cyan}╔════════════════════════════════════════════════════════════╗{reset}
 {cyan}║{reset}   {bold}MyMediVault Compression Service{reset}                    {cyan}║{reset}
 {cyan}╠════════════════════════════════════════════════════════════╣{reset}
-{cyan}║{reset}   {green}⚡${reset} ${bold}Server:${reset}      {green}Running on port {port}{reset}{" " * (17 - len(str(port)))}{cyan}║{reset}
-{cyan}║{reset}   {green}💾${reset} ${bold}Database:${reset}    {green}MongoDB Connected${reset}                          {cyan}║{reset}
-{cyan}║{reset}   {green}☁️${reset} ${bold}Cloudinary:${reset}  {yellow}{config.CLOUDINARY_CLOUD_NAME}{reset}{" " * (28 - len(config.CLOUDINARY_CLOUD_NAME))}{cyan}║{reset}
-{cyan}║{reset}   {green}🏗️${reset} ${bold}S3 Storage:${reset}  {green}DigitalOcean Spaces Active{reset}                 {cyan}║{reset}
+{cyan}║{reset}   {green}⚡{reset} {bold}Server:{reset}      {green}Running on port {port}{reset}{" " * (17 - len(str(port)))}{cyan}║{reset}
+{cyan}║{reset}   {green}💾{reset} {bold}Database:{reset}    {green}MongoDB Connected{reset}                          {cyan}║{reset}
+{cyan}║{reset}   {green}☁️{reset} {bold}Cloudinary:{reset}  {yellow}{config.CLOUDINARY_CLOUD_NAME}{reset}{" " * (28 - len(config.CLOUDINARY_CLOUD_NAME))}{cyan}║{reset}
+{cyan}║{reset}   {green}🏗️{reset} {bold}S3 Storage:{reset}  {green}DigitalOcean Spaces Active{reset}                 {cyan}║{reset}
 {cyan}╚════════════════════════════════════════════════════════════╝{reset}
 """)
     async def heartbeat():
