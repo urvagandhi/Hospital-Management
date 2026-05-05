@@ -188,7 +188,7 @@ const PatientDetails: React.FC = () => {
     setZipLoading(true);
     try {
       const body = selectedFolders ? { selectedFolders } : {};
-      const response = await api.postBlob(`/patients/${patientId}/download/zip`, body);
+      const response = await api.postBlob(`/patients/${patientId}/download/zip`, body, { timeout: 600000 });
       downloadBlob(response.data as Blob, `${patient.patientName.replace(/[^a-z0-9]/gi, "_")}_records.zip`);
     } catch (error) {
       console.error("ZIP download failed:", error);
@@ -207,7 +207,7 @@ const PatientDetails: React.FC = () => {
     if (!patientId || !patient) return;
     setPdfLoading(true);
     try {
-      const response = await api.postBlob(`/patients/${patientId}/download/pdf`, { mode });
+      const response = await api.postBlob(`/patients/${patientId}/download/pdf`, { mode }, { timeout: 600000 });
       const ext = mode === "per-folder" ? "zip" : "pdf";
       const safeName = patient.patientName.replace(/[^a-z0-9]/gi, "_");
       downloadBlob(response.data as Blob, `${safeName}_records.${ext}`);
@@ -653,7 +653,7 @@ const FolderDownloadBtn: React.FC<{
     setLoading(true);
     try {
       const url = `/patients/${encodeURIComponent(patientId)}/folders/${encodeURIComponent(folderName)}/download/${type}`;
-      const response = await api.getBlob(url);
+      const response = await api.getBlob(url, { timeout: 600000 });
       const safeName = patientName.replace(/[^a-z0-9]/gi, "_");
       const safeFolder = folderName.replace(/[^a-z0-9]/gi, "_");
       const blob = new Blob([response.data as BlobPart]);

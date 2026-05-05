@@ -259,7 +259,7 @@ const Dashboard: React.FC = () => {
     try {
       const response = await api.get("/export/patients/pdf", {
         responseType: "blob",
-        timeout: 300000,
+        timeout: 600000,
       });
       const blob = new Blob([response.data as BlobPart], {
         type: "application/pdf",
