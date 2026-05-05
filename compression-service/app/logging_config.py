@@ -59,7 +59,7 @@ class ConsoleFormatter(logging.Formatter):
             message = f"{self.cyan}[{event}]{self.reset} {message}"
             
         # Format the final string
-        formatter = logging.Formatter(f"{self.grey}{time_str}{reset} {log_fmt}")
+        formatter = logging.Formatter(f"{self.grey}{time_str}{self.reset} {log_fmt}")
         return formatter.format(record).replace(record.getMessage(), message)
 
 
