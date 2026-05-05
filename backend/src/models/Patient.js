@@ -26,6 +26,10 @@ const fileSchema = new mongoose.Schema({
   cloudinaryPublicId: {
     type: String,
   },
+  cloudinaryUrl: {
+    type: String,
+    default: null,
+  },
   storageProvider: {
     type: String,
     enum: ["cloudinary", "digitalocean"],

@@ -24,7 +24,7 @@ function getMailtrapTransporter() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-const APP_NAME = "Hospital HMS";
+const APP_NAME = "MyMediVault";
 const SENDER_EMAIL = () => process.env.BREVO_SENDER_EMAIL || "noreply@hospital-hms.com";
 const SENDER_NAME = () => process.env.BREVO_SENDER_NAME || APP_NAME;
 

@@ -95,7 +95,7 @@ const config = {
   // Brevo (production email)
   BREVO_API_KEY: process.env.BREVO_API_KEY,
   BREVO_SENDER_EMAIL: process.env.BREVO_SENDER_EMAIL || "noreply@hospitalhms.com",
-  BREVO_SENDER_NAME: process.env.BREVO_SENDER_NAME || "Hospital HMS",
+  BREVO_SENDER_NAME: process.env.BREVO_SENDER_NAME || "MyMediVault",
 
   // Mailtrap (development email)
   MAILTRAP_HOST: process.env.MAILTRAP_HOST || "sandbox.smtp.mailtrap.io",

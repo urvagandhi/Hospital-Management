@@ -49,9 +49,18 @@ if (envPath) {
 
 // ── CLI args ─────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
-  const out = { dryRun: false, concurrency: 5, hospital: null, patient: null, limit: Infinity, manifest: null };
+  const out = { 
+    dryRun: false, 
+    concurrency: 5, 
+    hospital: null, 
+    patient: null, 
+    limit: Infinity, 
+    manifest: null,
+    preserveCloudinary: false 
+  };
   for (const a of argv.slice(2)) {
     if (a === "--dry-run") out.dryRun = true;
+    else if (a === "--preserve-cloudinary") out.preserveCloudinary = true;
     else if (a.startsWith("--concurrency=")) out.concurrency = Math.max(1, parseInt(a.split("=")[1], 10) || 5);
     else if (a.startsWith("--hospital=")) out.hospital = a.split("=")[1];
     else if (a.startsWith("--patient=")) out.patient = a.split("=")[1];
@@ -131,7 +140,8 @@ function cloudinaryDownloadUrl(file) {
 
 /** Build the same fileUrl format the live upload path produces. */
 function spacesUrlFor(key) {
-  return `${process.env.DO_SPACES_ENDPOINT}/${DO_BUCKET}/${key}`;
+  const endpoint = process.env.DO_SPACES_ENDPOINT.replace(/\/$/, "");
+  return `${endpoint}/${DO_BUCKET}/${key}`;
 }
 
 async function downloadBuffer(url) {
@@ -194,6 +204,7 @@ async function main() {
   if (args.hospital) console.log(`Hospital:    ${args.hospital}`);
   if (args.patient) console.log(`Patient:     ${args.patient}`);
   if (args.limit !== Infinity) console.log(`Limit:       ${args.limit} files`);
+  console.log(`Preserve Cloudinary: ${args.preserveCloudinary}`);
   console.log(`Manifest:    ${args.manifest}`);
   console.log("──────────────────────────────────────────────\n");
 
@@ -269,6 +280,9 @@ async function main() {
       }
 
       // Mutate the embedded subdoc in place; save patient once after the pool finishes
+      if (args.preserveCloudinary) {
+        file.cloudinaryUrl = file.fileUrl; // Store the original Cloudinary link
+      }
       file.storageProvider = "digitalocean";
       file.fileUrl = spacesUrlFor(key);
       // thumbnailUrl was a Cloudinary transformation URL — DO has no equivalent.
