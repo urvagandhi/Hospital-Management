@@ -988,8 +988,12 @@ export const downloadAllPdf = async (req, res) => {
         };
       });
 
+      // Set headers EARLY so the heartbeat doesn't commit wrong defaults
+      const safeName = encodeURIComponent(`${patient.patientName}_all_records.pdf`);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+
       // Start a heartbeat timer to keep the connection alive while sidecar works.
-      // We send a space every 15s to reset proxy/browser timeouts.
       const heartbeat = setInterval(() => {
         if (!res.writableEnded) res.write(" ");
       }, 15000);
@@ -1017,9 +1021,6 @@ export const downloadAllPdf = async (req, res) => {
       });
 
       const upstream = await compressionService.fetchMergedStream(result.merged_url);
-      const safeName = encodeURIComponent(`${patient.patientName}_all_records.pdf`);
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
       if (result.final_size_bytes > 0) res.setHeader("Content-Length", result.final_size_bytes);
 
       await pipeline(Readable.fromWeb(upstream.body), res);
@@ -1075,6 +1076,10 @@ export const downloadFolderPdf = async (req, res) => {
       page_count: f.pageCount ?? null,
     }));
 
+    const safeName = encodeURIComponent(`${patient.patientName}_${folderName}.pdf`);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+
     const start = Date.now();
     // Start a heartbeat timer to keep the connection alive while sidecar works.
     const heartbeat = setInterval(() => {
@@ -1107,9 +1112,6 @@ export const downloadFolderPdf = async (req, res) => {
     });
 
     const upstream = await compressionService.fetchMergedStream(result.merged_url);
-    const safeName = encodeURIComponent(`${patient.patientName}_${folderName}.pdf`);
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
     if (result.final_size_bytes > 0) res.setHeader("Content-Length", result.final_size_bytes);
 
     await pipeline(Readable.fromWeb(upstream.body), res);
