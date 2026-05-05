@@ -276,7 +276,7 @@ export const getPatientById = async (hospitalId, patientId, { signUrls = false }
       );
     }
 
-    logger.info({ event: "patient_fetch_ok", patientMongoId: patient._id }, "[Patient Service] Patient found");
+    logger.info({ event: "patient_fetch_ok", patientMongoId: String(patient._id) }, "[Patient Service] Patient found");
     return patientObj;
   } catch (error) {
     logger.error({ event: "patient_fetch_failed", err: error }, "[Patient Service] Fetch error");
@@ -437,7 +437,7 @@ export const getFolderFiles = async (hospitalId, patientId, folderName) => {
     result.files = await signFileUrls(folder.files);
 
     logger.info(
-      { event: "folder_files_fetch_ok", folderName, count: result.files.length },
+      { event: "folder_files_fetch_ok", folderName, count: result.files.length, patientId: String(patient._id) },
       `[Patient Service] Found ${result.files.length} files`,
     );
     return result;
