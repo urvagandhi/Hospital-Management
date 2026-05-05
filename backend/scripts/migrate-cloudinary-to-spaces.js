@@ -73,7 +73,7 @@ function parseArgs(argv) {
   }
   if (!out.manifest) {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    out.manifest = path.resolve(__dirname, `.migration-manifest-${stamp}.json`);
+    out.manifest = path.resolve(__dirname, "../logs/migration-manifest-" + stamp + ".json");
   }
   return out;
 }
@@ -285,6 +285,7 @@ async function main() {
       }
       file.storageProvider = "digitalocean";
       file.fileUrl = spacesUrlFor(key);
+      file.accessMode = "signed"; // DigitalOcean files are private and need signing
       // thumbnailUrl was a Cloudinary transformation URL — DO has no equivalent.
       // Clear it so the FE treats the file like other DO uploads (no thumb).
       if (file.thumbnailUrl) file.thumbnailUrl = null;
