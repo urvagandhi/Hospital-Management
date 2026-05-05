@@ -212,21 +212,26 @@ const startServer = async () => {
     // Start Express server
     const server = app.listen(config.PORT, () => {
       // ... same logs as before ...
-      if (config.NODE_ENV !== "production") {
+      if (config.NODE_ENV !== "production" || process.env.LOG_PRETTY === "true") {
         const cyan = "\x1b[36m";
         const green = "\x1b[32m";
         const yellow = "\x1b[33m";
         const reset = "\x1b[0m";
         const bold = "\x1b[1m";
 
+        // We use hardcoded spaces to ensure perfect alignment regardless of how 
+        // the terminal calculates emoji width. Total internal width is 60.
+        const serverInfo = `Running on port ${config.PORT}`;
+        const modeInfo   = config.NODE_ENV;
+
         process.stdout.write(`
 ${cyan}╔════════════════════════════════════════════════════════════╗${reset}
-${cyan}║${reset}   ${bold}MyMediVault API${reset}                                       ${cyan}║${reset}
+${cyan}║${reset}   ${bold}MyMediVault API${reset}${" ".repeat(42)}${cyan}║${reset}
 ${cyan}╠════════════════════════════════════════════════════════════╣${reset}
-${cyan}║${reset}   ${green}🚀${reset} ${bold}Server:${reset}    ${green}Running on port ${config.PORT}${reset}${" ".repeat(21 - String(config.PORT).length)}${cyan}║${reset}
-${cyan}║${reset}   ${green}🛡️${reset} ${bold}Mode:${reset}      ${yellow}${config.NODE_ENV}${reset}${" ".repeat(32 - config.NODE_ENV.length)}${cyan}║${reset}
-${cyan}║${reset}   ${green}📦${reset} ${bold}Database:${reset}  ${green}MongoDB Connected${reset}                          ${cyan}║${reset}
-${cyan}║${reset}   ${green}⚙️${reset} ${bold}Cron Jobs:${reset} ${green}Active${reset}                                     ${cyan}║${reset}
+${cyan}║${reset}   ${green}🚀${reset} ${bold}Server:${reset}    ${green}${serverInfo}${reset}${" ".repeat(23)}${cyan}║${reset}
+${cyan}║${reset}   ${green}🛡️${reset} ${bold} Mode:${reset}      ${yellow}${modeInfo}${reset}${" ".repeat(33)}${cyan}║${reset}
+${cyan}║${reset}   ${green}📦${reset} ${bold}Database:${reset}  ${green}MongoDB Connected${reset}${" ".repeat(26)}${cyan}║${reset}
+${cyan}║${reset}   ${green}⚙️${reset} ${bold} Cron Jobs:${reset} ${green}Active${reset}${" ".repeat(37)}${cyan}║${reset}
 ${cyan}╚════════════════════════════════════════════════════════════╝${reset}
 `);
       }

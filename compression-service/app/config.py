@@ -1,5 +1,9 @@
 import os
 import re
+from dotenv import load_dotenv
+
+# Load .env file if it exists
+load_dotenv()
 
 _DEFAULT_DB = "hospital-management"
 _DEFAULT_JOB_TMP_DIR = "/tmp/jobs"

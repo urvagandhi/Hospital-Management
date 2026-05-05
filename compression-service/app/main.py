@@ -53,14 +53,18 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     reset = "\x1b[0m"
     bold = "\x1b[1m"
 
+    cloudinary_status = config.CLOUDINARY_CLOUD_NAME if config.CLOUDINARY_CLOUD_NAME else "Disabled"
+    s3_status = "Active" if config.DO_SPACES_BUCKET else "Disabled"
+    server_info = f"Running on port {port}"
+
     print(f"""
 {cyan}╔════════════════════════════════════════════════════════════╗{reset}
-{cyan}║{reset}   {bold}MyMediVault Compression Service{reset}                    {cyan}║{reset}
+{cyan}║{reset}   {bold}MyMediVault Compression Service{reset}{" " * 26}{cyan}║{reset}
 {cyan}╠════════════════════════════════════════════════════════════╣{reset}
-{cyan}║{reset}   {green}⚡{reset} {bold}Server:{reset}      {green}Running on port {port}{reset}{" " * (17 - len(str(port)))}{cyan}║{reset}
-{cyan}║{reset}   {green}💾{reset} {bold}Database:{reset}    {green}MongoDB Connected{reset}                          {cyan}║{reset}
-{cyan}║{reset}   {green}☁️{reset} {bold}Cloudinary:{reset}  {yellow}{config.CLOUDINARY_CLOUD_NAME}{reset}{" " * (28 - len(config.CLOUDINARY_CLOUD_NAME))}{cyan}║{reset}
-{cyan}║{reset}   {green}🏗️{reset} {bold}S3 Storage:{reset}  {green}DigitalOcean Spaces Active{reset}                 {cyan}║{reset}
+{cyan}║{reset}   {green}⚡{reset} {bold}Server:${reset}      {green}{server_info}{reset}{" " * 20}{cyan}║{reset}
+{cyan}║{reset}   {green}💾{reset} {bold}Database:${reset}    {green}MongoDB Connected{reset}{" " * 23}{cyan}║{reset}
+{cyan}║{reset}   {green}☁️{reset} {bold} Cloudinary:${reset}  {yellow}{cloudinary_status}{reset}{" " * 32}{cyan}║{reset}
+{cyan}║{reset}   {green}🏗️{reset} {bold} S3 Storage:${reset}  {green}{s3_status}{reset}{" " * 34}{cyan}║{reset}
 {cyan}╚════════════════════════════════════════════════════════════╝{reset}
 """)
     async def heartbeat():

@@ -7,12 +7,12 @@
   "scripts": {
     "build": "npm install --production",
     "ci": "npm ci",
-    "start": "node src/index.js",
+    "start": "NODE_ENV=production LOG_PRETTY=true node src/index.js",
     "start:prod": "NODE_ENV=production LOG_PRETTY=true node src/index.js",
     "start:prod:json": "NODE_ENV=production node src/index.js",
     "start:prod:pretty": "NODE_ENV=production LOG_PRETTY=true node src/index.js",
     "prod": "npm run start:prod",
-    "dev": "nodemon",
+    "dev": "LOG_PRETTY=true nodemon",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "keywords": [

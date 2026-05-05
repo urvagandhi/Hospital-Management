@@ -58,6 +58,17 @@ class ConsoleFormatter(logging.Formatter):
         if event:
             message = f"{self.cyan}[{event}]{self.reset} {message}"
             
+        # Add Job ID if present (show last 8 chars)
+        job_id = getattr(record, "job_id", None)
+        if job_id:
+            short_id = str(job_id)[-8:]
+            message = f"{self.grey}({short_id}){self.reset} {message}"
+
+        # Add Metrics if present
+        metrics = getattr(record, "metrics", None)
+        if metrics:
+            message = f"{message} {self.grey}{metrics}{self.reset}"
+            
         # Format the final string
         formatter = logging.Formatter(f"{self.grey}{time_str}{self.reset} {log_fmt}")
         return formatter.format(record).replace(record.getMessage(), message)
