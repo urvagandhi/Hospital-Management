@@ -45,6 +45,7 @@ def generate_cover_page(
     files_info: list[FileInfo],
     job_dir: Path,
     folder_index: int = 0,
+    remarks: str = "",
 ) -> Path:
     """Generate a cover page PDF matching the Node backend design.
 
@@ -95,7 +96,8 @@ def generate_cover_page(
     cx = 40 * _PT
     card_y = divider_y + 30 * _PT
     cw = 532 * _PT
-    ch = 90 * _PT
+    cw = 532 * _PT
+    ch = (120 * _PT) if remarks else (90 * _PT)
 
     # Shadow
     pdf.set_fill_color(*_CARD_SHADOW)
@@ -121,6 +123,18 @@ def generate_cover_page(
     pdf.set_text_color(*_DARK)
     pdf.set_xy(cx + 20 * _PT, card_y + 20 * _PT)
     pdf.cell(cw - 50 * _PT, 24 * _PT, display_name)
+
+    # Remarks
+    if remarks:
+        pdf.set_font("Helvetica", "B", 7.5)
+        pdf.set_text_color(*_MUTED)
+        pdf.set_xy(cx + 20 * _PT, card_y + 48 * _PT)
+        pdf.cell(0, 7.5 * _PT, "REMARKS")
+
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(*_DARK)
+        pdf.set_xy(cx + 20 * _PT, card_y + 58 * _PT)
+        pdf.multi_cell(cw - 40 * _PT, 4.5, remarks, border=0, align='L', max_line_height=10)
 
     # ─── Document List ───────────────────────────────────────────
     list_y = card_y + ch + 10 * _PT

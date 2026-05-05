@@ -257,7 +257,7 @@ async function deleteFromSpaces(key) {
 // uploadToSpaces — upload buffer to DigitalOcean Spaces
 // Returns { success, url, key } or { success, error }
 // ---------------------------------------------------------------------------
-async function uploadToSpaces(buffer, key, mimeType = 'application/octet-stream') {
+async function uploadToSpaces(buffer, key, mimeType = 'application/octet-stream', acl = 'private') {
   if (!DO_SPACES_CONFIGURED || !s3Client) {
     return { success: false, error: 'DO Spaces not configured' };
   }
@@ -267,10 +267,11 @@ async function uploadToSpaces(buffer, key, mimeType = 'application/octet-stream'
       Key: key,
       Body: buffer,
       ContentType: mimeType,
-      ACL: 'private', // Files are private by default; access via signed URLs
+      ACL: acl,
     });
     await s3Client.send(command);
-    const url = `${process.env.DO_SPACES_ENDPOINT}/${DO_BUCKET}/${key}`;
+    const endpoint = process.env.DO_SPACES_ENDPOINT.replace(/\/$/, "");
+    const url = `${endpoint}/${DO_BUCKET}/${key}`;
     return { success: true, url, key };
   } catch (error) {
     return {
@@ -290,7 +291,7 @@ async function uploadBuffer(buffer, options = {}) {
   // PRIORITY 1: Try DigitalOcean if configured and requested
   if (storageProvider === 'digitalocean' && DO_SPACES_CONFIGURED) {
     const key = options.key || `hospital/uploads/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    return uploadToSpaces(buffer, key, options.mimeType || 'application/octet-stream');
+    return uploadToSpaces(buffer, key, options.mimeType || 'application/octet-stream', options.acl || 'private');
   }
 
   // PRIORITY 2: Fallback to Cloudinary

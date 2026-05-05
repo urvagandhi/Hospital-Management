@@ -22,6 +22,7 @@ import {
   deleteContactChangeRequest,
 } from "../services/redis.service.js";
 import getClientIp from "../utils/clientIp.js";
+import { uploadBuffer } from "../services/storage.service.js";
 
 /**
  * Get all hospitals (cursor-paginated, admin-only).
@@ -279,8 +280,16 @@ export const updateHospital = async (req, res) => {
 
     // Handle logo upload if provided
     if (req.file) {
-      const base64Logo = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
-      hospital.logoUrl = base64Logo;
+      const uploadResult = await uploadBuffer(req.file.buffer, {
+        folder: "hospital/logos",
+        mimeType: req.file.mimetype,
+        acl: "public-read",
+        resource_type: "image",
+      });
+      if (uploadResult.success) {
+        hospital.logoUrl = uploadResult.url;
+        changedFields.push("logoUrl");
+      }
     }
 
     await hospital.save();
@@ -295,7 +304,6 @@ export const updateHospital = async (req, res) => {
     if (preChange.phone !== hospital.phone) changedFields.push("phone");
     if ((preChange.address || "") !== (hospital.address || "")) changedFields.push("address");
     if (preChange.isActive !== hospital.isActive) changedFields.push("isActive");
-    if (req.file) changedFields.push("logoUrl");
 
     AuditLog.create({
       userId: hospital._id,
@@ -540,8 +548,16 @@ export const patchMe = async (req, res) => {
     }
 
     if (req.file) {
-      hospital.logoUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
-      changes.logoUrl = true;
+      const uploadResult = await uploadBuffer(req.file.buffer, {
+        folder: "hospital/logos",
+        mimeType: req.file.mimetype,
+        acl: "public-read",
+        resource_type: "image",
+      });
+      if (uploadResult.success) {
+        hospital.logoUrl = uploadResult.url;
+        changes.logoUrl = true;
+      }
     }
 
     if (Object.keys(changes).length === 0) {

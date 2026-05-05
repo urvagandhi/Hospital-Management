@@ -192,6 +192,7 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
                         files_info=folder_files_info,
                         job_dir=job_dir,
                         folder_index=fi,
+                        remarks=entry.remarks,
                     )
                     cover_paths.append(cover_path)
 
@@ -346,10 +347,11 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
         return JSONResponse(
             status_code=413,
             content={
-                "error": "size_floor_breached",
                 "min_achievable_mb": round(e.min_achievable_bytes / 1_048_576, 2),
+                "ram_constrained": e.ram_constrained,
             },
         )
+
 
     except SourceFetchError as e:
         elapsed_ms = int((time.monotonic() - start) * 1000)

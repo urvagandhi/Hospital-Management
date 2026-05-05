@@ -6,6 +6,7 @@
 
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import logger from "../utils/logger.js";
+import { buildSignedUrl } from "./storage.service.js";
 
 /**
  * Fetch a file buffer from a Cloudinary (or any HTTPS) URL.
@@ -33,7 +34,17 @@ async function fetchFileBuffer(url) {
 async function fetchFolderFiles(folder) {
   const results = [];
   for (const file of folder.files) {
-    const buffer = await fetchFileBuffer(file.fileUrl);
+    let url = file.fileUrl;
+    if (file.accessMode === "signed" && file.cloudinaryPublicId) {
+      url = await buildSignedUrl({
+        publicId: file.cloudinaryPublicId,
+        resourceType: file.resourceType || "raw",
+        ttlSeconds: 600,
+        storageProvider: file.storageProvider || "cloudinary",
+      });
+    }
+
+    const buffer = await fetchFileBuffer(url);
     let pdfDoc = null;
     let pageCount = null;
     if (buffer) {
@@ -72,7 +83,7 @@ function formatFileSize(bytes) {
  * @param {string[]} details  - ["Generated: ...", "Files: N", ...]
  * @param {{ fileName: string, size: number, pageCount: number|null }[]} files
  */
-async function createSectionPage(title, subtitle, _details = [], files = []) {
+async function createSectionPage(title, subtitle, _details = [], files = [], remarks = "") {
   const doc = await PDFDocument.create();
   const page = doc.addPage([612, 792]); // US Letter
   const font = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -104,8 +115,8 @@ async function createSectionPage(title, subtitle, _details = [], files = []) {
   page.drawRectangle({ x: 302, y: 564, width: 8, height: 8, color: accent });
   page.drawRectangle({ x: 325, y: 568, width: 247, height: 1, color: border });
 
-  // ─── Patient Card (name only) ─────────────────────────────────
-  const cx = 40, cy = 380, cw = 532, ch = 90;
+  // ─── Patient Card (name + remarks) ───────────────────────────
+  const cx = 40, cy = 380, cw = 532, ch = remarks ? 120 : 90;
 
   page.drawRectangle({ x: cx + 3, y: cy - 3, width: cw, height: ch, color: cardShadow });
   page.drawRectangle({ x: cx, y: cy, width: cw, height: ch, color: white });
@@ -117,6 +128,11 @@ async function createSectionPage(title, subtitle, _details = [], files = []) {
     subtitle ? subtitle.replace(/^Patient:\s*/, "") : "",
   );
   page.drawText(patientName, { x: cx + 20, y: cy + ch - 52, size: 24, font, color: dark, maxWidth: cw - 50 });
+
+  if (remarks) {
+    page.drawText("REMARKS", { x: cx + 20, y: cy + ch - 82, size: 7.5, font, color: muted });
+    page.drawText(remarks, { x: cx + 20, y: cy + ch - 102, size: 9, font: regular, color: dark, maxWidth: cw - 50 });
+  }
 
   // ─── Document List ────────────────────────────────────────────
   if (files.length > 0) {
@@ -210,6 +226,7 @@ export const generateFolderPdf = async (patient, folderName, res) => {
       patient.patientId ? `ID: ${patient.patientId}` : "",
     ].filter(Boolean),
     coverFiles,
+    patient.remarks,
   );
 
   const merged = await PDFDocument.create();
@@ -266,6 +283,7 @@ export const generatePatientPdfMerged = async (patient, res) => {
         patient.patientId ? `ID: ${patient.patientId}` : null,
       ].filter(Boolean),
       coverFiles,
+      patient.remarks,
     );
     const sectionPages = await merged.copyPages(section, section.getPageIndices());
     for (const p of sectionPages) merged.addPage(p);
@@ -338,6 +356,7 @@ export const generatePatientPdfPerFolder = async (patient, res) => {
         patient.patientId ? `ID: ${patient.patientId}` : null,
       ].filter(Boolean),
       coverFiles,
+      patient.remarks,
     );
     const coverPages = await folderMerged.copyPages(cover, cover.getPageIndices());
     for (const p of coverPages) folderMerged.addPage(p);

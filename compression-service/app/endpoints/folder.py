@@ -174,6 +174,7 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                         patient_name=body.patient_name,
                         files_info=files_info,
                         job_dir=job_dir,
+                        remarks=body.remarks,
                     )
 
                 for src in source_pdfs_opened:
@@ -311,10 +312,11 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
         return JSONResponse(
             status_code=413,
             content={
-                "error": "size_floor_breached",
                 "min_achievable_mb": round(e.min_achievable_bytes / 1_048_576, 2),
+                "ram_constrained": e.ram_constrained,
             },
         )
+
 
     except SourceFetchError as e:
         elapsed_ms = int((time.monotonic() - start) * 1000)

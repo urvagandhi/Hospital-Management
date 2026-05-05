@@ -54,10 +54,11 @@ class MemoryMonitor:
 class SizeFloorBreached(Exception):
     """Raised when even Tier 4 cannot meet the target size."""
 
-    def __init__(self, min_achievable_bytes: int) -> None:
+    def __init__(self, min_achievable_bytes: int, ram_constrained: bool = False) -> None:
         self.min_achievable_bytes = min_achievable_bytes
+        self.ram_constrained = ram_constrained
         super().__init__(
-            f"Minimum achievable size: {min_achievable_bytes / 1_048_576:.2f} MB"
+            f"Minimum achievable size: {min_achievable_bytes / 1_048_576:.2f} MB (RAM constrained: {ram_constrained})"
         )
 
 async def run_adaptive_compression_loop(
@@ -81,6 +82,7 @@ async def run_adaptive_compression_loop(
 
     with MemoryMonitor(job_id):
         best_output = input_path
+        any_tier_skipped = False
         
         for tier in range(5):
             # 1. RAM Guard
@@ -93,6 +95,7 @@ async def run_adaptive_compression_loop(
                     f"Low memory ({available_ram:.1f}MB). Skipping tier {tier}",
                     extra={"job_id": job_id}
                 )
+                any_tier_skipped = True
                 continue
 
             tier_dir = work_dir / f"tier_{tier}"
@@ -156,4 +159,7 @@ async def run_adaptive_compression_loop(
                 continue
             
     # All tiers exhausted
-    raise SizeFloorBreached(min_achievable_bytes=best_output.stat().st_size)
+    raise SizeFloorBreached(
+        min_achievable_bytes=best_output.stat().st_size,
+        ram_constrained=any_tier_skipped
+    )

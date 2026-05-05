@@ -913,6 +913,7 @@ export const downloadAllPdf = async (req, res) => {
       folderId: String(folder._id),
       displayName: folder.name,
       patientName: patient.patientName,
+      remarks: patient.remarks,
       sourcePdfs: folder.files
         .filter((f) => f.cloudinaryPublicId)
         .map((f) => ({
@@ -981,6 +982,7 @@ export const downloadAllPdf = async (req, res) => {
           folder_id: payload.folderId,
           display_name: payload.displayName,
           patient_name: payload.patientName,
+          remarks: payload.remarks,
           source_pdfs: payload.sourcePdfs,
           files_info: payload.filesInfo,
         };
@@ -990,7 +992,9 @@ export const downloadAllPdf = async (req, res) => {
         patientId: String(patient._id),
         userId: String(hospitalId),
         patientName: patient.patientName,
+        remarks: patient.remarks,
         folderMap,
+        targetSizeMb: 20,
       });
 
       logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, {
@@ -1066,9 +1070,11 @@ export const downloadFolderPdf = async (req, res) => {
       userId: String(hospitalId),
       patientId: String(patient._id),
       patientName: patient.patientName,
+      remarks: patient.remarks,
       displayName: folder.name,
       filesInfo,
       sourcePdfs,
+      targetSizeMb: 10,
     });
 
     logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, {
@@ -1142,11 +1148,16 @@ function handleCompressionError(error, res, context) {
   }
 
   if (error instanceof compressionService.SizeFloorError) {
+    const detail = error.ramConstrained
+      ? `Server is currently under heavy load (memory constrained) and cannot compress this ${error.minAchievableMb}MB record down to the 10MB target. Please try again later or download per-folder.`
+      : `Even at maximum compression, this record remains ${error.minAchievableMb}MB, which exceeds the 10MB target. Try downloading per-folder or deselecting some documents.`;
+    
     return res.status(413).json({
       success: false,
       error: "size_floor_breached",
       min_achievable_mb: error.minAchievableMb,
-      detail: "Even at maximum compression, file exceeds target. Try per-folder mode or deselect folders.",
+      ram_constrained: error.ramConstrained,
+      detail,
     });
   }
   if (error instanceof compressionService.SourceFetchError) {
@@ -1243,6 +1254,7 @@ export const downloadFileCompressed = async (req, res) => {
         uploaded_at: (file.uploadedAt || file.createdAt || new Date()).toISOString(),
         resource_type: file.resourceType || "image",
         access_mode: file.accessMode || "signed",
+        storage_provider: file.storageProvider || "cloudinary",
       }],
     });
 

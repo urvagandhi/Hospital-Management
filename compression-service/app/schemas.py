@@ -29,6 +29,7 @@ class FolderDownloadRequest(BaseModel):
     source_pdfs: list[SourcePdf]
     display_name: str = ""  # Folder name for cover page (optional — no cover if empty)
     patient_name: str = ""  # Patient name for cover page subtitle
+    remarks: str = ""  # Patient remarks for cover page
     files_info: list[FileInfo] = []  # For cover page document list
 
 
@@ -37,6 +38,7 @@ class FolderEntry(BaseModel):
     display_name: str  # Printed on cover page (e.g. "Claims", "Reports")
     source_pdfs: list[SourcePdf]
     patient_name: str = ""  # For cover page subtitle
+    remarks: str = ""  # For cover page
     files_info: list[FileInfo] = []  # For cover page document list
 
 

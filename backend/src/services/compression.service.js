@@ -10,10 +10,11 @@ import logger from "../utils/logger.js";
 // ── Error Classes ──────────────────────────────────────────
 
 export class SizeFloorError extends Error {
-  constructor(minAchievableMb) {
+  constructor(minAchievableMb, ramConstrained = false) {
     super(`Minimum achievable size: ${minAchievableMb} MB`);
     this.name = "SizeFloorError";
     this.minAchievableMb = minAchievableMb;
+    this.ramConstrained = ramConstrained;
   }
 }
 
@@ -75,7 +76,7 @@ async function postToService(endpoint, body) {
 
   const errBody = await res.json().catch(() => ({}));
 
-  if (res.status === 413) throw new SizeFloorError(errBody.min_achievable_mb);
+  if (res.status === 413) throw new SizeFloorError(errBody.min_achievable_mb, errBody.ram_constrained);
   if (res.status === 502) throw new SourceFetchError(errBody.failed_public_id, errBody.detail);
   if (res.status === 504) throw new ServiceTimeoutError();
   logger.error(
@@ -96,6 +97,7 @@ export async function compressFolder({
   userId,
   patientId,
   patientName,
+  remarks,
   displayName,
   filesInfo,
   sourcePdfs,
@@ -106,6 +108,7 @@ export async function compressFolder({
     user_id: userId,
     patient_id: patientId,
     patient_name: patientName || "",
+    remarks: remarks || "",
     display_name: displayName || "",
     files_info: filesInfo || [],
     target_size_mb: targetSizeMb,
@@ -114,6 +117,7 @@ export async function compressFolder({
       uploaded_at: s.uploaded_at,
       resource_type: s.resource_type || "image",
       access_mode: s.access_mode || "signed",
+      storage_provider: s.storage_provider || "cloudinary",
     })),
   });
 }
@@ -126,12 +130,14 @@ export async function compressPatient({
   patientId,
   userId,
   patientName,
+  remarks,
   folderMap,
   targetSizeMb = 10,
 }) {
   return postToService("/api/patient-download", {
     patient_id: patientId,
     user_id: userId,
+    remarks: remarks || "",
     target_size_mb: targetSizeMb,
     folder_map: folderMap,
   });
