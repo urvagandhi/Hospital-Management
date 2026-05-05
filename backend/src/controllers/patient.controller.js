@@ -860,8 +860,8 @@ export const downloadAllZip = async (req, res) => {
 
     logAudit(hospitalId, "PATIENT_EXPORT_ZIP", req, { patientId, selectedFolders: selectedFolders || "all" });
 
-    req.setTimeout(300000);
-    res.setTimeout(300000);
+    req.setTimeout(600000);
+    res.setTimeout(600000);
 
     await zipService.generatePatientZip(patient, res, selectedFolders || null);
   } catch (error) {
@@ -892,8 +892,8 @@ export const downloadAllPdf = async (req, res) => {
 
     logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, { patientId, mode: mode || "merged" });
 
-    req.setTimeout(300000);
-    res.setTimeout(300000);
+    req.setTimeout(600000);
+    res.setTimeout(600000);
 
     if (!USE_COMPRESSION) {
       if (mode === "per-folder") {
@@ -1036,8 +1036,8 @@ export const downloadFolderPdf = async (req, res) => {
 
     logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, { patientId, folderName });
 
-    req.setTimeout(300000);
-    res.setTimeout(300000);
+    req.setTimeout(600000);
+    res.setTimeout(600000);
 
     if (!USE_COMPRESSION) {
       await pdfService.generateFolderPdf(patient, folderName, res);
@@ -1120,8 +1120,8 @@ export const downloadFolderZip = async (req, res) => {
 
     logAudit(hospitalId, "PATIENT_EXPORT_ZIP", req, { patientId, folderName });
 
-    req.setTimeout(300000);
-    res.setTimeout(300000);
+    req.setTimeout(600000);
+    res.setTimeout(600000);
 
     await zipService.generateFolderZip(patient, folderName, res);
   } catch (error) {
@@ -1247,8 +1247,8 @@ export const downloadFileCompressed = async (req, res) => {
     // ── Compression service path ──
     logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, { patientId, folderName, fileId, compressed: true });
 
-    req.setTimeout(300000);
-    res.setTimeout(300000);
+    req.setTimeout(600000);
+    res.setTimeout(600000);
 
     const start = Date.now();
     const result = await compressionService.compressFolder({
