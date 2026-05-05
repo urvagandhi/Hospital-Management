@@ -148,11 +148,38 @@ class FileViewerActivity : BaseActivity() {
     }
 
     private suspend fun showPdf(url: String, nav: LinearLayout) {
-        // Download to cache
+        // Update UI for download phase
+        withContext(Dispatchers.Main) {
+            progress.visibility = android.view.View.VISIBLE
+            pageIndicator.text = "Downloading PDF..."
+            nav.visibility = android.view.View.VISIBLE
+            prevBtn.visibility = android.view.View.GONE
+            nextBtn.visibility = android.view.View.GONE
+        }
+
+        // Download to cache with progress tracking
         val file = withContext(Dispatchers.IO) {
             val out = File.createTempFile("viewer_", ".pdf", cacheDir)
-            URL(url).openStream().use { input ->
-                FileOutputStream(out).use { o -> input.copyTo(o) }
+            val connection = URL(url).openConnection()
+            connection.connect()
+            val totalSize = connection.contentLength
+            
+            connection.getInputStream().use { input ->
+                FileOutputStream(out).use { output ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    var totalRead = 0L
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                        totalRead += bytesRead
+                        if (totalSize > 0) {
+                            val progressPercent = (totalRead * 100 / totalSize).toInt()
+                            withContext(Dispatchers.Main) {
+                                pageIndicator.text = "Downloading: $progressPercent%"
+                            }
+                        }
+                    }
+                }
             }
             out
         }
@@ -160,19 +187,21 @@ class FileViewerActivity : BaseActivity() {
         val descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
         pdfRenderer = PdfRenderer(descriptor)
 
-        progress.visibility = android.view.View.GONE
-
-        pdfImageView = ImageView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT,
-            )
-            scaleType = ImageView.ScaleType.FIT_CENTER
+        withContext(Dispatchers.Main) {
+            progress.visibility = android.view.View.GONE
+            prevBtn.visibility = android.view.View.VISIBLE
+            nextBtn.visibility = android.view.View.VISIBLE
+            
+            pdfImageView = ImageView(this@FileViewerActivity).apply {
+                layoutParams = FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                )
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }
+            content.addView(pdfImageView)
+            showPdfPage(0)
         }
-        content.addView(pdfImageView)
-
-        nav.visibility = android.view.View.VISIBLE
-        showPdfPage(0)
     }
 
     private fun showPdfPage(index: Int) {

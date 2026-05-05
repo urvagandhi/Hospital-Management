@@ -80,6 +80,75 @@ def _estimate_start_tier(input_size_bytes: int, target_size_bytes: int) -> int:
     return 0
 
 
+async def _try_ghostscript_only(
+    input_path: Path,
+    target_size_bytes: int,
+    work_dir: Path,
+    job_id: str,
+) -> CompressionResult | None:
+    """Fast path: try Ghostscript directly on the merged PDF (no image extraction).
+
+    For many scanned PDFs, GS alone can recompress the embedded JPEG streams
+    efficiently enough to hit the target in seconds — bypassing the expensive
+    pdfimages → PIL resize → img2pdf rebuild pipeline entirely.
+
+    Returns a CompressionResult if target was met, or None to signal the
+    caller to fall through to the full adaptive loop.
+    """
+    input_size = input_path.stat().st_size
+
+    # Only attempt GS-only for ratios that GS can plausibly handle.
+    # Ratios above ~4x typically need actual image downsampling.
+    ratio = input_size / target_size_bytes if target_size_bytes > 0 else 999
+    if ratio > 4.0:
+        logger.info(
+            f"GS-only skip: ratio {ratio:.1f}x too high for GS-only path",
+            extra={"job_id": job_id, "event": "gs_only_skip"},
+        )
+        return None
+
+    # Try progressively aggressive GS tiers until one hits the target.
+    for tier in range(0, 5):
+        gs_dir = work_dir / f"gs_only_tier_{tier}"
+        gs_dir.mkdir(parents=True, exist_ok=True)
+        gs_output = gs_dir / "gs_output.pdf"
+
+        try:
+            await run_ghostscript_explicit(input_path, gs_output, tier, job_id)
+            output_size = gs_output.stat().st_size
+
+            if output_size <= target_size_bytes:
+                logger.info(
+                    f"GS-only tier {tier} hit target: {output_size} bytes "
+                    f"({output_size / 1_048_576:.2f}MB)",
+                    extra={"job_id": job_id, "event": "gs_only_hit"},
+                )
+                return CompressionResult(
+                    output_path=gs_output,
+                    tier_used=tier,
+                    output_size_bytes=output_size,
+                )
+            else:
+                logger.info(
+                    f"GS-only tier {tier}: {output_size / 1_048_576:.2f}MB "
+                    f"(target {target_size_bytes / 1_048_576:.2f}MB) — trying next tier",
+                    extra={"job_id": job_id, "event": "gs_only_miss"},
+                )
+                # Clean up failed attempt
+                shutil.rmtree(gs_dir, ignore_errors=True)
+
+        except Exception as e:
+            logger.warning(f"GS-only tier {tier} failed: {e}", extra={"job_id": job_id})
+            shutil.rmtree(gs_dir, ignore_errors=True)
+            continue
+
+    logger.info(
+        "GS-only path exhausted all tiers — falling through to full adaptive loop",
+        extra={"job_id": job_id, "event": "gs_only_exhausted"},
+    )
+    return None
+
+
 async def run_adaptive_compression_loop(
     input_path: Path,
     target_size_bytes: int,
@@ -87,18 +156,29 @@ async def run_adaptive_compression_loop(
     work_dir: Path,
     job_id: str,
 ) -> CompressionResult:
-    """Orchestrate tiers 0-4 for scanned PDFs.
-    
-    Optimizations over naive approach:
-    - Images extracted ONCE via pdfimages, reused across all tiers.
-    - Starting tier estimated from compression ratio to skip hopeless tiers.
-    - BILINEAR resampling (~3x faster than LANCZOS).
+    """Orchestrate compression for scanned/mixed PDFs.
+
+    Strategy (optimized for speed):
+    1. Try GS-only first (seconds, not minutes).
+    2. If GS alone can't hit the target, fall through to the full
+       extract → resize → rebuild → GS pipeline.
     """
     if pdf_type == PdfType.DIGITAL:
         # Pure digital should have been handled in pipeline.py.
         # MIXED (digital that exceeded target) is allowed through.
         raise ValueError("Digital PDFs should use digital_path.py")
 
+    # ── Fast path: Ghostscript-only ──
+    # This completes in seconds for PDFs with moderate compression ratios,
+    # completely bypassing the 2+ minute image extraction pipeline.
+    gs_result = await _try_ghostscript_only(
+        input_path, target_size_bytes, work_dir, job_id
+    )
+    if gs_result is not None:
+        return gs_result
+
+    # ── Slow path: Full image extraction pipeline ──
+    # Only reached when GS alone can't achieve the target ratio.
     with MemoryMonitor(job_id):
         loop = asyncio.get_running_loop()
         cpu_pool = get_cpu_pool()

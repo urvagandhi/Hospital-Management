@@ -98,41 +98,25 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
     }
   };
 
-  // Cloudinary stores PDFs as resource_type=raw, which serves them with
-  // Content-Disposition: attachment. Browsers download instead of rendering.
-  // Fetch as blob and create a blob URL — blob URLs use the `type` parameter
-  // rather than the server's disposition header, so the browser's native PDF
-  // viewer picks them up.
+  // PDF Viewing Optimization:
+  // Previously, we fetched the entire PDF as a blob to bypass 'Content-Disposition: attachment'.
+  // This caused massive delays for large files (30MB+).
+  // Now, we point the iframe directly to the signed URL. 
+  // DigitalOcean is configured to serve these as 'inline', enabling instant streaming.
   useEffect(() => {
     if (!file || !isPdfMime(file.mimeType)) {
       setPdfBlobUrl(null);
       setPdfError(null);
       return;
     }
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    setPdfBlobUrl(null);
-    setPdfError(null);
-    const pdfUrl = resolvedUrl || file.fileUrl;
-    fetch(pdfUrl)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        const pdfBlob = new Blob([blob], { type: "application/pdf" });
-        objectUrl = URL.createObjectURL(pdfBlob);
-        setPdfBlobUrl(objectUrl);
-      })
-      .catch((err) => {
-        if (!cancelled) setPdfError(err.message || "Failed to load PDF");
-      });
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [resolvedUrl, file?.fileUrl, file?.mimeType]);
+    
+    // We use the resolved signed URL directly. 
+    // This allows the browser's native PDF viewer to start rendering 
+    // while the file is still downloading (streaming).
+    if (resolvedUrl) {
+      setPdfBlobUrl(resolvedUrl);
+    }
+  }, [resolvedUrl, file?.mimeType]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
