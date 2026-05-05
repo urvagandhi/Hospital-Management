@@ -22,8 +22,8 @@ class CompressionResult:
 
 logger = logging.getLogger(__name__)
 
-# Render free tier limit is 512MB. We leave 150MB buffer.
-MIN_AVAILABLE_RAM_MB = 150
+# Lowered threshold to 50MB to support smaller VPS instances
+MIN_AVAILABLE_RAM_MB = 50
 
 class MemoryMonitor:
     """Logs RAM usage every second in a background thread."""
