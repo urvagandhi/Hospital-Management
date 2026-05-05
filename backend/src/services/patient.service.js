@@ -246,7 +246,7 @@ export const getPatients = async (hospitalId, options = {}) => {
  * @param {string} patientId - MongoDB _id
  * @returns {Promise<Object>}
  */
-export const getPatientById = async (hospitalId, patientId) => {
+export const getPatientById = async (hospitalId, patientId, { signUrls = false } = {}) => {
   try {
     logger.info({ event: "patient_fetch_start", patientId }, "[Patient Service] Fetching patient");
 
@@ -261,9 +261,13 @@ export const getPatientById = async (hospitalId, patientId) => {
       throw new Error("Patient not found");
     }
 
-    // Sign URLs for all files in all folders
     const patientObj = patient.toObject();
-    if (patientObj.folders) {
+
+    // Only sign URLs when explicitly requested. Eager signing of ALL files
+    // in ALL folders is extremely slow for DO Spaces (each presigned URL
+    // requires an SDK call). Callers that need signed URLs for a specific
+    // folder should use getFolderFiles instead.
+    if (signUrls && patientObj.folders) {
       patientObj.folders = await Promise.all(
         patientObj.folders.map(async (folder) => {
           folder.files = await signFileUrls(folder.files);
@@ -428,29 +432,6 @@ export const getFolderFiles = async (hospitalId, patientId, folderName) => {
     if (!folder) {
       throw new Error("Folder not found");
     }
-
-    // Map files to include signed URLs where necessary
-    const filesWithSignedUrls = await Promise.all(
-      folder.files.map(async (file) => {
-        const fileObj = file.toObject();
-        
-        // If it's DigitalOcean or signed Cloudinary, generate a temporary access URL
-        if (fileObj.storageProvider === "digitalocean" || fileObj.accessMode === "signed") {
-          const signedUrl = await buildSignedUrl({
-            publicId: fileObj.storageProvider === "digitalocean" ? fileObj.fileUrl : fileObj.cloudinaryPublicId,
-            resourceType: fileObj.resourceType || "raw",
-            storageProvider: fileObj.storageProvider,
-            ttlSeconds: 3600, // 1 hour expiry for viewing
-            fileName: fileObj.fileName
-          });
-          
-          if (signedUrl) {
-            fileObj.fileUrl = signedUrl;
-          }
-        }
-        return fileObj;
-      })
-    );
 
     const result = folder.toObject();
     result.files = await signFileUrls(folder.files);

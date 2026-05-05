@@ -7,7 +7,7 @@ import threading
 import time
 from pathlib import Path
 
-from app.compression.preprocessor import preprocess_scanned_pdf
+from app.compression.preprocessor import extract_images_from_pdf, process_images_for_tier
 from app.compression.rebuilder import rebuild_pdf_from_images
 from app.compression.ghostscript import run_ghostscript_explicit
 from app.compression.classifier import PdfType
@@ -61,6 +61,25 @@ class SizeFloorBreached(Exception):
             f"Minimum achievable size: {min_achievable_bytes / 1_048_576:.2f} MB (RAM constrained: {ram_constrained})"
         )
 
+
+def _estimate_start_tier(input_size_bytes: int, target_size_bytes: int) -> int:
+    """Pick a starting tier based on required compression ratio.
+
+    Avoids wasting minutes on high-quality tiers that can't possibly
+    hit the target for large inputs.
+    """
+    if target_size_bytes <= 0:
+        return 0
+    ratio = input_size_bytes / target_size_bytes
+    if ratio > 8:
+        return 3
+    elif ratio > 4:
+        return 2
+    elif ratio > 2:
+        return 1
+    return 0
+
+
 async def run_adaptive_compression_loop(
     input_path: Path,
     target_size_bytes: int,
@@ -70,11 +89,10 @@ async def run_adaptive_compression_loop(
 ) -> CompressionResult:
     """Orchestrate tiers 0-4 for scanned PDFs.
     
-    Logic:
-    - If digital, it should have been routed to digital_path.py (handled in pipeline.py).
-    - If scanned, iterate tiers 0 -> 4.
-    - Stop as soon as target_size_bytes is hit.
-    - Includes RAM guard to prevent OOM on Render.
+    Optimizations over naive approach:
+    - Images extracted ONCE via pdfimages, reused across all tiers.
+    - Starting tier estimated from compression ratio to skip hopeless tiers.
+    - BILINEAR resampling (~3x faster than LANCZOS).
     """
     if pdf_type == PdfType.DIGITAL:
         # Pure digital should have been handled in pipeline.py.
@@ -82,10 +100,37 @@ async def run_adaptive_compression_loop(
         raise ValueError("Digital PDFs should use digital_path.py")
 
     with MemoryMonitor(job_id):
+        loop = asyncio.get_running_loop()
+        cpu_pool = get_cpu_pool()
+
+        # ── Extract images ONCE ──
+        extract_dir = work_dir / "extracted"
+        extracted_files, page_dims = await loop.run_in_executor(
+            cpu_pool, extract_images_from_pdf, input_path, extract_dir, job_id
+        )
+
+        if not extracted_files:
+            return CompressionResult(
+                output_path=input_path,
+                tier_used=0,
+                output_size_bytes=input_path.stat().st_size,
+            )
+
+        # ── Smart tier selection ──
+        input_size = input_path.stat().st_size
+        start_tier = _estimate_start_tier(input_size, target_size_bytes)
+        if start_tier > 0:
+            logger.info(
+                f"Skipping tiers 0-{start_tier - 1} "
+                f"(ratio {input_size / target_size_bytes:.1f}x → starting at tier {start_tier})",
+                extra={"job_id": job_id},
+            )
+
         best_output = input_path
         any_tier_skipped = False
         
-        for tier in range(5):
+        # ── Tier loop (resize → rebuild → GS) ──
+        for tier in range(start_tier, 5):
             # 1. RAM Guard
             mem = psutil.virtual_memory()
             available_ram = mem.available / (1024 * 1024)
@@ -103,15 +148,11 @@ async def run_adaptive_compression_loop(
             tier_dir.mkdir(parents=True, exist_ok=True)
             
             try:
-                loop = asyncio.get_running_loop()
-                cpu_pool = get_cpu_pool()
-
-                # 2. Preprocess (images) — off-process so PIL/pdfimages CPU
-                # does not starve the asyncio event loop on Render.
+                # 2. Resize + re-encode (reuses already-extracted images)
                 image_paths = await loop.run_in_executor(
                     cpu_pool,
-                    preprocess_scanned_pdf,
-                    input_path, tier, tier_dir, job_id
+                    process_images_for_tier,
+                    extracted_files, page_dims, tier, tier_dir, job_id
                 )
 
                 if not image_paths:
@@ -150,15 +191,17 @@ async def run_adaptive_compression_loop(
                         output_size_bytes=current_size
                     )
                     
-                # 5. Cleanup tier-specific extracted/processed images to save RAM/Disk
-                shutil.rmtree(tier_dir / "extracted", ignore_errors=True)
+                # 5. Cleanup tier-specific processed images to save RAM/Disk
                 shutil.rmtree(tier_dir / "processed", ignore_errors=True)
                 gc.collect()
 
             except Exception as e:
                 logger.error(f"Tier {tier} failed: {e}", exc_info=True)
                 continue
-            
+
+        # Cleanup shared extracted images
+        shutil.rmtree(extract_dir, ignore_errors=True)
+
     # All tiers exhausted
     raise SizeFloorBreached(
         min_achievable_bytes=best_output.stat().st_size,

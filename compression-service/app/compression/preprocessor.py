@@ -33,28 +33,15 @@ def get_page_dimensions(pdf_path: Path):
             dims.append((width_pts, height_pts))
     return dims
 
-def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: str) -> list[Path]:
-    """Extract, downsample, and re-encode images from a scanned PDF.
-    
-    Returns a list of paths to processed JPEG images in page order.
-    """
-    config = TIER_CONFIGS.get(tier, TIER_CONFIGS[4])
-    target_dpi = config["dpi"]
-    
-    # Ensure we never drift below absolute floor
-    if target_dpi < ABSOLUTE_FLOOR_DPI:
-        target_dpi = ABSOLUTE_FLOOR_DPI
-        
-    extract_dir = work_dir / "extracted"
-    extract_dir.mkdir(parents=True, exist_ok=True)
-    
-    processed_dir = work_dir / "processed"
-    processed_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Extract images using pdfimages
-    # -all: extract as JPEG/PNG/TIFF
-    # -j: try to extract as JPEG if possible (fast)
-    # -jp2: try to extract as JPEG2000 if possible
+def extract_images_from_pdf(pdf_path: Path, extract_dir: Path, job_id: str) -> tuple[list[Path], list[tuple]]:
+    """Extract images from a PDF ONCE. Returns (extracted_file_paths, page_dimensions).
+
+    This is the expensive I/O step (pdfimages subprocess + pikepdf page scan)
+    that should only run ONCE per job, not repeated for every compression tier.
+    """
+    extract_dir.mkdir(parents=True, exist_ok=True)
+
     try:
         subprocess.run(
             ["pdfimages", "-all", "-j", "-jp2", str(pdf_path), str(extract_dir / "img")],
@@ -66,50 +53,70 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: st
         logger.error(f"pdfimages failed: {e.stderr.decode()}", extra={"job_id": job_id})
         raise RuntimeError(f"Image extraction failed: {e.stderr.decode()}")
 
-    # Collect and sort extracted files (img-000.jpg, img-001.png, etc)
     extracted_files = sorted(extract_dir.glob("img-*"))
     if not extracted_files:
         logger.warning(f"No images extracted from {pdf_path}", extra={"job_id": job_id})
-        return []
+        return [], []
 
     logger.info(
         f"Extracted {len(extracted_files)} images from {pdf_path}",
         extra={"job_id": job_id, "image_count": len(extracted_files)}
     )
 
-    # Get page dimensions for DPI estimation
     page_dims = get_page_dimensions(pdf_path)
-    
+    return extracted_files, page_dims
+
+
+def process_images_for_tier(
+    extracted_files: list[Path],
+    page_dims: list[tuple],
+    tier: int,
+    tier_dir: Path,
+    job_id: str,
+) -> list[Path]:
+    """Resize and re-encode already-extracted images for a specific compression tier.
+
+    Uses BILINEAR resampling instead of LANCZOS — ~3x faster with negligible
+    quality difference on scanned medical documents.
+    """
+    config = TIER_CONFIGS.get(tier, TIER_CONFIGS[4])
+    target_dpi = config["dpi"]
+
+    # Ensure we never drift below absolute floor
+    if target_dpi < ABSOLUTE_FLOOR_DPI:
+        target_dpi = ABSOLUTE_FLOOR_DPI
+
+    processed_dir = tier_dir / "processed"
+    processed_dir.mkdir(parents=True, exist_ok=True)
+
     processed_files = []
-    
-    # Note: pdfimages might extract multiple images per page or none. 
-    # For ML Kit PDFs, it's usually 1 image per page.
-    # We'll process each extracted image.
+
     for i, img_path in enumerate(extracted_files):
         try:
             start_time = time.time()
             with Image.open(img_path) as img:
                 # Estimate current DPI
-                # Use the first page dim as a proxy if we have many images
                 page_idx = min(i, len(page_dims) - 1)
                 page_w_pts, page_h_pts = page_dims[page_idx]
                 page_w_in = page_w_pts / 72.0
-                
+
                 curr_dpi = img.width / page_w_in if page_w_in > 0 else 300
-                
+
                 # Decision: Only downsample if current DPI > target DPI * 1.1
                 final_img = img
                 if curr_dpi > (target_dpi * 1.1):
                     scale = target_dpi / curr_dpi
                     new_size = (int(img.width * scale), int(img.height * scale))
-                    final_img = img.resize(new_size, Image.Resampling.LANCZOS)
-                
+                    # BILINEAR is ~3x faster than LANCZOS with negligible
+                    # quality difference on already-scanned documents.
+                    final_img = img.resize(new_size, Image.Resampling.BILINEAR)
+
                 # Color conversion
                 if config["grayscale"] and final_img.mode != "L":
                     final_img = final_img.convert("L")
                 elif not config["grayscale"] and final_img.mode == "RGBA":
                     final_img = final_img.convert("RGB")
-                
+
                 # Save as JPEG
                 out_path = processed_dir / f"page_{i:04d}.jpg"
                 final_img.save(
@@ -120,17 +127,32 @@ def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: st
                     optimize=True
                 )
                 processed_files.append(out_path)
-                
+
             elapsed = (time.time() - start_time) * 1000
             if i % 10 == 0: # Log every 10 images to avoid log flooding
                 used_ram = psutil.Process().memory_info().rss / (1024 * 1024)
                 logger.info(
-                    f"Processed image {i} in {elapsed:.0f}ms (RAM: {used_ram:.1f}MB)", 
+                    f"Processed image {i} in {elapsed:.0f}ms (RAM: {used_ram:.1f}MB)",
                     extra={"job_id": job_id}
                 )
-                
+
         except Exception as e:
             logger.warning(f"Failed to process image {img_path}: {e}", extra={"job_id": job_id})
             continue
-            
+
     return processed_files
+
+
+def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: str) -> list[Path]:
+    """Legacy wrapper: Extract + process in one call.
+
+    For new code, prefer extract_images_from_pdf() + process_images_for_tier()
+    to avoid redundant extraction across tiers.
+
+    Returns a list of paths to processed JPEG images in page order.
+    """
+    extract_dir = work_dir / "extracted"
+    extracted_files, page_dims = extract_images_from_pdf(pdf_path, extract_dir, job_id)
+    if not extracted_files:
+        return []
+    return process_images_for_tier(extracted_files, page_dims, tier, work_dir, job_id)
