@@ -70,20 +70,20 @@ if (DO_SPACES_CONFIGURED && DO_SPACES_CDN_ENDPOINT) {
     const parts = u.hostname.split('.');
     if (parts.length > 1 && parts[1] === 'digitaloceanspaces') detectedRegion = parts[0];
   } catch {}
-  // CDN endpoint already includes the bucket as a subdomain
-  // (`<bucket>.<region>.cdn.digitaloceanspaces.com`), so the URL must NOT
-  // also have the bucket in the path. forcePathStyle MUST be false here —
-  // setting true gives `/spacesmymedivault/spacesmymedivault/...` and DO
-  // returns 403 SignatureDoesNotMatch.
+  // Virtual-host style signing client (origin host, bucket as subdomain).
+  // We sign GETs against `<bucket>.<region>.digitaloceanspaces.com`, then
+  // post-sign swap the host to `<bucket>.<region>.cdn.digitaloceanspaces.com`.
+  // DO's CDN (CDN77) forwards to origin with the ORIGINAL origin Host
+  // header, so the SigV4 signature still validates while the public URL
+  // hits the CDN edge.
   s3CdnClient = new S3Client({
-    endpoint: DO_SPACES_CDN_ENDPOINT,
+    endpoint: process.env.DO_SPACES_ENDPOINT,
     region: detectedRegion,
     credentials: {
       accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID,
       secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY,
     },
     forcePathStyle: false,
-    bucketEndpoint: true,
   });
 }
 
@@ -504,13 +504,16 @@ async function buildSignedUrl({
           ? `attachment; filename="${fileName || 'file'}"`
           : 'inline',
       });
-      // Prefer signing against the CDN host so the URL we return is
-      // CDN-cacheable AND has a valid SigV4 signature (host is part of the
-      // canonical request — we have to bake the CDN host in at sign time,
-      // not swap it post-sign). DO Spaces accepts the same credentials on
-      // both endpoints. Falls back to origin if CDN endpoint is unset.
-      const signingClient = s3CdnClient || s3Client;
-      generatedUrl = await getSignedUrl(signingClient, command, { expiresIn: ttlSeconds });
+      // Sign with a virtual-host style client (bucket subdomain on origin),
+      // then swap the host to the CDN. DO's CDN forwards to origin keeping
+      // the origin Host header, so the signature stays valid while the URL
+      // we hand the client hits the CDN edge.
+      if (s3CdnClient) {
+        const originSigned = await getSignedUrl(s3CdnClient, command, { expiresIn: ttlSeconds });
+        generatedUrl = toCdnUrl(originSigned);
+      } else {
+        generatedUrl = await getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
+      }
     } catch (err) {
       console.error("DO Signed URL Error:", err);
       return null;
