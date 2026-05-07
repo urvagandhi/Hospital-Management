@@ -3,6 +3,7 @@ package com.hospital.management.data.api
 import android.content.Context
 import com.hospital.management.BuildConfig
 import com.hospital.management.utils.FileLogger
+import okhttp3.Cache
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -12,6 +13,7 @@ import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
@@ -52,10 +54,19 @@ object RetrofitClient {
             }
         }
 
+        // OkHttp disk cache — honours Cache-Control / ETag from server. Used
+        // for in-app GETs and (more importantly) re-served Spaces CDN
+        // responses on document re-open: with `public, max-age=...,
+        // immutable` set at upload, repeat opens read straight from disk
+        // with zero network. 200 MB budget; OkHttp self-evicts LRU.
+        val httpCacheDir = File(context.cacheDir, "okhttp_cache")
+        val httpCache = Cache(httpCacheDir, 200L * 1024L * 1024L)
+
         // Certificate pinning with backup pin (intermediate CA)
         // Remove OkHttp pinning — rely on network_security_config.xml instead
         // to avoid double-pinning conflicts.
         val builder = OkHttpClient.Builder()
+            .cache(httpCache)
             .cookieJar(cookieJar)
             .addInterceptor(UserAgentInterceptor(context))
             .addInterceptor(AuthInterceptor(context))

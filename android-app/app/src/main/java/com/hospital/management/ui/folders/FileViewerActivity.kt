@@ -148,24 +148,40 @@ class FileViewerActivity : BaseActivity() {
     }
 
     private suspend fun showPdf(url: String, nav: LinearLayout) {
-        // Update UI for download phase
+        // Persistent disk cache keyed by fileId. Files are write-once on the
+        // server, so once we've downloaded a given fileId there's no reason
+        // to ever fetch it again — repeat opens render in <100 ms straight
+        // from disk. LRU-evicted to a soft 500 MB budget.
+        val fileId = intent.getStringExtra("fileId") ?: ""
+        val cacheRoot = File(cacheDir, "pdf_cache").apply { mkdirs() }
+        val cached = File(cacheRoot, "pdf_${fileId}.pdf")
+
         withContext(Dispatchers.Main) {
             progress.visibility = android.view.View.VISIBLE
-            pageIndicator.text = "Downloading PDF..."
             nav.visibility = android.view.View.VISIBLE
             prevBtn.visibility = android.view.View.GONE
             nextBtn.visibility = android.view.View.GONE
+            pageIndicator.text = if (cached.exists() && cached.length() > 0)
+                "Loading from cache..."
+            else "Downloading PDF..."
         }
 
-        // Download to cache with progress tracking
         val file = withContext(Dispatchers.IO) {
-            val out = File.createTempFile("viewer_", ".pdf", cacheDir)
+            // Cache hit — bump mtime for LRU and return immediately.
+            if (cached.exists() && cached.length() > 0) {
+                cached.setLastModified(System.currentTimeMillis())
+                return@withContext cached
+            }
+
+            // Cache miss — download to a `.part` file then atomic-rename so
+            // a half-finished download never poisons the cache.
+            val partial = File(cacheRoot, "pdf_${fileId}.part")
             val connection = URL(url).openConnection()
             connection.connect()
             val totalSize = connection.contentLength
-            
+
             connection.getInputStream().use { input ->
-                FileOutputStream(out).use { output ->
+                FileOutputStream(partial).use { output ->
                     val buffer = ByteArray(8192)
                     var bytesRead: Int
                     var totalRead = 0L
@@ -181,7 +197,15 @@ class FileViewerActivity : BaseActivity() {
                     }
                 }
             }
-            out
+            if (!partial.renameTo(cached)) {
+                // Rename can fail across mount points on some devices —
+                // fall back to copy+delete semantics by using the partial.
+                cached.delete()
+                partial.copyTo(cached, overwrite = true)
+                partial.delete()
+            }
+            evictPdfCacheIfOverBudget(cacheRoot, 500L * 1024L * 1024L)
+            cached
         }
         pdfFile = file
         val descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
@@ -221,7 +245,24 @@ class FileViewerActivity : BaseActivity() {
     override fun onDestroy() {
         super.onDestroy()
         try { pdfRenderer?.close() } catch (_: Exception) {}
-        try { pdfFile?.delete() } catch (_: Exception) {}
+        // INTENTIONAL: do NOT delete pdfFile. It lives in `cacheDir/pdf_cache/`
+        // keyed by fileId so the next open is instant. LRU eviction runs at
+        // download time to keep total size under budget; Android also wipes
+        // cacheDir under low-disk pressure.
+    }
+
+    private fun evictPdfCacheIfOverBudget(cacheRoot: File, maxBytes: Long) {
+        val files = (cacheRoot.listFiles() ?: return)
+            .filter { it.isFile && it.name.startsWith("pdf_") && it.name.endsWith(".pdf") }
+        var total = files.sumOf { it.length() }
+        if (total <= maxBytes) return
+        // Oldest-first by mtime.
+        val sorted = files.sortedBy { it.lastModified() }
+        for (f in sorted) {
+            if (total <= maxBytes) break
+            val len = f.length()
+            if (f.delete()) total -= len
+        }
     }
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }

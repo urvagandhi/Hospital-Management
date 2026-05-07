@@ -51,6 +51,28 @@ if (DO_SPACES_CONFIGURED) {
   DO_BUCKET = process.env.DO_SPACES_BUCKET || "spacesmymedivault";
 }
 
+// CDN host for serving objects. DO Spaces CDN passes signed-URL query
+// params through to origin, so signing against origin + serving through CDN
+// works — but only if the URL we hand to clients points at the CDN host.
+// Example: https://spacesmymedivault.sfo3.cdn.digitaloceanspaces.com
+// Set DO_SPACES_CDN_ENDPOINT in env. If unset, falls back to origin (no CDN).
+const DO_SPACES_CDN_ENDPOINT = (process.env.DO_SPACES_CDN_ENDPOINT || "").replace(/\/$/, "");
+
+// Swap the origin host of a Spaces URL for the CDN host.
+// Returns the URL unchanged if CDN endpoint is not configured.
+function toCdnUrl(originUrl) {
+  if (!originUrl || !DO_SPACES_CDN_ENDPOINT) return originUrl;
+  try {
+    const u = new URL(originUrl);
+    const cdn = new URL(DO_SPACES_CDN_ENDPOINT);
+    u.protocol = cdn.protocol;
+    u.host = cdn.host;
+    return u.toString();
+  } catch {
+    return originUrl;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Allowed MIME types
 // ---------------------------------------------------------------------------
@@ -275,16 +297,25 @@ async function uploadToSpaces(buffer, key, mimeType = 'application/octet-stream'
     return { success: false, error: 'DO Spaces not configured' };
   }
   try {
+    // Medical docs are write-once: tag with long, immutable Cache-Control so
+    // both the CDN edge and downstream HTTP caches (browser, OkHttp) can
+    // reuse the bytes for a year. `immutable` also tells browsers to skip
+    // revalidation on reload.
     const command = new PutObjectCommand({
       Bucket: DO_BUCKET,
       Key: key,
       Body: buffer,
       ContentType: mimeType,
+      CacheControl: 'public, max-age=31536000, immutable',
       ACL: acl,
     });
     await s3Client.send(command);
+
+    // Always return the CDN URL when CDN is configured. Origin URL would
+    // bypass the edge cache entirely.
     const endpoint = process.env.DO_SPACES_ENDPOINT.replace(/\/$/, "");
-    const url = `${endpoint}/${DO_BUCKET}/${key}`;
+    const originUrl = `${endpoint}/${DO_BUCKET}/${key}`;
+    const url = toCdnUrl(originUrl);
     return { success: true, url, key };
   } catch (error) {
     return {
@@ -443,7 +474,12 @@ async function buildSignedUrl({
           ? `attachment; filename="${fileName || 'file'}"`
           : 'inline',
       });
-      generatedUrl = await getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
+      const originSignedUrl = await getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
+      // Serve the signed URL via the CDN host. DO Spaces CDN forwards signed
+      // query params to origin, so the signature still validates while the
+      // edge can cache the response (keyed by full URL incl. signature —
+      // stable as long as Redis returns the same cached URL below).
+      generatedUrl = toCdnUrl(originSignedUrl);
     } catch (err) {
       console.error("DO Signed URL Error:", err);
       return null;
@@ -471,11 +507,19 @@ async function buildSignedUrl({
     }
   }
 
-  // If a URL was generated, cache it in Redis
+  // If a URL was generated, cache it in Redis so repeated opens get the
+  // SAME signed URL — that stable URL is what lets the CDN edge, browser,
+  // and OkHttp disk caches all reuse the bytes instead of cache-busting on
+  // every fresh signature.
+  //
+  // Bugfix: previous formula `Math.max(60, ttlSeconds - 3600)` collapsed to
+  // 60 s for any ttlSeconds <= 3660 — so PDF service (ttl=600) and others
+  // were regenerating signed URLs every minute, killing cache reuse on
+  // every repeat open. Use 90% of TTL with a 60 s floor instead, so callers
+  // with TTL=600 get 540 s of cache, TTL=86400 → 77760 s (~21h), etc.
   if (generatedUrl) {
     try {
-      // Cache TTL is slightly less than URL TTL to ensure we don't serve a URL that expires mid-download
-      const cacheTtl = Math.max(60, ttlSeconds - 3600); // 1 hour buffer
+      const cacheTtl = Math.max(60, Math.floor(ttlSeconds * 0.9));
       await redis.set(cacheKey, generatedUrl, { ex: cacheTtl });
     } catch (err) {
       console.error("Redis set error for signed URL:", err);
