@@ -1,7 +1,7 @@
 /**
  * Admin Controller
  * Cloudinary orphan cleanup — scans for files stored in Cloudinary that have
- * no matching cloudinaryPublicId in any Patient document.
+ * no matching storageKey in any Patient document.
  *
  * Two endpoints:
  *   GET  /api/admin/cloudinary/orphans        — dry run: list orphans
@@ -27,14 +27,19 @@ const SCAN_PREFIXES = [
 ];
 
 /**
- * Build a Set of all cloudinaryPublicIds stored in MongoDB across all patients.
+ * Build a Set of all storage keys stored in MongoDB across all patients.
+ * Reads both `storageKey` (new) and `cloudinaryPublicId` (legacy, pre-migration)
+ * so the orphan scan never deletes a file that's still referenced under either name.
  */
 async function getAllStoredPublicIds() {
-  const patients = await Patient.find({}).select('folders.files.cloudinaryPublicId').lean();
+  const patients = await Patient.find({})
+    .select('folders.files.storageKey folders.files.cloudinaryPublicId')
+    .lean();
   const ids = new Set();
   for (const patient of patients) {
     for (const folder of patient.folders || []) {
       for (const file of folder.files || []) {
+        if (file.storageKey) ids.add(file.storageKey);
         if (file.cloudinaryPublicId) ids.add(file.cloudinaryPublicId);
       }
     }
@@ -52,7 +57,7 @@ export const scanOrphans = async (req, res) => {
     req.log.info({ event: "orphan_scan_started" }, "[Admin] Starting orphan scan...");
 
     const storedIds = await getAllStoredPublicIds();
-    req.log.info({ event: "orphan_scan_db_ids", count: storedIds.size }, `[Admin] DB has ${storedIds.size} cloudinaryPublicIds`);
+    req.log.info({ event: "orphan_scan_db_ids", count: storedIds.size }, `[Admin] DB has ${storedIds.size} storage keys`);
 
     const orphans = [];
     let cloudinaryTotal = 0;

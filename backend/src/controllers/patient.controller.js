@@ -360,11 +360,26 @@ export const uploadFile = async (req, res) => {
       req.log.info({ event: "file_uploaded_cloudinary", fileUrl }, "[Patient Controller] File uploaded to Cloudinary");
     }
 
+    // Fail-closed if no storage key was captured. Without this the file
+    // record would land in Mongo with `storageKey = undefined`, which makes
+    // every later compression / signed-URL request 400 forever (the bug
+    // that produced "File has no cloud storage ID" on the Android client).
+    if (!filePublicId) {
+      req.log.error(
+        { event: "upload_missing_key", storageProvider, fileUrl },
+        "[Patient Controller] Refusing to record file with empty storage key",
+      );
+      return res.status(500).json({
+        success: false,
+        message: "Internal error: storage key missing after upload",
+      });
+    }
+
     // Add file to patient record with storageProvider stamped
     const patient = await patientService.addFileToFolder(hospitalId, patientId, folderName, {
       fileName: file.originalname,
       fileUrl,
-      cloudinaryPublicId: filePublicId,
+      storageKey: filePublicId,
       storageProvider,
       thumbnailUrl,
       resourceType,
@@ -377,12 +392,12 @@ export const uploadFile = async (req, res) => {
     if (!isImage && USE_COMPRESSION && file.mimetype === "application/pdf") {
       const addedFolder = patient.folders.find(f => f.name === folderName);
       const addedFile = addedFolder?.files[addedFolder.files.length - 1];
-      if (addedFile && addedFile.cloudinaryPublicId) {
+      if (addedFile && addedFile.storageKey) {
         compressionService.generateThumbnail({
           userId: hospitalId,
           patientId: patientId,
           sourcePdf: {
-            public_id: addedFile.cloudinaryPublicId,
+            public_id: addedFile.storageKey,
             uploaded_at: addedFile.uploadedAt || new Date().toISOString(),
             resource_type: resourceType,
             access_mode: "signed",
@@ -633,10 +648,15 @@ export const confirmDirectUpload = async (req, res) => {
       }
     }
 
+    if (!publicId) {
+      req.log.error({ event: "direct_upload_missing_key", storageProvider }, "[Patient Controller] Direct upload registration missing storage key");
+      return res.status(400).json({ success: false, message: "publicId/storageKey is required" });
+    }
+
     const patient = await patientService.addFileToFolder(hospitalId, patientId, folderName, {
       fileName: originalFileName || "document.pdf",
       fileUrl: resolvedSecureUrl,
-      cloudinaryPublicId: publicId,
+      storageKey: publicId,
       storageProvider,
       thumbnailUrl: null,
       resourceType,
@@ -649,12 +669,12 @@ export const confirmDirectUpload = async (req, res) => {
     if (isPdf && USE_COMPRESSION) {
       const addedFolder = patient.folders.find(f => f.name === folderName);
       const addedFile = addedFolder?.files[addedFolder.files.length - 1];
-      if (addedFile && addedFile.cloudinaryPublicId) {
+      if (addedFile && addedFile.storageKey) {
         compressionService.generateThumbnail({
           userId: hospitalId,
           patientId: patientId,
           sourcePdf: {
-            public_id: addedFile.cloudinaryPublicId,
+            public_id: addedFile.storageKey,
             uploaded_at: addedFile.uploadedAt || new Date().toISOString(),
             resource_type: resourceType,
             access_mode: accessMode,
@@ -768,9 +788,9 @@ export const deleteFile = async (req, res) => {
     const { patient, deletedFile } = await patientService.deleteFileFromFolder(hospitalId, patientId, folderName, fileId);
 
     // Best effort remote cleanup; don't fail the API if storage cleanup fails.
-    if (deletedFile?.cloudinaryPublicId) {
+    if (deletedFile?.storageKey) {
       let remoteDeleteResult;
-      const fileKey = deletedFile.cloudinaryPublicId;
+      const fileKey = deletedFile.storageKey;
 
       // Route deletion based on file's storage provider
       if (deletedFile.storageProvider === "digitalocean") {
@@ -848,7 +868,7 @@ export const getFileSignedUrl = async (req, res) => {
     }
 
     // CRITICAL: buildSignedUrl is now async and routes based on file.storageProvider
-    const publicIdToUse = file.storageProvider === "digitalocean" ? (file.cloudinaryPublicId || file.fileUrl) : file.cloudinaryPublicId;
+    const publicIdToUse = file.storageProvider === "digitalocean" ? (file.storageKey || file.fileUrl) : file.storageKey;
     
     const signed = await buildSignedUrl({
       publicId: publicIdToUse,
@@ -972,9 +992,9 @@ export const downloadAllPdf = async (req, res) => {
       patientName: patient.patientName,
       remarks: patient.remarks,
       sourcePdfs: folder.files
-        .filter((f) => f.cloudinaryPublicId)
+        .filter((f) => f.storageKey)
         .map((f) => ({
-          public_id: f.cloudinaryPublicId,
+          public_id: f.storageKey,
           uploaded_at: (f.uploadedAt || f.createdAt || new Date()).toISOString(),
           resource_type: f.resourceType || "image",
           access_mode: f.accessMode || "signed",
@@ -1108,9 +1128,9 @@ export const downloadFolderPdf = async (req, res) => {
     if (!folder) return res.status(404).json({ success: false, message: "Folder not found" });
 
     const sourcePdfs = folder.files
-      .filter((f) => f.cloudinaryPublicId)
+      .filter((f) => f.storageKey)
       .map((f) => ({
-        public_id: f.cloudinaryPublicId,
+        public_id: f.storageKey,
         uploaded_at: (f.uploadedAt || f.createdAt || new Date()).toISOString(),
         resource_type: f.resourceType || "image",
         access_mode: f.accessMode || "signed",
@@ -1276,16 +1296,16 @@ export const downloadFileCompressed = async (req, res) => {
       : folder.files.find((f) => String(f._id) === String(fileId));
     if (!file) return res.status(404).json({ success: false, message: "File not found" });
 
-    if (!file.cloudinaryPublicId) {
+    if (!file.storageKey) {
       return res.status(400).json({ success: false, message: "File has no cloud storage ID" });
     }
 
     if (!USE_COMPRESSION) {
       // Fallback: proxy the raw file from Cloudinary (same as /stream)
       let fetchUrl = file.fileUrl;
-      if (file.accessMode === "signed" && file.cloudinaryPublicId) {
+      if (file.accessMode === "signed" && file.storageKey) {
         fetchUrl = await buildSignedUrl({
-          publicId: file.cloudinaryPublicId,
+          publicId: file.storageKey,
           resourceType: file.resourceType || "raw",
           ttlSeconds: 120,
           storageProvider: file.storageProvider || "cloudinary",
@@ -1318,7 +1338,7 @@ export const downloadFileCompressed = async (req, res) => {
       displayName: "",  // No cover page for single file
       filesInfo: [],
       sourcePdfs: [{
-        public_id: file.cloudinaryPublicId,
+        public_id: file.storageKey,
         uploaded_at: (file.uploadedAt || file.createdAt || new Date()).toISOString(),
         resource_type: file.resourceType || "image",
         access_mode: file.accessMode || "signed",

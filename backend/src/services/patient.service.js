@@ -53,7 +53,7 @@ async function signFileUrls(files) {
       // If it's DigitalOcean or signed Cloudinary, generate a temporary access URL
       if (fileObj.storageProvider === "digitalocean" || fileObj.accessMode === "signed") {
         const signedUrl = await buildSignedUrl({
-          publicId: fileObj.storageProvider === "digitalocean" ? fileObj.fileUrl : fileObj.cloudinaryPublicId,
+          publicId: fileObj.storageProvider === "digitalocean" ? fileObj.fileUrl : fileObj.storageKey,
           resourceType: fileObj.resourceType || "raw",
           storageProvider: fileObj.storageProvider,
           ttlSeconds: 3600, // 1 hour expiry for viewing
@@ -551,7 +551,8 @@ export const deleteFileFromFolder = async (hospitalId, patientId, folderName, fi
       _id: file._id?.toString(),
       fileName: file.fileName,
       fileUrl: file.fileUrl,
-      cloudinaryPublicId: file.cloudinaryPublicId,
+      storageKey: file.storageKey,
+      storageProvider: file.storageProvider,
     };
 
     folder.files.pull(fileId);
@@ -635,14 +636,17 @@ export const deleteOldPatients = async (days = 90) => {
       let patientFilesDeleted = 0;
       for (const folder of patient.folders || []) {
         for (const file of folder.files || []) {
-          if (!file.cloudinaryPublicId) continue;
+          if (!file.storageKey) continue;
+          // NOTE: this only cleans up Cloudinary-hosted files. DO Spaces
+          // files leak after 90-day auto-delete — separate cleanup needed.
+          if (file.storageProvider && file.storageProvider !== "cloudinary") continue;
           try {
             const resourceType = file.resourceType || "image";
-            await cloudinary.uploader.destroy(file.cloudinaryPublicId, { resource_type: resourceType });
+            await cloudinary.uploader.destroy(file.storageKey, { resource_type: resourceType });
             patientFilesDeleted++;
           } catch (err) {
             logger.warn(
-              { event: "cloudinary_delete_failed", cloudinaryPublicId: file.cloudinaryPublicId, err },
+              { event: "cloudinary_delete_failed", storageKey: file.storageKey, err },
               "[Patient Service] Cloudinary delete failed",
             );
           }

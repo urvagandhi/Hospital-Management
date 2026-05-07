@@ -35,9 +35,9 @@ async function fetchFolderFiles(folder) {
   const results = [];
   for (const file of folder.files) {
     let url = file.fileUrl;
-    if (file.accessMode === "signed" && file.cloudinaryPublicId) {
+    if (file.accessMode === "signed" && file.storageKey) {
       url = await buildSignedUrl({
-        publicId: file.cloudinaryPublicId,
+        publicId: file.storageKey,
         resourceType: file.resourceType || "raw",
         ttlSeconds: 600,
         storageProvider: file.storageProvider || "cloudinary",

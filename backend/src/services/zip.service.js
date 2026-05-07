@@ -59,7 +59,7 @@ export const generatePatientZip = async (patient, res, selectedFolders = null) =
     for (const file of folder.files) {
       // Use signed URL for fetching to handle private assets on Cloudinary or DigitalOcean
       const signedUrl = await buildSignedUrl({
-        publicId: file.cloudinaryPublicId,
+        publicId: file.storageKey,
         resourceType: file.resourceType || "raw",
         storageProvider: file.storageProvider || 'cloudinary',
         accessMode: file.accessMode || 'signed'
@@ -97,7 +97,7 @@ export const generateFolderZip = async (patient, folderName, res) => {
 
   for (const file of folder.files) {
     const signedUrl = await buildSignedUrl({
-      publicId: file.cloudinaryPublicId,
+      publicId: file.storageKey,
       resourceType: file.resourceType || "raw",
       storageProvider: file.storageProvider || 'cloudinary',
       accessMode: file.accessMode || 'signed'

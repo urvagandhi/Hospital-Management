@@ -117,10 +117,11 @@ function slugifyFolder(name) {
     .replace(/\s+/g, '_');          // collapse whitespace → underscore
 }
 
-// Builds the full Cloudinary public_id for a patient document.
+// Builds the storage object key (used as Cloudinary `public_id` AND DO Spaces
+// S3 `Key` — same string, different providers consume it).
 // Pattern: MyMediVault/h_{hospitalId}/p_{patientMongoId}/{folder_slug}/{YYYYMMDD}_{4hash}
 // Both hospitalId and patientMongoId are opaque MongoDB ObjectIds — no PHI in the path.
-function buildCloudinaryPublicId(hospitalId, patientMongoId, folderName) {
+function buildStorageObjectKey(hospitalId, patientMongoId, folderName) {
   const folderSlug = slugifyFolder(folderName);
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
   const hash = Math.random().toString(36).slice(2, 6);                       // 4-char suffix
@@ -160,7 +161,7 @@ const documentStorage = new CloudinaryStorage({
       return cb(new Error('Missing hospitalId or patientId for Cloudinary path'));
     }
 
-    const publicId = buildCloudinaryPublicId(hospitalId, patientMongoId, folderName);
+    const publicId = buildStorageObjectKey(hospitalId, patientMongoId, folderName);
     // In Fixed Folder mode, asset_folder and display_name must be set explicitly
     // so the Media Library shows the correct folder tree.
     const assetFolder = publicId.substring(0, publicId.lastIndexOf('/'));
@@ -221,7 +222,7 @@ const getDocumentStorage = () => {
           return cb(new Error('Missing hospitalId or patientId for Cloudinary path'));
         }
 
-        const publicId = buildCloudinaryPublicId(hospitalId, patientMongoId, folderName);
+        const publicId = buildStorageObjectKey(hospitalId, patientMongoId, folderName);
         const assetFolder = publicId.substring(0, publicId.lastIndexOf('/'));
         const displayName = publicId.substring(publicId.lastIndexOf('/') + 1);
         cb(null, {
@@ -562,7 +563,7 @@ function generateSignedUploadParams(hospitalId, patientMongoId, folderName, orig
   if (!process.env.CLOUDINARY_CLOUD_NAME) {
     return null;
   }
-  const publicId = buildCloudinaryPublicId(hospitalId, patientMongoId, folderName);
+  const publicId = buildStorageObjectKey(hospitalId, patientMongoId, folderName);
   const timestamp = Math.floor(Date.now() / 1000);
 
   // Parameters that Cloudinary uses in signature generation.
@@ -628,7 +629,7 @@ async function generateSignedUploadParamsForSpaces(hospitalId, patientMongoId, f
 // Exports
 // ---------------------------------------------------------------------------
 export {
-  buildCloudinaryPublicId,
+  buildStorageObjectKey,
   buildSignedUrl,
   buildThumbnailUrl,
   cloudinary,

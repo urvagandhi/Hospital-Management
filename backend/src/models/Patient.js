@@ -23,6 +23,16 @@ const fileSchema = new mongoose.Schema({
     type: String,
     default: "application/octet-stream",
   },
+  // Provider-neutral object key. For DigitalOcean Spaces this is the S3 key
+  // (e.g. "MyMediVault/h_xxx/p_xxx/folder_slug/20260501_abcd"); for
+  // Cloudinary it's the public_id. Used by the compression sidecar and any
+  // server-side fetch of the original bytes.
+  storageKey: {
+    type: String,
+  },
+  // Legacy field, kept for one release to read existing rows. New writes
+  // populate `storageKey` only. Migration backfills storageKey from this
+  // (or from fileUrl) so eventually this can be dropped.
   cloudinaryPublicId: {
     type: String,
   },
@@ -56,6 +66,16 @@ const fileSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+});
+
+// Read-time compatibility shim: if a file row was written under the old
+// schema (cloudinaryPublicId only) and the migration hasn't backfilled it
+// yet, surface the legacy value as `storageKey` so all controller / service
+// code can simply read `file.storageKey` without a `??` fallback chain.
+fileSchema.post("init", function () {
+  if (!this.storageKey && this.cloudinaryPublicId) {
+    this.storageKey = this.cloudinaryPublicId;
+  }
 });
 
 const folderSchema = new mongoose.Schema({
@@ -119,7 +139,7 @@ patientSchema.methods.toJSON = function () {
   if (obj.folders) {
     obj.folders = obj.folders.map((folder) => ({
       ...folder,
-      files: (folder.files || []).map(({ cloudinaryPublicId, storageProvider, resourceType, accessMode, ...file }) => file),
+      files: (folder.files || []).map(({ storageKey, cloudinaryPublicId, storageProvider, resourceType, accessMode, ...file }) => file),
     }));
   }
   return obj;
