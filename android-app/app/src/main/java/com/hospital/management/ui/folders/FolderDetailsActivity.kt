@@ -469,7 +469,7 @@ class FolderDetailsActivity : BaseActivity() {
                 .putString(DownloadWorker.KEY_PATIENT_NAME, patientName)
                 .putString(DownloadWorker.KEY_HOSPITAL_NAME, hospitalName)
                 .putString(DownloadWorker.KEY_FOLDER_NAME, folderName)
-                .putString(DownloadWorker.KEY_DOWNLOAD_SUB_PATH, "doc_cache/${file._id ?: "temp"}")
+                .putString(DownloadWorker.KEY_DOWNLOAD_SUB_PATH, "${getDownloadSubPath()}/doc_cache")
                 .putString(DownloadWorker.KEY_AUTH_TOKEN, accessToken)
                 .putString(DownloadWorker.KEY_AUTH_HOST, authHost)
                 .build()
@@ -484,19 +484,47 @@ class FolderDetailsActivity : BaseActivity() {
             .addTag(DownloadWorker.TAG_DOWNLOAD)
             .build()
 
+            val uniqueName = "view_${file._id ?: file.fileName.hashCode()}"
             WorkManager.getInstance(this@FolderDetailsActivity).enqueueUniqueWork(
-                "view_${file._id ?: file.fileName.hashCode()}",
+                uniqueName,
                 ExistingWorkPolicy.KEEP,
                 request
             )
 
-            // Observe progress to open file on completion
-            WorkManager.getInstance(this@FolderDetailsActivity).getWorkInfoByIdLiveData(request.id)
-                .observe(this@FolderDetailsActivity) { workInfo ->
-                    if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
+            // Observe by unique-work name (not request.id) — KEEP may keep an
+            // older request in-flight, so the new request's id never runs.
+            // Guard against duplicate fires when LiveData re-emits the
+            // terminal state on observer reattach.
+            var handled = false
+            val fileIdSafe = file._id ?: file.fileName.hashCode().toString()
+            val docDir = File(File(cacheDir, "doc_cache"), fileIdSafe).also { it.mkdirs() }
+            val activityCacheFile = File(docDir, file.fileName)
+
+            WorkManager.getInstance(this@FolderDetailsActivity)
+                .getWorkInfosForUniqueWorkLiveData(uniqueName)
+                .observe(this@FolderDetailsActivity) { workInfos ->
+                    if (handled || workInfos.isNullOrEmpty()) return@observe
+                    val workInfo = workInfos.firstOrNull() ?: return@observe
+                    if (workInfo.state == WorkInfo.State.SUCCEEDED) {
+                        handled = true
                         val path = workInfo.outputData.getString("cached_path")
                         if (!path.isNullOrEmpty()) {
-                            launchFileIntent(File(path))
+                            val srcFile = File(path)
+                            if (srcFile.exists()) {
+                                // Mirror into the activity-side cache so the
+                                // next tap on the same file hits the fast
+                                // path in openFile() and skips the worker.
+                                try {
+                                    if (!activityCacheFile.exists() ||
+                                        activityCacheFile.length() != srcFile.length()) {
+                                        srcFile.copyTo(activityCacheFile, overwrite = true)
+                                    }
+                                } catch (e: Exception) {
+                                    FileLogger.w("FolderDetailsActivity",
+                                        "doc_cache mirror failed: ${e.message}")
+                                }
+                                launchFileIntent(if (activityCacheFile.exists()) activityCacheFile else srcFile)
+                            }
                         }
                     }
                 }

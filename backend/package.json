@@ -1,5 +1,5 @@
 {
-  "name": "hospital-management-backend",
+  "name": "mymedivault-backend",
   "version": "1.0.0",
   "description": "MyMediVault Backend - Login & OTP Verification",
   "main": "src/index.js",

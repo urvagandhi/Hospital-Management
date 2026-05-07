@@ -64,6 +64,14 @@ class FileViewerActivity : BaseActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
         }
+        // Background activity banner — pinned to top so it's always visible
+        val banner = layoutInflater.inflate(R.layout.view_work_progress_banner, root, false)
+            as? com.hospital.management.ui.components.WorkProgressBanner
+        banner?.let {
+            it.observe(this)
+            root.addView(it)
+        }
+
         progress = ProgressBar(this)
         root.addView(progress)
 
@@ -88,14 +96,6 @@ class FileViewerActivity : BaseActivity() {
         }
         nav.addView(prevBtn); nav.addView(pageIndicator); nav.addView(nextBtn)
         root.addView(nav)
-
-        // Background activity banner — surfaces background downloads while viewing this file
-        val banner = layoutInflater.inflate(R.layout.view_work_progress_banner, root, false) 
-            as? com.hospital.management.ui.components.WorkProgressBanner
-        banner?.let {
-            it.observe(this)
-            root.addView(it)
-        }
 
         setContentView(root)
 

@@ -15,6 +15,10 @@ import com.hospital.management.data.repository.DocumentRepository
 import com.hospital.management.utils.FileLogger
 import com.hospital.management.utils.UploadNotifier
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -85,6 +89,9 @@ class UploadWorker(
 
     private lateinit var fileName: String
 
+    @Volatile
+    private var lastUploadProgress: UploadProgress? = null
+
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val name = if (::fileName.isInitialized) fileName
             else inputData.getString(KEY_FILE_NAME) ?: ""
@@ -94,7 +101,23 @@ class UploadWorker(
         return makeForegroundInfo(notification)
     }
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+    override suspend fun doWork(): Result = coroutineScope {
+        val heartbeat = launch(Dispatchers.Default) {
+            while (isActive) {
+                lastUploadProgress?.let { snapshot ->
+                    try { setProgress(snapshot.toData()) } catch (_: Exception) { }
+                }
+                delay(500L)
+            }
+        }
+        try {
+            doWorkInner()
+        } finally {
+            heartbeat.cancel()
+        }
+    }
+
+    private suspend fun doWorkInner(): Result = withContext(Dispatchers.IO) {
         // ── STEP 0: foreground promotion MUST happen before any IO ──
         // Android 12+ throws ForegroundServiceStartNotAllowedException if
         // setForeground isn't called within ~10s of doWork() starting.
@@ -127,15 +150,17 @@ class UploadWorker(
                 "\n  uploadProfileUsed=$uploadProfileUsed" +
                 "\n  ownerHospitalId=${ownerHospitalId.take(8)}…")
 
-        if (patientId.isEmpty() || folderName.isEmpty() || fileUriStr.isEmpty() ||
-            idempotencyKey.isEmpty()) {
+        val imageUris = inputData.getStringArray(KEY_IMAGE_URIS)
+        val hasFileUri = fileUriStr.isNotEmpty()
+        val hasImageUris = imageUris != null && imageUris.isNotEmpty()
+
+        if (patientId.isEmpty() || folderName.isEmpty() || idempotencyKey.isEmpty() ||
+            (!hasFileUri && !hasImageUris)) {
             FileLogger.e(TAG, "INPUT VALIDATION FAILED — patientId=${patientId.isNotEmpty()}, " +
-                    "folderName=${folderName.isNotEmpty()}, fileUri=${fileUriStr.isNotEmpty()}, " +
-                    "idempotencyKey=${idempotencyKey.isNotEmpty()}")
+                    "folderName=${folderName.isNotEmpty()}, hasFileUri=$hasFileUri, " +
+                    "hasImageUris=$hasImageUris, idempotencyKey=${idempotencyKey.isNotEmpty()}")
             return@withContext failWith(ERROR_INPUT, "Missing required input")
         }
-
-        val imageUris = inputData.getStringArray(KEY_IMAGE_URIS)
 
         val file = if (imageUris != null && imageUris.isNotEmpty()) {
             // Phase 1: Conversion inside Worker
@@ -366,6 +391,10 @@ class UploadWorker(
      * promise. The terminal stages publish progress via [emit] anyway.
      */
     private fun emitBlocking(progress: UploadProgress) {
+        // Always stash so the heartbeat coroutine can publish the latest
+        // progress to WorkInfo.progress (the suspend `setProgress` can't be
+        // called from inside okio's blocking writeTo).
+        lastUploadProgress = progress
         if (!throttle.shouldEmit(progress)) return
         val notification = buildForStage(progress) ?: return
         UploadNotifier.post(applicationContext, notificationId, notification)
