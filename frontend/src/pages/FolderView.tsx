@@ -605,7 +605,8 @@ const FolderView: React.FC = () => {
 
               {folder.files.map((file, index) => {
                 const fileType = getFileType(file.mimeType);
-                const showThumb = isImageMime(file.mimeType) && !thumbFailed[index];
+                const hasThumbnail = Boolean((file as any).thumbnailUrl);
+                const showThumb = (isImageMime(file.mimeType) || hasThumbnail) && !thumbFailed[index];
                 return (
                   <div
                     key={index}

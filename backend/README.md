@@ -135,7 +135,6 @@ backend/
 │   │   ├── patient.service.js
 │   │   ├── pdf.service.js      # pdfkit + pdf-lib (in-process fallback)
 │   │   ├── zip.service.js      # archiver
-│   │   └── r2.service.js       # DEAD CODE — TD-003, kept for legacy fallback only
 │   ├── jobs/
 │   │   ├── autoDelete.job.js   # Nightly 00:00 UTC: hard-delete patients >90d, cascade Cloudinary delete
 │   │   └── idleSweep.job.js    # Every 5 min: revoke web sessions idle >60 min (revokedReason=IDLE_TIMEOUT). Mobile is exempt — see commit 61fa6ad
@@ -495,7 +494,6 @@ docker-compose up --build backend
 | `TRUST_PROXY_HOPS`                                                         | 2                                        | Numeric only — `true` is rejected                                     |
 | `FRONTEND_URL`                                                             | <http://localhost:5173>                  | CORS allowed origin (comma-separated list OK)                         |
 | `LOG_LEVEL`                                                                | info (prod) / debug (dev)                | pino level                                                            |
-| `R2_ENDPOINT` / `R2_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` / `_BUCKET_NAME` | —                                        | Legacy fallback only — `r2.service.js` is dead code (TD-003)          |
 
 See [.env.example](../.env.example) for the canonical list (in sync with code as of 2026-04-21, TD-004).
 
@@ -543,8 +541,8 @@ Android's `AuthInterceptor` classifies 401s by substring-matching the response b
 | express-rate-limit            | ^6.10.0  | Rate limiting                                        |
 | express-validator             | ^7.0.0   | Input validation                                     |
 | cookie-parser                 | ^1.4.7   | httpOnly cookie parsing                              |
-| @aws-sdk/client-s3            | ^3.932.0 | Legacy R2 fallback (TD-003 dead code)                |
-| @aws-sdk/s3-request-presigner | ^3.932.0 | Legacy R2 fallback (TD-003 dead code)                |
+| @aws-sdk/client-s3            | ^3.932.0 | DigitalOcean Spaces storage                         |
+| @aws-sdk/s3-request-presigner | ^3.932.0 | DigitalOcean Spaces storage                         |
 
 `speakeasy` (TOTP) and `qrcode` (TOTP setup QR) were removed when TOTP was retired. `axios` and `@getbrevo/brevo` were removed in TD-012 (2026-04-21) — they had zero importers.
 

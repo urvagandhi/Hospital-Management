@@ -6,7 +6,7 @@
 import multer from "multer";
 import path from "path";
 
-// Configure multer for memory storage (we'll upload to Cloudflare R2)
+// Configure multer for memory storage
 const storage = multer.memoryStorage();
 
 // File filter to only allow images

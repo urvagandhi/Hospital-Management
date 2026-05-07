@@ -381,9 +381,27 @@ async function buildSignedUrl({
 }) {
   if (!publicId) return null;
 
+  // Normalize publicId to extract just the path if it's a full URL
+  let normalizedKey = publicId;
+  if (publicId.startsWith('http')) {
+    try {
+      const urlObj = new URL(publicId);
+      const path = decodeURIComponent(urlObj.pathname).replace(/^\//, '');
+      if (DO_SPACES_CONFIGURED && path.startsWith(`${process.env.DO_SPACES_BUCKET}/`)) {
+        normalizedKey = path.substring(process.env.DO_SPACES_BUCKET.length + 1);
+      } else {
+        normalizedKey = path;
+      }
+    } catch (e) {
+      // Ignore URL parsing errors and fallback
+    }
+  }
+
   // Phase 1: Check Redis cache for stable URL
   // We include attachment and fileName in the key because they modify the URL response headers
-  const cacheKey = `doc:url:${publicId}:${attachment ? 'attach' : 'inline'}:${fileName || 'default'}`;
+  // If attachment is false, fileName is not used in S3 content-disposition, so don't include it in cache key
+  const cacheFileName = attachment ? (fileName || 'default') : 'inline';
+  const cacheKey = `doc:url:${normalizedKey}:${attachment ? 'attach' : 'inline'}:${cacheFileName}`;
   try {
     const cachedUrl = await redis.get(cacheKey);
     if (cachedUrl) {

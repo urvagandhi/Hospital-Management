@@ -848,10 +848,12 @@ export const getFileSignedUrl = async (req, res) => {
     }
 
     // CRITICAL: buildSignedUrl is now async and routes based on file.storageProvider
+    const publicIdToUse = file.storageProvider === "digitalocean" ? (file.cloudinaryPublicId || file.fileUrl) : file.cloudinaryPublicId;
+    
     const signed = await buildSignedUrl({
-      publicId: file.cloudinaryPublicId,
+      publicId: publicIdToUse,
       resourceType: file.resourceType || "image",
-      ttlSeconds: 300,
+      ttlSeconds: 86400, // 24 hours for stable CDN/browser caching
       attachment: download,
       fileName: download ? file.fileName : null,
       storageProvider: file.storageProvider || "cloudinary",
@@ -868,7 +870,7 @@ export const getFileSignedUrl = async (req, res) => {
 
     return res.json({
       success: true,
-      data: { url: signed, expiresIn: 300, accessMode: "signed" },
+      data: { url: signed, expiresIn: 86400, accessMode: "signed" },
     });
   } catch (err) {
     req.log.error({ event: "signed_url_error", err }, "[Patient Controller] signed-url error");

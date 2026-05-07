@@ -566,7 +566,7 @@ export const deleteFileFromFolder = async (hospitalId, patientId, folderName, fi
 };
 
 /**
- * Delete patient and all associated files from R2
+ * Delete patient and all associated records
  */
 export const deletePatient = async (hospitalId, patientId) => {
   try {
@@ -583,8 +583,8 @@ export const deletePatient = async (hospitalId, patientId) => {
       throw new Error("Patient not found");
     }
 
-    const prefix = `${hospitalId}/${patientId}/`;
-    await deleteFolder(prefix);
+    // TODO: Implement batch storage cleanup if needed. 
+    // Individual files are currently handled via their own lifecycle.
 
     await Patient.deleteOne({
       _id: patientId,

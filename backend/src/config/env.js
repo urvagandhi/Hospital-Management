@@ -64,14 +64,9 @@ const config = {
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "15000"),
   RATE_LIMIT_MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "60"),
 
-  // Cloudflare R2
-  R2_ENDPOINT: process.env.R2_ENDPOINT || "https://your-account.r2.cloudflarestorage.com",
-  R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
-  R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
-  R2_BUCKET_NAME: process.env.R2_BUCKET_NAME || "hospital-files",
 
-  // Local File Storage (fallback when R2 not configured)
-  USE_LOCAL_STORAGE: process.env.USE_LOCAL_STORAGE === "true" || (!process.env.R2_ACCESS_KEY_ID && process.env.NODE_ENV === "development"),
+  // Local File Storage (fallback when storage providers not configured)
+  USE_LOCAL_STORAGE: process.env.USE_LOCAL_STORAGE === "true" || (!process.env.CLOUDINARY_CLOUD_NAME && !process.env.DO_SPACES_ACCESS_KEY_ID && process.env.NODE_ENV === "development"),
   LOCAL_STORAGE_PATH: process.env.LOCAL_STORAGE_PATH || "./uploads",
 
   // Cloudinary
