@@ -67,6 +67,91 @@ def extract_images_from_pdf(pdf_path: Path, extract_dir: Path, job_id: str) -> t
     return extracted_files, page_dims
 
 
+def _process_single_image(
+    i: int,
+    img_path: Path,
+    page_dims: list[tuple],
+    tier_config: dict,
+    target_dpi: int,
+    resample_method,
+    processed_dir: Path,
+    job_id: str,
+) -> tuple[int, Path | None]:
+    """Process a single image for a compression tier. Returns (index, output_path|None).
+
+    Extracted from the loop body so it can run in a ThreadPoolExecutor.
+    PIL releases the GIL during resize/encode/decode, giving real CPU
+    parallelism across threads.
+    """
+    try:
+        start_time = time.time()
+        with Image.open(img_path) as img:
+            # Estimate current DPI
+            page_idx = min(i, len(page_dims) - 1)
+            page_w_pts, page_h_pts = page_dims[page_idx]
+            page_w_in = page_w_pts / 72.0
+
+            curr_dpi = img.width / page_w_in if page_w_in > 0 else 300
+
+            # Decision: Only downsample if current DPI > target DPI * 1.1
+            final_img = img
+            if curr_dpi > (target_dpi * 1.1):
+                scale = target_dpi / curr_dpi
+                new_size = (int(img.width * scale), int(img.height * scale))
+
+                # Use draft() to pre-shrink at decode time for JPEG inputs
+                # This avoids decoding the full-resolution image into memory.
+                if img.format == "JPEG" and scale < 0.5:
+                    # draft() picks the fastest DCT scale (1/2, 1/4, 1/8)
+                    target_mode = "L" if tier_config["grayscale"] else "RGB"
+                    img.draft(target_mode, new_size)
+                    img.load()
+                    # After draft(), the image is already partially shrunk;
+                    # resize to the exact target size.
+                    final_img = img.resize(new_size, resample_method)
+                else:
+                    final_img = img.resize(new_size, resample_method)
+            else:
+                final_img = img
+
+            # Color conversion
+            if tier_config["grayscale"] and final_img.mode != "L":
+                final_img = final_img.convert("L")
+            elif not tier_config["grayscale"] and final_img.mode == "RGBA":
+                final_img = final_img.convert("RGB")
+
+            # Save as JPEG — optimize=False is ~30% faster encoding
+            # with negligible file size difference on scanned images.
+            out_path = processed_dir / f"page_{i:04d}.jpg"
+            final_img.save(
+                out_path,
+                "JPEG",
+                quality=tier_config["quality"],
+                subsampling=tier_config["subsampling"],
+            )
+
+        elapsed = (time.time() - start_time) * 1000
+        if i % 10 == 0:  # Log every 10 images to avoid log flooding
+            used_ram = psutil.Process().memory_info().rss / (1024 * 1024)
+            logger.info(
+                f"Processed image {i} in {elapsed:.0f}ms (RAM: {used_ram:.1f}MB)",
+                extra={"job_id": job_id}
+            )
+
+        return (i, out_path)
+
+    except Exception as e:
+        logger.warning(f"Failed to process image {img_path}: {e}", extra={"job_id": job_id})
+        return (i, None)
+
+
+# Thread pool for parallel image processing within a worker process.
+# PIL releases the GIL during resize/encode/decode, so threads give real
+# CPU parallelism. max_workers=2 matches 2 vCPU and caps peak memory at
+# ~2 decoded images in flight.
+_IMG_THREAD_WORKERS = 2
+
+
 def process_images_for_tier(
     extracted_files: list[Path],
     page_dims: list[tuple],
@@ -81,7 +166,11 @@ def process_images_for_tier(
     - NEAREST resampling for tiers 3-4 (~10x faster, acceptable at low quality).
     - draft() pre-shrink at decode time for large images (avoids full decode).
     - optimize=False on JPEG save (~30% faster encoding, negligible size difference).
+    - ThreadPoolExecutor(max_workers=2) for parallel processing — PIL releases
+      the GIL during image ops, so threads give real CPU parallelism on 2 vCPU.
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     config = TIER_CONFIGS.get(tier, TIER_CONFIGS[4])
     target_dpi = config["dpi"]
 
@@ -95,70 +184,37 @@ def process_images_for_tier(
     processed_dir = tier_dir / "processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
 
-    processed_files = []
+    # For small batches (≤2 images), serial is faster than thread overhead
+    if len(extracted_files) <= _IMG_THREAD_WORKERS:
+        results = []
+        for i, img_path in enumerate(extracted_files):
+            _, out_path = _process_single_image(
+                i, img_path, page_dims, config, target_dpi,
+                resample_method, processed_dir, job_id,
+            )
+            if out_path is not None:
+                results.append((i, out_path))
+    else:
+        # Parallel processing — 2 threads keeps peak memory bounded on
+        # 2GB RAM while still leveraging both vCPUs via PIL GIL release.
+        results = []
+        with ThreadPoolExecutor(max_workers=_IMG_THREAD_WORKERS) as pool:
+            futures = {
+                pool.submit(
+                    _process_single_image,
+                    i, img_path, page_dims, config, target_dpi,
+                    resample_method, processed_dir, job_id,
+                ): i
+                for i, img_path in enumerate(extracted_files)
+            }
+            for future in as_completed(futures):
+                idx, out_path = future.result()
+                if out_path is not None:
+                    results.append((idx, out_path))
 
-    for i, img_path in enumerate(extracted_files):
-        try:
-            start_time = time.time()
-            with Image.open(img_path) as img:
-                # Estimate current DPI
-                page_idx = min(i, len(page_dims) - 1)
-                page_w_pts, page_h_pts = page_dims[page_idx]
-                page_w_in = page_w_pts / 72.0
-
-                curr_dpi = img.width / page_w_in if page_w_in > 0 else 300
-
-                # Decision: Only downsample if current DPI > target DPI * 1.1
-                final_img = img
-                if curr_dpi > (target_dpi * 1.1):
-                    scale = target_dpi / curr_dpi
-                    new_size = (int(img.width * scale), int(img.height * scale))
-
-                    # Use draft() to pre-shrink at decode time for JPEG inputs
-                    # This avoids decoding the full-resolution image into memory.
-                    if img.format == "JPEG" and scale < 0.5:
-                        # draft() picks the fastest DCT scale (1/2, 1/4, 1/8)
-                        target_mode = "L" if config["grayscale"] else "RGB"
-                        img.draft(target_mode, new_size)
-                        img.load()
-                        # After draft(), the image is already partially shrunk;
-                        # resize to the exact target size.
-                        final_img = img.resize(new_size, resample_method)
-                    else:
-                        final_img = img.resize(new_size, resample_method)
-                else:
-                    final_img = img
-
-                # Color conversion
-                if config["grayscale"] and final_img.mode != "L":
-                    final_img = final_img.convert("L")
-                elif not config["grayscale"] and final_img.mode == "RGBA":
-                    final_img = final_img.convert("RGB")
-
-                # Save as JPEG — optimize=False is ~30% faster encoding
-                # with negligible file size difference on scanned images.
-                out_path = processed_dir / f"page_{i:04d}.jpg"
-                final_img.save(
-                    out_path,
-                    "JPEG",
-                    quality=config["quality"],
-                    subsampling=config["subsampling"],
-                )
-                processed_files.append(out_path)
-
-            elapsed = (time.time() - start_time) * 1000
-            if i % 10 == 0: # Log every 10 images to avoid log flooding
-                used_ram = psutil.Process().memory_info().rss / (1024 * 1024)
-                logger.info(
-                    f"Processed image {i} in {elapsed:.0f}ms (RAM: {used_ram:.1f}MB)",
-                    extra={"job_id": job_id}
-                )
-
-        except Exception as e:
-            logger.warning(f"Failed to process image {img_path}: {e}", extra={"job_id": job_id})
-            continue
-
-    return processed_files
+    # Sort by original index to preserve page ordering (critical for PDF rebuild)
+    results.sort(key=lambda x: x[0])
+    return [path for _, path in results]
 
 
 def preprocess_scanned_pdf(pdf_path: Path, tier: int, work_dir: Path, job_id: str) -> list[Path]:

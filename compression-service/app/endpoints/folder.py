@@ -22,8 +22,9 @@ from app.cloudinary_client import (
     upload_merged,
 )
 from app.compression.classifier import PdfType
-from app.pipeline import pipeline
+from app.pipeline import pipeline, _merge_pdfs_worker, _merge_pdfs_with_cover_worker
 from app.compression.adaptive_loop import CompressionResult, SizeFloorBreached
+from app.cpu_executor import get_cpu_pool
 from app.compression.hasher import compute_content_hash
 from app.compression.cover_page import generate_cover_page
 from app.merged_cache import (
@@ -37,6 +38,69 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _PIPELINE_TIMEOUT = 600.0
+
+
+def _count_pdf_pages(paths):
+    """Count pages in each PDF using pdfinfo (poppler-utils).
+
+    pdfinfo reads only PDF headers — no full parse, no Python object graph.
+    ~10x faster than pikepdf.open() and uses negligible memory.
+    Falls back to pikepdf if pdfinfo fails for any file.
+    """
+    import subprocess
+
+    counts = []
+    for p in paths:
+        try:
+            result = subprocess.run(
+                ["pdfinfo", str(p)],
+                capture_output=True, text=True, timeout=10,
+            )
+            for line in result.stdout.splitlines():
+                if line.startswith("Pages:"):
+                    counts.append(int(line.split(":")[1].strip()))
+                    break
+            else:
+                # pdfinfo didn't report pages — fall back to pikepdf
+                with pikepdf.open(p) as src:
+                    counts.append(len(src.pages))
+        except Exception:
+            # Any failure (timeout, corrupt, etc.) — fall back to pikepdf
+            with pikepdf.open(p) as src:
+                counts.append(len(src.pages))
+    return counts
+
+
+def _count_pages_and_generate_cover(paths, files_info_raw, display_name, patient_name, job_dir, remarks):
+    """Combined page counting + cover generation in a single off-thread call.
+
+    Eliminates sequential event_loop→cpu_pool round-trips by batching
+    both CPU-bound operations (pdfinfo page counting + fpdf2 cover rendering)
+    into one executor submission. Returns (page_counts, cover_path).
+    """
+    from app.schemas import FileInfo
+
+    page_counts = _count_pdf_pages(paths)
+
+    # Update files_info with real page counts
+    files_info = files_info_raw
+    if files_info and len(files_info) == len(paths):
+        files_info = [
+            FileInfo(file_name=fi.file_name, page_count=pc)
+            for fi, pc in zip(files_info, page_counts)
+        ]
+
+    cover_path = None
+    if display_name:
+        cover_path = generate_cover_page(
+            title=display_name,
+            patient_name=patient_name,
+            files_info=files_info,
+            job_dir=job_dir,
+            remarks=remarks,
+        )
+
+    return page_counts, cover_path
 
 
 @router.post("/api/folder-download")
@@ -142,53 +206,73 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
 
             # Pipeline with timeout
             async def _pipeline() -> DownloadResponse:
+                loop = asyncio.get_running_loop()
+                cpu_pool = get_cpu_pool()
+
                 # Fetch
                 local_paths = await fetch_source_pdfs(
                     body.source_pdfs, job_dir, job_id, http_client
                 )
                 input_size = sum(p.stat().st_size for p in local_paths)
 
-                # Open all source PDFs and count pages
-                source_pdfs_opened = []
-                for lp in local_paths:
-                    src = pikepdf.open(lp)
-                    source_pdfs_opened.append(src)
-
-                # Build files_info with real page counts
-                files_info = body.files_info
-                if files_info and len(files_info) == len(source_pdfs_opened):
-                    from app.schemas import FileInfo
-
-                    files_info = [
-                        FileInfo(
-                            file_name=fi.file_name,
-                            page_count=len(src.pages),
-                        )
-                        for fi, src in zip(files_info, source_pdfs_opened)
-                    ]
-
-                # Merge content ONLY (no cover page) for compression
-                merged_path = job_dir / "merged.pdf"
-                merged = pikepdf.Pdf.new()
-
+                # ── Page counting + cover generation (single off-thread call) ──
+                # Batches pdfinfo page counting + fpdf2 cover rendering into one
+                # executor submission — eliminates sequential round-trip overhead
+                # and keeps all CPU-bound work off the event loop.
                 cover_path = None
-                if body.display_name:
-                    cover_path = generate_cover_page(
-                        title=body.display_name,
-                        patient_name=body.patient_name,
-                        files_info=files_info,
-                        job_dir=job_dir,
-                        remarks=body.remarks,
+                needs_cover = bool(body.display_name)
+
+                if (body.files_info and len(body.files_info) == len(local_paths)) or needs_cover:
+                    _, cover_path = await loop.run_in_executor(
+                        cpu_pool,
+                        _count_pages_and_generate_cover,
+                        local_paths,
+                        body.files_info,
+                        body.display_name,
+                        body.patient_name,
+                        job_dir,
+                        body.remarks,
                     )
 
-                for src in source_pdfs_opened:
-                    merged.pages.extend(src.pages)
-                merged.save(merged_path)
-                merged.close()
+                # ── Merge + prepare input for compression ──
+                # Three cases, ordered by frequency:
+                #   A) 1 file, no cover → skip merge entirely (just pass through)
+                #   B) N files + cover  → single merge with cover prepended
+                #   C) N files, no cover → standard merge
+                #
+                # All merges run OFF the event loop via cpu_pool.
 
-                # Close source PDFs to free memory
-                for src in source_pdfs_opened:
-                    src.close()
+                if len(local_paths) == 1 and cover_path is None:
+                    # Case A: Single file, no cover — zero-copy passthrough
+                    merged_path = local_paths[0]
+                    logger.info(
+                        "Single file, no cover — skipping merge",
+                        extra={**log_extra, "event": "merge_skip"},
+                    )
+                elif cover_path is not None:
+                    # Case B: Prepend cover during first merge — eliminates
+                    # the post-compression re-open + re-save cycle entirely.
+                    merged_path = job_dir / "merged.pdf"
+                    await loop.run_in_executor(
+                        cpu_pool,
+                        _merge_pdfs_with_cover_worker,
+                        cover_path,
+                        local_paths,
+                        merged_path,
+                    )
+                    logger.info(
+                        "Merged with cover prepended in single pass",
+                        extra={**log_extra, "event": "merge_with_cover"},
+                    )
+                else:
+                    # Case C: Multi-file, no cover — standard merge
+                    merged_path = job_dir / "merged.pdf"
+                    await loop.run_in_executor(
+                        cpu_pool,
+                        _merge_pdfs_worker,
+                        local_paths,
+                        merged_path,
+                    )
 
                 if len(local_paths) > 50:
                     logger.warning(
@@ -200,28 +284,12 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                         },
                     )
 
-                # Compress content-only PDF
+                # ── Compress ──
+                # Cover (if any) is already baked into merged_path, so
+                # compression sees the full document in one shot.
                 result = await pipeline.run(merged_path, target_bytes, job_id)
 
-                # Merge cover page back in if it exists
-                if cover_path is not None:
-                    final_path = job_dir / "final_with_cover.pdf"
-                    compressed = pikepdf.open(result.output_path)
-                    final_pdf = pikepdf.Pdf.new()
-
-                    cover = pikepdf.open(cover_path)
-                    final_pdf.pages.extend(cover.pages)
-                    final_pdf.pages.extend(compressed.pages)
-
-                    final_pdf.save(final_path)
-                    final_pdf.close()
-                    compressed.close()
-
-                    result.output_path = final_path
-                    result.output_size_bytes = final_path.stat().st_size
-
                 # Upload
-                loop = asyncio.get_running_loop()
                 url = await loop.run_in_executor(
                     None,
                     partial(upload_merged, result.output_path, content_hash, job_id),

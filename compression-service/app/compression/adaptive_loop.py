@@ -107,8 +107,21 @@ async def _try_ghostscript_only(
         )
         return None
 
+    # Smart start tier: skip GS tiers that can't plausibly hit the target.
+    # The GS-only path is already gated to ratio ≤ 4, so _estimate_start_tier
+    # returns 0 (ratio ≤ 2) or 1 (ratio 2-4). Use the value directly — GS
+    # tiers are fast (~5s each), so skipping 1 tier at most saves ~5s with
+    # zero risk (tier 0 definitely can't achieve 2-4x compression).
+    gs_start_tier = _estimate_start_tier(input_size, target_size_bytes)
+    if gs_start_tier > 0:
+        logger.info(
+            f"GS-only: skipping tiers 0-{gs_start_tier - 1} "
+            f"(ratio {ratio:.1f}x → starting at GS tier {gs_start_tier})",
+            extra={"job_id": job_id, "event": "gs_only_smart_start"},
+        )
+
     # Try progressively aggressive GS tiers until one hits the target.
-    for tier in range(0, 5):
+    for tier in range(gs_start_tier, 5):
         gs_dir = work_dir / f"gs_only_tier_{tier}"
         gs_dir.mkdir(parents=True, exist_ok=True)
         gs_output = gs_dir / "gs_output.pdf"

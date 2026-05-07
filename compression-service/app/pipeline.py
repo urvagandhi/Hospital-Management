@@ -23,6 +23,24 @@ def _merge_pdfs_worker(paths: List[Path], output_path: Path) -> None:
                 pdf.pages.extend(other.pages)
         pdf.save(output_path, linearize=True)
 
+
+def _merge_pdfs_with_cover_worker(
+    cover_path: Path, source_paths: List[Path], output_path: Path
+) -> None:
+    """Merge cover page + source PDFs in a single save (avoids double merge).
+
+    Prepends the cover page so compression sees [cover, page1, page2, ...].
+    The cover is a lightweight vector page — GS preserves it without bloating.
+    """
+    final = pikepdf.Pdf.new()
+    with pikepdf.open(cover_path) as cover:
+        final.pages.extend(cover.pages)
+    for src_path in source_paths:
+        with pikepdf.open(src_path) as src:
+            final.pages.extend(src.pages)
+    final.save(output_path, linearize=True)
+    final.close()
+
 class CompressionPipeline:
     """Orchestrates the multi-stage compression process.
     
