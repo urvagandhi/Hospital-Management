@@ -70,6 +70,11 @@ if (DO_SPACES_CONFIGURED && DO_SPACES_CDN_ENDPOINT) {
     const parts = u.hostname.split('.');
     if (parts.length > 1 && parts[1] === 'digitaloceanspaces') detectedRegion = parts[0];
   } catch {}
+  // CDN endpoint already includes the bucket as a subdomain
+  // (`<bucket>.<region>.cdn.digitaloceanspaces.com`), so the URL must NOT
+  // also have the bucket in the path. forcePathStyle MUST be false here —
+  // setting true gives `/spacesmymedivault/spacesmymedivault/...` and DO
+  // returns 403 SignatureDoesNotMatch.
   s3CdnClient = new S3Client({
     endpoint: DO_SPACES_CDN_ENDPOINT,
     region: detectedRegion,
@@ -77,7 +82,8 @@ if (DO_SPACES_CONFIGURED && DO_SPACES_CDN_ENDPOINT) {
       accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID,
       secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY,
     },
-    forcePathStyle: true,
+    forcePathStyle: false,
+    bucketEndpoint: true,
   });
 }
 
