@@ -25,6 +25,11 @@ const USE_DIGITALOCEAN_AS_PRIMARY = String(process.env.USE_DIGITALOCEAN_AS_PRIMA
 const DO_SPACES_CONFIGURED = !!(process.env.DO_SPACES_ENDPOINT && process.env.DO_SPACES_ACCESS_KEY_ID && process.env.DO_SPACES_SECRET_ACCESS_KEY);
 
 let s3Client = null;
+// Second S3 client whose endpoint is the CDN host. Used ONLY for generating
+// presigned GET URLs so the SigV4 signature is computed with the CDN host in
+// the canonical request — this is what makes signed URLs CDN-cacheable
+// without tripping SignatureDoesNotMatch.
+let s3CdnClient = null;
 let DO_BUCKET = null;
 
 if (DO_SPACES_CONFIGURED) {
@@ -57,6 +62,24 @@ if (DO_SPACES_CONFIGURED) {
 // Example: https://spacesmymedivault.sfo3.cdn.digitaloceanspaces.com
 // Set DO_SPACES_CDN_ENDPOINT in env. If unset, falls back to origin (no CDN).
 const DO_SPACES_CDN_ENDPOINT = (process.env.DO_SPACES_CDN_ENDPOINT || "").replace(/\/$/, "");
+
+if (DO_SPACES_CONFIGURED && DO_SPACES_CDN_ENDPOINT) {
+  let detectedRegion = process.env.DO_SPACES_REGION || "us-east-1";
+  try {
+    const u = new URL(process.env.DO_SPACES_ENDPOINT);
+    const parts = u.hostname.split('.');
+    if (parts.length > 1 && parts[1] === 'digitaloceanspaces') detectedRegion = parts[0];
+  } catch {}
+  s3CdnClient = new S3Client({
+    endpoint: DO_SPACES_CDN_ENDPOINT,
+    region: detectedRegion,
+    credentials: {
+      accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID,
+      secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY,
+    },
+    forcePathStyle: true,
+  });
+}
 
 // Swap the origin host of a Spaces URL for the CDN host.
 // Returns the URL unchanged if CDN endpoint is not configured.
@@ -475,12 +498,13 @@ async function buildSignedUrl({
           ? `attachment; filename="${fileName || 'file'}"`
           : 'inline',
       });
-      const originSignedUrl = await getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
-      // Serve the signed URL via the CDN host. DO Spaces CDN forwards signed
-      // query params to origin, so the signature still validates while the
-      // edge can cache the response (keyed by full URL incl. signature —
-      // stable as long as Redis returns the same cached URL below).
-      generatedUrl = toCdnUrl(originSignedUrl);
+      // Prefer signing against the CDN host so the URL we return is
+      // CDN-cacheable AND has a valid SigV4 signature (host is part of the
+      // canonical request — we have to bake the CDN host in at sign time,
+      // not swap it post-sign). DO Spaces accepts the same credentials on
+      // both endpoints. Falls back to origin if CDN endpoint is unset.
+      const signingClient = s3CdnClient || s3Client;
+      generatedUrl = await getSignedUrl(signingClient, command, { expiresIn: ttlSeconds });
     } catch (err) {
       console.error("DO Signed URL Error:", err);
       return null;
