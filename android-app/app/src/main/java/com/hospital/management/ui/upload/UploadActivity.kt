@@ -335,9 +335,14 @@ class UploadActivity : BaseActivity() {
                 val idempotencyKey = docRepository.newIdempotencyKey()
                 val ownerHospitalId = tokenManager.getHospitalId() ?: ""
 
-                // ── STEP 1: Copy images to local durable storage (VERY FAST) ──
+                // ── STEP 1: Copy raw scan inputs to durable storage (FAST). ──
+                // The actual PDF assembly happens in PdfBuildWorker so we can
+                // dismiss this Activity instantly even for 30-page scans.
                 val pendingDir = File(filesDir, "pending_images/$idempotencyKey").also { it.mkdirs() }
-                val localImagePaths = withContext(Dispatchers.IO) {
+                val pendingPdfDir = File(filesDir, "pending_pdfs").also { it.mkdirs() }
+                val localPdfPath = File(pendingPdfDir, "${idempotencyKey}.pdf").absolutePath
+
+                val savedImagePaths: List<String> = withContext(Dispatchers.IO) {
                     scannedPages.mapIndexed { index, uri ->
                         val dest = File(pendingDir, "page_$index.jpg")
                         contentResolver.openInputStream(uri)?.use { input ->
@@ -347,8 +352,7 @@ class UploadActivity : BaseActivity() {
                     }
                 }
 
-                // Handle scanner-provided PDF if any
-                val scannerPdfUriStr = if (scannedPdfUri != null) {
+                val scannerPdfPath: String? = if (scannedPdfUri != null) {
                     withContext(Dispatchers.IO) {
                         val dest = File(pendingDir, "scanner_source.pdf")
                         contentResolver.openInputStream(scannedPdfUri!!)?.use { input ->
@@ -358,60 +362,87 @@ class UploadActivity : BaseActivity() {
                     }
                 } else null
 
-                // ── STEP 2: Insert placeholder row ──
-                val isOnline = isNetworkAvailable()
-                val initialStatus = if (isOnline) {
-                    com.hospital.management.data.local.SyncStatus.UPLOADING
-                } else {
-                    com.hospital.management.data.local.SyncStatus.PENDING
-                }
-
+                // ── STEP 2: Insert placeholder row in BUILDING state ──
+                // fileUri is set to where the worker WILL write the PDF, so
+                // once status flips to PENDING/UPLOADING the existing offline
+                // viewer just works.
                 val document = com.hospital.management.data.local.OfflineDocument(
                     patientId = patientId,
                     folderName = folderName,
-                    fileUri = scannerPdfUriStr ?: "", 
-                    status = initialStatus,
+                    fileUri = Uri.fromFile(File(localPdfPath)).toString(),
+                    status = com.hospital.management.data.local.SyncStatus.BUILDING,
                     idempotencyKey = idempotencyKey,
                     ownerHospitalId = ownerHospitalId,
                     displayName = pdfFileName
                 )
 
-                val rowId = docRepository.insertQueuedRow(document)
+                docRepository.insertQueuedRow(document)
+
+                // ── STEP 3: Enqueue PdfBuildWorker → UploadWorker as a chain.
+                // The build worker writes the PDF + flips the row status to
+                // PENDING/UPLOADING. The chained UploadWorker then uploads
+                // the file the build worker wrote.
+                val isOnline = isNetworkAvailable()
 
                 withContext(Dispatchers.Main) {
                     binding.btnUpload.isEnabled = true
 
+                    val buildInput = androidx.work.Data.Builder()
+                        .putString(com.hospital.management.worker.PdfBuildWorker.KEY_IDEMPOTENCY_KEY, idempotencyKey)
+                        .putString(com.hospital.management.worker.PdfBuildWorker.KEY_FILE_NAME, pdfFileName)
+                        .putString(com.hospital.management.worker.PdfBuildWorker.KEY_FOLDER_NAME, folderName)
+                        .putString(com.hospital.management.worker.PdfBuildWorker.KEY_OUTPUT_PATH, localPdfPath)
+                        .putStringArray(com.hospital.management.worker.PdfBuildWorker.KEY_IMAGE_URIS, savedImagePaths.toTypedArray())
+                        .putString(com.hospital.management.worker.PdfBuildWorker.KEY_SCANNER_PDF_URI, scannerPdfPath ?: "")
+                        .putString(com.hospital.management.worker.PdfBuildWorker.KEY_PATIENT_ID, patientId)
+                        .putString(com.hospital.management.worker.PdfBuildWorker.KEY_OWNER_HOSPITAL_ID, ownerHospitalId)
+                        .putBoolean(com.hospital.management.worker.PdfBuildWorker.KEY_TARGET_ONLINE, isOnline)
+                        .build()
+
+                    val buildRequest = androidx.work.OneTimeWorkRequestBuilder<com.hospital.management.worker.PdfBuildWorker>()
+                        .setInputData(buildInput)
+                        .addTag(com.hospital.management.worker.PdfBuildWorker.TAG_PDF_BUILD)
+                        .build()
+
+                    val wm = androidx.work.WorkManager.getInstance(applicationContext)
+
                     if (isOnline) {
-                        val constraints = androidx.work.Constraints.Builder()
+                        val uploadConstraints = androidx.work.Constraints.Builder()
                             .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
                             .build()
-                        
-                        val inputData = androidx.work.Data.Builder()
-                            .putLong("offline_doc_id", rowId)
+
+                        val uploadInput = androidx.work.Data.Builder()
                             .putString(com.hospital.management.worker.UploadWorker.KEY_PATIENT_ID, patientId)
                             .putString(com.hospital.management.worker.UploadWorker.KEY_FOLDER_NAME, folderName)
                             .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_NAME, pdfFileName)
-                            .putStringArray(com.hospital.management.worker.UploadWorker.KEY_IMAGE_URIS, localImagePaths.toTypedArray())
-                            .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_URI, scannerPdfUriStr ?: "")
+                            .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_URI, Uri.fromFile(File(localPdfPath)).toString())
                             .putString(com.hospital.management.worker.UploadWorker.KEY_IDEMPOTENCY_KEY, idempotencyKey)
                             .putString(com.hospital.management.worker.UploadWorker.KEY_OWNER_HOSPITAL_ID, ownerHospitalId)
                             .build()
 
-                        val request = androidx.work.OneTimeWorkRequestBuilder<com.hospital.management.worker.UploadWorker>()
-                            .setInputData(inputData)
-                            .setConstraints(constraints)
+                        val uploadRequest = androidx.work.OneTimeWorkRequestBuilder<com.hospital.management.worker.UploadWorker>()
+                            .setInputData(uploadInput)
+                            .setConstraints(uploadConstraints)
                             .addTag(com.hospital.management.worker.UploadWorker.TAG_UPLOAD)
                             .build()
 
-                        androidx.work.WorkManager.getInstance(applicationContext)
-                            .enqueueUniqueWork(
-                                "upload_${idempotencyKey}",
-                                androidx.work.ExistingWorkPolicy.KEEP,
-                                request
-                            )
+                        wm.beginUniqueWork(
+                            "build_upload_${idempotencyKey}",
+                            androidx.work.ExistingWorkPolicy.KEEP,
+                            buildRequest
+                        ).then(uploadRequest).enqueue()
 
                         Toast.makeText(this@UploadActivity, getString(R.string.upload_in_progress_toast), Toast.LENGTH_LONG).show()
                     } else {
+                        // Offline: build the PDF now so it's viewable. Upload
+                        // is deferred to SyncDocumentsWorker when connectivity
+                        // returns.
+                        wm.enqueueUniqueWork(
+                            "build_${idempotencyKey}",
+                            androidx.work.ExistingWorkPolicy.KEEP,
+                            buildRequest
+                        )
+
                         Toast.makeText(this@UploadActivity, "Saved offline. Will sync when connected.", Toast.LENGTH_LONG).show()
                     }
                     finish()

@@ -154,6 +154,14 @@ object SessionManager {
                 )
             } catch (_: Throwable) { /* WorkManager unavailable is fine */ }
             try {
+                // PdfBuildWorker is part of the same submit chain — cancel it
+                // too so a half-built PDF doesn't continue to assemble after
+                // the owning account has logged out.
+                WorkManager.getInstance(appCtx).cancelAllWorkByTag(
+                    com.hospital.management.worker.PdfBuildWorker.TAG_PDF_BUILD
+                )
+            } catch (_: Throwable) { /* WorkManager unavailable is fine */ }
+            try {
                 val nm = appCtx.getSystemService(Context.NOTIFICATION_SERVICE)
                     as? android.app.NotificationManager
                 nm?.activeNotifications?.forEach { sbn ->

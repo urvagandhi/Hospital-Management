@@ -39,6 +39,8 @@ data class OfflineDocument(
 )
 
 enum class SyncStatus {
+    /** Background worker is still building the merged PDF from scanned pages. */
+    BUILDING,
     PENDING,
     UPLOADING,
     FAILED,

@@ -25,12 +25,55 @@ jobs:
 
             cd /root/Hospital-Management
 
+            # Get the current commit before pulling
+            OLD_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "")
+
             echo "Fetching latest code..."
             git fetch origin
+            NEW_COMMIT=$(git rev-parse origin/main)
+
             git reset --hard origin/main
 
-            echo "Building and restarting containers..."
-            docker compose up -d --build
+            SERVICES_TO_BUILD=""
+            
+            if [ -z "$OLD_COMMIT" ]; then
+              echo "No previous commit found. Rebuilding all services..."
+              SERVICES_TO_BUILD="compression-service backend frontend"
+            elif [ "$OLD_COMMIT" == "$NEW_COMMIT" ]; then
+              echo "No new commits. Ensuring containers are up..."
+              # No services to specifically build
+            else
+              echo "Comparing $OLD_COMMIT to $NEW_COMMIT..."
+              CHANGED_FILES=$(git diff --name-only $OLD_COMMIT $NEW_COMMIT)
+              echo "Changed files:"
+              echo "$CHANGED_FILES"
+              
+              if echo "$CHANGED_FILES" | grep -qE '^docker-compose\.yml|^.github/'; then
+                echo "Infrastructure or configuration files changed. Rebuilding all services..."
+                SERVICES_TO_BUILD="compression-service backend frontend"
+              else
+                if echo "$CHANGED_FILES" | grep -qE '^compression-service/'; then
+                  SERVICES_TO_BUILD="$SERVICES_TO_BUILD compression-service"
+                fi
+                if echo "$CHANGED_FILES" | grep -qE '^backend/'; then
+                  SERVICES_TO_BUILD="$SERVICES_TO_BUILD backend"
+                fi
+                if echo "$CHANGED_FILES" | grep -qE '^frontend/'; then
+                  SERVICES_TO_BUILD="$SERVICES_TO_BUILD frontend"
+                fi
+              fi
+            fi
+
+            # Trim leading/trailing spaces
+            SERVICES_TO_BUILD=$(echo $SERVICES_TO_BUILD | xargs)
+
+            if [ -z "$SERVICES_TO_BUILD" ]; then
+              echo "No service changes detected (or already up-to-date). Ensuring containers are running..."
+              docker compose up -d
+            else
+              echo "Building and restarting specific containers: $SERVICES_TO_BUILD"
+              docker compose up -d --build $SERVICES_TO_BUILD
+            fi
 
             echo "Cleaning unused Docker images..."
             docker image prune -af

@@ -49,7 +49,7 @@ class WorkProgressBanner @JvmOverloads constructor(
      */
     fun observe(owner: LifecycleOwner) {
         val query = WorkQuery.Builder
-            .fromTags(listOf(TAG_DOWNLOAD, TAG_UPLOAD, TAG_SYNC))
+            .fromTags(listOf(TAG_DOWNLOAD, TAG_UPLOAD, TAG_SYNC, TAG_PDF_BUILD))
             .addStates(listOf(WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED))
             .build()
 
@@ -69,15 +69,17 @@ class WorkProgressBanner @JvmOverloads constructor(
         var downloads = 0
         var uploads = 0
         var syncs = 0
+        var builds = 0
         for (info in infos) {
             when {
+                info.tags.contains(TAG_PDF_BUILD) -> builds++
                 info.tags.contains(TAG_DOWNLOAD) -> downloads++
                 info.tags.contains(TAG_UPLOAD) -> uploads++
                 info.tags.contains(TAG_SYNC) -> syncs++
             }
         }
 
-        val total = downloads + uploads + syncs
+        val total = downloads + uploads + syncs + builds
         if (total == 0) {
             visibility = View.GONE
             stageStartTimes.clear()
@@ -88,6 +90,17 @@ class WorkProgressBanner @JvmOverloads constructor(
 
         visibility = View.VISIBLE
         titleView.text = context.getString(R.string.banner_sync_title)
+
+        // PdfBuildWorker — surface build-in-progress before any upload starts.
+        if (builds > 0) {
+            refreshHandler.removeCallbacks(refreshRunnable)
+            subtextView.text = if (builds == 1) {
+                "Preparing document…"
+            } else {
+                "Preparing $builds documents…"
+            }
+            return
+        }
 
         // Messaging for single-file download or upload
         if (total == 1 && downloads == 1) {
@@ -181,5 +194,6 @@ class WorkProgressBanner @JvmOverloads constructor(
         const val TAG_DOWNLOAD = "hms_download"
         const val TAG_UPLOAD = "hms_upload"
         const val TAG_SYNC = "hms_sync"
+        const val TAG_PDF_BUILD = "hms_pdf_build"
     }
 }

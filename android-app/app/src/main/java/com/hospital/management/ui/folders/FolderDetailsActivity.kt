@@ -438,7 +438,14 @@ class FolderDetailsActivity : BaseActivity() {
                 return
             }
         } else {
-            // Local file (pending upload)
+            // Local file (pending upload). PDF may still be assembling in
+            // PdfBuildWorker — `[Preparing]` rows have no file on disk yet.
+            if (file.syncStatus == com.hospital.management.data.local.SyncStatus.BUILDING.name) {
+                Toast.makeText(this,
+                    "Still preparing — try again in a moment",
+                    Toast.LENGTH_SHORT).show()
+                return
+            }
             val localFile = if (fileUrl.startsWith("file://")) java.io.File(android.net.Uri.parse(fileUrl).path ?: "") else java.io.File(fileUrl)
             if (localFile.exists()) {
                 launchFileIntent(localFile)
@@ -1082,6 +1089,7 @@ class FolderDetailsActivity : BaseActivity() {
                         val mimeType = if (fileName.endsWith(".pdf")) "application/pdf" else "image/jpeg"
                         
                         val statusPrefix = when (doc.status) {
+                            com.hospital.management.data.local.SyncStatus.BUILDING -> "[Preparing] "
                             com.hospital.management.data.local.SyncStatus.FAILED -> "[Failed] "
                             com.hospital.management.data.local.SyncStatus.UPLOADING -> "[Uploading] "
                             else -> "[Pending] "
