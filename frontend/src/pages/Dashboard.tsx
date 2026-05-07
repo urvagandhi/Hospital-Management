@@ -15,6 +15,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import api from "../services/api";
 import { persistentLogger } from "../utils/persistentLogger";
+import { useDownload } from "../hooks/useDownload";
 
 interface Patient {
   _id: string;
@@ -123,6 +124,7 @@ const Dashboard: React.FC = () => {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [draftFilters, setDraftFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const { startDownload, updateDownload, endDownload } = useDownload();
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -256,10 +258,17 @@ const Dashboard: React.FC = () => {
 
   const handleExport = async () => {
     setExporting(true);
+    const taskId = startDownload({ status: "preparing", message: "Generating patient export..." });
     try {
       const response = await api.get("/export/patients/pdf", {
         responseType: "blob",
         timeout: 600000,
+        onDownloadProgress: (progressEvent: any) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            updateDownload(taskId, { status: "downloading", progress: percent });
+          }
+        }
       });
       const blob = new Blob([response.data as BlobPart], {
         type: "application/pdf",
@@ -278,6 +287,7 @@ const Dashboard: React.FC = () => {
       alert("Export failed. Please try again.");
     } finally {
       setExporting(false);
+      endDownload(taskId);
     }
   };
 
@@ -958,6 +968,7 @@ const Dashboard: React.FC = () => {
           )}
         </div>
       </div>
+      
     </div>
   );
 };

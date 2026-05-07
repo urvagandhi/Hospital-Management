@@ -47,7 +47,11 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
     job_dir.mkdir(parents=True, exist_ok=True)
     db = request.app.state.mongo_db
     target_bytes = int(body.target_size_mb * 1_048_576)
-    content_hash = compute_content_hash(body.source_pdfs, body.target_size_mb)
+    content_hash = compute_content_hash(
+        body.source_pdfs, 
+        body.target_size_mb, 
+        has_cover=bool(body.display_name)
+    )
 
     log_extra = {
         "job_id": job_id,

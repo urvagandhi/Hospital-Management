@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import com.hospital.management.R
 
 /**
  * A3 — In-app file viewer. Images via Glide, PDFs via PdfRenderer.
@@ -87,6 +88,14 @@ class FileViewerActivity : BaseActivity() {
         }
         nav.addView(prevBtn); nav.addView(pageIndicator); nav.addView(nextBtn)
         root.addView(nav)
+
+        // Background activity banner — surfaces background downloads while viewing this file
+        val banner = layoutInflater.inflate(R.layout.view_work_progress_banner, root, false) 
+            as? com.hospital.management.ui.components.WorkProgressBanner
+        banner?.let {
+            it.observe(this)
+            root.addView(it)
+        }
 
         setContentView(root)
 

@@ -19,6 +19,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import api from "../services/api";
 import { adminForceDeleteHospital } from "../services/hospitalService";
+import { useDownload } from "../hooks/useDownload";
 import { getInitials, isPlaceholderLogo } from "../utils/avatar";
 
 interface Hospital {
@@ -48,6 +49,7 @@ export const HospitalsList: React.FC = () => {
   useDocumentTitle("Hospitals — MyMediVault");
   const navigate = useNavigate();
   const { state, updateHospital } = useAuth();
+  const { startDownload, updateDownload, endDownload } = useDownload();
   const { hospital } = state;
   const isAdmin = hospital?.role === "admin";
 
@@ -255,8 +257,13 @@ export const HospitalsList: React.FC = () => {
     if (!editingHospital) return;
 
     setEditLoading(true);
-    setEditError(null);
-    setEditSuccess(null);
+    let taskId: string | null = null;
+    if (logoFile) {
+      taskId = startDownload({ 
+        status: "uploading", 
+        message: `Updating ${editingHospital.hospitalName}...` 
+      });
+    }
 
     try {
       const body = new FormData();
@@ -270,7 +277,14 @@ export const HospitalsList: React.FC = () => {
       const response = await api.put<{ data: { logoUrl: string } }>(
         `/hospitals/${editingHospital._id}`,
         body,
-        { headers: { "Content-Type": "multipart/form-data" } },
+        { 
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: (e: any) => {
+            if (e.total && taskId) {
+              updateDownload(taskId, { status: "uploading", progress: Math.round((e.loaded * 100) / e.total) });
+            }
+          }
+        },
       );
 
       setEditSuccess("Hospital updated successfully!");
@@ -301,6 +315,7 @@ export const HospitalsList: React.FC = () => {
       );
     } finally {
       setEditLoading(false);
+      if (taskId) endDownload(taskId);
     }
   };
 

@@ -7,6 +7,7 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import api from "../services/api";
 import { getFolderColor, getFolderIcon } from "../utils/folderVisuals";
 import { persistentLogger } from "../utils/persistentLogger";
+import { useDownload } from "../hooks/useDownload";
 
 interface FileItem {
   fileName: string;
@@ -54,6 +55,8 @@ const PatientDetails: React.FC = () => {
   const [pdfModal, setPdfModal] = useState(false);
 
   const [syncing, setSyncing] = useState(false);
+
+  const { startDownload, updateDownload, endDownload } = useDownload();
 
   // ─────────────────────────────────────────────────────────────────────────
   // Edit Patient — intentionally mobile-only (CLAUDE.md §11: web is read-mostly
@@ -186,9 +189,18 @@ const PatientDetails: React.FC = () => {
   const triggerZipDownload = async (selectedFolders?: string[]) => {
     if (!patientId || !patient) return;
     setZipLoading(true);
+    const taskId = startDownload({ status: "preparing", message: "Preparing your archives..." });
     try {
       const body = selectedFolders ? { selectedFolders } : {};
-      const response = await api.postBlob(`/patients/${patientId}/download/zip`, body, { timeout: 600000 });
+      const response = await api.postBlob(`/patients/${patientId}/download/zip`, body, {
+        timeout: 600000,
+        onDownloadProgress: (progressEvent: any) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            updateDownload(taskId, { status: "downloading", progress: percent });
+          }
+        }
+      });
       downloadBlob(response.data as Blob, `${patient.patientName.replace(/[^a-z0-9]/gi, "_")}_records.zip`);
     } catch (error) {
       console.error("ZIP download failed:", error);
@@ -196,6 +208,7 @@ const PatientDetails: React.FC = () => {
     } finally {
       setZipLoading(false);
       setZipModal((prev) => ({ ...prev, open: false }));
+      endDownload(taskId);
     }
   };
 
@@ -206,8 +219,17 @@ const PatientDetails: React.FC = () => {
   const triggerPdfDownload = async (mode: "merged" | "per-folder") => {
     if (!patientId || !patient) return;
     setPdfLoading(true);
+    const taskId = startDownload({ status: "preparing", message: "Merging and optimizing patient records...", targetSizeMb: 10 });
     try {
-      const response = await api.postBlob(`/patients/${patientId}/download/pdf`, { mode }, { timeout: 600000 });
+      const response = await api.postBlob(`/patients/${patientId}/download/pdf`, { mode }, {
+        timeout: 600000,
+        onDownloadProgress: (progressEvent: any) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            updateDownload(taskId, { status: "downloading", progress: percent });
+          }
+        }
+      });
       const ext = mode === "per-folder" ? "zip" : "pdf";
       const safeName = patient.patientName.replace(/[^a-z0-9]/gi, "_");
       downloadBlob(response.data as Blob, `${safeName}_records.${ext}`);
@@ -217,6 +239,7 @@ const PatientDetails: React.FC = () => {
     } finally {
       setPdfLoading(false);
       setPdfModal(false);
+      endDownload(taskId);
     }
   };
 
@@ -540,8 +563,18 @@ const PatientDetails: React.FC = () => {
 
                 {hasFiles && (
                   <div className="px-5 pb-4 pt-0 flex gap-2">
-                    <FolderDownloadBtn patientId={patientId!} folderName={folder.name} patientName={patient.patientName} type="pdf" />
-                    <FolderDownloadBtn patientId={patientId!} folderName={folder.name} patientName={patient.patientName} type="zip" />
+                    <FolderDownloadBtn
+                      patientId={patientId!}
+                      folderName={folder.name}
+                      patientName={patient.patientName}
+                      type="pdf"
+                    />
+                    <FolderDownloadBtn
+                      patientId={patientId!}
+                      folderName={folder.name}
+                      patientName={patient.patientName}
+                      type="zip"
+                    />
                   </div>
                 )}
               </div>
@@ -647,13 +680,29 @@ const FolderDownloadBtn: React.FC<{
   type: "pdf" | "zip";
 }> = ({ patientId, folderName, patientName, type }) => {
   const [loading, setLoading] = useState(false);
+  const { startDownload, updateDownload, endDownload } = useDownload();
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setLoading(true);
+    const isPdf = type === "pdf";
+    const taskId = startDownload({ 
+      status: "preparing", 
+      message: isPdf ? `Merging and optimizing ${folderName}...` : `Zipping ${folderName}...`,
+      targetSizeMb: isPdf ? 5 : undefined
+    });
+
     try {
       const url = `/patients/${encodeURIComponent(patientId)}/folders/${encodeURIComponent(folderName)}/download/${type}`;
-      const response = await api.getBlob(url, { timeout: 600000 });
+      const response = await api.getBlob(url, { 
+        timeout: 600000,
+        onDownloadProgress: (progressEvent: any) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            updateDownload(taskId, { status: "downloading", progress: percent });
+          }
+        }
+      });
       const safeName = patientName.replace(/[^a-z0-9]/gi, "_");
       const safeFolder = folderName.replace(/[^a-z0-9]/gi, "_");
       const blob = new Blob([response.data as BlobPart]);
@@ -667,6 +716,7 @@ const FolderDownloadBtn: React.FC<{
       alert("Download failed. Please try again.");
     } finally {
       setLoading(false);
+      endDownload(taskId);
     }
   };
 

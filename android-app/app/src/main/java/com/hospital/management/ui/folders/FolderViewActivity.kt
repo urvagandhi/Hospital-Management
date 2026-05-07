@@ -135,6 +135,9 @@ class FolderViewActivity : BaseActivity() {
         findViewById<View>(R.id.fabCreateFolder)?.setOnClickListener {
             showCreateFolderDialog()
         }
+
+        findViewById<com.hospital.management.ui.components.WorkProgressBanner>(R.id.workProgressBanner)
+            ?.observe(this)
     }
 
     private fun setupObservers() {
@@ -482,7 +485,8 @@ class FolderViewActivity : BaseActivity() {
             mimeType = mime,
             method = "POST",
             requestBodyJson = bodyJson,
-            uniqueWorkName = "patient_pdf_${patientId}_$mode"
+            uniqueWorkName = "patient_pdf_${patientId}_$mode",
+            targetSizeMb = 10
         )
         Snackbar.make(findViewById<View>(android.R.id.content),
             "Preparing PDF download...", Snackbar.LENGTH_SHORT).show()
@@ -654,7 +658,8 @@ class FolderViewActivity : BaseActivity() {
         mimeType: String,
         method: String,
         requestBodyJson: String?,
-        uniqueWorkName: String
+        uniqueWorkName: String,
+        targetSizeMb: Int = 10
     ) {
         val rootView = findViewById<View>(android.R.id.content)
         lifecycleScope.launch {
@@ -672,6 +677,7 @@ class FolderViewActivity : BaseActivity() {
                 .putString(DownloadWorker.KEY_AUTH_TOKEN, accessToken)
                 .putString(DownloadWorker.KEY_AUTH_HOST, authHost)
                 .putString(DownloadWorker.KEY_HTTP_METHOD, method)
+                .putInt(DownloadWorker.KEY_TARGET_SIZE_MB, targetSizeMb)
             if (!requestBodyJson.isNullOrEmpty()) {
                 builder.putString(DownloadWorker.KEY_REQUEST_BODY_JSON, requestBodyJson)
             }

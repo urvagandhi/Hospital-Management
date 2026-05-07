@@ -257,8 +257,9 @@
             android:layout_marginTop="@dimen/space_xs" />
     </LinearLayout>
 
+    <!-- Initial Page Load Spinner -->
     <ProgressBar
-        android:id="@+id/progressBar"
+        android:id="@+id/initialProgressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:indeterminateTint="@color/brand_primary"
@@ -267,6 +268,16 @@
         app:layout_constraintBottom_toBottomOf="@+id/rvFiles"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Background activity banner — shows in-flight downloads/uploads/sync -->
+    <include
+        android:id="@+id/workProgressBanner"
+        layout="@layout/view_work_progress_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/space_md"
+        android:layout_marginBottom="@dimen/space_md"
+        app:layout_constraintBottom_toBottomOf="parent" />
 
     <!-- FABs -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton

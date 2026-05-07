@@ -9,6 +9,8 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkQuery
 import com.hospital.management.R
+import com.hospital.management.worker.formatDownloadSubtext
+import com.hospital.management.worker.formatUploadSubtext
 
 /**
  * Self-observing banner that surfaces all in-flight WorkManager jobs
@@ -56,7 +58,14 @@ class WorkProgressBanner @JvmOverloads constructor(
             .observe(owner) { infos -> render(infos) }
     }
 
+    private val stageStartTimes = mutableMapOf<java.util.UUID, Long>()
+    private val stageLastSeen = mutableMapOf<java.util.UUID, String>()
+    private var lastInfos: List<WorkInfo>? = null
+    private val refreshHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val refreshRunnable = Runnable { lastInfos?.let { render(it) } }
+
     private fun render(infos: List<WorkInfo>) {
+        lastInfos = infos
         var downloads = 0
         var uploads = 0
         var syncs = 0
@@ -71,12 +80,92 @@ class WorkProgressBanner @JvmOverloads constructor(
         val total = downloads + uploads + syncs
         if (total == 0) {
             visibility = View.GONE
+            stageStartTimes.clear()
+            stageLastSeen.clear()
+            refreshHandler.removeCallbacks(refreshRunnable)
             return
         }
 
         visibility = View.VISIBLE
         titleView.text = context.getString(R.string.banner_sync_title)
 
+        // Messaging for single-file download or upload
+        if (total == 1 && downloads == 1) {
+            val info = infos.find { it.tags.contains(TAG_DOWNLOAD) }
+            val progress = com.hospital.management.worker.DownloadProgress.fromData(info?.progress)
+            
+            if (info != null && progress != null) {
+                val stage = progress.stage.name
+                val lastStage = stageLastSeen[info.id]
+                if (stage != lastStage) {
+                    stageLastSeen[info.id] = stage
+                    stageStartTimes[info.id] = System.currentTimeMillis()
+                }
+
+                when (progress.stage) {
+                    com.hospital.management.worker.DownloadStage.PREPARING -> {
+                        val startTime = stageStartTimes[info.id] ?: System.currentTimeMillis()
+                        val duration = (System.currentTimeMillis() - startTime) / 1000
+                        
+                        if (duration > 45) {
+                            val limit = if (progress.targetSizeMb > 0) "${progress.targetSizeMb}MB" else "the size"
+                            subtextView.text = "We are optimizing your document to fit within the $limit limit. This ensures a faster experience and may take a moment longer."
+                        } else {
+                            subtextView.text = "Preparing your document..."
+                        }
+                        
+                        // Schedule refresh to update the >45s message
+                        refreshHandler.removeCallbacks(refreshRunnable)
+                        refreshHandler.postDelayed(refreshRunnable, 1000)
+                        return
+                    }
+                    com.hospital.management.worker.DownloadStage.DOWNLOADING -> {
+                        refreshHandler.removeCallbacks(refreshRunnable)
+                        subtextView.text = context.formatDownloadSubtext(progress)
+                        return
+                    }
+                    else -> {
+                        refreshHandler.removeCallbacks(refreshRunnable)
+                    }
+                }
+            }
+        }
+
+        if (total == 1 && uploads == 1) {
+            val info = infos.find { it.tags.contains(TAG_UPLOAD) }
+            val progress = com.hospital.management.worker.UploadProgress.fromData(info?.progress)
+            
+            if (info != null && progress != null) {
+                when (progress.stage) {
+                    com.hospital.management.worker.UploadStage.PREPARING -> {
+                        refreshHandler.removeCallbacks(refreshRunnable)
+                        subtextView.text = "Preparing your document..."
+                        return
+                    }
+                    com.hospital.management.worker.UploadStage.UPLOADING -> {
+                        refreshHandler.removeCallbacks(refreshRunnable)
+                        val pct = progress.percent
+                        val subtext = context.formatUploadSubtext(progress)
+                        subtextView.text = if (pct in 0..100) {
+                             "Uploading $pct% • $subtext"
+                        } else {
+                             "Uploading • $subtext"
+                        }
+                        return
+                    }
+                    com.hospital.management.worker.UploadStage.RETRYING -> {
+                        refreshHandler.removeCallbacks(refreshRunnable)
+                        subtextView.text = "Waiting for connection to resume upload..."
+                        return
+                    }
+                    else -> {
+                        refreshHandler.removeCallbacks(refreshRunnable)
+                    }
+                }
+            }
+        }
+
+        refreshHandler.removeCallbacks(refreshRunnable)
         val sep = context.getString(R.string.banner_separator)
         val parts = mutableListOf<String>()
         if (downloads > 0) parts += context.getString(R.string.banner_downloads_count, downloads)

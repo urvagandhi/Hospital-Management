@@ -73,6 +73,8 @@ class DownloadWorker(
         const val KEY_SERVER_STAGE_HINT = "server_stage_hint"
         /** Optional — cap automatic retries; default handled by WorkManager RUN_ATTEMPT_COUNT. */
         const val KEY_MAX_RETRIES = "max_retries"
+        /** Optional — target size limit (MB) for compression messaging. */
+        const val KEY_TARGET_SIZE_MB = "target_size_mb"
         /**
          * Optional — Cloud Run job status endpoint. When set, the Worker runs phase 1
          * (polling loop) BEFORE the byte stream: it GETs this URL every ~3.5s,
@@ -137,6 +139,7 @@ class DownloadWorker(
 
     private lateinit var fileName: String
     private lateinit var mimeType: String
+    private var targetSizeMb: Int = 0
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val currentName = if (::fileName.isInitialized) fileName
@@ -178,6 +181,7 @@ class DownloadWorker(
         val maxRetries = inputData.getInt(KEY_MAX_RETRIES, DEFAULT_MAX_RETRIES)
         val httpMethod = (inputData.getString(KEY_HTTP_METHOD) ?: "GET").uppercase()
         val requestBodyJson = inputData.getString(KEY_REQUEST_BODY_JSON)
+        targetSizeMb = inputData.getInt(KEY_TARGET_SIZE_MB, 0)
         val isPost = httpMethod == "POST"
 
         try {
@@ -187,7 +191,8 @@ class DownloadWorker(
             emit(DownloadProgress(
                 stage = DownloadStage.PREPARING,
                 fileName = fileName,
-                serverStageHint = seedStageHint
+                serverStageHint = seedStageHint,
+                targetSizeMb = targetSizeMb
             ), force = true)
 
             // If a Cloud Run status URL was supplied, poll it to resolve the
@@ -360,6 +365,12 @@ class DownloadWorker(
                 ), force = true)
 
                 RandomAccessFile(tmpFile, "rw").use { raf ->
+                    // TD-A06 (2026-05-07): Ensure the file is truncated to the
+                    // current resume offset. If we are starting from byte 0 (200 OK
+                    // or POST), this wipes any trailing garbage from a prior
+                    // run. If we are resuming (206 Partial), this ensures anything
+                    // written beyond the current offset in a failed run is dropped.
+                    raf.setLength(actualResumeOffset)
                     raf.seek(actualResumeOffset)
                     conn.inputStream.use { input ->
                         val buffer = ByteArray(16 * 1024)

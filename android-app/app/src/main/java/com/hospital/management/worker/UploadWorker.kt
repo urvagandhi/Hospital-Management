@@ -64,6 +64,7 @@ class UploadWorker(
         const val KEY_OWNER_HOSPITAL_ID = "owner_hospital_id"
         const val KEY_MAX_RETRIES = "max_retries"
         const val KEY_OFFLINE_DOC_ID = "offline_doc_id"
+        const val KEY_IMAGE_URIS = "image_uris"
 
         // Output keys
         const val KEY_STATUS = "status"
@@ -134,7 +135,30 @@ class UploadWorker(
             return@withContext failWith(ERROR_INPUT, "Missing required input")
         }
 
-        val file = resolveFile(fileUriStr)
+        val imageUris = inputData.getStringArray(KEY_IMAGE_URIS)
+
+        val file = if (imageUris != null && imageUris.isNotEmpty()) {
+            // Phase 1: Conversion inside Worker
+            emit(UploadProgress(
+                stage = UploadStage.PREPARING,
+                fileName = fileName,
+                totalBytes = 0L
+            ), force = true)
+            
+            withContext(Dispatchers.IO) {
+                val uris = imageUris.map { Uri.parse(it) }
+                val result = com.hospital.management.utils.PdfUtils.createPdfFromImages(
+                    applicationContext,
+                    uris,
+                    fileName,
+                    folderName
+                )
+                result?.file
+            }
+        } else {
+            resolveFile(fileUriStr)
+        }
+
         if (file == null || !file.exists()) {
             FileLogger.e(TAG, "FILE RESOLUTION FAILED — uri=$fileUriStr, " +
                     "resolved=${file?.absolutePath}, exists=${file?.exists()}")

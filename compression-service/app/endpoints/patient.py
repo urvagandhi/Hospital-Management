@@ -55,7 +55,11 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
         all_source_pdfs.extend(entry.source_pdfs)
 
     target_bytes = int(body.target_size_mb * 1_048_576)
-    content_hash = compute_content_hash(all_source_pdfs, body.target_size_mb)
+    content_hash = compute_content_hash(
+        all_source_pdfs, 
+        body.target_size_mb, 
+        has_cover=True
+    )
 
     log_extra = {
         "job_id": job_id,

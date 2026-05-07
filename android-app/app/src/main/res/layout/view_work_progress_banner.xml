@@ -22,13 +22,6 @@
         android:gravity="center_vertical"
         android:padding="12dp">
 
-        <ProgressBar
-            android:id="@+id/bannerSpinner"
-            style="?android:attr/progressBarStyleSmall"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:indeterminate="true"
-            android:layout_marginEnd="12dp" />
 
         <LinearLayout
             android:layout_width="0dp"

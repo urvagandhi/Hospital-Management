@@ -49,6 +49,7 @@ import android.widget.TextView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.os.Environment
 import com.hospital.management.utils.FileLogger
+import com.hospital.management.ui.components.WorkProgressBanner
 
 class FolderDetailsActivity : BaseActivity() {
 
@@ -58,7 +59,8 @@ class FolderDetailsActivity : BaseActivity() {
     private lateinit var patientViewModel: PatientViewModel
     private lateinit var rvFiles: RecyclerView
     private lateinit var fileAdapter: FileAdapter
-    private lateinit var progressBar: View
+    private lateinit var initialProgressBar: View
+    private lateinit var workProgressBanner: WorkProgressBanner
     private lateinit var tvEmpty: View
     private lateinit var tokenManager: TokenManager
     private lateinit var database: AppDatabase
@@ -132,7 +134,9 @@ class FolderDetailsActivity : BaseActivity() {
         findViewById<android.widget.TextView>(R.id.tvFileCount).text = "$fileCount files"
 
         rvFiles = findViewById(R.id.rvFiles)
-        progressBar = findViewById(R.id.progressBar)
+        initialProgressBar = findViewById(R.id.initialProgressBar)
+        workProgressBanner = findViewById(R.id.workProgressBanner)
+        workProgressBanner.observe(this)
         tvEmpty = findViewById(R.id.layoutEmpty)
 
         rvFiles.layoutManager = LinearLayoutManager(this)
@@ -156,9 +160,9 @@ class FolderDetailsActivity : BaseActivity() {
         lifecycleScope.launch {
             patientViewModel.patientState.collect { state ->
                 when(state) {
-                    is PatientState.Loading -> progressBar.visibility = View.VISIBLE
+                    is PatientState.Loading -> initialProgressBar.visibility = View.VISIBLE
                     is PatientState.Success -> {
-                        progressBar.visibility = View.GONE
+                        initialProgressBar.visibility = View.GONE
                         // Bulk download flows now go through DownloadWorker — its
                         // notifications carry the user from progress to completion.
                         // Only generic Success messages (e.g. patient updates) bubble
@@ -168,15 +172,15 @@ class FolderDetailsActivity : BaseActivity() {
                         }
                     }
                     is PatientState.Error -> {
-                        progressBar.visibility = View.GONE
+                        initialProgressBar.visibility = View.GONE
                         // Only show error toast when online and no offline files are shown
                         if (pendingOfflineFiles.isEmpty() && isNetworkAvailable()) {
                             Toast.makeText(this@FolderDetailsActivity, state.message, Toast.LENGTH_SHORT).show()
                         }
                         // Use whatever server files we already have in memory (offline fallback)
-                        displayFiles(patientViewModel.currentFolderFiles.value)
+                        initialProgressBar.visibility = View.GONE
                     }
-                    else -> progressBar.visibility = View.GONE
+                    else -> initialProgressBar.visibility = View.GONE
                 }
             }
         }
@@ -444,100 +448,58 @@ class FolderDetailsActivity : BaseActivity() {
             return
         }
 
-        // Cache MISS - Show Progress Dialog and Download
+        // Cache MISS - Route through DownloadWorker (Banner will show progress)
         if (!isNetworkAvailable()) {
             showOfflineDialog("Connect to the internet to download this file.")
             return
         }
 
-        showDownloadDialog(file)
+        enqueueSingleDownload(file)
     }
 
-    private var downloadJob: kotlinx.coroutines.Job? = null
+    private fun enqueueSingleDownload(file: FileItem) {
+        lifecycleScope.launch {
+            val accessToken = tokenManager.getAccessToken() ?: ""
+            val authHost = try { java.net.URL(RetrofitClient.BASE_URL).host } catch (_: Exception) { null }
 
-    private fun showDownloadDialog(file: FileItem) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_download_progress, null)
-        val tvFileName: TextView = dialogView.findViewById(R.id.tvFileName)
-        val tvPercentage: TextView = dialogView.findViewById(R.id.tvPercentage)
-        val tvProgressText: TextView = dialogView.findViewById(R.id.tvProgressText)
-        val progressBar: com.google.android.material.progressindicator.LinearProgressIndicator = dialogView.findViewById(R.id.downloadProgress)
-        val btnCancel: com.google.android.material.button.MaterialButton = dialogView.findViewById(R.id.btnCancel)
+            val inputData = Data.Builder()
+                .putString(DownloadWorker.KEY_DOWNLOAD_URL, file.displayUrl)
+                .putString(DownloadWorker.KEY_FILE_NAME, file.fileName)
+                .putString(DownloadWorker.KEY_MIME_TYPE, file.mimeType)
+                .putString(DownloadWorker.KEY_PATIENT_NAME, patientName)
+                .putString(DownloadWorker.KEY_HOSPITAL_NAME, hospitalName)
+                .putString(DownloadWorker.KEY_FOLDER_NAME, folderName)
+                .putString(DownloadWorker.KEY_DOWNLOAD_SUB_PATH, "doc_cache/${file._id ?: "temp"}")
+                .putString(DownloadWorker.KEY_AUTH_TOKEN, accessToken)
+                .putString(DownloadWorker.KEY_AUTH_HOST, authHost)
+                .build()
 
-        tvFileName.text = file.fileName
-        
-        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setView(dialogView)
-            .setCancelable(false)
-            .create()
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
 
-        dialog.show()
+        val request = OneTimeWorkRequestBuilder<DownloadWorker>()
+            .setInputData(inputData)
+            .setConstraints(constraints)
+            .addTag(DownloadWorker.TAG_DOWNLOAD)
+            .build()
 
-        downloadJob = lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val fileIdSafe = file._id ?: file.fileName.hashCode().toString()
-                val docDir = java.io.File(java.io.File(cacheDir, "doc_cache"), fileIdSafe).also { if (!it.exists()) it.mkdirs() }
-                val dest = java.io.File(docDir, file.fileName)
+            WorkManager.getInstance(this@FolderDetailsActivity).enqueueUniqueWork(
+                "view_${file._id ?: file.fileName.hashCode()}",
+                ExistingWorkPolicy.KEEP,
+                request
+            )
 
-                val url = java.net.URL(file.displayUrl)
-                val connection = url.openConnection() as java.net.HttpURLConnection
-                connection.connectTimeout = 15_000
-                connection.readTimeout = 60_000
-                connection.connect()
-
-                if (connection.responseCode !in 200..299) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@FolderDetailsActivity, "Download failed (Server Error)", Toast.LENGTH_SHORT).show()
-                        dialog.dismiss()
-                    }
-                    return@launch
-                }
-
-                val totalSize = connection.contentLength.toLong()
-                var downloaded = 0L
-
-                connection.inputStream.use { input ->
-                    dest.outputStream().use { output ->
-                        val buffer = ByteArray(8192)
-                        var bytes = input.read(buffer)
-                        while (bytes >= 0) {
-                            if (!isActive) {
-                                connection.disconnect()
-                                dest.delete()
-                                return@launch
-                            }
-                            output.write(buffer, 0, bytes)
-                            downloaded += bytes
-                            
-                            if (totalSize > 0) {
-                                val progress = (downloaded * 100 / totalSize).toInt()
-                                withContext(Dispatchers.Main) {
-                                    progressBar.progress = progress
-                                    tvPercentage.text = "$progress%"
-                                    tvProgressText.text = "${formatFileSize(downloaded)} / ${formatFileSize(totalSize)}"
-                                }
-                            }
-                            bytes = input.read(buffer)
+            // Observe progress to open file on completion
+            WorkManager.getInstance(this@FolderDetailsActivity).getWorkInfoByIdLiveData(request.id)
+                .observe(this@FolderDetailsActivity) { workInfo ->
+                    if (workInfo != null && workInfo.state == WorkInfo.State.SUCCEEDED) {
+                        val path = workInfo.outputData.getString("cached_path")
+                        if (!path.isNullOrEmpty()) {
+                            launchFileIntent(File(path))
                         }
                     }
                 }
-
-                withContext(Dispatchers.Main) {
-                    dialog.dismiss()
-                    launchFileIntent(dest)
-                }
-                
-                trimCacheIfNeeded(java.io.File(cacheDir, "doc_cache"))
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    dialog.dismiss()
-                    Toast.makeText(this@FolderDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-        btnCancel.setOnClickListener {
-            downloadJob?.cancel()
-            dialog.dismiss()
         }
     }
 
@@ -718,29 +680,20 @@ class FolderDetailsActivity : BaseActivity() {
                 val progress = DownloadProgress.fromData(workInfo.progress)
 
                 when (workInfo.state) {
+                    WorkInfo.State.ENQUEUED -> {
+                        // WorkProgressBanner now handles the UI for enqueued/running states
+                    }
                     WorkInfo.State.RUNNING -> {
-                        progressBar.visibility = View.VISIBLE
-                        if (progress != null) {
-                            when (progress.stage) {
-                                DownloadStage.PREPARING, DownloadStage.DOWNLOADING,
-                                DownloadStage.RETRYING -> {
-                                    // Update any in-app status text from the same payload.
-                                    // The feature-level UI here is the indeterminate progressBar;
-                                    // richer consumers (e.g. a progress row) can read progress.percent /
-                                    // formatDownloadSubtext(progress) to render bytes + speed.
-                                    FileLogger.d(
-                                        "FolderDetailsActivity",
-                                        "download progress stage=${progress.stage} " +
-                                                "pct=${progress.percent} " +
-                                                "subtext=${formatDownloadSubtext(progress)}"
-                                    )
-                                }
-                                else -> { /* READY/FAILED surface via SUCCEEDED/FAILED branches */ }
-                            }
-                        }
+                        // richer consumers (e.g. a progress row) can read progress.percent /
+                        // formatDownloadSubtext(progress) to render bytes + speed.
+                        FileLogger.d(
+                            "FolderDetailsActivity",
+                            "download progress stage=${progress?.stage} " +
+                                    "pct=${progress?.percent} " +
+                                    "subtext=${progress?.let { formatDownloadSubtext(it) }}"
+                        )
                     }
                     WorkInfo.State.SUCCEEDED -> {
-                        progressBar.visibility = View.GONE
                         Toast.makeText(
                             this@FolderDetailsActivity,
                             getString(R.string.download_toast_done, file.name),
@@ -748,7 +701,6 @@ class FolderDetailsActivity : BaseActivity() {
                         ).show()
                     }
                     WorkInfo.State.FAILED -> {
-                        progressBar.visibility = View.GONE
                         val reason = workInfo.outputData.getString(DownloadWorker.KEY_ERROR_REASON) ?: ""
                         val detail = workInfo.outputData.getString(DownloadWorker.KEY_STATUS) ?: ""
                         val msg = when (reason) {
@@ -761,7 +713,6 @@ class FolderDetailsActivity : BaseActivity() {
                         Toast.makeText(this@FolderDetailsActivity, msg, Toast.LENGTH_LONG).show()
                     }
                     WorkInfo.State.CANCELLED -> {
-                        progressBar.visibility = View.GONE
                         Toast.makeText(
                             this@FolderDetailsActivity,
                             R.string.download_toast_cancelled,
@@ -796,7 +747,8 @@ class FolderDetailsActivity : BaseActivity() {
         method: String,
         requestBodyJson: String?,
         subPath: String,
-        uniqueWorkName: String
+        uniqueWorkName: String,
+        targetSizeMb: Int = 5
     ) {
         lifecycleScope.launch {
             val accessToken = tokenManager.getAccessToken()
@@ -814,6 +766,7 @@ class FolderDetailsActivity : BaseActivity() {
                 .putString(DownloadWorker.KEY_AUTH_TOKEN, accessToken)
                 .putString(DownloadWorker.KEY_AUTH_HOST, authHost)
                 .putString(DownloadWorker.KEY_HTTP_METHOD, method)
+                .putInt(DownloadWorker.KEY_TARGET_SIZE_MB, targetSizeMb)
             if (!requestBodyJson.isNullOrEmpty()) {
                 builder.putString(DownloadWorker.KEY_REQUEST_BODY_JSON, requestBodyJson)
             }
@@ -842,9 +795,8 @@ class FolderDetailsActivity : BaseActivity() {
             workManager.getWorkInfoByIdLiveData(request.id).observe(this@FolderDetailsActivity) { workInfo ->
                 if (workInfo == null) return@observe
                 when (workInfo.state) {
-                    WorkInfo.State.RUNNING -> progressBar.visibility = View.VISIBLE
+                    WorkInfo.State.RUNNING -> { }
                     WorkInfo.State.SUCCEEDED -> {
-                        progressBar.visibility = View.GONE
                         Toast.makeText(
                             this@FolderDetailsActivity,
                             getString(R.string.download_toast_done, fileName),
@@ -852,7 +804,6 @@ class FolderDetailsActivity : BaseActivity() {
                         ).show()
                     }
                     WorkInfo.State.FAILED -> {
-                        progressBar.visibility = View.GONE
                         val reason = workInfo.outputData.getString(DownloadWorker.KEY_ERROR_REASON) ?: ""
                         val detail = workInfo.outputData.getString(DownloadWorker.KEY_STATUS) ?: ""
                         val msg = when (reason) {
@@ -865,7 +816,6 @@ class FolderDetailsActivity : BaseActivity() {
                         Toast.makeText(this@FolderDetailsActivity, msg, Toast.LENGTH_LONG).show()
                     }
                     WorkInfo.State.CANCELLED -> {
-                        progressBar.visibility = View.GONE
                         Toast.makeText(
                             this@FolderDetailsActivity,
                             R.string.download_toast_cancelled,
@@ -1492,5 +1442,4 @@ class FolderDetailsActivity : BaseActivity() {
             "HospitalRecords/$safeHospital/$safePatient"
         }
     }
-
 }

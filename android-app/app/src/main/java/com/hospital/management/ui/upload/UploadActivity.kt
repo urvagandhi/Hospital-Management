@@ -249,23 +249,17 @@ class UploadActivity : BaseActivity() {
             patientViewModel.patientState.collect { state ->
                 when(state) {
                     is PatientState.Loading -> {
-                        binding.progressBar.visibility = View.VISIBLE
                         binding.btnUpload.isEnabled = false
-                        binding.tvUploadProgress.visibility = View.VISIBLE
                     }
                     is PatientState.Success -> {
-                        binding.progressBar.visibility = View.GONE
                         binding.btnUpload.isEnabled = true
-                        binding.tvUploadProgress.visibility = View.GONE
                         if (state.message == "File uploaded successfully") {
                             Toast.makeText(this@UploadActivity, state.message, Toast.LENGTH_SHORT).show()
                             finish()
                         }
                     }
                     is PatientState.Error -> {
-                        binding.progressBar.visibility = View.GONE
                         binding.btnUpload.isEnabled = true
-                        binding.tvUploadProgress.visibility = View.GONE
                         Toast.makeText(this@UploadActivity, state.message, Toast.LENGTH_SHORT).show()
                     }
                     else -> {
@@ -315,9 +309,6 @@ class UploadActivity : BaseActivity() {
                 "\n  hasScannerPdf=${scannedPdfUri != null}")
 
         binding.btnUpload.isEnabled = false
-        binding.progressBar.visibility = View.VISIBLE
-        binding.tvUploadProgress.visibility = View.VISIBLE
-        binding.tvUploadProgress.text = "Creating PDF..."
 
         lifecycleScope.launch {
             val database = com.hospital.management.data.local.AppDatabase.getDatabase(this@UploadActivity)
@@ -328,7 +319,7 @@ class UploadActivity : BaseActivity() {
             )
 
             try {
-                // Build filename: use user input if provided, otherwise auto-generate
+                // Build filename
                 val userInput = binding.etFileName.text.toString().trim()
                 val sanitizedPatientName = patientName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
                 val sanitizedFolderName = folderName.replace(Regex("[^A-Za-z0-9]"), "_").take(30)
@@ -340,125 +331,72 @@ class UploadActivity : BaseActivity() {
                     val random = System.currentTimeMillis().toString().takeLast(6)
                     "${sanitizedPatientName}_${sanitizedFolderName}_${random}.pdf"
                 }
-                FileLogger.d(TAG, "PDF filename generated: $pdfFileName (userInput='$userInput')")
 
-                val pdfResult: com.hospital.management.utils.PdfUtils.PdfResult? = when {
-                    scannedPdfUri != null -> {
-                        binding.tvUploadProgress.text = "Preparing scanner PDF..."
-                        withContext(Dispatchers.IO) {
-                            val copiedPdf = copyPdfFromUri(scannedPdfUri!!, pdfFileName)
-                            if (copiedPdf != null && copiedPdf.length() <= MAX_SERVER_UPLOAD_BYTES) {
-                                // Raw copy — no compression profile applied.
-                                com.hospital.management.utils.PdfUtils.PdfResult(copiedPdf, -1)
-                            } else {
-                                copiedPdf?.delete()
-                                com.hospital.management.utils.PdfUtils.recompressPdfFromUri(
-                                    applicationContext,
-                                    scannedPdfUri!!,
-                                    pdfFileName,
-                                    folderName
-                                )
-                            }
-                        }
-                    }
-                    scannedPages.isNotEmpty() -> {
-                        binding.tvUploadProgress.text = "Converting ${scannedPages.size} page(s) to PDF..."
-                        withContext(Dispatchers.IO) {
-                            com.hospital.management.utils.PdfUtils.createPdfFromImages(
-                                applicationContext,
-                                scannedPages,
-                                pdfFileName,
-                                folderName
-                            )
-                        }
-                    }
-                    else -> null
-                }
-
-                val pdfFile = pdfResult?.file
-                val uploadProfileUsed = pdfResult?.profileUsed ?: -1
-
-                if (pdfFile == null) {
-                    FileLogger.e(TAG, "PDF creation FAILED — no file returned")
-                    withContext(Dispatchers.Main) {
-                        binding.progressBar.visibility = View.GONE
-                        binding.btnUpload.isEnabled = true
-                        binding.tvUploadProgress.visibility = View.GONE
-                        Toast.makeText(this@UploadActivity, "Failed to create PDF", Toast.LENGTH_SHORT).show()
-                    }
-                    return@launch
-                }
-
-                // ── Phase 2: Move to durable storage and insert row first ──
-                val isOnline = isNetworkAvailable()
                 val idempotencyKey = docRepository.newIdempotencyKey()
                 val ownerHospitalId = tokenManager.getHospitalId() ?: ""
-                val durableFile = docRepository.getDurableFile(idempotencyKey)
 
-                pdfFile.copyTo(durableFile, overwrite = true)
-                pdfFile.delete()
+                // ── STEP 1: Copy images to local durable storage (VERY FAST) ──
+                val pendingDir = File(filesDir, "pending_images/$idempotencyKey").also { it.mkdirs() }
+                val localImagePaths = withContext(Dispatchers.IO) {
+                    scannedPages.mapIndexed { index, uri ->
+                        val dest = File(pendingDir, "page_$index.jpg")
+                        contentResolver.openInputStream(uri)?.use { input ->
+                            dest.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        Uri.fromFile(dest).toString()
+                    }
+                }
 
-                val fileSizeMb = "%.2f".format(durableFile.length().toDouble() / (1024.0 * 1024.0))
-                FileLogger.i(TAG, "PDF moved to durable storage:" +
-                        "\n  path=${durableFile.absolutePath}" +
-                        "\n  size=${durableFile.length()} bytes ($fileSizeMb MB)")
+                // Handle scanner-provided PDF if any
+                val scannerPdfUriStr = if (scannedPdfUri != null) {
+                    withContext(Dispatchers.IO) {
+                        val dest = File(pendingDir, "scanner_source.pdf")
+                        contentResolver.openInputStream(scannedPdfUri!!)?.use { input ->
+                            dest.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        Uri.fromFile(dest).toString()
+                    }
+                } else null
 
-                val isTooLarge = durableFile.length() > MAX_SERVER_UPLOAD_BYTES
-
-                val initialStatus = if (isTooLarge) {
-                    com.hospital.management.data.local.SyncStatus.FAILED
-                } else if (isOnline) {
+                // ── STEP 2: Insert placeholder row ──
+                val isOnline = isNetworkAvailable()
+                val initialStatus = if (isOnline) {
                     com.hospital.management.data.local.SyncStatus.UPLOADING
                 } else {
                     com.hospital.management.data.local.SyncStatus.PENDING
                 }
 
-                val errorMessage = if (isTooLarge) "SIZE_EXCEEDED: File is $fileSizeMb MB (Max is ${com.hospital.management.BuildConfig.MAX_UPLOAD_SIZE_MB} MB)" else null
-
                 val document = com.hospital.management.data.local.OfflineDocument(
                     patientId = patientId,
                     folderName = folderName,
-                    fileUri = android.net.Uri.fromFile(durableFile).toString(),
+                    fileUri = scannerPdfUriStr ?: "", 
                     status = initialStatus,
-                    errorMessage = errorMessage,
                     idempotencyKey = idempotencyKey,
-                    uploadProfileUsed = uploadProfileUsed,
                     ownerHospitalId = ownerHospitalId,
                     displayName = pdfFileName
                 )
 
                 val rowId = docRepository.insertQueuedRow(document)
-                FileLogger.i(TAG, "Inserted queued row with id=$rowId, status=$initialStatus")
 
                 withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
                     binding.btnUpload.isEnabled = true
-                    binding.tvUploadProgress.visibility = View.GONE
-
-                    if (isTooLarge) {
-                        Toast.makeText(
-                            this@UploadActivity,
-                            "File is ${fileSizeMb}MB. Max upload is ${com.hospital.management.BuildConfig.MAX_UPLOAD_SIZE_MB}MB. Saved offline as Failed.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        finish()
-                        return@withContext
-                    }
 
                     if (isOnline) {
                         val constraints = androidx.work.Constraints.Builder()
                             .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
                             .build()
+                        
                         val inputData = androidx.work.Data.Builder()
                             .putLong("offline_doc_id", rowId)
                             .putString(com.hospital.management.worker.UploadWorker.KEY_PATIENT_ID, patientId)
                             .putString(com.hospital.management.worker.UploadWorker.KEY_FOLDER_NAME, folderName)
-                            .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_URI, android.net.Uri.fromFile(durableFile).toString())
                             .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_NAME, pdfFileName)
+                            .putStringArray(com.hospital.management.worker.UploadWorker.KEY_IMAGE_URIS, localImagePaths.toTypedArray())
+                            .putString(com.hospital.management.worker.UploadWorker.KEY_FILE_URI, scannerPdfUriStr ?: "")
                             .putString(com.hospital.management.worker.UploadWorker.KEY_IDEMPOTENCY_KEY, idempotencyKey)
-                            .putInt(com.hospital.management.worker.UploadWorker.KEY_UPLOAD_PROFILE_USED, uploadProfileUsed)
                             .putString(com.hospital.management.worker.UploadWorker.KEY_OWNER_HOSPITAL_ID, ownerHospitalId)
                             .build()
+
                         val request = androidx.work.OneTimeWorkRequestBuilder<com.hospital.management.worker.UploadWorker>()
                             .setInputData(inputData)
                             .setConstraints(constraints)
@@ -472,28 +410,16 @@ class UploadActivity : BaseActivity() {
                                 request
                             )
 
-                        Toast.makeText(
-                            this@UploadActivity,
-                            getString(R.string.upload_in_progress_toast),
-                            Toast.LENGTH_LONG
-                        ).show()
-                        finish()
+                        Toast.makeText(this@UploadActivity, getString(R.string.upload_in_progress_toast), Toast.LENGTH_LONG).show()
                     } else {
                         Toast.makeText(this@UploadActivity, "Saved offline. Will sync when connected.", Toast.LENGTH_LONG).show()
-                        finish()
                     }
+                    finish()
                 }
             } catch (e: Exception) {
-                FileLogger.e(TAG, "═══ UPLOAD ERROR ═══" +
-                        "\n  exception=${e.javaClass.simpleName}" +
-                        "\n  message=${e.message}" +
-                        "\n  patientId=$patientId" +
-                        "\n  folderName=$folderName", e)
-                e.printStackTrace()
+                FileLogger.e(TAG, "Upload initiation failed", e)
                 withContext(Dispatchers.Main) {
-                    binding.progressBar.visibility = View.GONE
                     binding.btnUpload.isEnabled = true
-                    binding.tvUploadProgress.visibility = View.GONE
                     Toast.makeText(this@UploadActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }

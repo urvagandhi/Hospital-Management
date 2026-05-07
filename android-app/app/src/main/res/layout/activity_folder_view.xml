@@ -223,6 +223,16 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Background activity banner — shows in-flight downloads/uploads/sync -->
+    <include
+        android:id="@+id/workProgressBanner"
+        layout="@layout/view_work_progress_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="@dimen/space_md"
+        android:layout_marginBottom="@dimen/space_md"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
     <!-- FABs -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabCreateFolder"

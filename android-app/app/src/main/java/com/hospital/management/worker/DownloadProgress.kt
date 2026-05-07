@@ -33,7 +33,8 @@ data class DownloadProgress(
     val serverStageHint: String? = null,
     val retryInSeconds: Int = 0,
     val fileName: String = "",
-    val errorReason: String? = null
+    val errorReason: String? = null,
+    val targetSizeMb: Int = 0
 ) {
 
     /** 0..100, or -1 when the total is unknown (indeterminate bar). */
@@ -51,6 +52,7 @@ data class DownloadProgress(
         .putInt(KEY_RETRY_SEC, retryInSeconds)
         .putString(KEY_FILE_NAME, fileName)
         .putString(KEY_ERROR, errorReason)
+        .putInt(KEY_TARGET_SIZE, targetSizeMb)
         .build()
 
     companion object {
@@ -62,6 +64,7 @@ data class DownloadProgress(
         const val KEY_RETRY_SEC = "dp_retry_sec"
         const val KEY_FILE_NAME = "dp_file_name"
         const val KEY_ERROR = "dp_error"
+        const val KEY_TARGET_SIZE = "dp_target_size"
 
         fun fromData(data: Data?): DownloadProgress? {
             if (data == null) return null
@@ -74,7 +77,8 @@ data class DownloadProgress(
                 serverStageHint = data.getString(KEY_HINT),
                 retryInSeconds = data.getInt(KEY_RETRY_SEC, 0),
                 fileName = data.getString(KEY_FILE_NAME).orEmpty(),
-                errorReason = data.getString(KEY_ERROR)
+                errorReason = data.getString(KEY_ERROR),
+                targetSizeMb = data.getInt(KEY_TARGET_SIZE, 0)
             )
         }
     }

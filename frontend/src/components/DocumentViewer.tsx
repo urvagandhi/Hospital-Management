@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { getFileSignedUrl, downloadFileCompressed } from "../services/hospitalService";
 import { isImageMime, isPdfMime } from "../utils/cloudinary";
+import { useDownload } from "../hooks/useDownload";
 
 interface FileItem {
   _id?: string;
@@ -29,6 +30,7 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   // Resolve signed URL just-in-time (falls back to stored URL for legacy public files).
   useEffect(() => {
@@ -49,17 +51,24 @@ const DocumentViewer: React.FC<Props> = ({ files, index, onClose, onIndexChange,
     setZoom(1);
   }, [index]);
 
-  const [downloading, setDownloading] = useState(false);
+  const { startDownload, updateDownload, endDownload } = useDownload();
 
   // Download the current file — uses compressed endpoint for PDFs when possible.
   const handleDownload = async () => {
     // Try compressed download for PDFs when we have patient context
     if (isPdfMime(file.mimeType) && patientId && folderName && file._id) {
+      let taskId: string | null = null;
       try {
         setDownloading(true);
-        await downloadFileCompressed(patientId, folderName, file._id, file.fileName);
+        taskId = startDownload({ status: "preparing", message: "Optimizing document for download...", targetSizeMb: 10 });
+        await downloadFileCompressed(patientId, folderName, file._id, file.fileName, (pct) => {
+          if (taskId) updateDownload(taskId, { status: "downloading", progress: pct });
+        });
+        setDownloading(false);
+        if (taskId) endDownload(taskId);
         return;
       } catch {
+        if (taskId) endDownload(taskId);
         // Fall through to legacy download
       } finally {
         setDownloading(false);

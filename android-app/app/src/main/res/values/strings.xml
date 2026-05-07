@@ -89,6 +89,8 @@
 
     <!-- Sync/upload/download banner on Dashboard -->
     <string name="banner_sync_title">Background activity</string>
+    <string name="banner_status_preparing">Preparing document…</string>
+    <string name="banner_status_downloading">Downloading… [%1$d%%]</string>
     <string name="banner_downloads_count">%1$d downloading</string>
     <string name="banner_uploads_count">%1$d uploading</string>
     <string name="banner_syncs_count">%1$d syncing</string>

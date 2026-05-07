@@ -217,11 +217,20 @@ export const downloadFileCompressed = async (
     folderName: string,
     fileId: string,
     fileName: string,
+    onProgress?: (percent: number) => void,
 ): Promise<void> => {
     try {
         const res = await api.getBlob(
             `/patients/${patientId}/files/${encodeURIComponent(folderName)}/${fileId}/compressed`,
-            { timeout: 300000 },
+            { 
+                timeout: 300000,
+                onDownloadProgress: (progressEvent: any) => {
+                    if (onProgress && progressEvent.total) {
+                        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        onProgress(percent);
+                    }
+                }
+            },
         );
         const blob = new Blob([res.data], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);

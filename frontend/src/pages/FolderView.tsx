@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import DocumentViewer from "../components/DocumentViewer";
 import Spinner from "../components/Spinner";
+import { useDownload } from "../hooks/useDownload";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import api from "../services/api";
 import { buildThumbnailUrl, isImageMime } from "../utils/cloudinary";
@@ -56,6 +57,7 @@ const FolderView: React.FC = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [zipLoading, setZipLoading] = useState(false);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const { startDownload, updateDownload, endDownload } = useDownload();
   const [thumbFailed, setThumbFailed] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
@@ -121,14 +123,23 @@ const FolderView: React.FC = () => {
 
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
+    const taskId = startDownload({ status: "preparing", message: "Merging and compressing folder...", targetSizeMb: 5 });
     try {
-      const response = await api.getBlob(`/patients/${patientId}/folders/${encodeURIComponent(folderName!)}/download/pdf`);
+      const response = await api.getBlob(`/patients/${patientId}/folders/${encodeURIComponent(folderName!)}/download/pdf`, {
+        onDownloadProgress: (progressEvent: any) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            updateDownload(taskId, { status: "downloading", progress: percent });
+          }
+        }
+      });
       downloadBlob(response.data as Blob, `${folderName}.pdf`);
     } catch (error) {
       console.error("Download failed:", error);
       alert("Download failed. Please try again.");
     } finally {
       setPdfLoading(false);
+      endDownload(taskId);
     }
   };
 
@@ -690,6 +701,7 @@ const FolderView: React.FC = () => {
           folderName={folderName}
         />
       )}
+
     </div>
   );
 };
