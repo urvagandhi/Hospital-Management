@@ -250,10 +250,17 @@ async def run_adaptive_compression_loop(
                 current_size = rebuilt_pdf.stat().st_size
                 if current_size <= target_size_bytes:
                     logger.info(f"Tier {tier} Rebuild hit target: {current_size} bytes")
+                    
+                    # Ensure Fast Web View (linearization) before returning
+                    import pikepdf
+                    linearized_pdf = tier_dir / "rebuilt_linear.pdf"
+                    with pikepdf.open(rebuilt_pdf) as p:
+                        p.save(linearized_pdf, linearize=True)
+                        
                     return CompressionResult(
-                        output_path=rebuilt_pdf,
+                        output_path=linearized_pdf,
                         tier_used=tier,
-                        output_size_bytes=current_size
+                        output_size_bytes=linearized_pdf.stat().st_size
                     )
                 
                 # 4. Ghostscript (deep compression)

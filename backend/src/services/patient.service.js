@@ -407,6 +407,36 @@ export const addFileToFolder = async (hospitalId, patientId, folderName, fileDat
 };
 
 /**
+ * Update file thumbnail
+ * @param {string} hospitalId
+ * @param {string} patientId
+ * @param {string} folderName
+ * @param {string} fileId
+ * @param {string} thumbnailUrl
+ * @returns {Promise<Object>}
+ */
+export const updateFileThumbnail = async (hospitalId, patientId, folderName, fileId, thumbnailUrl) => {
+  try {
+    const hospitalObjectId = mongoose.Types.ObjectId.isValid(hospitalId) ? new mongoose.Types.ObjectId(hospitalId) : hospitalId;
+    const patient = await Patient.findOne({ _id: patientId, hospitalId: hospitalObjectId });
+    if (!patient) return null;
+    
+    const folder = patient.folders.find((f) => f.name === folderName);
+    if (!folder) return null;
+    
+    const file = folder.files.id(fileId);
+    if (!file) return null;
+    
+    file.thumbnailUrl = thumbnailUrl;
+    await patient.save();
+    return patient;
+  } catch (error) {
+    logger.error({ event: "update_thumbnail_failed", err: error }, "[Patient Service] Update thumbnail error");
+    return null;
+  }
+};
+
+/**
  * Get files in folder
  * @param {string} hospitalId
  * @param {string} patientId

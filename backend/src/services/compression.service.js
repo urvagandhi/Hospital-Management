@@ -170,3 +170,25 @@ export async function fetchMergedStream(mergedUrl) {
     throw new ServiceUnavailableError(`Failed to fetch merged PDF: HTTP ${res.status}`);
   }
 }
+
+/**
+ * Generate a thumbnail for a single PDF.
+ * Returns { thumbnail_url }
+ */
+export async function generateThumbnail({
+  userId,
+  patientId,
+  sourcePdf
+}) {
+  return postToService("/api/generate-thumbnail", {
+    user_id: userId,
+    patient_id: patientId,
+    source_pdf: {
+      public_id: sourcePdf.public_id,
+      uploaded_at: sourcePdf.uploaded_at,
+      resource_type: sourcePdf.resource_type || "raw",
+      access_mode: sourcePdf.access_mode || "signed",
+      storage_provider: sourcePdf.storage_provider || "cloudinary"
+    }
+  });
+}

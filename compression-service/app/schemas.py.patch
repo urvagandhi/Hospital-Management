@@ -1,0 +1,12 @@
+--- app/schemas.py
++++ app/schemas.py
+@@ -107,3 +107,10 @@
+     cache_hit: bool
+ 
++class ThumbnailRequest(BaseModel):
++    source_pdf: SourcePdf
++    user_id: str
++    patient_id: str
++
++class ThumbnailResponse(BaseModel):
++    thumbnail_url: str

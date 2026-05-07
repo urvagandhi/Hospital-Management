@@ -3,6 +3,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import cloudinaryModule from 'cloudinary';
 import multer from 'multer';
 import CloudinaryStorage from 'multer-storage-cloudinary';
+import { redis } from './redis.service.js';
 
 const cloudinary = cloudinaryModule.v2;
 
@@ -373,12 +374,26 @@ function buildThumbnailUrl({ publicId, resourceType = 'image', accessMode = 'pub
 async function buildSignedUrl({
   publicId,
   resourceType = 'image',
-  ttlSeconds = 300,
+  ttlSeconds = 86400, // Phase 1: Default to 24 hours for CDN edge caching
   attachment = false,
   fileName = null,
   storageProvider = 'cloudinary'
 }) {
   if (!publicId) return null;
+
+  // Phase 1: Check Redis cache for stable URL
+  // We include attachment and fileName in the key because they modify the URL response headers
+  const cacheKey = `doc:url:${publicId}:${attachment ? 'attach' : 'inline'}:${fileName || 'default'}`;
+  try {
+    const cachedUrl = await redis.get(cacheKey);
+    if (cachedUrl) {
+      return cachedUrl;
+    }
+  } catch (err) {
+    console.error("Redis get error for signed URL:", err);
+  }
+
+  let generatedUrl = null;
 
   // PRIORITY 1: Route based on FILE's storage provider (not env flag)
   if (storageProvider === 'digitalocean' && DO_SPACES_CONFIGURED) {
@@ -405,11 +420,12 @@ async function buildSignedUrl({
       const command = new GetObjectCommand({
         Bucket: DO_BUCKET,
         Key: key,
+        ResponseCacheControl: 'public, max-age=86400, immutable', // Phase 1: Enable CDN/Browser cache
         ResponseContentDisposition: attachment
           ? `attachment; filename="${fileName || 'file'}"`
           : 'inline',
       });
-      return await getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
+      generatedUrl = await getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
     } catch (err) {
       console.error("DO Signed URL Error:", err);
       return null;
@@ -417,27 +433,38 @@ async function buildSignedUrl({
   }
 
   // PRIORITY 2: Fallback to Cloudinary for file's marked as cloudinary
-  if (!process.env.CLOUDINARY_CLOUD_NAME) {
-    return null; // No provider available
+  if (!generatedUrl && process.env.CLOUDINARY_CLOUD_NAME) {
+    try {
+      const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+      const options = {
+        resource_type: resourceType,
+        type: 'authenticated',
+        sign_url: true,
+        secure: true,
+        expires_at: expiresAt,
+      };
+      if (attachment) {
+        options.flags = fileName ? `attachment:${encodeURIComponent(fileName)}` : 'attachment';
+      }
+      generatedUrl = cloudinary.url(publicId, options);
+    } catch (err) {
+      console.error("Cloudinary Signed URL Error:", err);
+      return null;
+    }
   }
 
-  try {
-    const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
-    const options = {
-      resource_type: resourceType,
-      type: 'authenticated',
-      sign_url: true,
-      secure: true,
-      expires_at: expiresAt,
-    };
-    if (attachment) {
-      options.flags = fileName ? `attachment:${encodeURIComponent(fileName)}` : 'attachment';
+  // If a URL was generated, cache it in Redis
+  if (generatedUrl) {
+    try {
+      // Cache TTL is slightly less than URL TTL to ensure we don't serve a URL that expires mid-download
+      const cacheTtl = Math.max(60, ttlSeconds - 3600); // 1 hour buffer
+      await redis.set(cacheKey, generatedUrl, { ex: cacheTtl });
+    } catch (err) {
+      console.error("Redis set error for signed URL:", err);
     }
-    return cloudinary.url(publicId, options);
-  } catch (err) {
-    console.error("Cloudinary Signed URL Error:", err);
-    return null;
   }
+
+  return generatedUrl;
 }
 
 // ---------------------------------------------------------------------------

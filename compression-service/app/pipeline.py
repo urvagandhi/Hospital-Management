@@ -21,7 +21,7 @@ def _merge_pdfs_worker(paths: List[Path], output_path: Path) -> None:
         for other_path in paths[1:]:
             with pikepdf.open(other_path) as other:
                 pdf.pages.extend(other.pages)
-        pdf.save(output_path)
+        pdf.save(output_path, linearize=True)
 
 class CompressionPipeline:
     """Orchestrates the multi-stage compression process.

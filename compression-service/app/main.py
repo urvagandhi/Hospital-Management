@@ -110,5 +110,8 @@ app.include_router(health_router)
 app.include_router(folder_router)
 app.include_router(patient_router)
 
+from app.endpoints.thumbnail import router as thumbnail_router
+app.include_router(thumbnail_router)
+
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)

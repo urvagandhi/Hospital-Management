@@ -420,14 +420,16 @@ class FolderDetailsActivity : BaseActivity() {
 
         lifecycleScope.launch {
             try {
-                // Always resolve to a local FileProvider URI with the correct filename so
-                // Google Drive's "Save" / download button shows the real document name.
+                // Show blocking progress indicator during download
+                progressBar.visibility = View.VISIBLE
+                
                 val localFile = if (isRemote) {
-                    Toast.makeText(this@FolderDetailsActivity, "Preparing file…", Toast.LENGTH_SHORT).show()
                     withContext(Dispatchers.IO) { downloadToCache(file) }
                 } else {
                     if (fileUrl.startsWith("file://")) File(Uri.parse(fileUrl).path ?: "") else File(fileUrl)
                 }
+
+                progressBar.visibility = View.GONE
 
                 if (localFile == null || !localFile.exists()) {
                     Toast.makeText(this@FolderDetailsActivity, "Could not prepare file", Toast.LENGTH_SHORT).show()
@@ -448,26 +450,89 @@ class FolderDetailsActivity : BaseActivity() {
                     openFileWithUri(uri, "application/pdf")
                 }
             } catch (e: Exception) {
+                progressBar.visibility = View.GONE
                 Toast.makeText(this@FolderDetailsActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    /** Downloads [file] to the app's cache directory using its real fileName. Returns null on failure. */
+    /** Downloads [file] to the app's cache directory. Returns cached file instantly if it exists. */
     private suspend fun downloadToCache(file: FileItem): File? = withContext(Dispatchers.IO) {
         try {
-            val cacheDir = File(cacheDir, "viewed_files").also { if (!it.exists()) it.mkdirs() }
-            val dest = File(cacheDir, file.fileName)
+            // Phase 2: Persistent Disk Cache with Stable Identifiers
+            // Use a unique folder per file to prevent collisions, but keep the real fileName
+            // so PDF viewers display the correct name in their action bar.
+            val fileIdSafe = file._id ?: file.fileName.hashCode().toString()
+            val docDir = File(File(cacheDir, "doc_cache"), fileIdSafe).also { if (!it.exists()) it.mkdirs() }
+            val dest = File(docDir, file.fileName)
+
+            // Cache HIT: Return immediately (sub-100ms open)
+            if (dest.exists() && dest.length() > 0) {
+                return@withContext dest
+            }
+
+            // Cache MISS: Download the file via stable signed URL
             val url = java.net.URL(file.displayUrl)
             val conn = url.openConnection() as java.net.HttpURLConnection
             conn.connectTimeout = 15_000
             conn.readTimeout = 60_000
+            
+            // Allow OkHttp/UrlConnection to use its own cache if configured, 
+            // though our explicit disk cache above usually catches it first.
+            conn.useCaches = true 
+            
             conn.connect()
             if (conn.responseCode !in 200..299) return@withContext null
+            
             conn.inputStream.use { input -> dest.outputStream().use { input.copyTo(it) } }
+            
+            // Trim cache if it exceeds 250MB
+            trimCacheIfNeeded(File(cacheDir, "doc_cache"))
+            
             dest
         } catch (e: Exception) {
             null
+        }
+    }
+
+    private fun trimCacheIfNeeded(docCacheDir: File) {
+        try {
+            val maxSizeBytes = 250L * 1024 * 1024 // 250 MB
+            var currentSize = 0L
+            val allFiles = mutableListOf<File>()
+
+            // doc_cache contains subdirectories (fileIdSafe), which contain the actual files
+            docCacheDir.listFiles()?.forEach { subDir ->
+                if (subDir.isDirectory) {
+                    subDir.listFiles()?.forEach { file ->
+                        if (file.isFile) {
+                            currentSize += file.length()
+                            allFiles.add(file)
+                        }
+                    }
+                }
+            }
+
+            if (currentSize <= maxSizeBytes) return
+
+            // Sort by last modified (oldest first)
+            allFiles.sortBy { it.lastModified() }
+
+            var bytesDeleted = 0L
+            val targetBytesToDelete = currentSize - (maxSizeBytes * 0.8).toLong() // Shrink to 80%
+
+            for (file in allFiles) {
+                if (bytesDeleted >= targetBytesToDelete) break
+                val size = file.length()
+                val parent = file.parentFile
+                if (file.delete()) {
+                    bytesDeleted += size
+                    // Delete the parent folder if empty
+                    parent?.delete()
+                }
+            }
+        } catch (e: Exception) {
+            com.hospital.management.utils.FileLogger.e("CacheEviction", "Failed to trim cache: ${e.message}")
         }
     }
 

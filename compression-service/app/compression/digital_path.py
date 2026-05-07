@@ -24,7 +24,7 @@ def compress_digital_pdf_enhanced(input_path: Path, output_path: Path, job_id: s
             compress_streams=True,
             recompress_flate=True,
             object_stream_mode=pikepdf.ObjectStreamMode.generate,
-            linearize=False,
+            linearize=True,
             stream_decode_level=pikepdf.StreamDecodeLevel.generalized
         )
         

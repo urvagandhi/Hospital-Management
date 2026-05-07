@@ -43,6 +43,7 @@ async def run_ghostscript_explicit(
         "-dDetectDuplicateImages=true",
         "-dAutoRotatePages=/None",
         "-dOmitInfoDate=true",
+        "-dFastWebView=true",
         
         # Color Image Flags
         "-dDownsampleColorImages=true",

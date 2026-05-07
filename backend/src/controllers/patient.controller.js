@@ -373,6 +373,32 @@ export const uploadFile = async (req, res) => {
       mimeType: file.mimetype,
     });
 
+    // Fire-and-forget thumbnail generation for PDFs
+    if (!isImage && USE_COMPRESSION && file.mimetype === "application/pdf") {
+      const addedFolder = patient.folders.find(f => f.name === folderName);
+      const addedFile = addedFolder?.files[addedFolder.files.length - 1];
+      if (addedFile && addedFile.cloudinaryPublicId) {
+        compressionService.generateThumbnail({
+          userId: hospitalId,
+          patientId: patientId,
+          sourcePdf: {
+            public_id: addedFile.cloudinaryPublicId,
+            uploaded_at: addedFile.uploadedAt || new Date().toISOString(),
+            resource_type: resourceType,
+            access_mode: "signed",
+            storage_provider: storageProvider
+          }
+        }).then(async (result) => {
+          if (result && result.thumbnail_url) {
+            await patientService.updateFileThumbnail(hospitalId, patientId, folderName, addedFile._id, result.thumbnail_url);
+            req.log.info({ event: "thumbnail_generated_bg", thumbnail: result.thumbnail_url }, "[Patient Controller] Background thumbnail generated");
+          }
+        }).catch(e => {
+          req.log.error({ event: "thumbnail_generation_failed", err: e.message }, "[Patient Controller] Background thumbnail failed");
+        });
+      }
+    }
+
     const responseBody = {
       success: true,
       data: patient,
@@ -618,6 +644,32 @@ export const confirmDirectUpload = async (req, res) => {
       size: size || 0,
       mimeType: mimeType || "application/pdf",
     });
+
+    const isPdf = (mimeType || "application/pdf") === "application/pdf";
+    if (isPdf && USE_COMPRESSION) {
+      const addedFolder = patient.folders.find(f => f.name === folderName);
+      const addedFile = addedFolder?.files[addedFolder.files.length - 1];
+      if (addedFile && addedFile.cloudinaryPublicId) {
+        compressionService.generateThumbnail({
+          userId: hospitalId,
+          patientId: patientId,
+          sourcePdf: {
+            public_id: addedFile.cloudinaryPublicId,
+            uploaded_at: addedFile.uploadedAt || new Date().toISOString(),
+            resource_type: resourceType,
+            access_mode: accessMode,
+            storage_provider: storageProvider
+          }
+        }).then(async (result) => {
+          if (result && result.thumbnail_url) {
+            await patientService.updateFileThumbnail(hospitalId, patientId, folderName, addedFile._id, result.thumbnail_url);
+            req.log.info({ event: "thumbnail_generated_bg_direct", thumbnail: result.thumbnail_url }, "[Patient Controller] Background thumbnail generated for direct upload");
+          }
+        }).catch(e => {
+          req.log.error({ event: "thumbnail_generation_failed_direct", err: e.message }, "[Patient Controller] Background thumbnail failed for direct upload");
+        });
+      }
+    }
 
     const responseBody = {
       success: true,
