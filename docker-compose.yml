@@ -21,6 +21,12 @@ services:
       - MONGO_URI=mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@host.docker.internal:27017/hospital-management?authSource=admin
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # ── Backend (Node/Express API) ──
   backend:
@@ -42,7 +48,7 @@ services:
     # Port 5000 removed from public mapping for production hardening
     depends_on:
       compression-service:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test:
         [

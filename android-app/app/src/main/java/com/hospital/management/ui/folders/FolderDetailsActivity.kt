@@ -1080,7 +1080,11 @@ class FolderDetailsActivity : BaseActivity() {
             val hospitalId = tokenManager.getHospitalId() ?: ""
             var prevCount = -1
             database.documentDao().observeFolderQueue(patientId, folderName, hospitalId)
-                .distinctUntilChangedBy { it.size }
+                // Re-render when EITHER the row count changes OR any row's
+                // status changes (e.g. BUILDING → PENDING/UPLOADING after the
+                // PdfBuildWorker finishes). Comparing only by size missed
+                // status flips on the same row.
+                .distinctUntilChangedBy { docs -> docs.map { it.id to it.status } }
                 .collect { pendingDocs ->
                     pendingOfflineFiles = pendingDocs.map { doc ->
                         val localFile = java.io.File(android.net.Uri.parse(doc.fileUri).path ?: "")
