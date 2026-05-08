@@ -24,34 +24,43 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
 const USE_DIGITALOCEAN_AS_PRIMARY = String(process.env.USE_DIGITALOCEAN_AS_PRIMARY || 'false').toLowerCase() === 'true';
 const DO_SPACES_CONFIGURED = !!(process.env.DO_SPACES_ENDPOINT && process.env.DO_SPACES_ACCESS_KEY_ID && process.env.DO_SPACES_SECRET_ACCESS_KEY);
 
-let s3Client = null;
-// Second S3 client whose endpoint is the CDN host. Used ONLY for generating
-// presigned GET URLs so the SigV4 signature is computed with the CDN host in
-// the canonical request — this is what makes signed URLs CDN-cacheable
-// without tripping SignatureDoesNotMatch.
-let s3CdnClient = null;
+let regionalEndpoint = null;
 let DO_BUCKET = null;
 
 if (DO_SPACES_CONFIGURED) {
-  // B5: Robust region detection for DO Spaces. If endpoint is sfo3.digitaloceanspaces.com,
-  // the region must be sfo3 for v4 signatures to work correctly.
+  // B5: Robust region and style detection for DO Spaces.
+  const endpoint = process.env.DO_SPACES_ENDPOINT;
+  regionalEndpoint = endpoint;
   let detectedRegion = process.env.DO_SPACES_REGION || "us-east-1";
+  let forcePathStyle = true; // Default for regional endpoints
+
   try {
-    const endpointUrl = new URL(process.env.DO_SPACES_ENDPOINT);
+    const endpointUrl = new URL(endpoint);
     const hostParts = endpointUrl.hostname.split('.');
+    
+    // Case 1: Regional endpoint (e.g., sfo3.digitaloceanspaces.com)
     if (hostParts.length > 1 && hostParts[1] === 'digitaloceanspaces') {
       detectedRegion = hostParts[0];
+      forcePathStyle = true;
+    }
+    // Case 2: Bucket-specific endpoint (e.g., bucket.sfo3.digitaloceanspaces.com)
+    else if (hostParts.length > 2 && hostParts[2] === 'digitaloceanspaces') {
+      detectedRegion = hostParts[1];
+      forcePathStyle = false; 
+      // Convert bucket-specific to regional for the SDK to prevent double-bucket pathing
+      endpointUrl.hostname = hostParts.slice(1).join('.');
+      regionalEndpoint = endpointUrl.toString().replace(/\/$/, "");
     }
   } catch (e) { /* fallback to default */ }
 
   s3Client = new S3Client({
-    endpoint: process.env.DO_SPACES_ENDPOINT,
+    endpoint: regionalEndpoint, // Always use regional endpoint for internal SDK calls
     region: detectedRegion,
     credentials: {
       accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID,
       secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY,
     },
-    forcePathStyle: true, // Often more reliable with S3-compatible providers
+    forcePathStyle: true, // Use path-style for the main client (reliable for uploads)
   });
   DO_BUCKET = process.env.DO_SPACES_BUCKET || "spacesmymedivault";
 }
@@ -63,12 +72,22 @@ if (DO_SPACES_CONFIGURED) {
 // Set DO_SPACES_CDN_ENDPOINT in env. If unset, falls back to origin (no CDN).
 const DO_SPACES_CDN_ENDPOINT = (process.env.DO_SPACES_CDN_ENDPOINT || "").replace(/\/$/, "");
 
+// Second S3 client whose endpoint is the CDN host. Used ONLY for generating
+// presigned GET URLs so the SigV4 signature is computed with the CDN host in
+// the canonical request — this is what makes signed URLs CDN-cacheable
+// without tripping SignatureDoesNotMatch.
+let s3CdnClient = null;
+
 if (DO_SPACES_CONFIGURED && DO_SPACES_CDN_ENDPOINT) {
   let detectedRegion = process.env.DO_SPACES_REGION || "us-east-1";
   try {
-    const u = new URL(process.env.DO_SPACES_ENDPOINT);
+    const u = new URL(regionalEndpoint);
     const parts = u.hostname.split('.');
-    if (parts.length > 1 && parts[1] === 'digitaloceanspaces') detectedRegion = parts[0];
+    if (parts.length > 1 && parts[1] === 'digitaloceanspaces') {
+      detectedRegion = parts[0];
+    } else if (parts.length > 2 && parts[2] === 'digitaloceanspaces') {
+      detectedRegion = parts[1];
+    }
   } catch {}
   // Virtual-host style signing client (origin host, bucket as subdomain).
   // We sign GETs against `<bucket>.<region>.digitaloceanspaces.com`, then
@@ -77,13 +96,13 @@ if (DO_SPACES_CONFIGURED && DO_SPACES_CDN_ENDPOINT) {
   // header, so the SigV4 signature still validates while the public URL
   // hits the CDN edge.
   s3CdnClient = new S3Client({
-    endpoint: process.env.DO_SPACES_ENDPOINT,
+    endpoint: regionalEndpoint, // Use regional endpoint for virtual-host signing
     region: detectedRegion,
     credentials: {
       accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID,
       secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY,
     },
-    forcePathStyle: false,
+    forcePathStyle: false, // REQUIRED for CDN compatibility
   });
 }
 
@@ -100,6 +119,15 @@ function toCdnUrl(originUrl) {
   } catch {
     return originUrl;
   }
+}
+
+/**
+ * Builds the origin URL for a given bucket and key, respecting the
+ * endpoint style (regional vs bucket-specific) to avoid double-bucket prefixes.
+ */
+function buildOriginUrl(bucket, key) {
+  if (!regionalEndpoint) return "";
+  return `${regionalEndpoint}/${bucket}/${key}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -343,8 +371,7 @@ async function uploadToSpaces(buffer, key, mimeType = 'application/octet-stream'
 
     // Always return the CDN URL when CDN is configured. Origin URL would
     // bypass the edge cache entirely.
-    const endpoint = process.env.DO_SPACES_ENDPOINT.replace(/\/$/, "");
-    const originUrl = `${endpoint}/${DO_BUCKET}/${key}`;
+    const originUrl = buildOriginUrl(DO_BUCKET, key);
     const url = toCdnUrl(originUrl);
     return { success: true, url, key };
   } catch (error) {
@@ -448,8 +475,13 @@ async function buildSignedUrl({
     try {
       const urlObj = new URL(publicId);
       const path = decodeURIComponent(urlObj.pathname).replace(/^\//, '');
-      if (DO_SPACES_CONFIGURED && path.startsWith(`${process.env.DO_SPACES_BUCKET}/`)) {
-        normalizedKey = path.substring(process.env.DO_SPACES_BUCKET.length + 1);
+      const bucket = process.env.DO_SPACES_BUCKET || "spacesmymedivault";
+      
+      // Handle potential double-bucket prefixes: bucket/bucket/key -> bucket/key
+      if (DO_SPACES_CONFIGURED && path.startsWith(`${bucket}/${bucket}/`)) {
+        normalizedKey = path.substring(bucket.length + 1);
+      } else if (DO_SPACES_CONFIGURED && path.startsWith(`${bucket}/`)) {
+        normalizedKey = path.substring(bucket.length + 1);
       } else {
         normalizedKey = path;
       }
@@ -645,11 +677,27 @@ async function generateSignedUploadParamsForSpaces(hospitalId, patientMongoId, f
       ACL: 'private',
     });
     const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 }); // 15 min
+
+    // Ensure we return a regional endpoint style to the client.
+    // If the configured endpoint is bucket-specific, convert it to regional.
+    // This prevents the mobile app (which appends /bucket/ to the endpoint)
+    // from creating double-bucket paths.
+    let clientEndpoint = process.env.DO_SPACES_ENDPOINT.replace(/\/$/, "");
+    try {
+      const u = new URL(clientEndpoint);
+      const hostParts = u.hostname.split('.');
+      if (hostParts.length > 2 && hostParts[2] === 'digitaloceanspaces') {
+        // bucket.region.digitaloceanspaces.com -> region.digitaloceanspaces.com
+        u.hostname = hostParts.slice(1).join('.');
+        clientEndpoint = u.toString().replace(/\/$/, "");
+      }
+    } catch (e) {}
+
     return {
       success: true,
       presignedUrl,
       key,
-      endpoint: process.env.DO_SPACES_ENDPOINT,
+      endpoint: clientEndpoint,
       bucket: DO_BUCKET,
       expires: 900,
     };
