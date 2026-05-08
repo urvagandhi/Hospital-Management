@@ -24,6 +24,7 @@ if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && proce
 const USE_DIGITALOCEAN_AS_PRIMARY = String(process.env.USE_DIGITALOCEAN_AS_PRIMARY || 'false').toLowerCase() === 'true';
 const DO_SPACES_CONFIGURED = !!(process.env.DO_SPACES_ENDPOINT && process.env.DO_SPACES_ACCESS_KEY_ID && process.env.DO_SPACES_SECRET_ACCESS_KEY);
 
+let s3Client = null;
 let regionalEndpoint = null;
 let DO_BUCKET = null;
 
