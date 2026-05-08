@@ -75,46 +75,59 @@ async def run_ghostscript_explicit(
 
     cmd.append(str(input_path))
 
+    cmd_str = " ".join(cmd)
+    input_mb = input_path.stat().st_size / (1024 * 1024)
     logger.info(
-        f"GS Tier {tier} Start",
+        f"GS Tier {tier} Start ({input_mb:.2f} MB in) — cmd: {cmd_str}",
         extra={
             "job_id": job_id,
             "event": "gs_explicit_start",
             "tier": tier,
-            "dpi": dpi
+            "dpi": dpi,
+            "input_mb": round(input_mb, 2),
+            "cmd": cmd_str,
         }
     )
+
+    import time as _time
+    _gs_start = _time.monotonic()
 
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    
+
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
     except asyncio.TimeoutError:
         proc.kill()
         raise RuntimeError("Ghostscript timed out after 300 seconds")
 
+    elapsed_ms = int((_time.monotonic() - _gs_start) * 1000)
+
     if proc.returncode != 0:
         err_msg = stderr.decode(errors="replace")
         out_msg = stdout.decode(errors="replace")
         logger.error(
-            f"Ghostscript failed with code {proc.returncode}",
+            f"Ghostscript failed with code {proc.returncode} after {elapsed_ms}ms",
             extra={
                 "job_id": job_id,
                 "stderr": err_msg[:300],
                 "stdout": out_msg[:300],
+                "elapsed_ms": elapsed_ms,
             }
         )
         raise RuntimeError(f"Ghostscript failed (code {proc.returncode}): {err_msg[:500]}")
 
+    out_mb = output_path.stat().st_size / (1024 * 1024)
     logger.info(
-        f"GS Tier {tier} Done",
+        f"GS Tier {tier} Done ({input_mb:.2f} MB → {out_mb:.2f} MB in {elapsed_ms}ms)",
         extra={
             "job_id": job_id,
             "event": "gs_explicit_done",
-            "size": output_path.stat().st_size
+            "tier": tier,
+            "size": output_path.stat().st_size,
+            "elapsed_ms": elapsed_ms,
         }
     )

@@ -17,6 +17,7 @@ is unsafe (fork copies a half-initialised event loop).
 """
 import logging
 import multiprocessing as mp
+import os
 from concurrent.futures import ProcessPoolExecutor
 from threading import Lock
 from typing import Optional
@@ -34,11 +35,18 @@ def get_cpu_pool() -> ProcessPoolExecutor:
         with _lock:
             if _pool is None:
                 ctx = mp.get_context("spawn")
-                # max_workers=1 keeps memory bounded on Render. The pool
-                # serializes compression jobs, which is fine — only one job
-                # runs per request and we already serialize via FastAPI.
-                _pool = ProcessPoolExecutor(max_workers=1, mp_context=ctx)
-                logger.info("CPU process pool initialised (spawn, max_workers=1)")
+                # max_workers=2 maps to the production droplet's 2 vCPUs so
+                # two source PDFs can rasterize in parallel within a single
+                # patient-download job. Memory ceiling per worker stays the
+                # same (the inner ThreadPoolExecutor already releases the
+                # GIL during PIL work), so peak RSS is ~2× the single-worker
+                # baseline — still inside the 2 GB box per the audits.
+                workers = int(os.environ.get("CPU_POOL_WORKERS", "2"))
+                _pool = ProcessPoolExecutor(max_workers=workers, mp_context=ctx)
+                logger.info(
+                    "CPU process pool initialised (spawn, max_workers=%d)",
+                    workers,
+                )
     return _pool
 
 

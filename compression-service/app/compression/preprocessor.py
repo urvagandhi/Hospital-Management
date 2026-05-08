@@ -42,6 +42,13 @@ def extract_images_from_pdf(pdf_path: Path, extract_dir: Path, job_id: str) -> t
     """
     extract_dir.mkdir(parents=True, exist_ok=True)
 
+    input_mb = pdf_path.stat().st_size / (1024 * 1024)
+    logger.info(
+        f"[extract_start] pdfimages on {input_mb:.2f} MB PDF",
+        extra={"job_id": job_id, "event": "extract_start", "input_mb": round(input_mb, 2)},
+    )
+
+    _ext_start = time.monotonic()
     try:
         subprocess.run(
             ["pdfimages", "-all", "-j", "-jp2", str(pdf_path), str(extract_dir / "img")],
@@ -54,13 +61,20 @@ def extract_images_from_pdf(pdf_path: Path, extract_dir: Path, job_id: str) -> t
         raise RuntimeError(f"Image extraction failed: {e.stderr.decode()}")
 
     extracted_files = sorted(extract_dir.glob("img-*"))
+    elapsed_ms = int((time.monotonic() - _ext_start) * 1000)
+
     if not extracted_files:
         logger.warning(f"No images extracted from {pdf_path}", extra={"job_id": job_id})
         return [], []
 
     logger.info(
-        f"Extracted {len(extracted_files)} images from {pdf_path}",
-        extra={"job_id": job_id, "image_count": len(extracted_files)}
+        f"[extract_done] Extracted {len(extracted_files)} images in {elapsed_ms}ms",
+        extra={
+            "job_id": job_id,
+            "event": "extract_done",
+            "image_count": len(extracted_files),
+            "elapsed_ms": elapsed_ms,
+        }
     )
 
     page_dims = get_page_dimensions(pdf_path)
@@ -130,14 +144,6 @@ def _process_single_image(
                 subsampling=tier_config["subsampling"],
             )
 
-        elapsed = (time.time() - start_time) * 1000
-        if i % 10 == 0:  # Log every 10 images to avoid log flooding
-            used_ram = psutil.Process().memory_info().rss / (1024 * 1024)
-            logger.info(
-                f"Processed image {i} in {elapsed:.0f}ms (RAM: {used_ram:.1f}MB)",
-                extra={"job_id": job_id}
-            )
-
         return (i, out_path)
 
     except Exception as e:
@@ -184,6 +190,36 @@ def process_images_for_tier(
     processed_dir = tier_dir / "processed"
     processed_dir.mkdir(parents=True, exist_ok=True)
 
+    total = len(extracted_files)
+    logger.info(
+        f"[rebuild_tier_start] tier={tier} pages={total} dpi={target_dpi} q={config['quality']}",
+        extra={
+            "job_id": job_id,
+            "event": "rebuild_tier_start",
+            "tier": tier,
+            "pages": total,
+        },
+    )
+    _tier_start = time.monotonic()
+
+    PROGRESS_EVERY = max(10, total // 8) if total else 10
+    completed = 0
+
+    def _log_progress():
+        if total and (completed == total or completed % PROGRESS_EVERY == 0):
+            elapsed_ms = int((time.monotonic() - _tier_start) * 1000)
+            logger.info(
+                f"[rebuild_progress] tier={tier} page {completed}/{total} ({elapsed_ms}ms)",
+                extra={
+                    "job_id": job_id,
+                    "event": "rebuild_progress",
+                    "tier": tier,
+                    "completed": completed,
+                    "total": total,
+                    "elapsed_ms": elapsed_ms,
+                },
+            )
+
     # For small batches (≤2 images), serial is faster than thread overhead
     if len(extracted_files) <= _IMG_THREAD_WORKERS:
         results = []
@@ -194,6 +230,8 @@ def process_images_for_tier(
             )
             if out_path is not None:
                 results.append((i, out_path))
+            completed += 1
+            _log_progress()
     else:
         # Parallel processing — 2 threads keeps peak memory bounded on
         # 2GB RAM while still leveraging both vCPUs via PIL GIL release.
@@ -211,9 +249,24 @@ def process_images_for_tier(
                 idx, out_path = future.result()
                 if out_path is not None:
                     results.append((idx, out_path))
+                completed += 1
+                _log_progress()
 
     # Sort by original index to preserve page ordering (critical for PDF rebuild)
     results.sort(key=lambda x: x[0])
+
+    elapsed_ms = int((time.monotonic() - _tier_start) * 1000)
+    logger.info(
+        f"[rebuild_tier_done] tier={tier} {len(results)}/{total} pages in {elapsed_ms}ms",
+        extra={
+            "job_id": job_id,
+            "event": "rebuild_tier_done",
+            "tier": tier,
+            "kept": len(results),
+            "total": total,
+            "elapsed_ms": elapsed_ms,
+        },
+    )
     return [path for _, path in results]
 
 
