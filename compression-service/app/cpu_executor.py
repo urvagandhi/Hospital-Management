@@ -28,6 +28,23 @@ _pool: Optional[ProcessPoolExecutor] = None
 _lock = Lock()
 
 
+def _worker_init() -> None:
+    """Initializer for spawned workers — attach a stdout INFO handler so
+    logger.info() calls inside extract/rebuild actually surface in
+    `docker compose logs`. Without this, `spawn` workers boot with
+    logging at WARNING and no handler, silently dropping INFO."""
+    import logging as _logging
+    import sys as _sys
+    root = _logging.getLogger()
+    root.setLevel(_logging.INFO)
+    if not any(getattr(h, "_hms_worker", False) for h in root.handlers):
+        h = _logging.StreamHandler(_sys.stdout)
+        h.setFormatter(_logging.Formatter("%(asctime)s.%(msecs)03d INFO: %(message)s",
+                                          datefmt="%H:%M:%S"))
+        h._hms_worker = True  # type: ignore[attr-defined]
+        root.addHandler(h)
+
+
 def get_cpu_pool() -> ProcessPoolExecutor:
     """Return the shared CPU process pool, creating it on first use."""
     global _pool
@@ -42,7 +59,11 @@ def get_cpu_pool() -> ProcessPoolExecutor:
                 # GIL during PIL work), so peak RSS is ~2× the single-worker
                 # baseline — still inside the 2 GB box per the audits.
                 workers = int(os.environ.get("CPU_POOL_WORKERS", "2"))
-                _pool = ProcessPoolExecutor(max_workers=workers, mp_context=ctx)
+                _pool = ProcessPoolExecutor(
+                    max_workers=workers,
+                    mp_context=ctx,
+                    initializer=_worker_init,
+                )
                 logger.info(
                     "CPU process pool initialised (spawn, max_workers=%d)",
                     workers,
