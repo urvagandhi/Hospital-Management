@@ -11,6 +11,7 @@ import pikepdf
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
+from app.admission import AdmissionFull, heavy_gate
 from app.audit import write_audit_log
 from app.config import config
 from app.cloudinary_client import (
@@ -334,7 +335,46 @@ async def folder_download(body: FolderDownloadRequest, request: Request):
                     cache_hit=False,
                 )
 
-            return await asyncio.wait_for(_pipeline(), timeout=_PIPELINE_TIMEOUT)
+            # Admission gate keeps concurrent CPU jobs <= ADMISSION_CAPACITY.
+            # Cache-hit path above is intentionally outside the gate — it does
+            # zero CPU/RAM work.
+            async with heavy_gate.acquire_or_raise():
+                return await asyncio.wait_for(_pipeline(), timeout=_PIPELINE_TIMEOUT)
+
+    except AdmissionFull:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        logger.warning(
+            "Admission rejected — sidecar busy",
+            extra={
+                **log_extra,
+                "event": "admission_rejected",
+                "metrics": {"in_flight": heavy_gate.in_flight},
+            },
+        )
+        await write_audit_log(
+            db,
+            user_id=body.user_id,
+            patient_id=body.patient_id,
+            folder_ids=[body.folder_id],
+            request_type="folder",
+            target_size_bytes=target_bytes,
+            input_size_bytes=0,
+            output_size_bytes=0,
+            tier_used=None,
+            duration_ms=elapsed_ms,
+            cache_hit=False,
+            content_hash=content_hash,
+            error_reason="admission_rejected",
+            job_id=job_id,
+        )
+        return JSONResponse(
+            status_code=503,
+            headers={"Retry-After": "30"},
+            content={
+                "error": "busy",
+                "detail": "Compression service at capacity, retry shortly",
+            },
+        )
 
     except asyncio.TimeoutError:
         elapsed_ms = int((time.monotonic() - start) * 1000)

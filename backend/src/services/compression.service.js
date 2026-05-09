@@ -41,6 +41,14 @@ export class ServiceUnavailableError extends Error {
   }
 }
 
+export class ServiceBusyError extends Error {
+  constructor(retryAfterSeconds) {
+    super("Compression service at capacity");
+    this.name = "ServiceBusyError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 // ── Config ─────────────────────────────────────────────────
 
 const SERVICE_URL = config.COMPRESSION_SERVICE_URL;
@@ -79,8 +87,15 @@ async function postToService(endpoint, body) {
   if (res.status === 413) throw new SizeFloorError(errBody.min_achievable_mb, errBody.ram_constrained);
   if (res.status === 502) throw new SourceFetchError(errBody.failed_public_id, errBody.detail);
   if (res.status === 504) throw new ServiceTimeoutError();
+  // 503 + error:"busy" is the sidecar's admission-control rejection (the
+  // gate is at capacity). Distinct from a real outage so the client can
+  // surface a "try again in 30s" message instead of "service down".
+  if (res.status === 503 && errBody.error === "busy") {
+    const retryAfter = parseInt(res.headers.get("retry-after") || "30", 10);
+    throw new ServiceBusyError(Number.isFinite(retryAfter) ? retryAfter : 30);
+  }
   logger.error(
-    { event: "sidecar_503", status: res.status, body: errBody },
+    { event: "sidecar_unexpected_status", status: res.status, body: errBody },
     `Compression service returned ${res.status}`,
   );
   throw new ServiceUnavailableError(`Compression service returned ${res.status}`);

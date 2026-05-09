@@ -1263,6 +1263,15 @@ function handleCompressionError(error, res, context) {
       detail: "Compression took too long. Try per-folder mode.",
     });
   }
+  if (error instanceof compressionService.ServiceBusyError) {
+    res.set("Retry-After", String(error.retryAfterSeconds));
+    return res.status(503).json({
+      success: false,
+      error: "compression_busy",
+      retry_after_seconds: error.retryAfterSeconds,
+      detail: `Compression service is at capacity. Please retry in ${error.retryAfterSeconds}s.`,
+    });
+  }
   if (error instanceof compressionService.ServiceUnavailableError) {
     return res.status(503).json({
       success: false,

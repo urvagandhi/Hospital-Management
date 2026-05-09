@@ -5,6 +5,16 @@ services:
       context: ./compression-service
       dockerfile: Dockerfile
     restart: unless-stopped
+    # Resource ceilings tuned for the 2 vCPU / 2 GB droplet shared with
+    # host-level MongoDB (~400 MB) + Redis (~100 MB) + backend (~350 MB)
+    # + nginx (~50 MB). Sidecar gets the largest slice because each CPU
+    # pool worker peaks ~400 MB during PIL rasterisation; with 2 workers
+    # the peak is ~900 MB. mem_limit caps it so an OOM event kills only
+    # the sidecar (which auto-restarts) instead of the kernel choosing
+    # MongoDB. Tune ADMISSION_CAPACITY in lockstep with cpus.
+    mem_limit: 1200m
+    mem_reservation: 600m
+    cpus: 1.5
     environment:
       - PORT=8000
       - INTERNAL_API_SECRET=${COMPRESSION_SERVICE_SECRET}
@@ -19,6 +29,9 @@ services:
       - DO_SPACES_REGION=${DO_SPACES_REGION}
       - USE_DIGITALOCEAN_AS_PRIMARY=${USE_DIGITALOCEAN_AS_PRIMARY}
       - MONGO_URI=mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-changeme}@host.docker.internal:27017/hospital-management?authSource=admin
+      # Concurrent CPU jobs admitted before sidecar returns 503 Busy.
+      # Must be <= cpus above (one CPU pool worker per concurrent job).
+      - ADMISSION_CAPACITY=${COMPRESSION_ADMISSION_CAPACITY:-2}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -34,6 +47,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
+    mem_limit: 450m
+    mem_reservation: 250m
+    cpus: 0.75
     env_file:
       - .env
     environment:
@@ -74,6 +90,8 @@ services:
         VITE_API_URL: /api
         VITE_APP_NAME: ${VITE_APP_NAME:-MyMediVault}
     restart: unless-stopped
+    mem_limit: 100m
+    cpus: 0.25
     ports:
       - "80:80"
       - "443:443"

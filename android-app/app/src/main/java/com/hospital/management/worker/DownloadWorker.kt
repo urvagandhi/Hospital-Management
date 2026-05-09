@@ -122,6 +122,8 @@ class DownloadWorker(
         const val ERROR_AUTH_EXPIRED = "AUTH_EXPIRED"
         const val ERROR_SERVER = "SERVER_ERROR"
         const val ERROR_CANCELLED = "CANCELLED"
+        // 503 from backend's compression endpoint — sidecar at capacity, retryable.
+        const val ERROR_BUSY = "BUSY"
 
         // Legacy progress keys kept so older observers compile — prefer DownloadProgress.fromData.
         const val KEY_PROGRESS = "progress"
@@ -323,6 +325,15 @@ class DownloadWorker(
                     in 400..499 -> return@withContext failWith(
                         ERROR_SERVER, "Client error ${conn.responseCode}", fileName
                     )
+                    // 503 = backend is alive but compression sidecar is at capacity.
+                    // The response carries Retry-After (default 30s). Surface to the
+                    // user as RETRYING so WorkManager backs off and tries again rather
+                    // than marking the job dead on first contention.
+                    503 -> {
+                        val retryAfter = conn.getHeaderField("Retry-After")?.toIntOrNull() ?: 30
+                        FileLogger.w(TAG, "503 compression_busy retry_after=${retryAfter}s attempt=${runAttemptCount + 1}/$maxRetries")
+                        return@withContext maybeRetry(maxRetries, ERROR_BUSY, "Server busy (503)", fileName)
+                    }
                     in 500..599 -> return@withContext failWith(
                         ERROR_SERVER, "Server error ${conn.responseCode}", fileName
                     )
@@ -718,6 +729,10 @@ class DownloadWorker(
                 in 200..299 -> { /* ok, parse */ }
                 401, 403 -> throw IOException("Status poll auth failed ($code)")
                 404, 410 -> throw IOException("Download job expired or not found ($code)")
+                // 503 during polling = sidecar still busy; treat as transient
+                // "preparing" so pollUntilReady keeps its wait loop going instead
+                // of surfacing a hard failure.
+                503 -> return StatusResponse(status = "preparing", stage = "Server busy, waiting…", url = null, message = null)
                 in 500..599 -> throw IOException("Status poll server error $code")
                 else -> throw IOException("Unexpected status poll code $code")
             }

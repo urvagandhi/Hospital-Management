@@ -9,12 +9,15 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from pathlib import Path
+
 from app.config import config
 from app.cpu_executor import get_cpu_pool, shutdown_cpu_pool
 from app.logging_config import setup_logging
 from app.endpoints.health import router as health_router
 from app.endpoints.folder import router as folder_router
 from app.endpoints.patient import router as patient_router
+from app.temp_sweeper import temp_sweeper_loop
 from prometheus_client import make_asgi_app
 
 setup_logging()
@@ -74,11 +77,13 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
             await asyncio.sleep(300) # Every 5 minutes
 
     heartbeat_task = asyncio.create_task(heartbeat())
-    
+    sweeper_task = asyncio.create_task(temp_sweeper_loop(Path(config.JOB_TMP_DIR)))
+
     logger.info("Compression service started", extra={"event": "startup"})
     yield
-    # Shutdown: close Mongo + CPU pool + stop heartbeat
+    # Shutdown: close Mongo + CPU pool + stop background tasks
     heartbeat_task.cancel()
+    sweeper_task.cancel()
     client.close()
     shutdown_cpu_pool()
     logger.info("Compression service stopped", extra={"event": "shutdown"})
