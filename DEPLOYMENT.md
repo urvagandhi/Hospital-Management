@@ -151,3 +151,97 @@ git pull
 docker compose down
 docker compose up -d --build
 ```
+
+---
+
+## MongoDB Backup & Restore
+
+### Setup (one-time)
+
+Credentials file (root-only):
+```bash
+sudo tee /etc/mongo-backup.env > /dev/null <<'EOF'
+MONGO_USER=admin
+MONGO_PASSWORD=<your-admin-password>
+MONGO_AUTH_DB=admin
+BACKUP_DIR=/backup/mongodb
+KEEP_DAYS=7
+EOF
+sudo chmod 600 /etc/mongo-backup.env
+```
+
+Backup script at `/usr/local/bin/mongo-backup.sh` — compresses with `--gzip`, retains 7 days, logs size + disk usage to `/var/log/mongo-backup.log`.
+
+Crontab (runs as root, daily at 2 AM):
+
+```cron
+0 2 * * * /usr/local/bin/mongo-backup.sh >> /var/log/mongo-backup-cron.log 2>&1
+```
+
+Log rotation at `/etc/logrotate.d/mongo-backup` — 14-day history, compressed, copytruncate.
+
+### Manual backup
+
+```bash
+sudo /usr/local/bin/mongo-backup.sh
+ls /backup/mongodb/
+```
+
+### Restore — test (safe, into a temporary database)
+
+```bash
+source /etc/mongo-backup.env
+
+mongorestore \
+  --username "$MONGO_USER" --password "$MONGO_PASSWORD" \
+  --authenticationDatabase "$MONGO_AUTH_DB" \
+  --nsFrom="hospital-management.*" \
+  --nsTo="hospital-management-restore-test.*" \
+  --gzip \
+  /backup/mongodb/backup-YYYY-MM-DD_HH-MM
+
+# Verify counts
+mongosh --username "$MONGO_USER" --password "$MONGO_PASSWORD" \
+  --authenticationDatabase "$MONGO_AUTH_DB" --quiet \
+  --eval "
+    db = db.getSiblingDB('hospital-management-restore-test');
+    print('hospitals:', db.hospitals.countDocuments());
+    print('patients: ', db.patients.countDocuments());
+    print('sessions: ', db.sessions.countDocuments());
+    print('auditlogs:', db.auditlogs.countDocuments());
+  "
+
+# Drop test database when done
+mongosh --username "$MONGO_USER" --password "$MONGO_PASSWORD" \
+  --authenticationDatabase "$MONGO_AUTH_DB" --quiet \
+  --eval "db.getSiblingDB('hospital-management-restore-test').dropDatabase()"
+```
+
+### Restore — production (EMERGENCY ONLY — overwrites live data)
+
+```bash
+source /etc/mongo-backup.env
+
+# Stop the app first to prevent writes during restore
+docker compose stop backend compression-service
+
+mongorestore \
+  --username "$MONGO_USER" --password "$MONGO_PASSWORD" \
+  --authenticationDatabase "$MONGO_AUTH_DB" \
+  --nsFrom="hospital-management.*" \
+  --nsTo="hospital-management.*" \
+  --drop \
+  --gzip \
+  /backup/mongodb/backup-YYYY-MM-DD_HH-MM
+
+# Restart after restore
+docker compose start backend compression-service
+```
+
+**IMPORTANT:** `--drop` deletes each collection before restoring it. Only run this in an actual data-loss emergency. Always test the restore first using the test method above.
+
+### Key notes
+
+- Backups are stored on the same 50 GB droplet disk. Copy to external storage (e.g. S3/Spaces) for true offsite redundancy.
+- The correct restore path is the **backup root** (e.g. `backup-2026-05-09_08-49`), NOT the `hospital-management` subdirectory inside it.
+- `--gzip` is required on both `mongodump` and `mongorestore` — omitting it causes all `.bson.gz` files to be silently skipped.
