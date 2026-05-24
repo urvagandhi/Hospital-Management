@@ -25,6 +25,17 @@ jobs:
 
             cd /root/Hospital-Management
 
+            # Self-heal: nuke any hash-prefixed orphan container that's grabbed
+            # the canonical name from a prior interrupted `docker compose up
+            # --force-recreate`. If we don't, compose says "no changes" forever
+            # and `docker inspect hospital-management-backend-1` keeps failing.
+            ORPHANS=$(docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]+_hospital-management-' || true)
+            if [ -n "$ORPHANS" ]; then
+              echo "Removing orphan containers:"
+              echo "$ORPHANS"
+              echo "$ORPHANS" | xargs -r docker rm -f
+            fi
+
             # Get the current commit before pulling
             OLD_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "")
 
@@ -81,9 +92,18 @@ jobs:
             echo "Deployment complete."
 
             echo "Verifying deployment health..."
-            # Wait for backend to be healthy (hospital-management-backend-1)
+            # Resolve the backend container by compose service, not by hardcoded
+            # name — a leftover orphan can grab the canonical name and force the
+            # new container to a hash-prefixed one (e.g. "9bfa..._backend-1"),
+            # which then makes a literal `docker inspect backend-1` fail with
+            # "no such object" even though the service is healthy.
             for i in {1..10}; do
-              STATUS=$(docker inspect -f '{{.State.Health.Status}}' hospital-management-backend-1 2>/dev/null || echo "not found")
+              BACKEND_CID=$(docker compose ps -q backend 2>/dev/null | head -1)
+              if [ -z "$BACKEND_CID" ]; then
+                STATUS="container not found"
+              else
+                STATUS=$(docker inspect -f '{{.State.Health.Status}}' "$BACKEND_CID" 2>/dev/null || echo "not found")
+              fi
               if [ "$STATUS" == "healthy" ]; then
                 echo "✅ Backend is healthy!"
                 break
