@@ -24,12 +24,13 @@ import Hospital from "../models/Hospital.js";
  */
 export const createSession = async (hospitalId, deviceId, ipAddress, userAgent, isMobile = false, { forceCreate = false } = {}) => {
   try {
-    // MOBILE SESSION LIMIT: 2 concurrent mobile sessions per user.
-    //   → If the hospital already has 2+ active mobile sessions, revoke the
+    // MOBILE SESSION LIMIT: N concurrent mobile sessions per user (env-driven,
+    // defaults to 2; demos may bump to 10–15 via MOBILE_SESSION_LIMIT).
+    //   → If the hospital already has N+ active mobile sessions, revoke the
     //     OLDEST (by createdAt) so there's room for this new one — leaving
     //     the previous device logged in alongside the new one.
     //   Web: multiple concurrent sessions allowed (read-only portal).
-    const MOBILE_SESSION_LIMIT = 2;
+    const MOBILE_SESSION_LIMIT = config.MOBILE_SESSION_LIMIT;
     // Pre-create eviction: makes the common path produce 2 sessions.
     // A second post-create sweep below catches the race where two logins
     // both pass this check at the same time.

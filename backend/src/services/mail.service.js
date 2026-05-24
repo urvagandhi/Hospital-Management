@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import config from "../config/env.js";
 import logger from "../utils/logger.js";
 import { geolocateIp, formatLocation } from "./geoip.service.js";
 
@@ -354,10 +355,11 @@ export async function sendSessionRevokedEmail(to, info) {
   let headline;
   let explainer;
   if (reason === "SESSION_LIMIT_EXCEEDED") {
+    const limit = config.MOBILE_SESSION_LIMIT;
     headline = "A device was signed out to make room";
     explainer = newLabel
-      ? `A new sign-in on <strong>${newLabel}</strong> exceeded your 2-device mobile limit, so the oldest session on <strong>${oldLabel}</strong> was ended.`
-      : `A new sign-in exceeded your 2-device mobile limit, so the oldest session on <strong>${oldLabel}</strong> was ended.`;
+      ? `A new sign-in on <strong>${newLabel}</strong> exceeded your ${limit}-device mobile limit, so the oldest session on <strong>${oldLabel}</strong> was ended.`
+      : `A new sign-in exceeded your ${limit}-device mobile limit, so the oldest session on <strong>${oldLabel}</strong> was ended.`;
   } else if (reason === "ADMIN_REVOKE") {
     headline = "A session was ended";
     explainer = `The session on <strong>${oldLabel}</strong> was ended from another of your devices.`;
