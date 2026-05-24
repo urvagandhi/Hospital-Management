@@ -49,6 +49,11 @@ const config = {
   OTP_LENGTH: parseInt(process.env.OTP_LENGTH || "6"),
   MAX_OTP_ATTEMPTS: parseInt(process.env.MAX_OTP_ATTEMPTS || "3"),
 
+  // Concurrent mobile sessions allowed per hospital. Production default = 2
+  // (1 primary + 1 spare; the 3rd login evicts the oldest). Demo droplets can
+  // bump this to 10–15. Clamped >= 1 in case someone sets it to 0/garbage.
+  MOBILE_SESSION_LIMIT: Math.max(1, parseInt(process.env.MOBILE_SESSION_LIMIT || "2", 10) || 2),
+
   // SMTP (email)
   SMTP_HOST: process.env.SMTP_HOST,
   SMTP_PORT: process.env.SMTP_PORT || 587,

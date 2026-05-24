@@ -5,6 +5,7 @@
  */
 
 import crypto from "crypto";
+import config from "../config/env.js";
 import AuditLog from "../models/AuditLog.js";
 import Hospital from "../models/Hospital.js";
 import Session from "../models/Session.js";
@@ -1508,7 +1509,7 @@ export const checkSessionConflict = async (req, res) => {
     }
 
     // Keep this in sync with token.service.js createSession() logic.
-    const MOBILE_SESSION_LIMIT = 2;
+    const MOBILE_SESSION_LIMIT = config.MOBILE_SESSION_LIMIT;
 
     const activeMobileSessions = await Session.find({
       hospitalId: hospital._id,
