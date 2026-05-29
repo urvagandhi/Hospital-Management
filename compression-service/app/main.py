@@ -39,11 +39,17 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     db = client.get_default_database()
     application.state.mongo_db = db
 
-    # Verify connection
-    await client.admin.command("ping")
-
-    print(f"[Database] \u2713 MongoDB connected successfully")
-    print(f"[Database] Database: {db.name}")
+    # Verify connection with a short timeout so transient network lag doesn't block startup
+    try:
+        await asyncio.wait_for(client.admin.command("ping"), timeout=5.0)
+        print(f"[Database] ✓ MongoDB connected successfully")
+        print(f"[Database] Database: {db.name}")
+    except Exception as e:
+        logger.warning(
+            "MongoDB verification ping failed on startup — continuing startup anyway",
+            extra={"event": "db_ping_failed", "error": str(e)}
+        )
+        print(f"[Database] ⚠️ MongoDB connected with warnings (ping failed: {e})")
 
     # Warm the CPU process pool BEFORE accepting traffic — first
     # spawn() takes ~300ms which we don't want on the critical path of
