@@ -80,10 +80,18 @@ jobs:
 
             if [ -z "$SERVICES_TO_BUILD" ]; then
               echo "No service changes detected (or already up-to-date). Ensuring containers are running..."
-              docker compose up -d
+              if ! docker compose up -d; then
+                echo "❌ docker compose up failed! Printing logs:"
+                docker compose logs
+                exit 1
+              fi
             else
               echo "Building and restarting specific containers: $SERVICES_TO_BUILD"
-              docker compose up -d --build $SERVICES_TO_BUILD
+              if ! docker compose up -d --build $SERVICES_TO_BUILD; then
+                echo "❌ docker compose up --build failed! Printing logs:"
+                docker compose logs
+                exit 1
+              fi
             fi
 
             echo "Cleaning unused Docker images..."

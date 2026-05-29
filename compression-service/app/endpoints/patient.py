@@ -11,8 +11,8 @@ from pathlib import Path
 import httpx
 import pikepdf
 from fastapi import APIRouter, Request
-from fastapi.background import BackgroundTask
 from fastapi.responses import FileResponse, JSONResponse
+from starlette.background import BackgroundTask
 
 from app.admission import AdmissionFull, heavy_gate
 from app.audit import write_audit_log
