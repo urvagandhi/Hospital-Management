@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import com.hospital.management.utils.FileLogger
+import com.hospital.management.utils.DownloadErrorMapper
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.ForegroundInfo
@@ -317,13 +318,18 @@ class DownloadWorker(
                         os.flush()
                     }
                 }
-                when (conn.responseCode) {
+                val responseCode = conn.responseCode
+                when (responseCode) {
                     in 200..206 -> { /* OK */ }
                     401, 403 -> return@withContext failWith(
-                        ERROR_AUTH_EXPIRED, "Auth expired (${conn.responseCode})", fileName
+                        ERROR_AUTH_EXPIRED,
+                        DownloadErrorMapper.resolveHttpErrorMessage(responseCode, readErrorBody(conn)),
+                        fileName
                     )
                     in 400..499 -> return@withContext failWith(
-                        ERROR_SERVER, "Client error ${conn.responseCode}", fileName
+                        ERROR_SERVER,
+                        DownloadErrorMapper.resolveHttpErrorMessage(responseCode, readErrorBody(conn)),
+                        fileName
                     )
                     // 503 = backend is alive but compression sidecar is at capacity.
                     // The response carries Retry-After (default 30s). Surface to the
@@ -332,10 +338,17 @@ class DownloadWorker(
                     503 -> {
                         val retryAfter = conn.getHeaderField("Retry-After")?.toIntOrNull() ?: 30
                         FileLogger.w(TAG, "503 compression_busy retry_after=${retryAfter}s attempt=${runAttemptCount + 1}/$maxRetries")
-                        return@withContext maybeRetry(maxRetries, ERROR_BUSY, "Server busy (503)", fileName)
+                        return@withContext maybeRetry(
+                            maxRetries,
+                            ERROR_BUSY,
+                            DownloadErrorMapper.resolveHttpErrorMessage(responseCode, readErrorBody(conn)),
+                            fileName
+                        )
                     }
                     in 500..599 -> return@withContext failWith(
-                        ERROR_SERVER, "Server error ${conn.responseCode}", fileName
+                        ERROR_SERVER,
+                        DownloadErrorMapper.resolveHttpErrorMessage(responseCode, readErrorBody(conn)),
+                        fileName
                     )
                     else -> return@withContext maybeRetry(
                         maxRetries, ERROR_NETWORK,
@@ -598,6 +611,15 @@ class DownloadWorker(
             }
         }
         return builder.build()
+    }
+
+    private fun readErrorBody(conn: HttpURLConnection): String? {
+        val stream = conn.errorStream ?: return null
+        return try {
+            stream.bufferedReader().use { it.readText() }.takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private suspend fun maybeRetry(

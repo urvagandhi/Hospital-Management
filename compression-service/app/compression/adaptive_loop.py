@@ -1,18 +1,23 @@
 import asyncio
 import gc
 import logging
-import psutil
 import shutil
 import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
-from app.compression.preprocessor import extract_images_from_pdf, process_images_for_tier
-from app.compression.rebuilder import rebuild_pdf_from_images
-from app.compression.ghostscript import run_ghostscript_explicit
+import psutil
+
 from app.compression.classifier import PdfType
+from app.compression.ghostscript import run_ghostscript_explicit
+from app.compression.preprocessor import (
+    extract_images_from_pdf,
+    process_images_for_tier,
+)
+from app.compression.rebuilder import rebuild_pdf_from_images
 from app.cpu_executor import get_cpu_pool
-from dataclasses import dataclass
+
 
 @dataclass
 class CompressionResult:
@@ -121,7 +126,7 @@ async def _try_ghostscript_only(
         )
 
     # Try progressively aggressive GS tiers until one hits the target.
-    for tier in range(gs_start_tier, 5):
+    for tier in range(gs_start_tier, 6):
         gs_dir = work_dir / f"gs_only_tier_{tier}"
         gs_dir.mkdir(parents=True, exist_ok=True)
         gs_output = gs_dir / "gs_output.pdf"
@@ -221,14 +226,14 @@ async def run_adaptive_compression_loop(
 
         best_output = input_path
         any_tier_skipped = False
-        
+
         # ── Tier loop (resize → rebuild → GS) ──
-        for tier in range(start_tier, 5):
+        for tier in range(start_tier, 6):
             # 1. RAM Guard
             mem = psutil.virtual_memory()
             available_ram = mem.available / (1024 * 1024)
             used_ram = psutil.Process().memory_info().rss / (1024 * 1024)
-            
+
             if available_ram < MIN_AVAILABLE_RAM_MB:
                 logger.warning(
                     f"Low memory ({available_ram:.1f}MB). Skipping tier {tier}",
@@ -239,7 +244,7 @@ async def run_adaptive_compression_loop(
 
             tier_dir = work_dir / f"tier_{tier}"
             tier_dir.mkdir(parents=True, exist_ok=True)
-            
+
             try:
                 # 2. Resize + re-encode (reuses already-extracted images)
                 image_paths = await loop.run_in_executor(
@@ -258,31 +263,31 @@ async def run_adaptive_compression_loop(
                     rebuild_pdf_from_images,
                     image_paths, rebuilt_pdf
                 )
-                
+
                 # Fast path: Check if rebuild alone hit target
                 current_size = rebuilt_pdf.stat().st_size
                 if current_size <= target_size_bytes:
                     logger.info(f"Tier {tier} Rebuild hit target: {current_size} bytes")
-                    
+
                     # Ensure Fast Web View (linearization) before returning
                     import pikepdf
                     linearized_pdf = tier_dir / "rebuilt_linear.pdf"
                     with pikepdf.open(rebuilt_pdf) as p:
                         p.save(linearized_pdf, linearize=True)
-                        
+
                     return CompressionResult(
                         output_path=linearized_pdf,
                         tier_used=tier,
                         output_size_bytes=linearized_pdf.stat().st_size
                     )
-                
+
                 # 4. Ghostscript (deep compression)
                 gs_output = tier_dir / "gs_output.pdf"
                 await run_ghostscript_explicit(rebuilt_pdf, gs_output, tier, job_id)
-                
+
                 current_size = gs_output.stat().st_size
                 best_output = gs_output
-                
+
                 if current_size <= target_size_bytes:
                     logger.info(f"Tier {tier} GS hit target: {current_size} bytes")
                     return CompressionResult(
@@ -290,7 +295,7 @@ async def run_adaptive_compression_loop(
                         tier_used=tier,
                         output_size_bytes=current_size
                     )
-                    
+
                 # 5. Cleanup tier-specific processed images to save RAM/Disk
                 shutil.rmtree(tier_dir / "processed", ignore_errors=True)
                 gc.collect()

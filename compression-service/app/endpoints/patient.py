@@ -1,19 +1,21 @@
 import asyncio
 import logging
+import re
 import shutil
 import time
 import uuid
+import zipfile
 from functools import partial
 from pathlib import Path
 
 import httpx
 import pikepdf
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.background import BackgroundTask
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.admission import AdmissionFull, heavy_gate
 from app.audit import write_audit_log
-from app.config import config
 from app.cloudinary_client import (
     SourceFetchError,
     check_cache,
@@ -22,22 +24,34 @@ from app.cloudinary_client import (
     generate_delivery_url,
     upload_merged,
 )
-from app.compression.classifier import PdfType
-from app.pipeline import pipeline
-from app.compression.adaptive_loop import CompressionResult, SizeFloorBreached
-from app.compression.hasher import compute_content_hash
+from app.compression.adaptive_loop import SizeFloorBreached
 from app.compression.cover_page import generate_cover_page
+from app.compression.hasher import compute_content_hash
+from app.config import config
 from app.merged_cache import (
     get_meta as get_cache_meta,
+)
+from app.merged_cache import (
     upsert_meta as upsert_cache_meta,
 )
-from app.schemas import DownloadResponse, PatientDownloadRequest, SourcePdf
 from app.metrics import CACHE_HITS_TOTAL, CACHE_META_MISSING_TOTAL
+from app.pipeline import pipeline
+from app.schemas import (
+    DownloadResponse,
+    PatientDownloadRequest,
+    PatientPdfZipRequest,
+    PatientZipRequest,
+    SourcePdf,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _PIPELINE_TIMEOUT = 600.0
+
+
+def _safe_name(name: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9.\-]", "_", name)
 
 
 @router.post("/api/patient-download")
@@ -57,9 +71,7 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
 
     target_bytes = int(body.target_size_mb * 1_048_576)
     content_hash = compute_content_hash(
-        all_source_pdfs, 
-        body.target_size_mb, 
-        has_cover=True
+        all_source_pdfs, body.target_size_mb, has_cover=True
     )
 
     log_extra = {
@@ -395,7 +407,6 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
             },
         )
 
-
     except SourceFetchError as e:
         elapsed_ms = int((time.monotonic() - start) * 1000)
         await write_audit_log(
@@ -449,3 +460,411 @@ async def patient_download(body: PatientDownloadRequest, request: Request):
 
     finally:
         shutil.rmtree(job_dir, ignore_errors=True)
+
+
+@router.post("/api/patient-pdf-zip")
+async def patient_pdf_zip(body: PatientPdfZipRequest, request: Request):
+    job_id = str(uuid.uuid4())
+    start = time.monotonic()
+    job_dir = Path(config.JOB_TMP_DIR) / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    db = request.app.state.mongo_db
+
+    folder_ids: list[str] = []
+    pdf_items: list[tuple[str, str]] = []
+
+    for folder in body.folders:
+        folder_ids.append(folder.folder_id)
+        pdf_items.append((folder.display_name, folder.pdf_url))
+
+    log_extra = {
+        "job_id": job_id,
+        "user_id": body.user_id,
+        "patient_id": body.patient_id,
+    }
+
+    logger.info(
+        "Patient PDF ZIP started",
+        extra={
+            **log_extra,
+            "event": "patient_pdf_zip_start",
+            "metrics": {
+                "folder_count": len(folder_ids),
+            },
+        },
+    )
+
+    async def _fetch_pdf(url: str, dest: Path, http_client: httpx.AsyncClient) -> None:
+        response = await http_client.get(url)
+        response.raise_for_status()
+        dest.write_bytes(response.content)
+
+    try:
+        async with httpx.AsyncClient() as http_client:
+
+            async def _pipeline() -> FileResponse:
+                nonlocal job_dir
+                local_paths: list[Path] = []
+                for index, (_, pdf_url) in enumerate(pdf_items):
+                    local_path = job_dir / f"folder_{index}.pdf"
+                    await _fetch_pdf(pdf_url, local_path, http_client)
+                    local_paths.append(local_path)
+
+                zip_path = job_dir / "patient_pdf_records.zip"
+                with zipfile.ZipFile(
+                    zip_path,
+                    "w",
+                    compression=zipfile.ZIP_DEFLATED,
+                    compresslevel=9,
+                ) as archive:
+                    for local_path, (folder_name, _) in zip(local_paths, pdf_items):
+                        archive.write(
+                            local_path,
+                            arcname=f"{_safe_name(folder_name)}.pdf",
+                        )
+
+                elapsed_ms = int((time.monotonic() - start) * 1000)
+                await write_audit_log(
+                    db,
+                    user_id=body.user_id,
+                    patient_id=body.patient_id,
+                    folder_ids=folder_ids,
+                    request_type="patient_pdf_zip",
+                    target_size_bytes=0,
+                    input_size_bytes=sum(p.stat().st_size for p in local_paths),
+                    output_size_bytes=zip_path.stat().st_size,
+                    tier_used=None,
+                    duration_ms=elapsed_ms,
+                    cache_hit=False,
+                    content_hash=compute_content_hash([], 0, has_cover=False),
+                    job_id=job_id,
+                )
+
+                return FileResponse(
+                    zip_path,
+                    media_type="application/zip",
+                    filename=f"{_safe_name(body.patient_name or body.patient_id)}_records_by_folder.zip",
+                    background=BackgroundTask(
+                        shutil.rmtree, job_dir, ignore_errors=True
+                    ),
+                )
+
+            async with heavy_gate.acquire_or_raise():
+                return await asyncio.wait_for(_pipeline(), timeout=_PIPELINE_TIMEOUT)
+
+    except AdmissionFull:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        await write_audit_log(
+            db,
+            user_id=body.user_id,
+            patient_id=body.patient_id,
+            folder_ids=folder_ids,
+            request_type="patient_pdf_zip",
+            target_size_bytes=0,
+            input_size_bytes=0,
+            output_size_bytes=0,
+            tier_used=None,
+            duration_ms=elapsed_ms,
+            cache_hit=False,
+            content_hash=compute_content_hash([], 0, has_cover=False),
+            error_reason="admission_rejected",
+            job_id=job_id,
+        )
+        return JSONResponse(
+            status_code=503,
+            headers={"Retry-After": "30"},
+            content={
+                "error": "busy",
+                "detail": "Compression service at capacity, retry shortly",
+            },
+        )
+
+    except asyncio.TimeoutError:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        await write_audit_log(
+            db,
+            user_id=body.user_id,
+            patient_id=body.patient_id,
+            folder_ids=folder_ids,
+            request_type="patient_pdf_zip",
+            target_size_bytes=0,
+            input_size_bytes=0,
+            output_size_bytes=0,
+            tier_used=None,
+            duration_ms=elapsed_ms,
+            cache_hit=False,
+            content_hash=compute_content_hash([], 0, has_cover=False),
+            error_reason="processing_timeout",
+            job_id=job_id,
+        )
+        return JSONResponse(
+            status_code=504,
+            content={
+                "error": "processing_timeout",
+                "detail": "ZIP generation exceeded 300s limit",
+            },
+        )
+
+    except SourceFetchError as e:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        await write_audit_log(
+            db,
+            user_id=body.user_id,
+            patient_id=body.patient_id,
+            folder_ids=folder_ids,
+            request_type="patient_pdf_zip",
+            target_size_bytes=0,
+            input_size_bytes=0,
+            output_size_bytes=0,
+            tier_used=None,
+            duration_ms=elapsed_ms,
+            cache_hit=False,
+            content_hash=compute_content_hash([], 0, has_cover=False),
+            error_reason=f"source_fetch_failed:{e.public_id}",
+            job_id=job_id,
+        )
+        return JSONResponse(
+            status_code=502,
+            content={
+                "error": "source_fetch_failed",
+                "failed_public_id": e.public_id,
+                "detail": e.detail,
+            },
+        )
+
+    except Exception:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        logger.exception(
+            "Unhandled patient PDF ZIP error", extra={**log_extra, "event": "error"}
+        )
+        await write_audit_log(
+            db,
+            user_id=body.user_id,
+            patient_id=body.patient_id,
+            folder_ids=folder_ids,
+            request_type="patient_pdf_zip",
+            target_size_bytes=0,
+            input_size_bytes=0,
+            output_size_bytes=0,
+            tier_used=None,
+            duration_ms=elapsed_ms,
+            cache_hit=False,
+            content_hash=compute_content_hash([], 0, has_cover=False),
+            error_reason="internal_error",
+            job_id=job_id,
+        )
+        return JSONResponse(status_code=500, content={"error": "internal_error"})
+
+    finally:
+        shutil.rmtree(job_dir, ignore_errors=True)
+
+
+@router.post("/api/patient-zip")
+async def patient_zip(body: PatientZipRequest, request: Request):
+    job_id = str(uuid.uuid4())
+    start = time.monotonic()
+    job_dir = Path(config.JOB_TMP_DIR) / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    db = request.app.state.mongo_db
+
+    folder_ids: list[str] = []
+    flat_sources: list[SourcePdf] = []
+    flat_items: list[tuple[str, str]] = []
+
+    for folder in body.folders:
+        if not folder.files:
+            continue
+        folder_ids.append(folder.folder_id)
+        for file_entry in folder.files:
+            flat_sources.append(file_entry.source_pdf)
+            flat_items.append((folder.display_name, file_entry.file_name))
+
+    content_hash = compute_content_hash(flat_sources, 0, has_cover=False)
+    zip_path = job_dir / "patient_records.zip"
+    cleanup_job_dir = True
+
+    log_extra = {
+        "job_id": job_id,
+        "user_id": body.user_id,
+        "patient_id": body.patient_id,
+    }
+
+    logger.info(
+        "Patient ZIP started",
+        extra={
+            **log_extra,
+            "event": "patient_zip_start",
+            "metrics": {
+                "folder_count": len(folder_ids),
+                "source_count": len(flat_sources),
+            },
+        },
+    )
+
+    try:
+        async with httpx.AsyncClient() as http_client:
+
+            async def _pipeline() -> FileResponse:
+                nonlocal cleanup_job_dir
+                local_paths = await fetch_source_pdfs(
+                    flat_sources, job_dir, job_id, http_client
+                )
+                input_size = sum(p.stat().st_size for p in local_paths)
+
+                with zipfile.ZipFile(
+                    zip_path,
+                    "w",
+                    compression=zipfile.ZIP_DEFLATED,
+                    compresslevel=9,
+                ) as archive:
+                    for local_path, (folder_name, file_name) in zip(
+                        local_paths, flat_items
+                    ):
+                        archive.write(
+                            local_path,
+                            arcname=f"{_safe_name(folder_name)}/{_safe_name(file_name)}",
+                        )
+
+                output_size = zip_path.stat().st_size
+                elapsed_ms = int((time.monotonic() - start) * 1000)
+
+                await write_audit_log(
+                    db,
+                    user_id=body.user_id,
+                    patient_id=body.patient_id,
+                    folder_ids=folder_ids,
+                    request_type="patient_zip",
+                    target_size_bytes=0,
+                    input_size_bytes=input_size,
+                    output_size_bytes=output_size,
+                    tier_used=None,
+                    duration_ms=elapsed_ms,
+                    cache_hit=False,
+                    content_hash=content_hash,
+                    job_id=job_id,
+                )
+
+                cleanup_job_dir = False
+                return FileResponse(
+                    zip_path,
+                    media_type="application/zip",
+                    filename=f"{_safe_name(body.patient_name or body.patient_id)}_records.zip",
+                    background=BackgroundTask(
+                        shutil.rmtree, job_dir, ignore_errors=True
+                    ),
+                )
+
+            async with heavy_gate.acquire_or_raise():
+                return await asyncio.wait_for(_pipeline(), timeout=_PIPELINE_TIMEOUT)
+
+    except AdmissionFull:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        logger.warning(
+            "Patient ZIP admission rejected — sidecar busy",
+            extra={**log_extra, "event": "admission_rejected"},
+        )
+        await write_audit_log(
+            db,
+            user_id=body.user_id,
+            patient_id=body.patient_id,
+            folder_ids=folder_ids,
+            request_type="patient_zip",
+            target_size_bytes=0,
+            input_size_bytes=0,
+            output_size_bytes=0,
+            tier_used=None,
+            duration_ms=elapsed_ms,
+            cache_hit=False,
+            content_hash=content_hash,
+            error_reason="admission_rejected",
+            job_id=job_id,
+        )
+        return JSONResponse(
+            status_code=503,
+            headers={"Retry-After": "30"},
+            content={
+                "error": "busy",
+                "detail": "Compression service at capacity, retry shortly",
+            },
+        )
+
+    except asyncio.TimeoutError:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        logger.error("Patient ZIP timeout", extra={**log_extra, "event": "timeout"})
+        await write_audit_log(
+            db,
+            user_id=body.user_id,
+            patient_id=body.patient_id,
+            folder_ids=folder_ids,
+            request_type="patient_zip",
+            target_size_bytes=0,
+            input_size_bytes=0,
+            output_size_bytes=0,
+            tier_used=None,
+            duration_ms=elapsed_ms,
+            cache_hit=False,
+            content_hash=content_hash,
+            error_reason="processing_timeout",
+            job_id=job_id,
+        )
+        return JSONResponse(
+            status_code=504,
+            content={
+                "error": "processing_timeout",
+                "detail": "ZIP generation exceeded 300s limit",
+            },
+        )
+
+    except SourceFetchError as e:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        await write_audit_log(
+            db,
+            user_id=body.user_id,
+            patient_id=body.patient_id,
+            folder_ids=folder_ids,
+            request_type="patient_zip",
+            target_size_bytes=0,
+            input_size_bytes=0,
+            output_size_bytes=0,
+            tier_used=None,
+            duration_ms=elapsed_ms,
+            cache_hit=False,
+            content_hash=content_hash,
+            error_reason=f"source_fetch_failed:{e.public_id}",
+            job_id=job_id,
+        )
+        return JSONResponse(
+            status_code=502,
+            content={
+                "error": "source_fetch_failed",
+                "failed_public_id": e.public_id,
+                "detail": e.detail,
+            },
+        )
+
+    except Exception:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        logger.exception(
+            "Unhandled patient ZIP error", extra={**log_extra, "event": "error"}
+        )
+        await write_audit_log(
+            db,
+            user_id=body.user_id,
+            patient_id=body.patient_id,
+            folder_ids=folder_ids,
+            request_type="patient_zip",
+            target_size_bytes=0,
+            input_size_bytes=0,
+            output_size_bytes=0,
+            tier_used=None,
+            duration_ms=elapsed_ms,
+            cache_hit=False,
+            content_hash=content_hash,
+            error_reason="internal_error",
+            job_id=job_id,
+        )
+        return JSONResponse(status_code=500, content={"error": "internal_error"})
+
+    finally:
+        if cleanup_job_dir:
+            shutil.rmtree(job_dir, ignore_errors=True)

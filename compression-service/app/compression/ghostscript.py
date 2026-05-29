@@ -12,6 +12,7 @@ GS_TIER_CONFIGS = {
     2: {"dpi": 150, "quality": 58, "downsample": "/Bicubic"},
     3: {"dpi": 150, "quality": 45, "downsample": "/Average"},
     4: {"dpi": 120, "quality": 32, "downsample": "/Subsample"},
+    5: {"dpi": 100, "quality": 25, "downsample": "/Subsample"},
 }
 
 async def run_ghostscript_explicit(
@@ -21,11 +22,12 @@ async def run_ghostscript_explicit(
     job_id: str,
 ) -> None:
     """Run Ghostscript with explicit flags for deep stream compression.
-    
+
     Bypasses -dPDFSETTINGS presets in favor of fine-grained control.
     Forces re-encoding using AutoFilterColorImages=false.
     """
-    config = GS_TIER_CONFIGS.get(tier, GS_TIER_CONFIGS[4])
+
+    config = GS_TIER_CONFIGS.get(tier, GS_TIER_CONFIGS[5])
     dpi = config["dpi"]
     quality = config["quality"]
     downsample_type = config["downsample"]
@@ -33,7 +35,10 @@ async def run_ghostscript_explicit(
 
     cmd = [
         "gs",
-        "-dBATCH", "-dNOPAUSE", "-dQUIET", "-dSAFER",
+        "-dBATCH",
+        "-dNOPAUSE",
+        "-dQUIET",
+        "-dSAFER",
         "-sDEVICE=pdfwrite",
         "-dCompatibilityLevel=1.4",
         "-dSubsetFonts=true",
@@ -44,7 +49,6 @@ async def run_ghostscript_explicit(
         "-dAutoRotatePages=/None",
         "-dOmitInfoDate=true",
         "-dFastWebView=true",
-        
         # Color Image Flags
         "-dDownsampleColorImages=true",
         f"-dColorImageDownsampleType={downsample_type}",
@@ -52,18 +56,15 @@ async def run_ghostscript_explicit(
         "-dAutoFilterColorImages=false",
         "-dColorImageFilter=/DCTEncode",
         f"-dJPEGQ={quality}",
-        
         # Gray Image Flags
         "-dDownsampleGrayImages=true",
         f"-dGrayImageDownsampleType={downsample_type}",
         f"-dGrayImageResolution={dpi}",
         "-dAutoFilterGrayImages=false",
         "-dGrayImageFilter=/DCTEncode",
-
         # Mono Image Flags
         "-dDownsampleMonoImages=true",
         "-dMonoImageResolution=300" if tier <= 2 else "-dMonoImageResolution=200",
-        
         f"-sOutputFile={output_path}",
     ]
 

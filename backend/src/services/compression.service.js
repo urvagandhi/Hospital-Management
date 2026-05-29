@@ -1,7 +1,7 @@
 /**
  * Compression Service Client
- * Proxies PDF merge+compress requests to the Python compression service on Render.
- * Used when USE_COMPRESSION_SERVICE=true.
+ * Proxies PDF merge+compress and ZIP download requests to the Python
+ * compression service on Render. Used when USE_COMPRESSION_SERVICE=true.
  */
 
 import config from "../config/env.js";
@@ -57,6 +57,25 @@ const TIMEOUT_MS = 600_000;
 
 // ── Internal helper ────────────────────────────────────────
 
+function handleServiceError(res, errBody) {
+  if (res.status === 413) throw new SizeFloorError(errBody.min_achievable_mb, errBody.ram_constrained);
+  if (res.status === 502) throw new SourceFetchError(errBody.failed_public_id, errBody.detail);
+  if (res.status === 504) throw new ServiceTimeoutError();
+  // 503 + error:"busy" is the sidecar's admission-control rejection (the
+  // gate is at capacity). Distinct from a real outage so the client can
+  // surface a "try again in 30s" message instead of "service down".
+  if (res.status === 503 && errBody.error === "busy") {
+    const retryAfter = parseInt(res.headers.get("retry-after") || "30", 10);
+    throw new ServiceBusyError(Number.isFinite(retryAfter) ? retryAfter : 30);
+  }
+
+  logger.error(
+    { event: "sidecar_unexpected_status", status: res.status, body: errBody },
+    `Compression service returned ${res.status}`,
+  );
+  throw new ServiceUnavailableError(`Compression service returned ${res.status}`);
+}
+
 async function postToService(endpoint, body) {
   const url = `${SERVICE_URL}${endpoint}`;
   const controller = new AbortController();
@@ -83,22 +102,36 @@ async function postToService(endpoint, body) {
   if (res.ok) return res.json();
 
   const errBody = await res.json().catch(() => ({}));
+  handleServiceError(res, errBody);
+}
 
-  if (res.status === 413) throw new SizeFloorError(errBody.min_achievable_mb, errBody.ram_constrained);
-  if (res.status === 502) throw new SourceFetchError(errBody.failed_public_id, errBody.detail);
-  if (res.status === 504) throw new ServiceTimeoutError();
-  // 503 + error:"busy" is the sidecar's admission-control rejection (the
-  // gate is at capacity). Distinct from a real outage so the client can
-  // surface a "try again in 30s" message instead of "service down".
-  if (res.status === 503 && errBody.error === "busy") {
-    const retryAfter = parseInt(res.headers.get("retry-after") || "30", 10);
-    throw new ServiceBusyError(Number.isFinite(retryAfter) ? retryAfter : 30);
+async function postStreamToService(endpoint, body) {
+  const url = `${SERVICE_URL}${endpoint}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Secret": SERVICE_SECRET,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err.name === "AbortError") throw new ServiceTimeoutError();
+    throw new ServiceUnavailableError(err.message);
+  } finally {
+    clearTimeout(timer);
   }
-  logger.error(
-    { event: "sidecar_unexpected_status", status: res.status, body: errBody },
-    `Compression service returned ${res.status}`,
-  );
-  throw new ServiceUnavailableError(`Compression service returned ${res.status}`);
+
+  if (res.ok) return res;
+
+  const errBody = await res.json().catch(() => ({}));
+  handleServiceError(res, errBody);
 }
 
 // ── Public API ─────────────────────────────────────────────
@@ -155,6 +188,59 @@ export async function compressPatient({
     remarks: remarks || "",
     target_size_mb: targetSizeMb,
     folder_map: folderMap,
+  });
+}
+
+/**
+ * Stream a patient ZIP archive directly from the compression service.
+ * Returns a fetch Response whose body is the ZIP stream.
+ */
+export async function downloadPatientZip({
+  patientId,
+  userId,
+  patientName,
+  folders,
+}) {
+  return postStreamToService("/api/patient-zip", {
+    patient_id: patientId,
+    user_id: userId,
+    patient_name: patientName || "",
+    folders: folders.map((folder) => ({
+      folder_id: folder.folderId,
+      display_name: folder.displayName || "",
+      files: folder.files.map((file) => ({
+        file_name: file.fileName,
+        source_pdf: {
+          public_id: file.publicId,
+          uploaded_at: file.uploadedAt,
+          resource_type: file.resourceType || "raw",
+          access_mode: file.accessMode || "signed",
+          storage_provider: file.storageProvider || "cloudinary",
+        },
+      })),
+    })),
+  });
+}
+
+/**
+ * Stream the per-folder PDF bundle ZIP directly from the compression service.
+ * Returns a fetch Response whose body is the ZIP stream.
+ */
+export async function downloadPatientPdfZip({
+  patientId,
+  userId,
+  patientName,
+  folders,
+}) {
+  return postStreamToService("/api/patient-pdf-zip", {
+    patient_id: patientId,
+    user_id: userId,
+    patient_name: patientName || "",
+    folders: folders.map((folder) => ({
+      folder_id: folder.folderId,
+      display_name: folder.displayName || "",
+      pdf_url: folder.pdfUrl,
+    })),
   });
 }
 

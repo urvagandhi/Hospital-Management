@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
 from typing import Optional
 
+from pydantic import BaseModel, Field
 
 # ── Shared ──
 
@@ -42,11 +42,42 @@ class FolderEntry(BaseModel):
     files_info: list[FileInfo] = []  # For cover page document list
 
 
+class ZipFileEntry(BaseModel):
+    file_name: str
+    source_pdf: SourcePdf
+
+
+class ZipFolderEntry(BaseModel):
+    folder_id: str
+    display_name: str
+    files: list[ZipFileEntry] = Field(default_factory=list)
+
+
+class PdfZipFolderEntry(BaseModel):
+    folder_id: str
+    display_name: str
+    pdf_url: str
+
+
 class PatientDownloadRequest(BaseModel):
     patient_id: str
     user_id: str
     folder_map: list[FolderEntry]
     target_size_mb: float = Field(default=10.0, gt=0, le=100)
+
+
+class PatientZipRequest(BaseModel):
+    patient_id: str
+    user_id: str
+    patient_name: str = ""
+    folders: list[ZipFolderEntry] = Field(default_factory=list)
+
+
+class PatientPdfZipRequest(BaseModel):
+    patient_id: str
+    user_id: str
+    patient_name: str = ""
+    folders: list[PdfZipFolderEntry] = Field(default_factory=list)
 
 
 # ── Responses ──

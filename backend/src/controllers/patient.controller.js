@@ -29,6 +29,8 @@ import getClientIp from "../utils/clientIp.js";
 import logger from "../utils/logger.js";
 
 const USE_COMPRESSION = config.USE_COMPRESSION_SERVICE;
+const PER_FOLDER_COMPRESSION_CONCURRENCY = 2;
+const PER_FOLDER_BUSY_RETRIES = 2;
 
 /** Fire-and-forget audit log — never blocks the response */
 function logAudit(userId, action, req, details) {
@@ -40,6 +42,58 @@ function logAudit(userId, action, req, details) {
     userAgent: req.headers?.["user-agent"],
     details,
   }).catch((e) => logger.error({ event: "audit_log_failed", err: e }, "[Audit] log failed"));
+}
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function mapWithConcurrency(items, limit, mapper) {
+  const results = new Array(items.length);
+  const workerCount = Math.min(limit, items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (true) {
+      const currentIndex = nextIndex;
+      if (currentIndex >= items.length) {
+        return;
+      }
+      nextIndex += 1;
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+    }
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+async function compressFolderWithRetry(payload) {
+  for (let attempt = 0; attempt <= PER_FOLDER_BUSY_RETRIES; attempt += 1) {
+    try {
+      return await compressionService.compressFolder(payload);
+    } catch (error) {
+      if (
+        error instanceof compressionService.ServiceBusyError &&
+        attempt < PER_FOLDER_BUSY_RETRIES
+      ) {
+        const waitSeconds = Math.max(error.retryAfterSeconds || 30, 1);
+        logger.warn(
+          {
+            event: "folder_compression_busy_retry",
+            folderId: payload.folderId,
+            attempt: attempt + 1,
+            wait_seconds: waitSeconds,
+          },
+          "[Patient Controller] Folder compression busy, retrying",
+        );
+        await delay(waitSeconds * 1000);
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error("Folder compression retry loop exited unexpectedly");
 }
 
 /**
@@ -617,9 +671,9 @@ export const confirmDirectUpload = async (req, res) => {
     // ─────────────────────────────────────────────────────────────────────
     if (storageProvider === "digitalocean") {
       // For DO, we assume the client successfully PUT the file to the presigned URL.
-      // We'll trust the provided secureUrl for now. 
+      // We'll trust the provided secureUrl for now.
       // accessMode is always 'signed' for DO in our current architecture.
-      accessMode = "signed"; 
+      accessMode = "signed";
       req.log.debug({ event: "confirm_do_upload", publicId }, "[Patient Controller] DigitalOcean upload confirmed via client");
     } else {
       // Cloudinary-specific verification
@@ -869,7 +923,7 @@ export const getFileSignedUrl = async (req, res) => {
 
     // CRITICAL: buildSignedUrl is now async and routes based on file.storageProvider
     const publicIdToUse = file.storageProvider === "digitalocean" ? (file.storageKey || file.fileUrl) : file.storageKey;
-    
+
     const signed = await buildSignedUrl({
       publicId: publicIdToUse,
       resourceType: file.resourceType || "image",
@@ -931,24 +985,66 @@ export const downloadAllZip = async (req, res) => {
   try {
     const { patientId } = req.params;
     const hospitalId = req.hospital?.id;
-    const { selectedFolders } = req.body || {};
+    const { selectedFolders, folders } = req.body || {};
+    const folderSelections = Array.isArray(selectedFolders) && selectedFolders.length > 0
+      ? selectedFolders
+      : Array.isArray(folders) && folders.length > 0
+        ? folders
+        : null;
 
     const patient = await patientService.getPatientById(hospitalId, patientId);
+    const foldersToInclude = folderSelections
+      ? patient.folders.filter((folder) =>
+        folderSelections.some((selected) => selected.toLowerCase() === folder.name.toLowerCase()),
+      )
+      : patient.folders;
 
-    logAudit(hospitalId, "PATIENT_EXPORT_ZIP", req, { patientId, selectedFolders: selectedFolders || "all" });
+    logAudit(hospitalId, "PATIENT_EXPORT_ZIP", req, { patientId, selectedFolders: folderSelections || "all" });
 
     req.setTimeout(600000);
     res.setTimeout(600000);
 
-    await zipService.generatePatientZip(patient, res, selectedFolders || null);
+    if (USE_COMPRESSION) {
+      const zipFolders = foldersToInclude
+        .filter((folder) => folder.files.length > 0)
+        .map((folder) => ({
+          folderId: String(folder._id),
+          displayName: folder.name,
+          files: folder.files
+            .filter((file) => file.storageKey)
+            .map((file) => ({
+              fileName: file.fileName,
+              publicId: file.storageKey,
+              uploadedAt: (file.uploadedAt || file.createdAt || new Date()).toISOString(),
+              resourceType: file.resourceType || "raw",
+              accessMode: file.accessMode || "signed",
+              storageProvider: file.storageProvider || "cloudinary",
+            })),
+        }));
+
+      const zipResponse = await compressionService.downloadPatientZip({
+        patientId: String(patient._id),
+        userId: String(hospitalId),
+        patientName: patient.patientName,
+        folders: zipFolders,
+      });
+
+      const contentType = zipResponse.headers.get("content-type") || "application/zip";
+      const contentDisposition = zipResponse.headers.get("content-disposition");
+      const contentLength = zipResponse.headers.get("content-length");
+
+      res.setHeader("Content-Type", contentType);
+      if (contentDisposition) res.setHeader("Content-Disposition", contentDisposition);
+      if (contentLength) res.setHeader("Content-Length", contentLength);
+
+      await pipeline(Readable.fromWeb(zipResponse.body), res);
+      return;
+    }
+
+    await zipService.generatePatientZip(patient, res, folderSelections || null);
   } catch (error) {
     req.log.error({ event: "patient_zip_error", err: error }, "[Patient Controller] ZIP error");
-    if (!res.headersSent) {
-      return res.status(error.message === "Patient not found" ? 404 : 500).json({
-        success: false,
-        message: error.message === "Patient not found" ? error.message : "Failed to generate ZIP",
-      });
-    }
+    if (!res.headersSent) return handleCompressionError(error, res, "Patient ZIP");
   }
 };
 
@@ -1007,41 +1103,47 @@ export const downloadAllPdf = async (req, res) => {
     });
 
     if (mode === "per-folder") {
-      // Compress each folder in parallel
-      const folderResults = await Promise.all(
-        foldersWithFiles.map((folder) => {
+      // Keep folder compression under the sidecar admission cap.
+      // Promise.all can flood the sidecar with more heavy jobs than it can admit.
+      const folderResults = await mapWithConcurrency(
+        foldersWithFiles,
+        PER_FOLDER_COMPRESSION_CONCURRENCY,
+        async (folder) => {
           const payload = buildFolderPayload(folder);
-          return compressionService.compressFolder({
-            ...payload,
-            userId: String(hospitalId),
-            patientId: String(patient._id),
-          });
-        }),
+          try {
+            return await compressFolderWithRetry({
+              ...payload,
+              userId: String(hospitalId),
+              patientId: String(patient._id),
+            });
+          } catch (error) {
+            error.folderName = folder.name;
+            error.folderId = String(folder._id);
+            throw error;
+          }
+        },
       );
 
-      // Fetch all merged PDFs from Cloudinary in parallel
-      const fetchResults = await Promise.all(
-        folderResults.map(async (result, i) => {
-          const upstream = await compressionService.fetchMergedStream(result.merged_url);
-          return {
-            name: `${foldersWithFiles[i].name}.pdf`,
-            buffer: Buffer.from(await upstream.arrayBuffer()),
-          };
-        }),
-      );
+      const zipResponse = await compressionService.downloadPatientPdfZip({
+        patientId: String(patient._id),
+        userId: String(hospitalId),
+        patientName: patient.patientName,
+        folders: folderResults.map((result, i) => ({
+          folderId: String(foldersWithFiles[i]._id),
+          displayName: foldersWithFiles[i].name,
+          pdfUrl: result.merged_url,
+        })),
+      });
 
-      // Zip all folder PDFs in original order
-      const { default: archiver } = await import("archiver");
-      const safeName = encodeURIComponent(`${patient.patientName}_records_by_folder.zip`);
-      res.setHeader("Content-Type", "application/zip");
-      res.setHeader("Content-Disposition", `attachment; filename="${safeName}"`);
+      const contentType = zipResponse.headers.get("content-type") || "application/zip";
+      const contentDisposition = zipResponse.headers.get("content-disposition");
+      const contentLength = zipResponse.headers.get("content-length");
 
-      const archive = archiver("zip", { zlib: { level: 9 } });
-      archive.pipe(res);
+      res.setHeader("Content-Type", contentType);
+      if (contentDisposition) res.setHeader("Content-Disposition", contentDisposition);
+      if (contentLength) res.setHeader("Content-Length", contentLength);
 
-      for (const { name, buffer } of fetchResults) {
-        archive.append(buffer, { name });
-      }
+      await pipeline(Readable.fromWeb(zipResponse.body), res);
 
       logAudit(hospitalId, "PATIENT_EXPORT_PDF", req, {
         patientId, mode: "per-folder", compressed: true,
@@ -1049,8 +1151,6 @@ export const downloadAllPdf = async (req, res) => {
         content_hashes: folderResults.map((r) => r.content_hash),
         duration_ms: Date.now() - start,
       });
-
-      await archive.finalize();
     } else {
       // Merged mode — single compressed PDF with cover pages
       const folderMap = foldersWithFiles.map((folder) => {
@@ -1234,18 +1334,53 @@ function handleCompressionError(error, res, context) {
     return res.status(404).json({ success: false, message: error.message });
   }
 
+  if (error instanceof compressionService.ServiceBusyError) {
+    return res.status(503).json({
+      success: false,
+      error: "busy",
+      detail: `Compression service is at capacity${error.retryAfterSeconds ? `, retry after ${error.retryAfterSeconds}s` : ""}`,
+    });
+  }
+
+  if (error instanceof compressionService.ServiceTimeoutError) {
+    return res.status(504).json({
+      success: false,
+      error: "processing_timeout",
+      detail: "Compression service timed out",
+    });
+  }
+
+  if (error instanceof compressionService.SourceFetchError) {
+    return res.status(502).json({
+      success: false,
+      error: "source_fetch_failed",
+      failed_public_id: error.failedPublicId,
+      detail: error.detail,
+    });
+  }
+
+  if (error instanceof compressionService.ServiceUnavailableError) {
+    return res.status(503).json({
+      success: false,
+      error: "service_unavailable",
+      detail: error.message,
+    });
+  }
+
   if (error instanceof compressionService.SizeFloorError) {
     const isPatient = context === "Patient PDF";
     const capMb = isPatient ? 10 : 5;
+    const folderLabel = error.folderName ? `folder "${error.folderName}"` : "this download";
     const detail = error.ramConstrained
-      ? `Server is currently under heavy load (memory constrained) and cannot compress this ${error.minAchievableMb}MB record down to the ${capMb}MB target. Please try again later or download per-folder.`
-      : `Even at maximum compression, this record remains ${error.minAchievableMb}MB, which exceeds the ${capMb}MB target. Try downloading per-folder or deselecting some documents.`;
-    
+      ? `The ${folderLabel} cannot be compressed to the ${capMb}MB target right now because the server is under heavy load. Please try again in a moment.`
+      : `The ${folderLabel} remains ${error.minAchievableMb}MB even at maximum compression, which exceeds the ${capMb}MB target. Please try again with fewer files or a higher limit.`;
+
     return res.status(413).json({
       success: false,
       error: "size_floor_breached",
       min_achievable_mb: error.minAchievableMb,
       ram_constrained: error.ramConstrained,
+      folder_name: error.folderName,
       detail,
     });
   }
@@ -1269,7 +1404,10 @@ function handleCompressionError(error, res, context) {
       success: false,
       error: "compression_busy",
       retry_after_seconds: error.retryAfterSeconds,
-      detail: `Compression service is at capacity. Please retry in ${error.retryAfterSeconds}s.`,
+      folder_name: error.folderName,
+      detail: error.folderName
+        ? `The compression queue is busy while processing folder "${error.folderName}". Please retry in about ${error.retryAfterSeconds}s.`
+        : `Compression service is at capacity. Please retry in ${error.retryAfterSeconds}s.`,
     });
   }
   if (error instanceof compressionService.ServiceUnavailableError) {

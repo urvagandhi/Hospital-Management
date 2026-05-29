@@ -1,12 +1,12 @@
-# Graph Report - Hospital-Management  (2026-05-09)
+# Graph Report - Hospital-Management  (2026-05-29)
 
 ## Corpus Check
-- 228 files · ~261,320 words
+- 230 files · ~263,980 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1929 nodes · 2553 edges · 138 communities detected
-- Extraction: 78% EXTRACTED · 22% INFERRED · 0% AMBIGUOUS · INFERRED: 562 edges (avg confidence: 0.76)
+- 1956 nodes · 2620 edges · 138 communities detected
+- Extraction: 78% EXTRACTED · 22% INFERRED · 0% AMBIGUOUS · INFERRED: 585 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -51,8 +51,8 @@
 - [[_COMMUNITY_Community 38|Community 38]]
 - [[_COMMUNITY_Community 39|Community 39]]
 - [[_COMMUNITY_Community 40|Community 40]]
-- [[_COMMUNITY_Community 41|Community 41]]
 - [[_COMMUNITY_Community 42|Community 42]]
+- [[_COMMUNITY_Community 43|Community 43]]
 - [[_COMMUNITY_Community 44|Community 44]]
 - [[_COMMUNITY_Community 45|Community 45]]
 - [[_COMMUNITY_Community 46|Community 46]]
@@ -114,9 +114,9 @@
 - [[_COMMUNITY_Community 109|Community 109]]
 - [[_COMMUNITY_Community 110|Community 110]]
 - [[_COMMUNITY_Community 111|Community 111]]
-- [[_COMMUNITY_Community 125|Community 125]]
-- [[_COMMUNITY_Community 137|Community 137]]
-- [[_COMMUNITY_Community 140|Community 140]]
+- [[_COMMUNITY_Community 124|Community 124]]
+- [[_COMMUNITY_Community 136|Community 136]]
+- [[_COMMUNITY_Community 139|Community 139]]
 - [[_COMMUNITY_Community 160|Community 160]]
 - [[_COMMUNITY_Community 161|Community 161]]
 - [[_COMMUNITY_Community 162|Community 162]]
@@ -150,7 +150,7 @@
 - [[_COMMUNITY_Community 190|Community 190]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `Error` - 150 edges
+1. `Error` - 152 edges
 2. `Tech Debt Ledger` - 51 edges
 3. `ApiService` - 47 edges
 4. `FolderDetailsActivity` - 44 edges
@@ -170,8 +170,8 @@
   CLAUDE.md → backend/README.md
 - `Error` --calls--> `parseArgs()`  [INFERRED]
   android-app/app/src/main/java/com/hospital/management/presentation/viewmodel/ProfileViewModel.kt → backend/scripts/migrate-cloudinary-to-spaces.js
-- `Error` --calls--> `attachHospitalData()`  [INFERRED]
-  android-app/app/src/main/java/com/hospital/management/presentation/viewmodel/ProfileViewModel.kt → backend/src/middleware/auth.js
+- `Error` --calls--> `getAllHospitals()`  [INFERRED]
+  android-app/app/src/main/java/com/hospital/management/presentation/viewmodel/ProfileViewModel.kt → backend/src/controllers/hospitals.controller.js
 
 ## Hyperedges (group relationships)
 - **Auth Flow Components (login + 2FA + biometric + rotation + reverify)** — concept_auth_flow, diagram_auth_state_machine, diagram_login_sequence, diagram_token_refresh_interceptor, diagram_android_biometric, concept_refresh_token_rotation, concept_biometric_auth, concept_auth_code_reverify [INFERRED 0.85]
@@ -183,48 +183,48 @@
 ## Communities
 
 ### Community 0 - "Community 0"
-Cohesion: 0.02
-Nodes (179): listAudits(), biometricChallenge(), changePassword(), checkSessionConflict(), forceLogoutOtherSessions(), forgotPasswordInit(), forgotPasswordReset(), forgotPasswordVerify() (+171 more)
+Cohesion: 0.03
+Nodes (140): listAudits(), biometricChallenge(), checkSessionConflict(), forceLogoutOtherSessions(), forgotPasswordInit(), forgotPasswordVerify(), generateOtp(), listActiveSessions() (+132 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.02
-Nodes (118): Android Audit, Architecture Diagrams (30 mermaid), Backend Audit, Commented Code Audit, Dead Code Inventory, End-to-End Flow PDF, Enhancements (OWASP + perf + onboarding), Features Audit (+110 more)
+Nodes (163): Android Audit, Backend Audit, Commented Code Audit, Dead Code Inventory, Enhancements (OWASP + perf + onboarding), Features Audit, Frontend Audit, Audit Index README (+155 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.04
-Nodes (73): acquire_or_raise(), AdmissionFull, AdmissionGate, Admission control for CPU/RAM-bound compression endpoints.  Why this exists: - T, Raised when the admission gate is at capacity., Write one audit document to compression_audit collection.      Never raises — au, write_audit_log(), BaseModel (+65 more)
+Cohesion: 0.03
+Nodes (109): CompressionResult, _estimate_start_tier(), MemoryMonitor, Orchestrate compression for scanned/mixed PDFs.      Strategy (optimized for spe, Logs RAM usage every second in a background thread., Raised when even Tier 4 cannot meet the target size., Pick a starting tier based on required compression ratio.      Avoids wasting mi, Orchestrate tiers 0-4 for scanned PDFs.          Logic:     - If digital, it sho (+101 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.03
-Nodes (80): Backend Architecture diagram (Middleware → Routes → Services → Data), Backend authentication flowchart (login → verify → tokens), Compression sidecar integration table (3 sidecar endpoints), Backend data models ER diagram, Backend dependencies table (express, mongoose, bcryptjs, etc), Backend directory structure (controllers, models, services, jobs), Auth endpoints table (24 endpoints), Hospitals endpoints table (12 endpoints) (+72 more)
+Cohesion: 0.04
+Nodes (80): attachHospitalData(), changePassword(), changePasswordSettings(), forgotPasswordReset(), login(), logout(), registerBiometric(), registerHospital() (+72 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.05
-Nodes (28): buildThumbnailUrl(), isPdfMime(), handleDownload(), updateHospital(), adminForceDeleteHospital(), apiError(), downloadFileCompressed(), getCurrentHospital() (+20 more)
+Nodes (28): ApiService, getDownloadErrorContext(), getReadableDownloadErrorMessage(), readableFallback(), readErrorBody(), downloadBlob(), fetchData(), handleDownloadPdf() (+20 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.04
-Nodes (15): revokeAllOtherSessions(), AuthRepository, ContactChanged, Idle, Loaded, Loading, OtpSent, PasswordChanged (+7 more)
+Nodes (1): ApiService
 
 ### Community 6 - "Community 6"
 Cohesion: 0.04
-Nodes (1): ApiService
+Nodes (13): AuthRepository, ContactChanged, Idle, Loaded, Loading, OtpSent, PasswordChanged, ProfileEvent (+5 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.06
-Nodes (22): ApiService, downloadBlob(), fetchData(), handleDownloadPdf(), handleDownloadZip(), onFocus(), refreshFolder(), handleChange() (+14 more)
-
-### Community 8 - "Community 8"
 Cohesion: 0.04
 Nodes (1): FolderDetailsActivity
 
+### Community 8 - "Community 8"
+Cohesion: 0.06
+Nodes (24): buildThumbnailUrl(), isPdfMime(), handleDownload(), adminForceDeleteHospital(), apiError(), downloadFileCompressed(), getCurrentHospital(), getFileSignedUrl() (+16 more)
+
 ### Community 9 - "Community 9"
-Cohesion: 0.08
-Nodes (30): CompressionResult, _estimate_start_tier(), MemoryMonitor, Orchestrate compression for scanned/mixed PDFs.      Strategy (optimized for spe, Logs RAM usage every second in a background thread., Raised when even Tier 4 cannot meet the target size., Pick a starting tier based on required compression ratio.      Avoids wasting mi, Orchestrate tiers 0-4 for scanned PDFs.          Logic:     - If digital, it sho (+22 more)
+Cohesion: 0.06
+Nodes (19): URI with password masked — safe for logs., Dedicated ProcessPoolExecutor for CPU-bound compression work.  Why a process poo, Initializer for spawned workers — attach a stdout INFO handler so     logger.inf, Cleanly tear down the pool on application shutdown., shutdown_cpu_pool(), _worker_init(), lifespan(), verify_internal_secret() (+11 more)
 
 ### Community 10 - "Community 10"
 Cohesion: 0.06
-Nodes (18): URI with password masked — safe for logs., Dedicated ProcessPoolExecutor for CPU-bound compression work.  Why a process poo, Initializer for spawned workers — attach a stdout INFO handler so     logger.inf, Cleanly tear down the pool on application shutdown., shutdown_cpu_pool(), _worker_init(), lifespan(), verify_internal_secret() (+10 more)
+Nodes (35): Architecture Diagrams (30 mermaid), End-to-End Flow PDF, Auth Flow, Auto-Delete Cron (90-day hard delete), Biometric Auth (RSA challenge), Compression Pipeline (sidecar), File Upload Pipeline (multer + cloudinary), Merged PDF Cache (SHA256) (+27 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.08
@@ -235,292 +235,292 @@ Cohesion: 0.08
 Nodes (3): PageAdapter, PageViewHolder, UploadActivity
 
 ### Community 13 - "Community 13"
-Cohesion: 0.2
-Nodes (20): main(), main(), ensureFolder(), ensureTestFile(), fetchPatientDetails(), findFileEntry(), findPatient(), folderExists() (+12 more)
-
-### Community 14 - "Community 14"
-Cohesion: 0.25
-Nodes (23): changePasswordSettings(), escapeHtml(), getMailtrapTransporter(), humanizeUserAgent(), sendAccountDeletedEmail(), sendAccountDisabledEmail(), sendAccountEnabledEmail(), sendAccountLockedEmail() (+15 more)
-
-### Community 15 - "Community 15"
 Cohesion: 0.09
 Nodes (1): DocumentDao
 
-### Community 16 - "Community 16"
+### Community 14 - "Community 14"
 Cohesion: 0.09
 Nodes (1): DashboardActivity
 
-### Community 17 - "Community 17"
+### Community 15 - "Community 15"
 Cohesion: 0.11
 Nodes (14): AdminRoute(), detectIdentifierType(), getIdentifierError(), Login(), hasStoredSession(), NotFound(), Privacy(), getTempTokenPurpose() (+6 more)
 
-### Community 18 - "Community 18"
+### Community 16 - "Community 16"
 Cohesion: 0.09
 Nodes (12): AuthState, AuthViewModel, Error, ForgotState, Idle, InitSent, Loading, LoggedIn (+4 more)
 
-### Community 19 - "Community 19"
-Cohesion: 0.13
-Nodes (15): deleteOrphans(), getAllStoredPublicIds(), scanOrphans(), patchMe(), buildOriginUrl(), buildStorageObjectKey(), deleteFile(), deleteFromSpaces() (+7 more)
+### Community 17 - "Community 17"
+Cohesion: 0.09
+Nodes (3): DownloadWorker, HeadResult, StatusResponse
 
-### Community 20 - "Community 20"
+### Community 18 - "Community 18"
+Cohesion: 0.23
+Nodes (19): main(), ensureFolder(), ensureTestFile(), fetchPatientDetails(), findFileEntry(), findPatient(), folderExists(), getJson() (+11 more)
+
+### Community 19 - "Community 19"
 Cohesion: 0.11
 Nodes (13): extract_images_from_pdf(), get_page_dimensions(), preprocess_scanned_pdf(), process_images_for_tier(), _process_single_image(), Resize and re-encode already-extracted images for a specific compression tier., Get dimensions (points) for each page using pikepdf., Legacy wrapper: Extract + process in one call.      For new code, prefer extract (+5 more)
 
+### Community 20 - "Community 20"
+Cohesion: 0.14
+Nodes (14): deleteOrphans(), getAllStoredPublicIds(), scanOrphans(), buildOriginUrl(), buildStorageObjectKey(), deleteFile(), deleteFromSpaces(), generateSignedUploadParams() (+6 more)
+
 ### Community 21 - "Community 21"
-Cohesion: 0.1
-Nodes (3): DownloadWorker, HeadResult, StatusResponse
-
-### Community 22 - "Community 22"
-Cohesion: 0.13
-Nodes (8): attachHospitalData(), verifyAccessToken(), verifyTempToken(), extractTokenFromHeader(), verifyRefreshToken(), verifyTempTokenPurpose(), verifyToken(), RegisterOtpActivity
-
-### Community 23 - "Community 23"
 Cohesion: 0.11
 Nodes (6): Error, Idle, Loading, PatientState, PatientViewModel, Success
 
-### Community 24 - "Community 24"
-Cohesion: 0.11
-Nodes (2): DownloadNotifier, ProgressThrottle
-
-### Community 25 - "Community 25"
+### Community 22 - "Community 22"
 Cohesion: 0.12
 Nodes (6): ConsoleFormatter, JsonFormatter, Colorful console formatter for development., Minimal structured JSON formatter — one JSON object per log line., setup_logging(), OtpInputView
 
-### Community 26 - "Community 26"
+### Community 23 - "Community 23"
+Cohesion: 0.11
+Nodes (2): DownloadNotifier, ProgressThrottle
+
+### Community 24 - "Community 24"
 Cohesion: 0.11
 Nodes (3): CompressionProfile, PdfResult, PdfUtils
 
-### Community 27 - "Community 27"
+### Community 25 - "Community 25"
 Cohesion: 0.12
 Nodes (2): DocumentRepository, UploadAttempt
 
-### Community 28 - "Community 28"
+### Community 26 - "Community 26"
 Cohesion: 0.13
 Nodes (1): PatientRepository
 
-### Community 29 - "Community 29"
+### Community 27 - "Community 27"
 Cohesion: 0.13
 Nodes (7): CreateFolderUseCase, CreatePatientUseCase, GetFolderFilesUseCase, GetPatientByIdUseCase, GetPatientsUseCase, UpdatePatientUseCase, UploadFileUseCase
 
-### Community 30 - "Community 30"
+### Community 28 - "Community 28"
 Cohesion: 0.13
 Nodes (1): ProfileActivity
 
-### Community 31 - "Community 31"
+### Community 29 - "Community 29"
 Cohesion: 0.14
 Nodes (3): PatientAdapter, PatientDiffCallback, PatientViewHolder
 
-### Community 32 - "Community 32"
+### Community 30 - "Community 30"
 Cohesion: 0.14
 Nodes (1): FileLogger
 
-### Community 33 - "Community 33"
+### Community 31 - "Community 31"
 Cohesion: 0.14
 Nodes (1): UploadWorker
 
-### Community 34 - "Community 34"
+### Community 32 - "Community 32"
 Cohesion: 0.15
 Nodes (3): fetchPatients(), filtersToParams(), handleExport()
 
-### Community 35 - "Community 35"
+### Community 33 - "Community 33"
 Cohesion: 0.16
 Nodes (14): Android Clean Architecture Layers (UI/Presentation/Domain/Data/Infra), Android Certificate Pinning, Android Dependencies List, Android EncryptedSharedPreferences (AES-256), ML Kit Document Scanner integration, Android Offline Sync (Room + WorkManager), Android App README, Android Screen Flow (+6 more)
 
-### Community 36 - "Community 36"
+### Community 34 - "Community 34"
 Cohesion: 0.14
 Nodes (14): Compression Content-hash Caching, cloudinary==1.41.0, fastapi==0.115.12, fpdf2==2.8.3, httpx==0.28.1, motor==3.7.1, pikepdf==9.7.0, pypdfium2==4.30.1 (+6 more)
 
-### Community 37 - "Community 37"
+### Community 35 - "Community 35"
 Cohesion: 0.15
 Nodes (6): ChangePasswordUseCase, LoginUseCase, LogoutUseCase, SaveHospitalInfoUseCase, SaveTokensUseCase, VerifyAuthCodeLoginUseCase
 
-### Community 38 - "Community 38"
+### Community 36 - "Community 36"
 Cohesion: 0.15
 Nodes (1): BaseActivity
 
-### Community 39 - "Community 39"
+### Community 37 - "Community 37"
 Cohesion: 0.15
 Nodes (1): QueueActivity
 
-### Community 40 - "Community 40"
+### Community 38 - "Community 38"
 Cohesion: 0.15
 Nodes (1): PatientDetailsActivity
 
-### Community 41 - "Community 41"
+### Community 39 - "Community 39"
 Cohesion: 0.15
 Nodes (2): SplashActivity, VersionGate
 
-### Community 42 - "Community 42"
+### Community 40 - "Community 40"
 Cohesion: 0.18
 Nodes (1): LoginActivity
 
-### Community 44 - "Community 44"
+### Community 42 - "Community 42"
 Cohesion: 0.18
 Nodes (11): Phase 0 — Reconnaissance, Phase 1 — Drift Detection (00-drift.md), Phase 2 — Dead Code Inventory (01-dead-code.md), Phase 3 — Commented Code Audit (02-commented-code.md), Phase 4 — Architecture Visualization (17 Mermaid), Phase 5 — Enhancement Dimensions (10 sections), Phase 6 — Refreshed Core Documents, Phase 7 — Tech Debt Ledger (06-tech-debt-ledger.md) (+3 more)
 
-### Community 45 - "Community 45"
+### Community 43 - "Community 43"
 Cohesion: 0.24
 Nodes (11): Android Drawable Resource, MyMediVault Brand, Clipboard With Heart Glyph, Folder With Documents Glyph, Gear / Settings Glyph, Android Platform Logo (ic_platform_logo.png), Medical Cross Glyph (Plus Symbol), Shield Outline Shape (+3 more)
 
-### Community 46 - "Community 46"
+### Community 44 - "Community 44"
 Cohesion: 0.2
 Nodes (11): Flat Vector Illustrative Icon Style, Folder + Document Stack (patient records grouping), MyMediVault Frontend Logo Asset (Logo.jpeg), MyMediVault Logo (frontend/src/assets/logo.png), MyMediVault Frontend Public Favicon/Logo, Gear + Heart-Clipboard Icons (system management + patient chart), White Medical Cross on Folder (healthcare motif), Navy / Mid-Blue / Teal Palette (+3 more)
 
-### Community 47 - "Community 47"
+### Community 45 - "Community 45"
 Cohesion: 0.2
 Nodes (2): RetrofitClient, UserAgentInterceptor
 
-### Community 48 - "Community 48"
+### Community 46 - "Community 46"
 Cohesion: 0.2
 Nodes (1): DownloadCacheDao
 
-### Community 49 - "Community 49"
+### Community 47 - "Community 47"
 Cohesion: 0.2
 Nodes (1): PatientCacheDao
 
-### Community 50 - "Community 50"
+### Community 48 - "Community 48"
 Cohesion: 0.2
 Nodes (9): AuthCodeVerifyData, AuthCodeVerifyRequest, AuthCodeVerifyResponse, ChangePasswordResponse, HospitalResponse, LoginData, LoginRequest, LoginResponse (+1 more)
 
-### Community 51 - "Community 51"
+### Community 49 - "Community 49"
 Cohesion: 0.2
 Nodes (9): ContactChangeInitData, ContactChangeInitResponse, ForgotInitData, ForgotInitResponse, ForgotVerifyData, ForgotVerifyResponse, GenericMessageResponse, SessionItem (+1 more)
 
-### Community 52 - "Community 52"
+### Community 50 - "Community 50"
 Cohesion: 0.2
 Nodes (1): FileViewerActivity
 
-### Community 53 - "Community 53"
+### Community 51 - "Community 51"
 Cohesion: 0.2
 Nodes (1): BiometricHelper
 
-### Community 54 - "Community 54"
+### Community 52 - "Community 52"
 Cohesion: 0.22
 Nodes (1): HospitalApplication
 
-### Community 55 - "Community 55"
+### Community 53 - "Community 53"
 Cohesion: 0.22
 Nodes (2): FileAdapter, FileViewHolder
 
-### Community 56 - "Community 56"
+### Community 54 - "Community 54"
 Cohesion: 0.22
 Nodes (1): PdfBuildWorker
 
-### Community 57 - "Community 57"
+### Community 55 - "Community 55"
 Cohesion: 0.25
 Nodes (3): asyncPool(), main(), parseArgs()
 
-### Community 58 - "Community 58"
+### Community 56 - "Community 56"
 Cohesion: 0.22
 Nodes (4): connectDB(), scheduleIdleSweep(), sweepIdleSessions(), startServer()
 
-### Community 59 - "Community 59"
+### Community 57 - "Community 57"
 Cohesion: 0.56
 Nodes (8): probeAllExternals(), probeBrevo(), probeCloudinary(), probeDatabase(), probeFcm(), probeRedis(), probeSidecar(), runProbe()
 
-### Community 60 - "Community 60"
+### Community 58 - "Community 58"
 Cohesion: 0.25
 Nodes (7): AppVersionInfo, AppVersionResponse, Hospital, NotificationPrefs, NotificationPrefsResponse, SignedUrlInfo, SignedUrlResponse
 
-### Community 61 - "Community 61"
+### Community 59 - "Community 59"
 Cohesion: 0.25
 Nodes (7): FileItem, Folder, FolderSizeInfo, Patient, PatientsData, PatientsResponse, ZipSizeCheckResponse
 
-### Community 62 - "Community 62"
+### Community 60 - "Community 60"
 Cohesion: 0.25
 Nodes (7): ConfirmDirectUploadRequest, DirectUploadConfirmResponse, PatientRequest, SignSpacesUploadResponse, SignUploadParams, SignUploadRequest, SignUploadResponse
 
-### Community 63 - "Community 63"
+### Community 61 - "Community 61"
 Cohesion: 0.25
 Nodes (1): PatientListActivity
 
-### Community 64 - "Community 64"
+### Community 62 - "Community 62"
 Cohesion: 0.25
 Nodes (1): SessionsActivity
 
-### Community 65 - "Community 65"
+### Community 63 - "Community 63"
 Cohesion: 0.25
 Nodes (2): Candidate, ScannerActivity
 
-### Community 66 - "Community 66"
+### Community 64 - "Community 64"
 Cohesion: 0.25
 Nodes (1): SessionManager
 
-### Community 67 - "Community 67"
+### Community 65 - "Community 65"
 Cohesion: 0.25
 Nodes (2): DownloadProgress, DownloadStage
 
-### Community 68 - "Community 68"
+### Community 66 - "Community 66"
 Cohesion: 0.25
 Nodes (1): SyncDocumentsWorker
 
-### Community 69 - "Community 69"
+### Community 67 - "Community 67"
 Cohesion: 0.54
 Nodes (7): drawCoverPage(), drawPageFooter(), drawPageHeader(), drawRect(), drawTableHeader(), drawTableRow(), exportPatientsPdf()
 
-### Community 70 - "Community 70"
+### Community 68 - "Community 68"
 Cohesion: 0.29
 Nodes (1): AppDatabase
 
-### Community 71 - "Community 71"
+### Community 69 - "Community 69"
 Cohesion: 0.29
 Nodes (1): HmsFirebaseMessagingService
 
-### Community 72 - "Community 72"
+### Community 70 - "Community 70"
 Cohesion: 0.29
 Nodes (1): DesignAnimations
 
-### Community 73 - "Community 73"
+### Community 71 - "Community 71"
 Cohesion: 0.29
 Nodes (2): FolderAdapter, FolderViewHolder
 
-### Community 74 - "Community 74"
+### Community 72 - "Community 72"
 Cohesion: 0.29
 Nodes (1): NotificationsActivity
 
-### Community 75 - "Community 75"
+### Community 73 - "Community 73"
+Cohesion: 0.57
+Nodes (6): fail(), line(), ok(), postJson(), run(), section()
+
+### Community 74 - "Community 74"
 Cohesion: 0.33
 Nodes (3): applyFilters(), fetchPage(), listAudits()
 
-### Community 76 - "Community 76"
+### Community 75 - "Community 75"
 Cohesion: 0.33
 Nodes (1): ProfileRepository
 
-### Community 77 - "Community 77"
+### Community 76 - "Community 76"
 Cohesion: 0.33
 Nodes (1): AdmissionActivity
 
-### Community 78 - "Community 78"
+### Community 77 - "Community 77"
 Cohesion: 0.33
 Nodes (1): AuthCodeVerificationActivity
 
-### Community 79 - "Community 79"
+### Community 78 - "Community 78"
 Cohesion: 0.33
 Nodes (1): GradientBlobBackground
 
-### Community 80 - "Community 80"
+### Community 79 - "Community 79"
 Cohesion: 0.33
 Nodes (2): NetworkMonitor, NetworkStatus
 
-### Community 81 - "Community 81"
+### Community 80 - "Community 80"
 Cohesion: 0.33
 Nodes (1): SecurityUtils
 
-### Community 82 - "Community 82"
+### Community 81 - "Community 81"
 Cohesion: 0.33
 Nodes (2): UploadProgress, UploadStage
 
-### Community 83 - "Community 83"
+### Community 82 - "Community 82"
 Cohesion: 0.4
 Nodes (3): compareVersions(), createVersion(), getVersion()
 
-### Community 84 - "Community 84"
+### Community 83 - "Community 83"
 Cohesion: 0.4
 Nodes (1): AuthInterceptor
 
-### Community 85 - "Community 85"
+### Community 84 - "Community 84"
 Cohesion: 0.4
 Nodes (1): DownloadActionReceiver
+
+### Community 85 - "Community 85"
+Cohesion: 0.4
+Nodes (1): DownloadErrorMapper
 
 ### Community 86 - "Community 86"
 Cohesion: 0.4
@@ -598,15 +598,15 @@ Nodes (1): DownloadCache
 Cohesion: 1.0
 Nodes (1): FeatureFlags
 
-### Community 125 - "Community 125"
+### Community 124 - "Community 124"
 Cohesion: 1.0
 Nodes (2): HMS Design System Fonts (Plus Jakarta Sans, Inter, JetBrains Mono), Frontend index.html (Vite root)
 
-### Community 137 - "Community 137"
+### Community 136 - "Community 136"
 Cohesion: 1.0
 Nodes (1): GeoIP Provider Chain (ipinfo + ip-api)
 
-### Community 140 - "Community 140"
+### Community 139 - "Community 139"
 Cohesion: 1.0
 Nodes (1): Append default DB name if URI path is empty (e.g. ends with '/' or has no path).
 
@@ -737,93 +737,95 @@ Nodes (1): TRUST_PROXY_HOPS (numeric, default 2; not 'true')
 ## Knowledge Gaps
 - **303 isolated node(s):** `CachedFileItem`, `CachedPatient`, `DownloadCache`, `OfflineDocument`, `SyncStatus` (+298 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 6`** (48 nodes): `ApiService.kt`, `ApiService`, `.biometricChallenge()`, `.changePassword()`, `.changePasswordSettings()`, `.checkSessionConflict()`, `.checkZipSize()`, `.confirmDirectUpload()`, `.createFolder()`, `.createPatient()`, `.deleteFile()`, `.downloadFileCompressed()`, `.forgotPasswordInit()`, `.forgotPasswordReset()`, `.forgotPasswordVerify()`, `.getAppVersion()`, `.getCurrentHospital()`, `.getFileSignedUrl()`, `.getFolderFiles()`, `.getHospitalById()`, `.getNotificationPreferences()`, `.getPatientById()`, `.getPatients()`, `.getSignedSpacesUploadParams()`, `.getSignedUploadParams()`, `.healthCheck()`, `.initContactChange()`, `.listSessions()`, `.login()`, `.logout()`, `.patchProfile()`, `.patchProfileMultipart()`, `.postFcmToken()`, `.registerBiometric()`, `.registerSelfService()`, `.renameFile()`, `.resendRegistrationOtp()`, `.reverifyAuthCode()`, `.revokeAllOtherSessions()`, `.revokeSession()`, `.updateNotificationPreferences()`, `.updatePatient()`, `.uploadFile()`, `.validateSession()`, `.verifyAuthCodeLogin()`, `.verifyBiometric()`, `.verifyContactChange()`, `.verifyRegistrationOtp()`
+- **Thin community `Community 5`** (48 nodes): `ApiService.kt`, `ApiService`, `.biometricChallenge()`, `.changePassword()`, `.changePasswordSettings()`, `.checkSessionConflict()`, `.checkZipSize()`, `.confirmDirectUpload()`, `.createFolder()`, `.createPatient()`, `.deleteFile()`, `.downloadFileCompressed()`, `.forgotPasswordInit()`, `.forgotPasswordReset()`, `.forgotPasswordVerify()`, `.getAppVersion()`, `.getCurrentHospital()`, `.getFileSignedUrl()`, `.getFolderFiles()`, `.getHospitalById()`, `.getNotificationPreferences()`, `.getPatientById()`, `.getPatients()`, `.getSignedSpacesUploadParams()`, `.getSignedUploadParams()`, `.healthCheck()`, `.initContactChange()`, `.listSessions()`, `.login()`, `.logout()`, `.patchProfile()`, `.patchProfileMultipart()`, `.postFcmToken()`, `.registerBiometric()`, `.registerSelfService()`, `.renameFile()`, `.resendRegistrationOtp()`, `.reverifyAuthCode()`, `.revokeAllOtherSessions()`, `.revokeSession()`, `.updateNotificationPreferences()`, `.updatePatient()`, `.uploadFile()`, `.validateSession()`, `.verifyAuthCodeLogin()`, `.verifyBiometric()`, `.verifyContactChange()`, `.verifyRegistrationOtp()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 8`** (45 nodes): `FolderDetailsActivity.kt`, `FolderDetailsActivity`, `.confirmDelete()`, `.confirmDeleteLocal()`, `.deleteFile()`, `.displayFiles()`, `.downloadFile()`, `.downloadFolderPdf()`, `.downloadFolderZip()`, `.enqueueBulkDownloadWorker()`, `.enqueueDownloadWorker()`, `.enqueueSingleDownload()`, `.exportLocalFile()`, `.formatFileSize()`, `.generateLocalPdf()`, `.generateLocalZip()`, `.getDownloadSubPath()`, `.getMimeType()`, `.isFolderEmpty()`, `.isNetworkAvailable()`, `.isShowingCachedData()`, `.launchFileIntent()`, `.legacyDownloadFile()`, `.loadFiles()`, `.onCreate()`, `.onResume()`, `.openFile()`, `.openFileWithUri()`, `.renameFile()`, `.retryUpload()`, `.saveLocalFileToMediaStore()`, `.setupObservers()`, `.setupPendingDocsObserver()`, `.setupUploadObserver()`, `.setupViewModel()`, `.setupViews()`, `.showDownloadNotification()`, `.showDownloadOptionsDialog()`, `.showFileOptions()`, `.showOfflineDialog()`, `.showRenameDialog()`, `.startFolderPdfDownload()`, `.startFolderZipDownload()`, `.syncAndDownload()`, `.trimCacheIfNeeded()`
+- **Thin community `Community 7`** (45 nodes): `FolderDetailsActivity.kt`, `FolderDetailsActivity`, `.confirmDelete()`, `.confirmDeleteLocal()`, `.deleteFile()`, `.displayFiles()`, `.downloadFile()`, `.downloadFolderPdf()`, `.downloadFolderZip()`, `.enqueueBulkDownloadWorker()`, `.enqueueDownloadWorker()`, `.enqueueSingleDownload()`, `.exportLocalFile()`, `.formatFileSize()`, `.generateLocalPdf()`, `.generateLocalZip()`, `.getDownloadSubPath()`, `.getMimeType()`, `.isFolderEmpty()`, `.isNetworkAvailable()`, `.isShowingCachedData()`, `.launchFileIntent()`, `.legacyDownloadFile()`, `.loadFiles()`, `.onCreate()`, `.onResume()`, `.openFile()`, `.openFileWithUri()`, `.renameFile()`, `.retryUpload()`, `.saveLocalFileToMediaStore()`, `.setupObservers()`, `.setupPendingDocsObserver()`, `.setupUploadObserver()`, `.setupViewModel()`, `.setupViews()`, `.showDownloadNotification()`, `.showDownloadOptionsDialog()`, `.showFileOptions()`, `.showOfflineDialog()`, `.showRenameDialog()`, `.startFolderPdfDownload()`, `.startFolderZipDownload()`, `.syncAndDownload()`, `.trimCacheIfNeeded()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 11`** (24 nodes): `FolderViewActivity.kt`, `FolderViewActivity`, `.createFolder()`, `.downloadPdf()`, `.enqueueBulkDownloadWorker()`, `.getDownloadSubPath()`, `.handleZipDownload()`, `.isNetworkAvailable()`, `.isShowingCachedData()`, `.loadFolders()`, `.onCreate()`, `.onResume()`, `.onWindowFocusChanged()`, `.setupObservers()`, `.setupUploadObserver()`, `.setupViewModel()`, `.setupViews()`, `.showCreateFolderDialog()`, `.showDownloadOptionsDialog()`, `.showEditPatientDialog()`, `.showErrorDialog()`, `.showPdfModeDialog()`, `.showZipFolderPickerDialog()`, `.triggerZipDownload()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 15`** (23 nodes): `DocumentDao.kt`, `DocumentDao`, `.delete()`, `.deleteAllForHospital()`, `.deleteAllNotOwnedBy()`, `.existsByFileUri()`, `.getDocumentById()`, `.getDocumentByIdempotencyKey()`, `.getEligibleForAutoSync()`, `.getPendingCount()`, `.getPendingCountForFolder()`, `.getPendingCountForHospital()`, `.getPendingDocuments()`, `.getPendingForFolder()`, `.getPendingForHospital()`, `.getPendingForPatient()`, `.insert()`, `.observeFolderQueue()`, `.observeHospitalQueue()`, `.observePatientQueue()`, `.observePendingCount()`, `.observePendingForFolder()`, `.resetStuckUploading()`
+- **Thin community `Community 13`** (23 nodes): `DocumentDao.kt`, `DocumentDao`, `.delete()`, `.deleteAllForHospital()`, `.deleteAllNotOwnedBy()`, `.existsByFileUri()`, `.getDocumentById()`, `.getDocumentByIdempotencyKey()`, `.getEligibleForAutoSync()`, `.getPendingCount()`, `.getPendingCountForFolder()`, `.getPendingCountForHospital()`, `.getPendingDocuments()`, `.getPendingForFolder()`, `.getPendingForHospital()`, `.getPendingForPatient()`, `.insert()`, `.observeFolderQueue()`, `.observeHospitalQueue()`, `.observePatientQueue()`, `.observePendingCount()`, `.observePendingForFolder()`, `.resetStuckUploading()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 16`** (23 nodes): `DashboardActivity.kt`, `DashboardActivity`, `.applyHospitalAvatar()`, `.fetchAndDisplayHospitalInfo()`, `.hospitalInitials()`, `.isNetworkAvailable()`, `.isShowingCachedData()`, `.logout()`, `.observePendingBadge()`, `.onCreate()`, `.onCreateOptionsMenu()`, `.onOptionsItemSelected()`, `.onPrepareOptionsMenu()`, `.onResume()`, `.requestNotificationPermissionIfNeeded()`, `.setupHospitalInfo()`, `.setupPatientList()`, `.setupPatientListeners()`, `.setupPatientObservers()`, `.setupViewModels()`, `.setupWorkProgressBanner()`, `.showLogoutDialog()`, `.startSync()`
+- **Thin community `Community 14`** (23 nodes): `DashboardActivity.kt`, `DashboardActivity`, `.applyHospitalAvatar()`, `.fetchAndDisplayHospitalInfo()`, `.hospitalInitials()`, `.isNetworkAvailable()`, `.isShowingCachedData()`, `.logout()`, `.observePendingBadge()`, `.onCreate()`, `.onCreateOptionsMenu()`, `.onOptionsItemSelected()`, `.onPrepareOptionsMenu()`, `.onResume()`, `.requestNotificationPermissionIfNeeded()`, `.setupHospitalInfo()`, `.setupPatientList()`, `.setupPatientListeners()`, `.setupPatientObservers()`, `.setupViewModels()`, `.setupWorkProgressBanner()`, `.showLogoutDialog()`, `.startSync()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 24`** (19 nodes): `DownloadNotifier.kt`, `DownloadNotifier`, `.baseBuilder()`, `.buildDownloading()`, `.buildFailed()`, `.buildPreparing()`, `.buildReady()`, `.cancel()`, `.cancelAction()`, `.completionNotificationIdFor()`, `.hasPostPermission()`, `.notificationIdFor()`, `.notifyCompleted()`, `.openFilePendingIntent()`, `.post()`, `.retryAction()`, `ProgressThrottle`, `.reset()`, `.shouldEmit()`
+- **Thin community `Community 23`** (19 nodes): `DownloadNotifier.kt`, `DownloadNotifier`, `.baseBuilder()`, `.buildDownloading()`, `.buildFailed()`, `.buildPreparing()`, `.buildReady()`, `.cancel()`, `.cancelAction()`, `.completionNotificationIdFor()`, `.hasPostPermission()`, `.notificationIdFor()`, `.notifyCompleted()`, `.openFilePendingIntent()`, `.post()`, `.retryAction()`, `ProgressThrottle`, `.reset()`, `.shouldEmit()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 27`** (17 nodes): `DocumentRepository.kt`, `DocumentRepository`, `.deleteDocument()`, `.deleteRowAndDurableFile()`, `.getDurableFile()`, `.getDurableUploadsDir()`, `.getPendingDocuments()`, `.insertQueuedRow()`, `.newIdempotencyKey()`, `.saveOffline()`, `.updateRowState()`, `.updateStatus()`, `.uploadDocument()`, `.uploadDocumentLegacy()`, `.uploadToCloudinary()`, `.uploadToDigitalOcean()`, `UploadAttempt`
+- **Thin community `Community 25`** (17 nodes): `DocumentRepository.kt`, `DocumentRepository`, `.deleteDocument()`, `.deleteRowAndDurableFile()`, `.getDurableFile()`, `.getDurableUploadsDir()`, `.getPendingDocuments()`, `.insertQueuedRow()`, `.newIdempotencyKey()`, `.saveOffline()`, `.updateRowState()`, `.updateStatus()`, `.uploadDocument()`, `.uploadDocumentLegacy()`, `.uploadToCloudinary()`, `.uploadToDigitalOcean()`, `UploadAttempt`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 28`** (15 nodes): `PatientRepository.kt`, `PatientRepository`, `.cacheFolderFiles()`, `.cachePatientDetail()`, `.cachePatients()`, `.createFolder()`, `.createPatient()`, `.getCachedFolderFiles()`, `.getCachedPatient()`, `.getCachedPatients()`, `.getFolderFiles()`, `.getPatientById()`, `.getPatients()`, `.updatePatient()`, `.uploadFile()`
+- **Thin community `Community 26`** (15 nodes): `PatientRepository.kt`, `PatientRepository`, `.cacheFolderFiles()`, `.cachePatientDetail()`, `.cachePatients()`, `.createFolder()`, `.createPatient()`, `.getCachedFolderFiles()`, `.getCachedPatient()`, `.getCachedPatients()`, `.getFolderFiles()`, `.getPatientById()`, `.getPatients()`, `.updatePatient()`, `.uploadFile()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 30`** (15 nodes): `ProfileActivity.kt`, `ProfileActivity`, `.bind()`, `.clearDownloadCache()`, `.hospitalInitials()`, `.observe()`, `.onCreate()`, `.onResume()`, `.onSupportNavigateUp()`, `.refreshCacheInfo()`, `.saveBasic()`, `.showContactChangeDialog()`, `.showOtpDialog()`, `.updateLogoDisplay()`, `.uriToTempFile()`
+- **Thin community `Community 28`** (15 nodes): `ProfileActivity.kt`, `ProfileActivity`, `.bind()`, `.clearDownloadCache()`, `.hospitalInitials()`, `.observe()`, `.onCreate()`, `.onResume()`, `.onSupportNavigateUp()`, `.refreshCacheInfo()`, `.saveBasic()`, `.showContactChangeDialog()`, `.showOtpDialog()`, `.updateLogoDisplay()`, `.uriToTempFile()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 32`** (14 nodes): `FileLogger.kt`, `FileLogger`, `.cleanOldLogs()`, `.d()`, `.e()`, `.getLogDirectory()`, `.getLogFiles()`, `.getStackTraceString()`, `.i()`, `.init()`, `.rotate()`, `.w()`, `.writeLog()`, `.wtf()`
+- **Thin community `Community 30`** (14 nodes): `FileLogger.kt`, `FileLogger`, `.cleanOldLogs()`, `.d()`, `.e()`, `.getLogDirectory()`, `.getLogFiles()`, `.getStackTraceString()`, `.i()`, `.init()`, `.rotate()`, `.w()`, `.writeLog()`, `.wtf()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 33`** (14 nodes): `UploadWorker.kt`, `UploadWorker`, `.buildForStage()`, `.cancelled()`, `.doWork()`, `.doWorkInner()`, `.emit()`, `.emitBlocking()`, `.failWith()`, `.finalizeCompleted()`, `.getForegroundInfo()`, `.makeForegroundInfo()`, `.maybeRetry()`, `.resolveFile()`
+- **Thin community `Community 31`** (14 nodes): `UploadWorker.kt`, `UploadWorker`, `.buildForStage()`, `.cancelled()`, `.doWork()`, `.doWorkInner()`, `.emit()`, `.emitBlocking()`, `.failWith()`, `.finalizeCompleted()`, `.getForegroundInfo()`, `.makeForegroundInfo()`, `.maybeRetry()`, `.resolveFile()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 38`** (13 nodes): `BaseActivity.kt`, `BaseActivity`, `.applyAutoInsets()`, `.applyStatusBarInsets()`, `.isShowingCachedData()`, `.observeNetworkStatus()`, `.offlineMessage()`, `.onCreate()`, `.onDestroy()`, `.onStart()`, `.performReverify()`, `.setContentView()`, `.showAuthCodeReverifyDialog()`
+- **Thin community `Community 36`** (13 nodes): `BaseActivity.kt`, `BaseActivity`, `.applyAutoInsets()`, `.applyStatusBarInsets()`, `.isShowingCachedData()`, `.observeNetworkStatus()`, `.offlineMessage()`, `.onCreate()`, `.onDestroy()`, `.onStart()`, `.performReverify()`, `.setContentView()`, `.showAuthCodeReverifyDialog()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 39`** (13 nodes): `QueueActivity.kt`, `QueueActivity`, `.confirmDelete()`, `.deleteDocument()`, `.enqueueUpload()`, `.observeQueue()`, `.onCreate()`, `.openWithChooser()`, `.retryUpload()`, `.setupRecyclerView()`, `.showFileOptions()`, `.startManualSync()`, `.updateUI()`
+- **Thin community `Community 37`** (13 nodes): `QueueActivity.kt`, `QueueActivity`, `.confirmDelete()`, `.deleteDocument()`, `.enqueueUpload()`, `.observeQueue()`, `.onCreate()`, `.openWithChooser()`, `.retryUpload()`, `.setupRecyclerView()`, `.showFileOptions()`, `.startManualSync()`, `.updateUI()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 40`** (13 nodes): `PatientDetailsActivity.kt`, `PatientDetailsActivity`, `.disableEditMode()`, `.displayPatientInfo()`, `.enableEditMode()`, `.loadPatientDetails()`, `.onCreate()`, `.onResume()`, `.savePatientDetails()`, `.setupClickListeners()`, `.setupObservers()`, `.setupViewModel()`, `.setupViews()`
+- **Thin community `Community 38`** (13 nodes): `PatientDetailsActivity.kt`, `PatientDetailsActivity`, `.disableEditMode()`, `.displayPatientInfo()`, `.enableEditMode()`, `.loadPatientDetails()`, `.onCreate()`, `.onResume()`, `.savePatientDetails()`, `.setupClickListeners()`, `.setupObservers()`, `.setupViewModel()`, `.setupViews()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 41`** (13 nodes): `SplashActivity.kt`, `SplashActivity`, `.checkSessionAndNavigate()`, `.checkVersionGate()`, `.navigateToDashboard()`, `.navigateToLogin()`, `.onCreate()`, `.openUpdateUrl()`, `.showForceUpdateDialog()`, `.showSoftUpdateDialog()`, `.startEntranceAnimations()`, `.validateSessionWithServer()`, `VersionGate`
+- **Thin community `Community 39`** (13 nodes): `SplashActivity.kt`, `SplashActivity`, `.checkSessionAndNavigate()`, `.checkVersionGate()`, `.navigateToDashboard()`, `.navigateToLogin()`, `.onCreate()`, `.openUpdateUrl()`, `.showForceUpdateDialog()`, `.showSoftUpdateDialog()`, `.startEntranceAnimations()`, `.validateSessionWithServer()`, `VersionGate`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 42`** (11 nodes): `LoginActivity.kt`, `LoginActivity`, `.checkConflictThenLogin()`, `.navigateToDashboard()`, `.onCreate()`, `.performBiometricLogin()`, `.setupBiometricLogin()`, `.setupListeners()`, `.setupObservers()`, `.setupViewModel()`, `.showBiometricBindingDialog()`
+- **Thin community `Community 40`** (11 nodes): `LoginActivity.kt`, `LoginActivity`, `.checkConflictThenLogin()`, `.navigateToDashboard()`, `.onCreate()`, `.performBiometricLogin()`, `.setupBiometricLogin()`, `.setupListeners()`, `.setupObservers()`, `.setupViewModel()`, `.showBiometricBindingDialog()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 47`** (10 nodes): `RetrofitClient.kt`, `RetrofitClient`, `.buildClient()`, `.clearCookies()`, `.getApiService()`, `.getClient()`, `.reset()`, `UserAgentInterceptor`, `.buildUA()`, `.intercept()`
+- **Thin community `Community 45`** (10 nodes): `RetrofitClient.kt`, `RetrofitClient`, `.buildClient()`, `.clearCookies()`, `.getApiService()`, `.getClient()`, `.reset()`, `UserAgentInterceptor`, `.buildUA()`, `.intercept()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 48`** (10 nodes): `DownloadCacheDao.kt`, `DownloadCacheDao`, `.clearAll()`, `.deleteByHash()`, `.getByHash()`, `.getEvictionCandidates()`, `.totalCacheBytes()`, `.totalCacheCount()`, `.touchAccess()`, `.upsert()`
+- **Thin community `Community 46`** (10 nodes): `DownloadCacheDao.kt`, `DownloadCacheDao`, `.clearAll()`, `.deleteByHash()`, `.getByHash()`, `.getEvictionCandidates()`, `.totalCacheBytes()`, `.totalCacheCount()`, `.touchAccess()`, `.upsert()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 49`** (10 nodes): `PatientCacheDao.kt`, `PatientCacheDao`, `.clearAllFileItems()`, `.clearAllPatients()`, `.clearFileItems()`, `.getAllCachedPatients()`, `.getCachedPatient()`, `.getFileItems()`, `.insertFileItems()`, `.insertPatients()`
+- **Thin community `Community 47`** (10 nodes): `PatientCacheDao.kt`, `PatientCacheDao`, `.clearAllFileItems()`, `.clearAllPatients()`, `.clearFileItems()`, `.getAllCachedPatients()`, `.getCachedPatient()`, `.getFileItems()`, `.insertFileItems()`, `.insertPatients()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 52`** (10 nodes): `FileViewerActivity.kt`, `FileViewerActivity`, `.evictPdfCacheIfOverBudget()`, `.loadFile()`, `.onCreate()`, `.onDestroy()`, `.onSupportNavigateUp()`, `.showImage()`, `.showPdf()`, `.showPdfPage()`
+- **Thin community `Community 50`** (10 nodes): `FileViewerActivity.kt`, `FileViewerActivity`, `.evictPdfCacheIfOverBudget()`, `.loadFile()`, `.onCreate()`, `.onDestroy()`, `.onSupportNavigateUp()`, `.showImage()`, `.showPdf()`, `.showPdfPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 53`** (10 nodes): `BiometricHelper.kt`, `BiometricHelper`, `.aliasFor()`, `.biometricUnavailableReason()`, `.deleteKeyPair()`, `.generateKeyPair()`, `.hasKeyPair()`, `.isBiometricAvailable()`, `.showBiometricPrompt()`, `.showBiometricPromptForSigning()`
+- **Thin community `Community 51`** (10 nodes): `BiometricHelper.kt`, `BiometricHelper`, `.aliasFor()`, `.biometricUnavailableReason()`, `.deleteKeyPair()`, `.generateKeyPair()`, `.hasKeyPair()`, `.isBiometricAvailable()`, `.showBiometricPrompt()`, `.showBiometricPromptForSigning()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 54`** (9 nodes): `HospitalApplication.kt`, `HospitalApplication`, `.createNotificationChannels()`, `.onCreate()`, `.performOrphanFileSweep()`, `.registerNetworkCallback()`, `.scheduleSyncIfNeeded()`, `.startSessionHeartbeat()`, `.stopSessionHeartbeat()`
+- **Thin community `Community 52`** (9 nodes): `HospitalApplication.kt`, `HospitalApplication`, `.createNotificationChannels()`, `.onCreate()`, `.performOrphanFileSweep()`, `.registerNetworkCallback()`, `.scheduleSyncIfNeeded()`, `.startSessionHeartbeat()`, `.stopSessionHeartbeat()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 55`** (9 nodes): `FileAdapter.kt`, `FileAdapter`, `.getItemCount()`, `.onBindViewHolder()`, `.onCreateViewHolder()`, `FileViewHolder`, `.bind()`, `.formatFileSize()`, `.isUuid()`
+- **Thin community `Community 53`** (9 nodes): `FileAdapter.kt`, `FileAdapter`, `.getItemCount()`, `.onBindViewHolder()`, `.onCreateViewHolder()`, `FileViewHolder`, `.bind()`, `.formatFileSize()`, `.isUuid()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 56`** (9 nodes): `PdfBuildWorker.kt`, `PdfBuildWorker`, `.buildFromImages()`, `.copyScannerPdf()`, `.doWork()`, `.getForegroundInfo()`, `.makeForegroundInfo()`, `.markFailed()`, `.markStatus()`
+- **Thin community `Community 54`** (9 nodes): `PdfBuildWorker.kt`, `PdfBuildWorker`, `.buildFromImages()`, `.copyScannerPdf()`, `.doWork()`, `.getForegroundInfo()`, `.makeForegroundInfo()`, `.markFailed()`, `.markStatus()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 63`** (8 nodes): `PatientListActivity.kt`, `PatientListActivity`, `.loadPatients()`, `.onCreate()`, `.setupClickListeners()`, `.setupObservers()`, `.setupRecyclerView()`, `.setupViewModel()`
+- **Thin community `Community 61`** (8 nodes): `PatientListActivity.kt`, `PatientListActivity`, `.loadPatients()`, `.onCreate()`, `.setupClickListeners()`, `.setupObservers()`, `.setupRecyclerView()`, `.setupViewModel()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 64`** (8 nodes): `SessionsActivity.kt`, `SessionsActivity`, `.confirmRevoke()`, `.loadAuthCode()`, `.observe()`, `.onCreate()`, `.onSupportNavigateUp()`, `.renderAuthCode()`
+- **Thin community `Community 62`** (8 nodes): `SessionsActivity.kt`, `SessionsActivity`, `.confirmRevoke()`, `.loadAuthCode()`, `.observe()`, `.onCreate()`, `.onSupportNavigateUp()`, `.renderAuthCode()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 65`** (8 nodes): `ScannerActivity.kt`, `Candidate`, `ScannerActivity`, `.configureA4PageSize()`, `.configureResultFormats()`, `.onCreate()`, `.setupScannerLauncher()`, `.startDocumentScanner()`
+- **Thin community `Community 63`** (8 nodes): `ScannerActivity.kt`, `Candidate`, `ScannerActivity`, `.configureA4PageSize()`, `.configureResultFormats()`, `.onCreate()`, `.setupScannerLauncher()`, `.startDocumentScanner()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 66`** (8 nodes): `SessionManager.kt`, `SessionManager`, `.getTokenManager()`, `.isSessionValid()`, `.logoutUser()`, `.restoreSession()`, `.startSession()`, `.updateLastInteractionTime()`
+- **Thin community `Community 64`** (8 nodes): `SessionManager.kt`, `SessionManager`, `.getTokenManager()`, `.isSessionValid()`, `.logoutUser()`, `.restoreSession()`, `.startSession()`, `.updateLastInteractionTime()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 67`** (8 nodes): `DownloadProgress.kt`, `DownloadProgress`, `.toData()`, `DownloadStage`, `formatBytes()`, `formatDownloadSubtext()`, `formatSpeed()`, `fromData()`
+- **Thin community `Community 65`** (8 nodes): `DownloadProgress.kt`, `DownloadProgress`, `.toData()`, `DownloadStage`, `formatBytes()`, `formatDownloadSubtext()`, `formatSpeed()`, `fromData()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 68`** (8 nodes): `SyncDocumentsWorker.kt`, `SyncDocumentsWorker`, `.buildForStage()`, `.doWork()`, `.emit()`, `.emitBlocking()`, `.getForegroundInfo()`, `.makeForegroundInfo()`
+- **Thin community `Community 66`** (8 nodes): `SyncDocumentsWorker.kt`, `SyncDocumentsWorker`, `.buildForStage()`, `.doWork()`, `.emit()`, `.emitBlocking()`, `.getForegroundInfo()`, `.makeForegroundInfo()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 70`** (7 nodes): `AppDatabase.kt`, `AppDatabase`, `.documentDao()`, `.downloadCacheDao()`, `.patientCacheDao()`, `getDatabase()`, `migrate()`
+- **Thin community `Community 68`** (7 nodes): `AppDatabase.kt`, `AppDatabase`, `.documentDao()`, `.downloadCacheDao()`, `.patientCacheDao()`, `getDatabase()`, `migrate()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 71`** (7 nodes): `HmsFirebaseMessagingService.kt`, `HmsFirebaseMessagingService`, `.handleSessionRevoked()`, `.onMessageReceived()`, `.onNewToken()`, `.savePendingTokenAndEnqueueWorker()`, `.showNotification()`
+- **Thin community `Community 69`** (7 nodes): `HmsFirebaseMessagingService.kt`, `HmsFirebaseMessagingService`, `.handleSessionRevoked()`, `.onMessageReceived()`, `.onNewToken()`, `.savePendingTokenAndEnqueueWorker()`, `.showNotification()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 72`** (7 nodes): `AnimationUtils.kt`, `DesignAnimations`, `.animateCardAppear()`, `.animateListItem()`, `.animateStagger()`, `.attachPressScale()`, `.fadeIn()`
+- **Thin community `Community 70`** (7 nodes): `AnimationUtils.kt`, `DesignAnimations`, `.animateCardAppear()`, `.animateListItem()`, `.animateStagger()`, `.attachPressScale()`, `.fadeIn()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 73`** (7 nodes): `FolderAdapter.kt`, `FolderAdapter`, `.getItemCount()`, `.onBindViewHolder()`, `.onCreateViewHolder()`, `FolderViewHolder`, `.bind()`
+- **Thin community `Community 71`** (7 nodes): `FolderAdapter.kt`, `FolderAdapter`, `.getItemCount()`, `.onBindViewHolder()`, `.onCreateViewHolder()`, `FolderViewHolder`, `.bind()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 74`** (7 nodes): `NotificationsActivity.kt`, `NotificationsActivity`, `.onCreate()`, `.onCreateOptionsMenu()`, `.onOptionsItemSelected()`, `.onSupportNavigateUp()`, `.savePref()`
+- **Thin community `Community 72`** (7 nodes): `NotificationsActivity.kt`, `NotificationsActivity`, `.onCreate()`, `.onCreateOptionsMenu()`, `.onOptionsItemSelected()`, `.onSupportNavigateUp()`, `.savePref()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 76`** (6 nodes): `ProfileRepository.kt`, `ProfileRepository`, `.getCurrentHospital()`, `.initContactChange()`, `.patchProfile()`, `.verifyContactChange()`
+- **Thin community `Community 75`** (6 nodes): `ProfileRepository.kt`, `ProfileRepository`, `.getCurrentHospital()`, `.initContactChange()`, `.patchProfile()`, `.verifyContactChange()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 77`** (6 nodes): `AdmissionActivity`, `.createPatient()`, `.onCreate()`, `.setupObservers()`, `.setupViewModel()`, `AdmissionActivity.kt`
+- **Thin community `Community 76`** (6 nodes): `AdmissionActivity`, `.createPatient()`, `.onCreate()`, `.setupObservers()`, `.setupViewModel()`, `AdmissionActivity.kt`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 78`** (6 nodes): `AuthCodeVerificationActivity.kt`, `AuthCodeVerificationActivity`, `.navigateToDashboard()`, `.onBackPressed()`, `.onCreate()`, `.verifyAuthCode()`
+- **Thin community `Community 77`** (6 nodes): `AuthCodeVerificationActivity.kt`, `AuthCodeVerificationActivity`, `.navigateToDashboard()`, `.onBackPressed()`, `.onCreate()`, `.verifyAuthCode()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 79`** (6 nodes): `GradientBlobBackground.kt`, `GradientBlobBackground`, `.onConfigurationChanged()`, `.onDraw()`, `.onSizeChanged()`, `.setupGradients()`
+- **Thin community `Community 78`** (6 nodes): `GradientBlobBackground.kt`, `GradientBlobBackground`, `.onConfigurationChanged()`, `.onDraw()`, `.onSizeChanged()`, `.setupGradients()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 80`** (6 nodes): `NetworkMonitor.kt`, `NetworkMonitor`, `.init()`, `.pingHealth()`, `.pingHealthWithRetry()`, `NetworkStatus`
+- **Thin community `Community 79`** (6 nodes): `NetworkMonitor.kt`, `NetworkMonitor`, `.init()`, `.pingHealth()`, `.pingHealthWithRetry()`, `NetworkStatus`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 81`** (6 nodes): `SecurityUtils.kt`, `SecurityUtils`, `.checkRootMethod1()`, `.checkRootMethod2()`, `.checkRootMethod3()`, `.isDeviceRooted()`
+- **Thin community `Community 80`** (6 nodes): `SecurityUtils.kt`, `SecurityUtils`, `.checkRootMethod1()`, `.checkRootMethod2()`, `.checkRootMethod3()`, `.isDeviceRooted()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 82`** (6 nodes): `UploadProgress.kt`, `formatUploadSubtext()`, `fromData()`, `UploadProgress`, `.toData()`, `UploadStage`
+- **Thin community `Community 81`** (6 nodes): `UploadProgress.kt`, `formatUploadSubtext()`, `fromData()`, `UploadProgress`, `.toData()`, `UploadStage`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 84`** (5 nodes): `AuthInterceptor.kt`, `AuthInterceptor`, `.attachAuthHeaders()`, `.intercept()`, `.performRefresh()`
+- **Thin community `Community 83`** (5 nodes): `AuthInterceptor.kt`, `AuthInterceptor`, `.attachAuthHeaders()`, `.intercept()`, `.performRefresh()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 85`** (5 nodes): `DownloadActionReceiver.kt`, `DownloadActionReceiver`, `.handleCancel()`, `.handleRetry()`, `.onReceive()`
+- **Thin community `Community 84`** (5 nodes): `DownloadActionReceiver.kt`, `DownloadActionReceiver`, `.handleCancel()`, `.handleRetry()`, `.onReceive()`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 85`** (5 nodes): `DownloadErrorMapper.kt`, `DownloadErrorMapper`, `.parseBody()`, `.resolveHttpErrorMessage()`, `.resolveWorkerFailureMessage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 86`** (5 nodes): `ProgressRequestBody.kt`, `ProgressRequestBody`, `.contentLength()`, `.contentType()`, `.writeTo()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -859,11 +861,11 @@ Nodes (1): TRUST_PROXY_HOPS (numeric, default 2; not 'true')
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 111`** (2 nodes): `FeatureFlags.kt`, `FeatureFlags`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 125`** (2 nodes): `HMS Design System Fonts (Plus Jakarta Sans, Inter, JetBrains Mono)`, `Frontend index.html (Vite root)`
+- **Thin community `Community 124`** (2 nodes): `HMS Design System Fonts (Plus Jakarta Sans, Inter, JetBrains Mono)`, `Frontend index.html (Vite root)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 137`** (1 nodes): `GeoIP Provider Chain (ipinfo + ip-api)`
+- **Thin community `Community 136`** (1 nodes): `GeoIP Provider Chain (ipinfo + ip-api)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 140`** (1 nodes): `Append default DB name if URI path is empty (e.g. ends with '/' or has no path).`
+- **Thin community `Community 139`** (1 nodes): `Append default DB name if URI path is empty (e.g. ends with '/' or has no path).`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 160`** (1 nodes): `Loads and validates all required environment variables at startup.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -931,17 +933,17 @@ Nodes (1): TRUST_PROXY_HOPS (numeric, default 2; not 'true')
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Error` connect `Community 0` to `Community 2`, `Community 34`, `Community 4`, `Community 5`, `Community 69`, `Community 7`, `Community 9`, `Community 13`, `Community 14`, `Community 19`, `Community 83`, `Community 20`, `Community 22`, `Community 57`, `Community 58`?**
-  _High betweenness centrality (0.093) - this node is a cross-community bridge._
-- **Why does `lifespan()` connect `Community 10` to `Community 0`, `Community 9`, `Community 2`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
-- **Why does `load()` connect `Community 5` to `Community 0`, `Community 20`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
-- **Are the 149 inferred relationships involving `Error` (e.g. with `main()` and `parseArgs()`) actually correct?**
-  _`Error` has 149 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `Error` connect `Community 0` to `Community 32`, `Community 2`, `Community 3`, `Community 67`, `Community 4`, `Community 6`, `Community 18`, `Community 82`, `Community 20`, `Community 19`, `Community 55`, `Community 56`?**
+  _High betweenness centrality (0.106) - this node is a cross-community bridge._
+- **Why does `load()` connect `Community 6` to `Community 0`, `Community 19`, `Community 3`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
+- **Why does `updateHospital()` connect `Community 3` to `Community 0`, `Community 8`, `Community 20`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
+- **Are the 151 inferred relationships involving `Error` (e.g. with `main()` and `parseArgs()`) actually correct?**
+  _`Error` has 151 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `CachedFileItem`, `CachedPatient`, `DownloadCache` to the rest of the system?**
   _303 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.02 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
   _Cohesion score 0.02 - nodes in this community are weakly interconnected._
