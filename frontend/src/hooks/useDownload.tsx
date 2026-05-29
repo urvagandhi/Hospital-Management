@@ -1,22 +1,24 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import React, { createContext, useCallback, useContext, useState } from "react";
 import FloatingProgressCard from "../components/FloatingProgressCard";
 
 interface DownloadTask {
   id: string;
-  status: "preparing" | "downloading" | "uploading";
+  status: "preparing" | "downloading" | "uploading" | "failed";
   progress?: number;
   message?: string;
   speed?: string;
   targetSizeMb?: number;
+  title?: string;
 }
 
 interface DownloadContextType {
   tasks: DownloadTask[];
   startDownload: (options: {
-    status: "preparing" | "downloading" | "uploading";
+    status: "preparing" | "downloading" | "uploading" | "failed";
     message?: string;
     speed?: string;
     targetSizeMb?: number;
+    title?: string;
   }) => string; // returns id
   updateDownload: (id: string, updates: Partial<DownloadTask>) => void;
   endDownload: (id: string) => void;
@@ -28,10 +30,11 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [tasks, setTasks] = useState<DownloadTask[]>([]);
 
   const startDownload = useCallback((options: {
-    status: "preparing" | "downloading" | "uploading";
+    status: "preparing" | "downloading" | "uploading" | "failed";
     message?: string;
     speed?: string;
     targetSizeMb?: number;
+    title?: string;
   }) => {
     const id = Math.random().toString(36).substring(7);
     setTasks((prev) => [
@@ -41,6 +44,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         message: options.message,
         speed: options.speed,
         targetSizeMb: options.targetSizeMb,
+        title: options.title,
         progress: 0,
       },
       ...prev,
@@ -74,6 +78,7 @@ export const DownloadProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               message={task.message}
               speed={task.speed}
               targetSizeMb={task.targetSizeMb}
+              title={task.title}
             />
           </div>
         ))}
