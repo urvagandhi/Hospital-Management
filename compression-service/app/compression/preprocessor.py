@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # Medical safety floors
 MIN_MEDICAL_DPI = 150
-ABSOLUTE_FLOOR_DPI = 100
+ABSOLUTE_FLOOR_DPI = 80
 
 TIER_CONFIGS = {
     0: {
@@ -29,6 +29,8 @@ TIER_CONFIGS = {
     3: {"dpi": 150, "quality": 45, "subsampling": 2, "grayscale": True},
     4: {"dpi": 120, "quality": 32, "subsampling": 2, "grayscale": True},
     5: {"dpi": 100, "quality": 25, "subsampling": 2, "grayscale": True},
+    # Tier 6: aggressive fallback (80 DPI). Allowed by absolute floor change above.
+    6: {"dpi": 80, "quality": 18, "subsampling": 2, "grayscale": True},
 }
 
 def get_page_dimensions(pdf_path: Path):
