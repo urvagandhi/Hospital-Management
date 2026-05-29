@@ -13,6 +13,7 @@ GS_TIER_CONFIGS = {
     3: {"dpi": 150, "quality": 45, "downsample": "/Average"},
     4: {"dpi": 120, "quality": 32, "downsample": "/Subsample"},
     5: {"dpi": 100, "quality": 25, "downsample": "/Subsample"},
+    6: {"dpi": 80, "quality": 18, "downsample": "/Subsample"},
 }
 
 async def run_ghostscript_explicit(
