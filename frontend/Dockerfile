@@ -2,7 +2,7 @@
 # Multi-stage build: Node build → Nginx serve
 
 # Stage 1: Build the React/Vite app
-FROM node:20-alpine AS build
+FROM public.ecr.aws/docker/library/node:20-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -20,7 +20,7 @@ ENV VITE_APP_NAME=$VITE_APP_NAME
 RUN npm run build
 
 # Stage 2: Serve with Nginx
-FROM nginx:1.25-alpine AS production
+FROM public.ecr.aws/docker/library/nginx:1.25-alpine AS production
 
 # Copy built static files
 COPY --from=build /app/dist /usr/share/nginx/html

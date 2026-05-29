@@ -1,7 +1,7 @@
 # ── Backend Dockerfile ──
 # Production-ready Node.js/Express API server
 
-FROM node:20-alpine AS base
+FROM public.ecr.aws/docker/library/node:20-alpine AS base
 WORKDIR /app
 
 # Install production dependencies only
