@@ -124,7 +124,7 @@ const FolderView: React.FC = () => {
 
   const showDownloadFailure = async (taskId: string, error: unknown, fallback: string) => {
     const message = await getReadableDownloadErrorMessage(error).catch(() => fallback);
-    updateDownload(taskId, { status: "failed", message });
+    updateDownload(taskId, { status: "failed", message, progress: undefined });
     setTimeout(() => endDownload(taskId), 6000);
   };
 

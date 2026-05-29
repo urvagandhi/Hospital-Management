@@ -160,42 +160,46 @@ const PatientDetails: React.FC = () => {
     link.remove();
     window.URL.revokeObjectURL(url);
   };
-
+ 
   const showDownloadFailure = async (taskId: string, error: unknown, fallback: string, title?: string) => {
     const message = await getReadableDownloadErrorMessage(error).catch(() => fallback);
-    updateDownload(taskId, { status: "failed", message, title });
+    updateDownload(taskId, { status: "failed", message, title, progress: undefined });
     setTimeout(() => endDownload(taskId), 6000);
   };
-
-  const handleDownloadAllZip = async () => {
-    if (!patientId) return;
-    setZipLoading(true);
-    try {
-      const check = await api.get<{
-        success: boolean;
-        overLimit: boolean;
-        totalSize: number;
-        folders: SizeCheckFolder[];
-      }>(`/patients/${patientId}/download/zip/size-check`);
-
-      const { overLimit, totalSize, folders } = check.data;
-
-      if (overLimit) {
-        setZipModal({ open: true, totalSize, folders });
-        setZipLoading(false);
-      } else {
-        await triggerZipDownload();
-      }
-    } catch (error) {
-      console.error("ZIP download failed:", error);
-      const taskId = startDownload({ status: "failed", message: "Preparing your archive failed." });
-      await showDownloadFailure(taskId, error, "We could not prepare the archive. Please try again.");
-      setZipLoading(false);
-    }
+ 
+  const handleDownloadAllZip = () => {
+    triggerZipDownload();
   };
 
+  // const handleDownloadAllZip = async () => {
+  // if (!patientId) return;
+  // setZipLoading(true);
+  // try {
+  //   const check = await api.get<{
+  //     success: boolean;
+  //     overLimit: boolean;
+  //     totalSize: number;
+  //     folders: SizeCheckFolder[];
+  //   }>(`/patients/${patientId}/download/zip/size-check`);
+
+  //   const { overLimit, totalSize, folders } = check.data;
+
+  //   if (overLimit) {
+  //     setZipModal({ open: true, totalSize, folders });
+  //     setZipLoading(false);
+  //   } else {
+  //     await triggerZipDownload();
+  //   }
+  // } catch (error) {
+  //   console.error("ZIP download failed:", error);
+  //   const taskId = startDownload({ status: "failed", message: "Preparing your archive failed." });
+  //   await showDownloadFailure(taskId, error, "We could not prepare the archive. Please try again.");
+  //   setZipLoading(false);
+  // }
+ 
   const triggerZipDownload = async (selectedFolders?: string[]) => {
     if (!patientId || !patient) return;
+    setZipModal((prev) => ({ ...prev, open: false }));
     setZipLoading(true);
     const taskId = startDownload({ status: "preparing", message: "Preparing your archives..." });
     let failed = false;
@@ -230,6 +234,7 @@ const PatientDetails: React.FC = () => {
 
   const triggerPdfDownload = async (mode: "merged" | "per-folder") => {
     if (!patientId || !patient) return;
+    setPdfModal(false);
     setPdfLoading(true);
     const taskId = startDownload({ status: "preparing", message: "Merging and optimizing patient records...", targetSizeMb: 10 });
     let failed = false;
