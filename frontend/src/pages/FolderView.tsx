@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import DocumentViewer from "../components/DocumentViewer";
 import Spinner from "../components/Spinner";
-import { useDownload } from "../hooks/useDownload";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { useDownload } from "../hooks/useDownload";
 import api from "../services/api";
 import { buildThumbnailUrl, isImageMime } from "../utils/cloudinary";
+import { getReadableDownloadErrorMessage } from "../utils/downloadErrors";
 import { getFolderColor, getFolderIcon } from "../utils/folderVisuals";
 import { persistentLogger } from "../utils/persistentLogger";
 
@@ -121,9 +122,16 @@ const FolderView: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  const showDownloadFailure = async (taskId: string, error: unknown, fallback: string) => {
+    const message = await getReadableDownloadErrorMessage(error).catch(() => fallback);
+    updateDownload(taskId, { status: "failed", message });
+    setTimeout(() => endDownload(taskId), 6000);
+  };
+
   const handleDownloadPdf = async () => {
     setPdfLoading(true);
     const taskId = startDownload({ status: "preparing", message: "Merging and compressing folder...", targetSizeMb: 5 });
+    let failed = false;
     try {
       const response = await api.getBlob(`/patients/${patientId}/folders/${encodeURIComponent(folderName!)}/download/pdf`, {
         onDownloadProgress: (progressEvent: any) => {
@@ -136,10 +144,13 @@ const FolderView: React.FC = () => {
       downloadBlob(response.data as Blob, `${folderName}.pdf`);
     } catch (error) {
       console.error("Download failed:", error);
-      alert("Download failed. Please try again.");
+      failed = true;
+      await showDownloadFailure(taskId, error, "We could not complete the folder PDF download. Please try again.");
     } finally {
       setPdfLoading(false);
-      endDownload(taskId);
+      if (!failed) {
+        endDownload(taskId);
+      }
     }
   };
 
@@ -150,7 +161,8 @@ const FolderView: React.FC = () => {
       downloadBlob(response.data as Blob, `${folderName}.zip`);
     } catch (error) {
       console.error("Download failed:", error);
-      alert("Download failed. Please try again.");
+      const taskId = startDownload({ status: "failed", message: "Preparing your ZIP failed." });
+      await showDownloadFailure(taskId, error, "We could not complete the folder ZIP download. Please try again.");
     } finally {
       setZipLoading(false);
     }

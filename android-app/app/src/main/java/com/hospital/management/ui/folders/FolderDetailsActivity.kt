@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.hospital.management.data.repository.PatientRepository
 import com.hospital.management.data.local.AppDatabase
 import com.hospital.management.data.local.TokenManager
+import com.hospital.management.utils.DownloadErrorMapper
 import com.hospital.management.presentation.viewmodel.PatientState
 import com.hospital.management.presentation.viewmodel.PatientViewModel
 import com.hospital.management.presentation.viewmodel.ViewModelFactory
@@ -242,14 +243,14 @@ class FolderDetailsActivity : BaseActivity() {
         }
 
         val idempotencyKey = file.idempotencyKey ?: return
-        
+
         lifecycleScope.launch {
             val db = AppDatabase.getDatabase(this@FolderDetailsActivity)
             val doc = db.documentDao().getDocumentByIdempotencyKey(idempotencyKey)
             if (doc != null) {
                 // Update status to PENDING
                 db.documentDao().update(doc.copy(status = com.hospital.management.data.local.SyncStatus.PENDING))
-                
+
                 // Enqueue UploadWorker with KEEP policy
                 val constraints = androidx.work.Constraints.Builder()
                     .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
@@ -425,7 +426,7 @@ class FolderDetailsActivity : BaseActivity() {
         if (fileUrl.isEmpty()) return
 
         val isRemote = !(fileUrl.startsWith("file://") || fileUrl.startsWith("/"))
-        
+
         // Phase 2: Instant Cache Check
         if (isRemote) {
             val fileIdSafe = file._id ?: file.fileName.hashCode().toString()
@@ -546,7 +547,7 @@ class FolderDetailsActivity : BaseActivity() {
                 setDataAndType(uri, mimeType)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            
+
             // Try specific high-quality viewers first for better UX
             val packagePriority = when (mimeType) {
                 "application/pdf" -> listOf("com.google.android.apps.docs", "com.adobe.reader", "com.microsoft.office.officehub")
@@ -865,7 +866,7 @@ class FolderDetailsActivity : BaseActivity() {
 
     /** Legacy inline download — kept for rollback via FeatureFlags.USE_DOWNLOAD_WORKER = false */
     private fun legacyDownloadFile(file: FileItem) {
-        Toast.makeText(this, "Downloading…", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Downloading...", Toast.LENGTH_SHORT).show()
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -889,7 +890,10 @@ class FolderDetailsActivity : BaseActivity() {
                     }
                     it.connect()
                 }
-                if (conn.responseCode !in 200..299) throw Exception("Server error ${conn.responseCode}")
+                if (conn.responseCode !in 200..299) {
+                    val errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() }
+                    throw Exception(DownloadErrorMapper.resolveHttpErrorMessage(conn.responseCode, errorBody))
+                }
 
                 val fileName = file.name
                 val mimeType = getMimeType(fileName)
@@ -917,7 +921,7 @@ class FolderDetailsActivity : BaseActivity() {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@FolderDetailsActivity, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FolderDetailsActivity, "Download failed: ${e.message ?: "Unknown error"}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -1091,14 +1095,14 @@ class FolderDetailsActivity : BaseActivity() {
                         val fileSize = if (localFile.exists()) localFile.length() else 0L
                         val fileName = doc.displayName
                         val mimeType = if (fileName.endsWith(".pdf")) "application/pdf" else "image/jpeg"
-                        
+
                         val statusPrefix = when (doc.status) {
                             com.hospital.management.data.local.SyncStatus.BUILDING -> "[Preparing] "
                             com.hospital.management.data.local.SyncStatus.FAILED -> "[Failed] "
                             com.hospital.management.data.local.SyncStatus.UPLOADING -> "[Uploading] "
                             else -> "[Pending] "
                         }
-                        
+
                         com.hospital.management.data.models.FileItem(
                             fileName = "$statusPrefix$fileName",
                             fileUrl = doc.fileUri,

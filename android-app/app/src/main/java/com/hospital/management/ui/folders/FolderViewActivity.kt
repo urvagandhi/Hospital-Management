@@ -37,6 +37,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.hospital.management.worker.DownloadWorker
+import com.hospital.management.utils.DownloadErrorMapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -95,7 +96,7 @@ class FolderViewActivity : BaseActivity() {
 
     private fun setupViews() {
         findViewById<View>(R.id.btnBack).setOnClickListener { finish() }
-        
+
         // Initialize views
         rvFolders = findViewById(R.id.rvFolders)
         progressBar = findViewById(R.id.progressBar)
@@ -208,7 +209,7 @@ class FolderViewActivity : BaseActivity() {
                                 _fileCount = folder.fileCount + pendingCount
                             )
                         }
-                        
+
                         folderAdapter = FolderAdapter(updatedFolders) { folder ->
                             // Navigate to folder details
                             val intent = Intent(this@FolderViewActivity, FolderDetailsActivity::class.java)
@@ -715,13 +716,7 @@ class FolderViewActivity : BaseActivity() {
                     WorkInfo.State.FAILED -> {
                         val reason = workInfo.outputData.getString(DownloadWorker.KEY_ERROR_REASON) ?: ""
                         val detail = workInfo.outputData.getString(DownloadWorker.KEY_STATUS) ?: ""
-                        val msg = when (reason) {
-                            DownloadWorker.ERROR_AUTH_EXPIRED -> getString(R.string.download_err_auth)
-                            DownloadWorker.ERROR_STORAGE_FULL -> getString(R.string.download_err_storage)
-                            DownloadWorker.ERROR_SERVER -> getString(R.string.download_err_server)
-                            DownloadWorker.ERROR_CANCELLED -> getString(R.string.download_toast_cancelled)
-                            else -> getString(R.string.download_err_network_with_detail, detail)
-                        }
+                        val msg = DownloadErrorMapper.resolveWorkerFailureMessage(reason, detail)
                         Toast.makeText(this@FolderViewActivity, msg, Toast.LENGTH_LONG).show()
                     }
                     WorkInfo.State.CANCELLED -> {

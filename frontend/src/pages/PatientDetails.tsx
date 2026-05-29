@@ -4,10 +4,11 @@ import PdfModeModal from "../components/PdfModeModal";
 import Spinner from "../components/Spinner";
 import ZipSizeModal from "../components/ZipSizeModal";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { useDownload } from "../hooks/useDownload";
 import api from "../services/api";
+import { getDownloadErrorContext, getReadableDownloadErrorMessage } from "../utils/downloadErrors";
 import { getFolderColor, getFolderIcon } from "../utils/folderVisuals";
 import { persistentLogger } from "../utils/persistentLogger";
-import { useDownload } from "../hooks/useDownload";
 
 interface FileItem {
   fileName: string;
@@ -160,6 +161,12 @@ const PatientDetails: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  const showDownloadFailure = async (taskId: string, error: unknown, fallback: string, title?: string) => {
+    const message = await getReadableDownloadErrorMessage(error).catch(() => fallback);
+    updateDownload(taskId, { status: "failed", message, title });
+    setTimeout(() => endDownload(taskId), 6000);
+  };
+
   const handleDownloadAllZip = async () => {
     if (!patientId) return;
     setZipLoading(true);
@@ -181,7 +188,8 @@ const PatientDetails: React.FC = () => {
       }
     } catch (error) {
       console.error("ZIP download failed:", error);
-      alert("Download failed. Please try again.");
+      const taskId = startDownload({ status: "failed", message: "Preparing your archive failed." });
+      await showDownloadFailure(taskId, error, "We could not prepare the archive. Please try again.");
       setZipLoading(false);
     }
   };
@@ -190,6 +198,7 @@ const PatientDetails: React.FC = () => {
     if (!patientId || !patient) return;
     setZipLoading(true);
     const taskId = startDownload({ status: "preparing", message: "Preparing your archives..." });
+    let failed = false;
     try {
       const body = selectedFolders ? { selectedFolders } : {};
       const response = await api.postBlob(`/patients/${patientId}/download/zip`, body, {
@@ -204,11 +213,14 @@ const PatientDetails: React.FC = () => {
       downloadBlob(response.data as Blob, `${patient.patientName.replace(/[^a-z0-9]/gi, "_")}_records.zip`);
     } catch (error) {
       console.error("ZIP download failed:", error);
-      alert("Download failed. Please try again.");
+      failed = true;
+      await showDownloadFailure(taskId, error, "We could not complete the ZIP download. Please try again.");
     } finally {
       setZipLoading(false);
       setZipModal((prev) => ({ ...prev, open: false }));
-      endDownload(taskId);
+      if (!failed) {
+        endDownload(taskId);
+      }
     }
   };
 
@@ -220,6 +232,7 @@ const PatientDetails: React.FC = () => {
     if (!patientId || !patient) return;
     setPdfLoading(true);
     const taskId = startDownload({ status: "preparing", message: "Merging and optimizing patient records...", targetSizeMb: 10 });
+    let failed = false;
     try {
       const response = await api.postBlob(`/patients/${patientId}/download/pdf`, { mode }, {
         timeout: 600000,
@@ -235,11 +248,18 @@ const PatientDetails: React.FC = () => {
       downloadBlob(response.data as Blob, `${safeName}_records.${ext}`);
     } catch (error) {
       console.error("PDF download failed:", error);
-      alert("Download failed. Please try again.");
+      failed = true;
+      const context = await getDownloadErrorContext(error);
+      const title = context.folderName
+        ? `Download failed for folder "${context.folderName}"`
+        : "Download could not be completed";
+      await showDownloadFailure(taskId, error, "We could not complete the PDF download. Please try again.", title);
     } finally {
       setPdfLoading(false);
       setPdfModal(false);
-      endDownload(taskId);
+      if (!failed) {
+        endDownload(taskId);
+      }
     }
   };
 
@@ -686,15 +706,15 @@ const FolderDownloadBtn: React.FC<{
     e.stopPropagation();
     setLoading(true);
     const isPdf = type === "pdf";
-    const taskId = startDownload({ 
-      status: "preparing", 
+    const taskId = startDownload({
+      status: "preparing",
       message: isPdf ? `Merging and optimizing ${folderName}...` : `Zipping ${folderName}...`,
       targetSizeMb: isPdf ? 5 : undefined
     });
 
     try {
       const url = `/patients/${encodeURIComponent(patientId)}/folders/${encodeURIComponent(folderName)}/download/${type}`;
-      const response = await api.getBlob(url, { 
+      const response = await api.getBlob(url, {
         timeout: 600000,
         onDownloadProgress: (progressEvent: any) => {
           if (progressEvent.total) {
@@ -713,7 +733,13 @@ const FolderDownloadBtn: React.FC<{
       URL.revokeObjectURL(link.href);
     } catch (error) {
       console.error(`Folder ${type} download failed:`, error);
-      alert("Download failed. Please try again.");
+      const failureMessage = await getReadableDownloadErrorMessage(error).catch(() => {
+        return isPdf
+          ? "We could not complete the folder PDF download. Please try again."
+          : "We could not complete the folder ZIP download. Please try again.";
+      });
+      updateDownload(taskId, { status: "failed", message: failureMessage });
+      setTimeout(() => endDownload(taskId), 6000);
     } finally {
       setLoading(false);
       endDownload(taskId);

@@ -1,24 +1,34 @@
 import logging
-import psutil
 import subprocess
 import time
-import gc
 from pathlib import Path
-from PIL import Image
+
 import pikepdf
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
 # Medical safety floors
 MIN_MEDICAL_DPI = 150
-ABSOLUTE_FLOOR_DPI = 120
+ABSOLUTE_FLOOR_DPI = 100
 
 TIER_CONFIGS = {
-    0: {"dpi": 300, "quality": 85, "subsampling": 0, "grayscale": False},  # subsampling 0 is 4:4:4
+    0: {
+        "dpi": 300,
+        "quality": 85,
+        "subsampling": 0,
+        "grayscale": False,
+    },  # subsampling 0 is 4:4:4
     1: {"dpi": 200, "quality": 72, "subsampling": 0, "grayscale": False},
-    2: {"dpi": 150, "quality": 58, "subsampling": 2, "grayscale": False},  # subsampling 2 is 4:2:0
+    2: {
+        "dpi": 150,
+        "quality": 58,
+        "subsampling": 2,
+        "grayscale": False,
+    },  # subsampling 2 is 4:2:0
     3: {"dpi": 150, "quality": 45, "subsampling": 2, "grayscale": True},
     4: {"dpi": 120, "quality": 32, "subsampling": 2, "grayscale": True},
+    5: {"dpi": 100, "quality": 25, "subsampling": 2, "grayscale": True},
 }
 
 def get_page_dimensions(pdf_path: Path):
@@ -177,7 +187,7 @@ def process_images_for_tier(
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    config = TIER_CONFIGS.get(tier, TIER_CONFIGS[4])
+    config = TIER_CONFIGS.get(tier, TIER_CONFIGS[5])
     target_dpi = config["dpi"]
 
     # Ensure we never drift below absolute floor

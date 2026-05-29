@@ -16,11 +16,11 @@ Why this exists:
 
 Behaviour:
 - A bounded asyncio.Semaphore guards entry to the pipeline.
-- If the gate is already at capacity, the endpoint returns `503 Busy` with
-  Retry-After immediately — the client (mobile/web download path) can then
-  show "merge queued, try again shortly" instead of staring at a spinner.
+- If the gate is already at capacity, callers wait for the next available
+  slot instead of failing immediately.
 - Capacity is configurable via `ADMISSION_CAPACITY` env var; default 2.
 """
+
 import asyncio
 import logging
 import os
@@ -43,11 +43,8 @@ class AdmissionGate:
 
     @asynccontextmanager
     async def acquire_or_raise(self) -> AsyncIterator[None]:
-        # Single-threaded asyncio: the locked() check and the immediate
         # acquire() that follows are not interleaved with other coroutines
         # because acquire() only suspends when the semaphore is locked.
-        if self._sem.locked():
-            raise AdmissionFull(f"all {self.capacity} slots in use")
         await self._sem.acquire()
         try:
             yield
