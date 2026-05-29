@@ -126,7 +126,7 @@ async def _try_ghostscript_only(
         )
 
     # Try progressively aggressive GS tiers until one hits the target.
-    for tier in range(gs_start_tier, 6):
+    for tier in range(gs_start_tier, 7):
         gs_dir = work_dir / f"gs_only_tier_{tier}"
         gs_dir.mkdir(parents=True, exist_ok=True)
         gs_output = gs_dir / "gs_output.pdf"
@@ -228,7 +228,7 @@ async def run_adaptive_compression_loop(
         any_tier_skipped = False
 
         # ── Tier loop (resize → rebuild → GS) ──
-        for tier in range(start_tier, 6):
+        for tier in range(start_tier, 7):
             # 1. RAM Guard
             mem = psutil.virtual_memory()
             available_ram = mem.available / (1024 * 1024)
