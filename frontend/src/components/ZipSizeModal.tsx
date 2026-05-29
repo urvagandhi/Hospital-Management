@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Spinner from "./Spinner";
 
@@ -32,6 +32,12 @@ const ZipSizeModal: React.FC<ZipSizeModalProps> = ({
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(folders.map((f) => [f.name, true])),
   );
+
+  useEffect(() => {
+    if (isOpen) {
+      setChecked(Object.fromEntries(folders.map((f) => [f.name, true])));
+    }
+  }, [isOpen, folders]);
 
   const selectedSize = useMemo(
     () => folders.filter((f) => checked[f.name]).reduce((sum, f) => sum + f.size, 0),

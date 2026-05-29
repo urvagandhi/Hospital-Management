@@ -477,6 +477,7 @@ async def patient_pdf_zip(body: PatientPdfZipRequest, request: Request):
         folder_ids.append(folder.folder_id)
         pdf_items.append((folder.display_name, folder.pdf_url))
 
+    cleanup_job_dir = True
     log_extra = {
         "job_id": job_id,
         "user_id": body.user_id,
@@ -540,6 +541,8 @@ async def patient_pdf_zip(body: PatientPdfZipRequest, request: Request):
                     job_id=job_id,
                 )
 
+                nonlocal cleanup_job_dir
+                cleanup_job_dir = False
                 return FileResponse(
                     zip_path,
                     media_type="application/zip",
@@ -656,7 +659,8 @@ async def patient_pdf_zip(body: PatientPdfZipRequest, request: Request):
         return JSONResponse(status_code=500, content={"error": "internal_error"})
 
     finally:
-        shutil.rmtree(job_dir, ignore_errors=True)
+        if cleanup_job_dir:
+            shutil.rmtree(job_dir, ignore_errors=True)
 
 
 @router.post("/api/patient-zip")
