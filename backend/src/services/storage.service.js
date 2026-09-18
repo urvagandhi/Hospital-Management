@@ -33,8 +33,6 @@ if (DO_SPACES_CONFIGURED) {
   const endpoint = process.env.DO_SPACES_ENDPOINT;
   regionalEndpoint = endpoint;
   let detectedRegion = process.env.DO_SPACES_REGION || "us-east-1";
-  let forcePathStyle = true; // Default for regional endpoints
-
   try {
     const endpointUrl = new URL(endpoint);
     const hostParts = endpointUrl.hostname.split('.');
@@ -42,12 +40,10 @@ if (DO_SPACES_CONFIGURED) {
     // Case 1: Regional endpoint (e.g., sfo3.digitaloceanspaces.com)
     if (hostParts.length > 1 && hostParts[1] === 'digitaloceanspaces') {
       detectedRegion = hostParts[0];
-      forcePathStyle = true;
     }
     // Case 2: Bucket-specific endpoint (e.g., bucket.sfo3.digitaloceanspaces.com)
     else if (hostParts.length > 2 && hostParts[2] === 'digitaloceanspaces') {
       detectedRegion = hostParts[1];
-      forcePathStyle = false; 
       // Convert bucket-specific to regional for the SDK to prevent double-bucket pathing
       endpointUrl.hostname = hostParts.slice(1).join('.');
       regionalEndpoint = endpointUrl.toString().replace(/\/$/, "");
@@ -73,39 +69,6 @@ if (DO_SPACES_CONFIGURED) {
 // Set DO_SPACES_CDN_ENDPOINT in env. If unset, falls back to origin (no CDN).
 const DO_SPACES_CDN_ENDPOINT = (process.env.DO_SPACES_CDN_ENDPOINT || "").replace(/\/$/, "");
 
-// Second S3 client whose endpoint is the CDN host. Used ONLY for generating
-// presigned GET URLs so the SigV4 signature is computed with the CDN host in
-// the canonical request — this is what makes signed URLs CDN-cacheable
-// without tripping SignatureDoesNotMatch.
-let s3CdnClient = null;
-
-if (DO_SPACES_CONFIGURED && DO_SPACES_CDN_ENDPOINT) {
-  let detectedRegion = process.env.DO_SPACES_REGION || "us-east-1";
-  try {
-    const u = new URL(regionalEndpoint);
-    const parts = u.hostname.split('.');
-    if (parts.length > 1 && parts[1] === 'digitaloceanspaces') {
-      detectedRegion = parts[0];
-    } else if (parts.length > 2 && parts[2] === 'digitaloceanspaces') {
-      detectedRegion = parts[1];
-    }
-  } catch {}
-  // Virtual-host style signing client (origin host, bucket as subdomain).
-  // We sign GETs against `<bucket>.<region>.digitaloceanspaces.com`, then
-  // post-sign swap the host to `<bucket>.<region>.cdn.digitaloceanspaces.com`.
-  // DO's CDN (CDN77) forwards to origin with the ORIGINAL origin Host
-  // header, so the SigV4 signature still validates while the public URL
-  // hits the CDN edge.
-  s3CdnClient = new S3Client({
-    endpoint: regionalEndpoint, // Use regional endpoint for virtual-host signing
-    region: detectedRegion,
-    credentials: {
-      accessKeyId: process.env.DO_SPACES_ACCESS_KEY_ID,
-      secretAccessKey: process.env.DO_SPACES_SECRET_ACCESS_KEY,
-    },
-    forcePathStyle: false, // REQUIRED for CDN compatibility
-  });
-}
 
 // Swap the origin host of a Spaces URL for the CDN host.
 // Returns the URL unchanged if CDN endpoint is not configured.
@@ -510,24 +473,7 @@ async function buildSignedUrl({
   // PRIORITY 1: Route based on FILE's storage provider (not env flag)
   if (storageProvider === 'digitalocean' && DO_SPACES_CONFIGURED) {
     try {
-      // Robust key extraction from full URL
-      let key = publicId;
-      try {
-        if (key.startsWith('http')) {
-          const urlObj = new URL(key);
-          const path = decodeURIComponent(urlObj.pathname).replace(/^\//, '');
-          
-          if (path.startsWith(`${DO_BUCKET}/`)) {
-            // Path-style: /bucket/key
-            key = path.substring(DO_BUCKET.length + 1);
-          } else {
-            // Virtual-hosted style: bucket.host/key or key is just the path
-            key = path;
-          }
-        }
-      } catch (e) {
-        console.error("Key extraction error:", e);
-      }
+      const key = normalizedKey;
 
       const command = new GetObjectCommand({
         Bucket: DO_BUCKET,
@@ -537,16 +483,10 @@ async function buildSignedUrl({
           ? `attachment; filename="${fileName || 'file'}"`
           : 'inline',
       });
-      // Sign with a virtual-host style client (bucket subdomain on origin),
-      // then swap the host to the CDN. DO's CDN forwards to origin keeping
-      // the origin Host header, so the signature stays valid while the URL
-      // we hand the client hits the CDN edge.
-      if (s3CdnClient) {
-        const originSigned = await getSignedUrl(s3CdnClient, command, { expiresIn: ttlSeconds });
-        generatedUrl = toCdnUrl(originSigned);
-      } else {
-        generatedUrl = await getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
-      }
+      // DO Spaces CDN (Cloudflare) does not support AWS SigV4 presigned URLs
+      // for private files (header/path alterations cause SignatureDoesNotMatch).
+      // Always sign private GET URLs directly against the Spaces origin endpoint.
+      generatedUrl = await getSignedUrl(s3Client, command, { expiresIn: ttlSeconds });
     } catch (err) {
       console.error("DO Signed URL Error:", err);
       return null;

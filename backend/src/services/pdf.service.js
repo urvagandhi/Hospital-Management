@@ -47,18 +47,85 @@ async function fetchFolderFiles(folder) {
     const buffer = await fetchFileBuffer(url);
     let pdfDoc = null;
     let pageCount = null;
+    let imgBuffer = null;
+    let imgType = null;
+    
     if (buffer) {
       try {
         pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
         pageCount = pdfDoc.getPageCount();
       } catch {
-        // Corrupted or unsupported format — skip page count
+        // Corrupted or unsupported format - might be an image
+        const isJpg = buffer[0] === 0xff && buffer[1] === 0xd8;
+        const isPng = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+        if (isJpg) {
+           imgBuffer = buffer;
+           imgType = 'jpg';
+           pageCount = 1;
+        } else if (isPng) {
+           imgBuffer = buffer;
+           imgType = 'png';
+           pageCount = 1;
+        }
       }
     }
-    results.push({ file, buffer, pdfDoc, pageCount });
+    results.push({ file, buffer, pdfDoc, pageCount, imgBuffer, imgType });
   }
   return results;
 }
+
+/**
+ * Helper to add pages from a source PDF or image to a merged document.
+ * Scales the content to fit uniformly onto US Letter size pages without stretching.
+ */
+async function addUniformPages(mergedDoc, pdfDoc, imgBuffer, imgType) {
+  if (pdfDoc) {
+    const embeddedPages = await mergedDoc.embedPages(pdfDoc.getPages());
+    for (const embeddedPage of embeddedPages) {
+      const page = mergedDoc.addPage([595.28, 841.89]);
+      const pageWidth = page.getWidth();
+      const pageHeight = page.getHeight();
+      
+      const contentWidth = embeddedPage.width;
+      const contentHeight = embeddedPage.height;
+      
+      const scale = Math.min((pageWidth - 40) / contentWidth, (pageHeight - 40) / contentHeight);
+      
+      page.drawPage(embeddedPage, {
+          x: pageWidth / 2 - (contentWidth * scale) / 2,
+          y: pageHeight / 2 - (contentHeight * scale) / 2,
+          width: contentWidth * scale,
+          height: contentHeight * scale,
+      });
+    }
+  } else if (imgBuffer) {
+    let embeddedImage;
+    if (imgType === 'jpg') {
+       embeddedImage = await mergedDoc.embedJpg(imgBuffer);
+    } else if (imgType === 'png') {
+       embeddedImage = await mergedDoc.embedPng(imgBuffer);
+    }
+    
+    if (embeddedImage) {
+      const page = mergedDoc.addPage([595.28, 841.89]);
+      const pageWidth = page.getWidth();
+      const pageHeight = page.getHeight();
+      
+      const contentWidth = embeddedImage.width;
+      const contentHeight = embeddedImage.height;
+      
+      const scale = Math.min((pageWidth - 40) / contentWidth, (pageHeight - 40) / contentHeight);
+      
+      page.drawImage(embeddedImage, {
+          x: pageWidth / 2 - (contentWidth * scale) / 2,
+          y: pageHeight / 2 - (contentHeight * scale) / 2,
+          width: contentWidth * scale,
+          height: contentHeight * scale,
+      });
+    }
+  }
+}
+
 
 function safeName(name) {
   return name.replace(/[^a-z0-9.\-]/gi, "_");
@@ -85,7 +152,7 @@ function formatFileSize(bytes) {
  */
 async function createSectionPage(title, subtitle, _details = [], files = [], remarks = "") {
   const doc = await PDFDocument.create();
-  const page = doc.addPage([612, 792]); // US Letter
+  const page = doc.addPage([595.28, 841.89]); // A4 Size
   const font = await doc.embedFont(StandardFonts.HelveticaBold);
   const regular = await doc.embedFont(StandardFonts.Helvetica);
 
@@ -101,22 +168,24 @@ async function createSectionPage(title, subtitle, _details = [], files = [], rem
   const blueLight = rgb(0.710, 0.824, 0.988);  // #B5D2FC
 
   // ─── Page Background ─────────────────────────────────────────
-  page.drawRectangle({ x: 0, y: 0, width: 612, height: 792, color: pageBg });
+  page.drawRectangle({ x: 0, y: 0, width: 595.28, height: 841.89, color: pageBg });
 
   // ─── Top Header ───────────────────────────────────────────────
-  page.drawRectangle({ x: 0, y: 692, width: 612, height: 100, color: headerBg });
-  page.drawRectangle({ x: 0, y: 788, width: 612, height: 4, color: accent });
+  page.drawRectangle({ x: 0, y: 741.89, width: 595.28, height: 100, color: headerBg });
+  page.drawRectangle({ x: 0, y: 837.89, width: 595.28, height: 4, color: accent });
 
-  page.drawText(title.toUpperCase(), { x: 40, y: 752, size: 22, font, color: white });
-  page.drawText("MEDICAL RECORDS", { x: 40, y: 722, size: 9, font, color: blueLight });
+  page.drawText(title.toUpperCase(), { x: 40, y: 801.89, size: 22, font, color: white });
+  page.drawText("MEDICAL RECORDS", { x: 40, y: 771.89, size: 9, font, color: blueLight });
 
   // ─── Decorative Divider ───────────────────────────────────────
-  page.drawRectangle({ x: 40, y: 568, width: 247, height: 1, color: border });
-  page.drawRectangle({ x: 302, y: 564, width: 8, height: 8, color: accent });
-  page.drawRectangle({ x: 325, y: 568, width: 247, height: 1, color: border });
+  const cw = 515.28; // 595.28 - 80 margin
+  const midX = 595.28 / 2;
+  page.drawRectangle({ x: 40, y: 617.89, width: midX - 40 - 12, height: 1, color: border });
+  page.drawRectangle({ x: midX - 4, y: 613.89, width: 8, height: 8, color: accent });
+  page.drawRectangle({ x: midX + 12, y: 617.89, width: midX - 40 - 12, height: 1, color: border });
 
   // ─── Patient Card (name + remarks) ───────────────────────────
-  const cx = 40, cy = 380, cw = 532, ch = remarks ? 120 : 90;
+  const cx = 40, cy = 429.89, ch = remarks ? 120 : 90;
 
   page.drawRectangle({ x: cx + 3, y: cy - 3, width: cw, height: ch, color: cardShadow });
   page.drawRectangle({ x: cx, y: cy, width: cw, height: ch, color: white });
@@ -149,7 +218,7 @@ async function createSectionPage(title, subtitle, _details = [], files = [], rem
     const colHeaderY = listLabelY - 22;
     page.drawText("#", { x: cx + 12, y: colHeaderY, size: 6.5, font, color: muted });
     page.drawText("FILE NAME", { x: cx + 32, y: colHeaderY, size: 6.5, font, color: muted });
-    page.drawText("PAGES", { x: cx + 450, y: colHeaderY, size: 6.5, font, color: muted });
+    page.drawText("PAGES", { x: cx + 433.28, y: colHeaderY, size: 6.5, font, color: muted });
     page.drawRectangle({ x: cx, y: colHeaderY - 5, width: cw, height: 0.75, color: border });
 
     let fileY = colHeaderY - 22;
@@ -170,7 +239,7 @@ async function createSectionPage(title, subtitle, _details = [], files = [], rem
       page.drawText(name, { x: cx + 32, y: fileY, size: 9, font: regular, color: dark });
 
       const pgStr = f.pageCount != null ? (f.pageCount === 1 ? "1 pg" : `${f.pageCount} pgs`) : "—";
-      page.drawText(pgStr, { x: cx + 450, y: fileY, size: 8, font: regular, color: muted });
+      page.drawText(pgStr, { x: cx + 433.28, y: fileY, size: 8, font: regular, color: muted });
 
       fileY -= 22;
     }
@@ -185,10 +254,10 @@ async function createSectionPage(title, subtitle, _details = [], files = [], rem
   }
 
   // ─── Footer ───────────────────────────────────────────────────
-  page.drawRectangle({ x: 0, y: 0, width: 612, height: 32, color: pageBg });
-  page.drawRectangle({ x: 0, y: 32, width: 612, height: 1, color: border });
+  page.drawRectangle({ x: 0, y: 0, width: 595.28, height: 32, color: pageBg });
+  page.drawRectangle({ x: 0, y: 32, width: 595.28, height: 1, color: border });
   page.drawText("MyMediVault", { x: 40, y: 12, size: 7.5, font: regular, color: muted });
-  page.drawText("Confidential Medical Records", { x: 415, y: 12, size: 7.5, font: regular, color: muted });
+  page.drawText("Confidential Medical Records", { x: 398.28, y: 12, size: 7.5, font: regular, color: muted });
 
   return doc;
 }
@@ -233,11 +302,10 @@ export const generateFolderPdf = async (patient, folderName, res) => {
   const coverPages = await merged.copyPages(cover, cover.getPageIndices());
   for (const p of coverPages) merged.addPage(p);
 
-  for (const { pdfDoc, file } of fileResults) {
-    if (!pdfDoc) continue;
+  for (const { pdfDoc, imgBuffer, imgType, file } of fileResults) {
+    if (!pdfDoc && !imgBuffer) continue;
     try {
-      const pages = await merged.copyPages(pdfDoc, pdfDoc.getPageIndices());
-      for (const p of pages) merged.addPage(p);
+      await addUniformPages(merged, pdfDoc, imgBuffer, imgType);
     } catch (e) {
       logger.error(
         { event: "pdf_merge_skip", fileName: file.fileName, err: e },
@@ -288,11 +356,10 @@ export const generatePatientPdfMerged = async (patient, res) => {
     const sectionPages = await merged.copyPages(section, section.getPageIndices());
     for (const p of sectionPages) merged.addPage(p);
 
-    for (const { pdfDoc, file } of fileResults) {
-      if (!pdfDoc) continue;
+    for (const { pdfDoc, imgBuffer, imgType, file } of fileResults) {
+      if (!pdfDoc && !imgBuffer) continue;
       try {
-        const pages = await merged.copyPages(pdfDoc, pdfDoc.getPageIndices());
-        for (const p of pages) merged.addPage(p);
+        await addUniformPages(merged, pdfDoc, imgBuffer, imgType);
       } catch (e) {
         logger.error(
           { event: "pdf_merge_skip", fileName: file.fileName, err: e },
@@ -361,11 +428,10 @@ export const generatePatientPdfPerFolder = async (patient, res) => {
     const coverPages = await folderMerged.copyPages(cover, cover.getPageIndices());
     for (const p of coverPages) folderMerged.addPage(p);
 
-    for (const { pdfDoc, file } of fileResults) {
-      if (!pdfDoc) continue;
+    for (const { pdfDoc, imgBuffer, imgType, file } of fileResults) {
+      if (!pdfDoc && !imgBuffer) continue;
       try {
-        const pages = await folderMerged.copyPages(pdfDoc, pdfDoc.getPageIndices());
-        for (const p of pages) folderMerged.addPage(p);
+        await addUniformPages(folderMerged, pdfDoc, imgBuffer, imgType);
       } catch (e) {
         logger.error(
           { event: "pdf_merge_skip", fileName: file.fileName, err: e },

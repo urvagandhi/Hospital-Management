@@ -9,8 +9,8 @@ import Hospital from "../models/Hospital.js";
 
 // ─── Layout constants ───────────────────────────────────────────
 const MARGIN = 40;
-const PAGE_W = 612; // US Letter
-const PAGE_H = 792;
+const PAGE_W = 595.28; // A4
+const PAGE_H = 841.89;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const TABLE_RIGHT = PAGE_W - MARGIN;
 
@@ -20,7 +20,7 @@ const COLUMNS = [
   { label: "Patient Name", x: MARGIN + 30,  w: 140, align: "left" },
   { label: "Patient ID",   x: MARGIN + 170, w: 80,  align: "left" },
   { label: "Created",      x: MARGIN + 250, w: 80,  align: "left" },
-  { label: "Remarks",      x: MARGIN + 330, w: 202, align: "left" },
+  { label: "Remarks",      x: MARGIN + 330, w: 185.28, align: "left" },
 ];
 
 const ROW_H = 28;
@@ -245,7 +245,7 @@ export const exportPatientsPdf = async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
     // Disable autoPageBreak to prevent redundant pages when drawing near margins
-    const doc = new PDFDocument({ margin: 0, size: "LETTER", autoPageBreak: false });
+    const doc = new PDFDocument({ margin: 0, size: "A4", autoPageBreak: false });
     doc.pipe(res);
 
     // Cover Page
